@@ -1,0 +1,795 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../apps/api/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CLIENT
+  CONSULTANT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  INVITED
+}
+
+enum ClientStatus {
+  LEAD
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum GoalType {
+  ZERO_APR_CREDIT
+  TOTAL_AVAILABLE_CREDIT
+  BUSINESS_CREDIT
+  PERSONAL_CREDIT
+  BALANCE_TRANSFER_CAPACITY
+  EXISTING_LIMIT_INCREASES
+  REWARDS_POINTS_PORTFOLIO
+}
+
+enum GoalScope {
+  PERSONAL
+  BUSINESS
+  BOTH
+}
+
+enum GoalPriority {
+  PRIMARY
+  SECONDARY
+}
+
+enum GoalStatus {
+  ACTIVE
+  ACHIEVED
+  PAUSED
+}
+
+enum ClientCardScope {
+  PERSONAL
+  BUSINESS
+}
+
+enum ClientCardAccountStatus {
+  OPEN
+  CLOSED
+}
+
+enum CardApplicationOutcome {
+  APPROVED
+  DECLINED
+  PENDING
+}
+
+enum CardApplicationSource {
+  CLIENT
+  CONSULTANT
+}
+
+enum ApplicationCycleStatus {
+  ACTIVE
+  COMPLETE
+  CANCELLED
+}
+
+enum ApplicationCycleReadiness {
+  READY
+  ACTION_REQUIRED
+  NOT_READY
+}
+
+enum ApplicationCycleStage {
+  STARTED
+  REVIEW_PURCHASE
+  CREDIT_REVIEW
+  CONSULTANT_DECISION
+  POST_REVIEW_ACTIONS
+  ROUND_PURCHASE
+  STRATEGY
+  APPLICATION_SEQUENCE
+  APPLICATION_ROUND
+  RESULTS
+  POST_APPLICATION_ACTIONS
+  FINAL_RESULTS
+}
+
+enum ApplicationCycleStepStatus {
+  NOT_STARTED
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETE
+  SKIPPED
+  BLOCKED
+}
+
+enum ServiceType {
+  CREDIT_PROFILE_REVIEW
+  CREDIT_CARD_ROUND
+  MAJOR_APPLICATION_READINESS
+}
+
+enum PurchaseStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentProvider {
+  PAYPAL
+  MANUAL
+  OTHER
+}
+
+enum ReviewFrequency {
+  SEMIANNUAL
+  QUARTERLY
+  MONTHLY
+}
+
+enum ReviewPlanStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum WorkItemStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkItemPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum PlanActionStatus {
+  READY
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  DEFERRED
+  CANCELLED
+}
+
+enum PlanActionOwner {
+  CLIENT
+  CONSULTANT
+  SYSTEM
+}
+
+enum ReadinessOutcome {
+  APPLY_NOW
+  PREPARE_FIRST
+  WAIT
+}
+
+enum ReadinessStatus {
+  DRAFT
+  IN_REVIEW
+  CONFIRMED
+  SUPERSEDED
+}
+
+enum RiskLevel {
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum SupportCategory {
+  ACCOUNT
+  BILLING
+  CREDIT_REVIEW
+  DOCUMENTS
+  APPLICATION_ROUND
+  MAJOR_READINESS
+  TECHNICAL
+  OTHER
+}
+
+enum SupportPriority {
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportCaseStatus {
+  OPEN
+  WAITING_ON_SUPPORT
+  WAITING_ON_CLIENT
+  RESOLVED
+  CLOSED
+}
+
+enum OptionKind {
+  FINDING
+  RECOMMENDATION
+  RATIONALE
+  ACTION_BUNDLE
+  CHECKLIST
+  SUPPORT_MACRO
+}
+
+enum CreditReviewStatus {
+  PURCHASED
+  INTAKE_REQUIRED
+  INFORMATION_REQUESTED
+  INFORMATION_RECEIVED
+  CONSULTANT_REVIEW
+  COMPLETE
+  CANCELLED
+}
+
+enum GeneralReadiness {
+  NEEDS_REVIEW
+  UNDER_REVIEW
+  HIGH
+  MEDIUM
+  LOW
+  EXPIRED
+}
+
+enum ReviewRecommendation {
+  PROCEED
+  PROCEED_SELECTIVELY
+  PREPARE_FIRST
+  WAIT_NURTURE
+  MAJOR_APPLICATION_PRIORITY
+}
+
+enum FindingSeverity {
+  POSITIVE
+  INFORMATIONAL
+  CAUTION
+  CRITICAL
+}
+
+model User {
+  id                   String                @id @default(uuid()) @db.Uuid
+  email                String                @unique
+  passwordHash         String?
+  authProvider         String?
+  role                 UserRole
+  status               UserStatus            @default(ACTIVE)
+  lastLoginAt          DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  client               Client?               @relation("ClientIdentity")
+  assignedClients      Client[]              @relation("AssignedConsultant")
+  sessions             AuthSession[]
+  passwordResetTokens  PasswordResetToken[]
+  workItems            WorkItem[]            @relation("WorkItemAssignee")
+  auditEvents          AuditEvent[]          @relation("AuditActor")
+  readinessDecisions   ReadinessAssessment[] @relation("ReadinessConsultant")
+  completedReviews     CreditReview[]        @relation("ReviewConsultant")
+  createdSupportCases  SupportCase[]         @relation("SupportCaseCreator")
+  assignedSupportCases SupportCase[]         @relation("SupportCaseAssignee")
+  supportMessages      SupportMessage[]      @relation("SupportMessageAuthor")
+  notifications        Notification[]
+
+  @@index([role, status])
+}
+
+model Client {
+  id                   String                @id @default(uuid()) @db.Uuid
+  userId               String?               @unique @db.Uuid
+  firstName            String
+  lastName             String
+  phone                String?
+  status               ClientStatus          @default(ACTIVE)
+  assignedConsultantId String?               @db.Uuid
+  timezone             String                @default("America/New_York")
+  termsAcceptedAt      DateTime
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  archivedAt           DateTime?
+  user                 User?                 @relation("ClientIdentity", fields: [userId], references: [id], onDelete: Restrict)
+  assignedConsultant   User?                 @relation("AssignedConsultant", fields: [assignedConsultantId], references: [id], onDelete: SetNull)
+  goals                ClientGoal[]
+  servicePurchases     ServicePurchase[]
+  reviewPlans          ReviewPlan[]
+  creditSnapshots      CreditSnapshot[]
+  planActions          PlanAction[]
+  workItems            WorkItem[]
+  readinessAssessments ReadinessAssessment[]
+  auditEvents          AuditEvent[]
+  creditReviews        CreditReview[]
+  supportCases         SupportCase[]
+  notifications        Notification[]
+  cards                ClientCard[]
+  applicationCycles    ApplicationCycle[]
+
+  @@index([assignedConsultantId, status])
+}
+
+model CreditSnapshot {
+  id                      String                  @id @default(uuid()) @db.Uuid
+  clientId                String                  @db.Uuid
+  capturedAt              DateTime
+  expiresAt               DateTime
+  aggregateUtilization    Decimal?                @db.Decimal(5, 2)
+  revolvingBalance        Decimal?                @db.Decimal(14, 2)
+  revolvingLimit          Decimal?                @db.Decimal(14, 2)
+  openAccounts            Int?
+  recentInquiries         Int?
+  derogatoryItems         Int?
+  source                  String?
+  experianScore           Int?
+  equifaxScore            Int?
+  transunionScore         Int?
+  scoreModel              String?
+  averageAccountAgeMonths Int?
+  oldestAccountAgeMonths  Int?
+  revolvingAccounts       Int?
+  installmentAccounts     Int?
+  closedAccounts          Int?
+  latePayments            Int?
+  collections             Int?
+  chargeOffs              Int?
+  bankruptcies            Int?
+  paymentHistoryStatus    String?
+  createdAt               DateTime                @default(now())
+  client                  Client                  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  review                  CreditReview?
+  accounts                CreditAccountSnapshot[]
+
+  @@index([clientId, capturedAt])
+}
+
+model ClientCard {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  clientId           String                   @db.Uuid
+  cardName           String
+  issuer             String
+  scope              ClientCardScope
+  creditLimit        Decimal?                 @db.Decimal(14, 2)
+  balance            Decimal?                 @db.Decimal(14, 2)
+  accountStatus      ClientCardAccountStatus?
+  applicationOutcome CardApplicationOutcome?
+  applicationSource  CardApplicationSource?
+  appliedAt          DateTime?
+  openedAt           DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  client             Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([clientId, accountStatus, issuer])
+  @@index([clientId, applicationOutcome, appliedAt])
+}
+
+model ApplicationCycle {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  clientId             String                     @db.Uuid
+  cycleNumber          Int
+  status               ApplicationCycleStatus     @default(ACTIVE)
+  currentStage         ApplicationCycleStage      @default(STARTED)
+  readinessDecision    ApplicationCycleReadiness?
+  madeItToApplications Boolean                    @default(false)
+  finalResult          String?
+  startedAt            DateTime                   @default(now())
+  closedAt             DateTime?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  client               Client                     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  steps                ApplicationCycleStep[]
+  applications         CycleApplication[]
+
+  @@unique([clientId, cycleNumber])
+  @@index([clientId, status, startedAt])
+}
+
+model ApplicationCycleStep {
+  id          String                     @id @default(uuid()) @db.Uuid
+  cycleId     String                     @db.Uuid
+  stage       ApplicationCycleStage
+  title       String
+  description String?
+  status      ApplicationCycleStepStatus @default(NOT_STARTED)
+  sortOrder   Int
+  sourceType  String?
+  sourceId    String?                    @db.Uuid
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  cycle       ApplicationCycle           @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, stage])
+  @@index([cycleId, sortOrder])
+}
+
+model CycleApplication {
+  id            String                 @id @default(uuid()) @db.Uuid
+  cycleId       String                 @db.Uuid
+  cardName      String
+  issuer        String
+  scope         ClientCardScope
+  outcome       CardApplicationOutcome
+  approvedLimit Decimal?               @db.Decimal(14, 2)
+  submittedAt   DateTime
+  createdAt     DateTime               @default(now())
+  cycle         ApplicationCycle       @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId, submittedAt])
+}
+
+model CreditReview {
+  id                      String                @id @default(uuid()) @db.Uuid
+  clientId                String                @db.Uuid
+  purchaseId              String?               @unique @db.Uuid
+  consultantId            String?               @db.Uuid
+  status                  CreditReviewStatus    @default(INTAKE_REQUIRED)
+  generalReadiness        GeneralReadiness      @default(UNDER_REVIEW)
+  recommendation          ReviewRecommendation?
+  readinessExpiresAt      DateTime?
+  nextReviewRecommendedAt DateTime?
+  clientSummary           String?
+  internalNotes           String?
+  submittedAt             DateTime?
+  reviewStartedAt         DateTime?
+  completedAt             DateTime?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  client                  Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  purchase                ServicePurchase?      @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  consultant              User?                 @relation("ReviewConsultant", fields: [consultantId], references: [id], onDelete: SetNull)
+  intake                  ReviewIntake?
+  findings                ReviewFinding[]
+  snapshot                CreditSnapshot?       @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  snapshotId              String?               @unique @db.Uuid
+
+  @@index([clientId, status, createdAt])
+  @@index([consultantId, status, updatedAt])
+}
+
+model ReviewIntake {
+  id                      String                @id @default(uuid()) @db.Uuid
+  reviewId                String                @unique @db.Uuid
+  reportDocumentKey       String?
+  reportSource            String?
+  reportDate              DateTime?
+  recentApplications      Json?
+  accountUpdates          Json?
+  creditAccountsConfirmed Boolean?
+  creditAccountReviews    Json?
+  materialChanges         Json?
+  materialChangeDetails   Json?
+  informationRequest      Json?
+  informationRequestedAt  DateTime?
+  informationResolvedAt   DateTime?
+  clientConfirmedAt       DateTime?
+  submittedAt             DateTime?
+  reportDocumentId        String?               @unique @db.Uuid
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  review                  CreditReview          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reportDocument          CreditReportDocument? @relation(fields: [reportDocumentId], references: [id], onDelete: Restrict)
+}
+
+model CreditReportDocument {
+  id               String        @id @default(uuid()) @db.Uuid
+  storageKey       String        @unique
+  originalFileName String
+  mimeType         String
+  sizeBytes        Int
+  sha256           String
+  provider         String?
+  reportDate       DateTime?
+  bureauCoverage   Json?
+  uploadedByUserId String        @db.Uuid
+  uploadedAt       DateTime      @default(now())
+  supersededAt     DateTime?
+  intake           ReviewIntake?
+
+  @@index([uploadedByUserId, uploadedAt])
+}
+
+model ReviewFinding {
+  id          String          @id @default(uuid()) @db.Uuid
+  reviewId    String          @db.Uuid
+  optionId    String?         @db.Uuid
+  code        String
+  label       String
+  description String?
+  severity    FindingSeverity
+  sortOrder   Int             @default(0)
+  review      CreditReview    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  option      OptionTemplate? @relation("ReviewFindingOption", fields: [optionId], references: [id], onDelete: SetNull)
+
+  @@unique([reviewId, code])
+  @@index([reviewId, sortOrder])
+}
+
+model CreditAccountSnapshot {
+  id                      String         @id @default(uuid()) @db.Uuid
+  snapshotId              String         @db.Uuid
+  creditorName            String
+  maskedAccountNumber     String?
+  accountType             String
+  responsibility          String?
+  scope                   GoalScope?
+  openedAt                DateTime?
+  creditLimit             Decimal?       @db.Decimal(14, 2)
+  balance                 Decimal?       @db.Decimal(14, 2)
+  paymentStatus           String?
+  lastReportedAt          DateTime?
+  promotionalAprExpiresAt DateTime?
+  attentionStatus         String?
+  isOpen                  Boolean        @default(true)
+  snapshot                CreditSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@index([snapshotId, creditorName])
+}
+
+model PlanAction {
+  id          String           @id @default(uuid()) @db.Uuid
+  clientId    String           @db.Uuid
+  title       String
+  description String?
+  status      PlanActionStatus @default(READY)
+  owner       PlanActionOwner
+  sourceType  String
+  sourceId    String?          @db.Uuid
+  dueAt       DateTime?
+  completedAt DateTime?
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  client      Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceType, sourceId, title])
+  @@index([clientId, status, sortOrder])
+}
+
+model ReadinessAssessment {
+  id             String            @id @default(uuid()) @db.Uuid
+  clientId       String            @db.Uuid
+  consultantId   String?           @db.Uuid
+  version        Int
+  status         ReadinessStatus   @default(DRAFT)
+  outcome        ReadinessOutcome?
+  riskLevel      RiskLevel?
+  scope          GoalScope
+  targetAmount   Decimal           @db.Decimal(14, 2)
+  intendedAt     DateTime?
+  profileAsOf    DateTime?
+  timingBandDays Int?
+  overrideReason String?
+  confirmedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  client         Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  consultant     User?             @relation("ReadinessConsultant", fields: [consultantId], references: [id], onDelete: SetNull)
+  factors        ReadinessFactor[]
+
+  @@unique([clientId, version])
+  @@index([clientId, status])
+}
+
+model ReadinessFactor {
+  id           String              @id @default(uuid()) @db.Uuid
+  assessmentId String              @db.Uuid
+  code         String
+  selected     Boolean             @default(true)
+  severity     RiskLevel?
+  optionId     String?             @db.Uuid
+  value        String?
+  assessment   ReadinessAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  option       OptionTemplate?     @relation(fields: [optionId], references: [id], onDelete: SetNull)
+
+  @@unique([assessmentId, code])
+}
+
+model WorkItem {
+  id                  String           @id @default(uuid()) @db.Uuid
+  clientId            String           @db.Uuid
+  assigneeId          String?          @db.Uuid
+  title               String
+  domain              String
+  status              WorkItemStatus   @default(OPEN)
+  priority            WorkItemPriority @default(NORMAL)
+  suggestedNextAction String?
+  dueAt               DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  client              Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  assignee            User?            @relation("WorkItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([assigneeId, status, priority, dueAt])
+  @@index([clientId, status])
+}
+
+model SupportCase {
+  id               String            @id @default(uuid()) @db.Uuid
+  clientId         String            @db.Uuid
+  createdByUserId  String            @db.Uuid
+  assignedToUserId String?           @db.Uuid
+  category         SupportCategory
+  priority         SupportPriority   @default(NORMAL)
+  status           SupportCaseStatus @default(WAITING_ON_SUPPORT)
+  subject          String
+  lastMessageAt    DateTime          @default(now())
+  resolvedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  client           Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdBy        User              @relation("SupportCaseCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  assignedTo       User?             @relation("SupportCaseAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  messages         SupportMessage[]
+
+  @@index([clientId, status, lastMessageAt])
+  @@index([assignedToUserId, status, priority, lastMessageAt])
+}
+
+model SupportMessage {
+  id            String      @id @default(uuid()) @db.Uuid
+  supportCaseId String      @db.Uuid
+  authorUserId  String      @db.Uuid
+  body          String
+  internal      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  supportCase   SupportCase @relation(fields: [supportCaseId], references: [id], onDelete: Cascade)
+  author        User        @relation("SupportMessageAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([supportCaseId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  clientId  String?   @db.Uuid
+  type      String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client    Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model OptionTemplate {
+  id             String            @id @default(uuid()) @db.Uuid
+  code           String
+  kind           OptionKind
+  version        Int
+  label          String
+  description    String?
+  payload        Json?
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  retiredAt      DateTime?
+  factors        ReadinessFactor[]
+  reviewFindings ReviewFinding[]   @relation("ReviewFindingOption")
+
+  @@unique([code, version])
+  @@index([kind, active])
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  clientId   String?  @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  client     Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model ServicePurchase {
+  id               String          @id @default(uuid()) @db.Uuid
+  clientId         String          @db.Uuid
+  serviceType      ServiceType
+  amount           Decimal         @db.Decimal(12, 2)
+  currency         String          @default("USD")
+  status           PurchaseStatus  @default(PENDING)
+  paymentProvider  PaymentProvider
+  paymentReference String?
+  purchasedAt      DateTime?
+  refundedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  client           Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  creditReview     CreditReview?
+
+  @@index([clientId, createdAt])
+  @@index([status, serviceType])
+}
+
+model ServiceDefinition {
+  serviceType ServiceType @id
+  price       Decimal     @db.Decimal(12, 2)
+  currency    String      @default("USD")
+  active      Boolean     @default(true)
+  updatedAt   DateTime    @updatedAt
+}
+
+model ReviewPlan {
+  id                     String           @id @default(uuid()) @db.Uuid
+  clientId               String           @db.Uuid
+  frequency              ReviewFrequency
+  status                 ReviewPlanStatus @default(ACTIVE)
+  price                  Decimal          @db.Decimal(12, 2)
+  currency               String           @default("USD")
+  paymentProvider        PaymentProvider
+  providerSubscriptionId String?
+  startedAt              DateTime         @default(now())
+  nextReviewAt           DateTime?
+  endedAt                DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  client                 Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([clientId, status])
+}
+
+model ClientGoal {
+  id             String       @id @default(uuid()) @db.Uuid
+  clientId       String       @db.Uuid
+  goalType       GoalType
+  scope          GoalScope
+  targetAmount   Decimal?     @db.Decimal(14, 2)
+  currentAmount  Decimal?     @db.Decimal(14, 2)
+  allowAnnualFee Boolean      @default(false)
+  priority       GoalPriority
+  status         GoalStatus   @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  achievedAt     DateTime?
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@unique([clientId, goalType, scope])
+  @@index([clientId, status, priority])
+}
+
+model AuthSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  lastSeenAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  userAgent  String?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}

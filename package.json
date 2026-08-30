@@ -1,0 +1,42 @@
+{
+  "name": "credit-strategy-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @credit/web --filter @credit/api dev",
+    "dev:web": "pnpm --filter @credit/web dev",
+    "dev:api": "pnpm --filter @credit/api dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r test",
+    "test:unit": "pnpm -r test:unit",
+    "test:integration": "pnpm --filter @credit/api test:integration",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "demo:setup": "pnpm --filter @credit/api exec tsx src/scripts/setupDemo.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "@prisma/adapter-pg": "7.9.1",
+    "@types/node": "latest",
+    "eslint": "latest",
+    "eslint-config-prettier": "latest",
+    "globals": "latest",
+    "prettier": "latest",
+    "prisma": "7.9.1",
+    "tsx": "latest",
+    "typescript": "5.9.3",
+    "typescript-eslint": "latest"
+  }
+}

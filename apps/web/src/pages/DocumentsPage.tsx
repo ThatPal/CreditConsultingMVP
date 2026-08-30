@@ -1,0 +1,159 @@
+import DescriptionRounded from '@mui/icons-material/DescriptionRounded';
+import CloseRounded from '@mui/icons-material/CloseRounded';
+import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
+  Stack,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { apiRequest } from '../auth/api';
+import { LoadingSkeleton } from '../components/common/Feedback';
+import { PageHeader } from '../components/common/PageHeader';
+import { SectionCard } from '../components/common/SectionCard';
+import { SecureReportViewer } from './ReviewPages';
+
+type ClientDocument = {
+  id: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  supersededAt: string | null;
+  intake: {
+    reportSource: string | null;
+    reportDate: string | null;
+    review: { id: string; status: string; completedAt: string | null };
+  } | null;
+};
+
+function fileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function DocumentsPage() {
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const theme = useTheme();
+  const fullScreenViewer = useMediaQuery(theme.breakpoints.down('sm'));
+  const query = useQuery({
+    queryKey: ['client-documents'],
+    queryFn: () =>
+      apiRequest<{ documents: ClientDocument[] }>('/api/v1/reviews/report-documents/client'),
+  });
+
+  if (query.isLoading) return <LoadingSkeleton />;
+  if (query.isError) return <Alert severity="error">Unable to load your document history.</Alert>;
+
+  const documents = query.data?.documents ?? [];
+  const selected = documents.find((document) => document.id === selectedDocumentId);
+
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="Secure files"
+        title="Documents"
+        description="A history of the credit reports and other documents you have provided."
+      />
+
+      {documents.length === 0 ? (
+        <SectionCard>
+          <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
+            <DescriptionRounded color="primary" sx={{ fontSize: 40 }} />
+            <Box>
+              <Typography variant="h3">No documents yet</Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+                Credit reports uploaded through a Credit Review will appear here automatically.
+              </Typography>
+            </Box>
+            <Button component={Link} to="/client/credit-profile" variant="contained">
+              Go to Credit Profile
+            </Button>
+          </Stack>
+        </SectionCard>
+      ) : (
+        <SectionCard>
+          <Stack divider={<Divider flexItem />}>
+            {documents.map((document) => (
+              <Stack
+                key={document.id}
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                sx={{ py: 2, alignItems: { sm: 'center' } }}
+              >
+                <DescriptionRounded color="primary" sx={{ fontSize: 34 }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography sx={{ fontWeight: 850, overflowWrap: 'anywhere' }}>
+                    {document.originalFileName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
+                    Uploaded {new Date(document.uploadedAt).toLocaleDateString()} ·{' '}
+                    {fileSize(document.sizeBytes)}
+                    {document.intake?.reportSource ? ` · ${document.intake.reportSource}` : ''}
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <Chip
+                    size="small"
+                    color={document.supersededAt ? 'default' : 'success'}
+                    label={document.supersededAt ? 'Previous version' : 'Current'}
+                  />
+                  <Button
+                    variant="outlined"
+                    startIcon={<VisibilityRounded />}
+                    onClick={() => setSelectedDocumentId(document.id)}
+                  >
+                    View
+                  </Button>
+                </Stack>
+              </Stack>
+            ))}
+          </Stack>
+        </SectionCard>
+      )}
+
+      <Dialog
+        open={Boolean(selected)}
+        onClose={() => setSelectedDocumentId(null)}
+        fullScreen={fullScreenViewer}
+        fullWidth
+        maxWidth="lg"
+        slotProps={{ paper: { sx: { bgcolor: 'background.default' } } }}
+      >
+        {selected && (
+          <>
+            <DialogTitle>
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                <DescriptionRounded color="primary" />
+                <Typography variant="h3" sx={{ flex: 1, overflowWrap: 'anywhere' }}>
+                  {selected.originalFileName}
+                </Typography>
+                <IconButton
+                  aria-label="Close document viewer"
+                  onClick={() => setSelectedDocumentId(null)}
+                >
+                  <CloseRounded />
+                </IconButton>
+              </Stack>
+            </DialogTitle>
+            <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}>
+              <SecureReportViewer documentId={selected.id} />
+            </DialogContent>
+          </>
+        )}
+      </Dialog>
+    </Stack>
+  );
+}
