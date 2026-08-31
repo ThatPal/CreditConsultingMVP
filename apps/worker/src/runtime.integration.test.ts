@@ -1,4 +1,4 @@
-import { closeRedis, createRedisConnection } from '@credit/runtime';
+import { assertCreditDatabaseUrl, closeRedis, createRedisConnection } from '@credit/runtime';
 import { Pool } from 'pg';
 import pino from 'pino';
 import { describe, expect, test } from 'vitest';
@@ -11,7 +11,10 @@ describe('worker infrastructure boundary', () => {
     if (!databaseUrl || !redisUrl)
       throw new Error('DATABASE_URL and REDIS_URL are required for worker integration tests');
 
-    const postgres = new Pool({ connectionString: databaseUrl, max: 1 });
+    const postgres = new Pool({
+      connectionString: assertCreditDatabaseUrl(databaseUrl),
+      max: 1,
+    });
     const redis = createRedisConnection(redisUrl);
     const runtime = await startWorkerRuntime({
       logger: pino({ level: 'silent' }),

@@ -1,4 +1,5 @@
 import { createClient } from 'redis';
+import { assertCreditDatabaseUrl } from '@credit/runtime';
 import { Pool } from 'pg';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
@@ -8,7 +9,7 @@ describe('database to realtime outbox pipeline', () => {
   const databaseUrl = process.env.DATABASE_URL;
   const redisUrl = process.env.REDIS_URL;
   if (!databaseUrl || !redisUrl) throw new Error('DATABASE_URL and REDIS_URL are required');
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = new Pool({ connectionString: assertCreditDatabaseUrl(databaseUrl) });
 
   beforeAll(async () => {
     await pool.query('SELECT 1');

@@ -24,7 +24,7 @@ describe('runtime foundation', () => {
     expect(
       assertCreditDatabaseUrl('postgresql://credit:x@localhost/credit_strategy_test'),
     ).toContain('credit_strategy_test');
-    for (const database of ['behfar', 'healix', 'bkos', 'unrelated', 'credit_strategyevil'])
+    for (const database of ['foreign_app', 'healix', 'bkos', 'unrelated', 'credit_strategyevil'])
       expect(() => assertCreditDatabaseUrl(`postgresql://user:x@localhost/${database}`)).toThrow(
         'Credit Platform database',
       );

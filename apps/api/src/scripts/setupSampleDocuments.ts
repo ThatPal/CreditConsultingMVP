@@ -2,9 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
-import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
-import { PrismaClient } from '../generated/prisma/client.js';
+import { createPrisma } from '../lib/prisma.js';
 
 config({ path: resolve(process.cwd(), '.env') });
 const url = process.env.DATABASE_URL;
@@ -41,7 +40,7 @@ function makePdf(title: string, subtitle: string) {
   return Buffer.from(pdf);
 }
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+const prisma = createPrisma(url);
 
 try {
   const user = await prisma.user.findFirst({

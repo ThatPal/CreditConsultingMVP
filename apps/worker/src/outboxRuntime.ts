@@ -1,4 +1,5 @@
 import { Queue, QueueEvents, Worker, type JobsOptions } from 'bullmq';
+import { assertCreditDatabaseUrl } from '@credit/runtime';
 import { createClient } from 'redis';
 import { Pool } from 'pg';
 import type { Logger } from 'pino';
@@ -59,7 +60,10 @@ export async function startOutboxRuntime(options: {
   pollIntervalMs?: number;
   processNotificationDelivery?: (deliveryId: string) => Promise<void>;
 }) {
-  const pool = new Pool({ connectionString: options.databaseUrl, max: 4 });
+  const pool = new Pool({
+    connectionString: assertCreditDatabaseUrl(options.databaseUrl),
+    max: 4,
+  });
   const connection = bullConnection(options.redisUrl);
   const queue = new Queue(OUTBOX_QUEUE, { connection });
   const queueEvents = new QueueEvents(OUTBOX_QUEUE, { connection });

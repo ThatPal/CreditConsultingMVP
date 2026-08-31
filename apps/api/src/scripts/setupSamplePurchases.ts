@@ -1,7 +1,6 @@
 import { resolve } from 'node:path';
-import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
-import { PrismaClient } from '../generated/prisma/client.js';
+import { createPrisma } from '../lib/prisma.js';
 
 config({ path: resolve(process.cwd(), '.env') });
 const url = process.env.DATABASE_URL;
@@ -9,7 +8,7 @@ if (!url) throw new Error('DATABASE_URL is required');
 if (process.env.NODE_ENV === 'production' || !/localhost|127\.0\.0\.1/.test(url))
   throw new Error('Sample purchase data is restricted to a local non-production database');
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+const prisma = createPrisma(url);
 const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
 try {

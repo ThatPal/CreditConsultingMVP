@@ -1,6 +1,5 @@
-import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
-import { PrismaClient } from '../generated/prisma/client.js';
+import { createPrisma } from '../lib/prisma.js';
 
 config({ path: '../../.env' });
 const url = process.env.DATABASE_URL;
@@ -9,7 +8,7 @@ if (process.env.NODE_ENV === 'production' || !/localhost|127\.0\.0\.1/.test(url)
   throw new Error('Cycle reset is restricted to a local non-production database');
 }
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+const prisma = createPrisma(url);
 
 try {
   const user = await prisma.user.findUnique({
