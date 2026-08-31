@@ -122,4 +122,41 @@ describe('canonical realtime authorization runtime', () => {
     await connectOnce();
     expect(resolveCalls).toBeGreaterThanOrEqual(4);
   });
+
+  test('denies an initially unauthorized subscription before protected delivery', async () => {
+    const socket = connect(url, {
+      extraHeaders: { 'x-test-user': 'unauthorized' },
+      forceNew: true,
+      transports: ['websocket'],
+    });
+    await onceWithTimeout(socket, 'connect');
+    const clientId = principal('unauthorized').clientId!;
+    const denied = await socket
+      .timeout(3000)
+      .emitWithAck('subscribe', { scope: 'client', clientId });
+    expect(denied).toEqual({ ok: false, code: 'FORBIDDEN' });
+
+    let delivered = false;
+    socket.on('resource.changed', () => {
+      delivered = true;
+    });
+    const redis = createClient({ url: redisUrl });
+    await redis.connect();
+    await redis.publish(
+      REALTIME_CHANNEL,
+      JSON.stringify({
+        id: crypto.randomUUID(),
+        version: 1,
+        type: 'resource.changed',
+        occurredAt: new Date().toISOString(),
+        clientId,
+        domains: ['support'],
+        refetch: true,
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(delivered).toBe(false);
+    socket.close();
+    await redis.quit();
+  });
 });

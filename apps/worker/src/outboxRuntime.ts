@@ -5,14 +5,16 @@ import type { Logger } from 'pino';
 
 export const OUTBOX_QUEUE = 'credit-outbox-v1';
 export const REALTIME_CHANNEL = 'credit:realtime:events';
+export const BULLMQ_JOB_ATTEMPTS = 5;
+export const OUTBOX_MAX_CLAIMS = 5;
 export const outboxJobOptions: JobsOptions = {
-  attempts: 5,
+  attempts: BULLMQ_JOB_ATTEMPTS,
   backoff: { type: 'exponential', delay: 1000 },
   removeOnComplete: 500,
   removeOnFail: 1000,
 };
 export function outboxFailureDisposition(attemptCountBeforeClaim: number) {
-  return attemptCountBeforeClaim + 1 >= Number(outboxJobOptions.attempts) ? 'FAILED' : 'PENDING';
+  return attemptCountBeforeClaim + 1 >= OUTBOX_MAX_CLAIMS ? 'FAILED' : 'PENDING';
 }
 
 type ClaimedEvent = {

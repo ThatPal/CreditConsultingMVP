@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { outboxFailureDisposition, outboxJobOptions, toClientEnvelope } from './outboxRuntime.js';
+import {
+  BULLMQ_JOB_ATTEMPTS,
+  OUTBOX_MAX_CLAIMS,
+  outboxFailureDisposition,
+  outboxJobOptions,
+  toClientEnvelope,
+} from './outboxRuntime.js';
 
 describe('outbox runtime contract', () => {
   test('creates a minimal refetch envelope with stable event identity', () => {
@@ -40,6 +46,8 @@ describe('outbox runtime contract', () => {
   });
 
   test('retries transient failures and dead-letters the fifth failed claim', () => {
+    expect(OUTBOX_MAX_CLAIMS).toBe(5);
+    expect(BULLMQ_JOB_ATTEMPTS).toBe(5);
     expect(outboxFailureDisposition(0)).toBe('PENDING');
     expect(outboxFailureDisposition(3)).toBe('PENDING');
     expect(outboxFailureDisposition(4)).toBe('FAILED');

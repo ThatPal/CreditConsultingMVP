@@ -68,4 +68,46 @@ describe('database to realtime outbox pipeline', () => {
       await pool.query(`DELETE FROM "OutboxEvent" WHERE id = $1`, [eventId]);
     }
   });
+
+  test('counts durable claims separately and dead-letters an unsafe poison event at the bound', async () => {
+    const eventId = crypto.randomUUID();
+    const eventKey = `sprint-3.1-c1-poison:${eventId}`;
+    await pool.query(
+      `INSERT INTO "OutboxEvent"
+         (id, "eventType", "eventKey", "aggregateType", "aggregateId", payload)
+       VALUES ($1, 'INTERNAL_UNSAFE', $2, 'Internal', 'poison-1', $3::jsonb)`,
+      [eventId, eventKey, JSON.stringify({ internalOnly: true })],
+    );
+    const runtime = await startOutboxRuntime({
+      databaseUrl,
+      redisUrl,
+      logger: pino({ enabled: false }),
+      pollIntervalMs: 60_000,
+    });
+    try {
+      for (let expectedClaims = 1; expectedClaims <= 5; expectedClaims += 1) {
+        const persisted = await pool.query<{
+          status: string;
+          attemptCount: number;
+          lastErrorCode: string | null;
+        }>(`SELECT status, "attemptCount", "lastErrorCode" FROM "OutboxEvent" WHERE id = $1`, [
+          eventId,
+        ]);
+        expect(persisted.rows[0]).toEqual({
+          status: expectedClaims === 5 ? 'FAILED' : 'PENDING',
+          attemptCount: expectedClaims,
+          lastErrorCode: 'OUTBOX_PUBLISH_FAILED',
+        });
+        if (expectedClaims < 5) {
+          await pool.query(`UPDATE "OutboxEvent" SET "availableAt" = now() WHERE id = $1`, [
+            eventId,
+          ]);
+          await runtime.publishBatch();
+        }
+      }
+    } finally {
+      await runtime.close();
+      await pool.query(`DELETE FROM "OutboxEvent" WHERE id = $1`, [eventId]);
+    }
+  });
 });
