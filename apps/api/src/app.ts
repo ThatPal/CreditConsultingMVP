@@ -22,6 +22,10 @@ import type { PrismaClient } from './generated/prisma/client.js';
 import { createReadinessRouter } from './readiness/routes.js';
 import { createCreditProfileRouter, createReviewRouter } from './reviews/routes.js';
 import { createOperationsRouter } from './operations/routes.js';
+import {
+  createPrismaAuthorizationDenialRecorder,
+  createPrismaAuthorizationService,
+} from './authorization/authorizationService.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -109,11 +113,22 @@ export function createApp(
       app.use('/api/v1/client/services', createServiceRouter(services));
     }
     if (prisma) {
-      app.use('/api/v1/reviews', createReviewRouter(prisma, auth));
+      const authorization = createPrismaAuthorizationService(prisma);
+      const denialRecorder = createPrismaAuthorizationDenialRecorder(prisma);
+      app.use(
+        '/api/v1/reviews',
+        createReviewRouter(prisma, auth, undefined, authorization, denialRecorder),
+      );
       app.use('/api/v1/client/credit-profile', createCreditProfileRouter(prisma));
-      app.use('/api/v1/major-readiness', createReadinessRouter(prisma, auth));
-      app.use('/api/v1/readiness', createReadinessRouter(prisma, auth));
-      app.use('/api/v1', createOperationsRouter(prisma, auth));
+      app.use(
+        '/api/v1/major-readiness',
+        createReadinessRouter(prisma, auth, authorization, denialRecorder),
+      );
+      app.use(
+        '/api/v1/readiness',
+        createReadinessRouter(prisma, auth, authorization, denialRecorder),
+      );
+      app.use('/api/v1', createOperationsRouter(prisma, auth, {}, authorization, denialRecorder));
     }
   }
   app.get('/errors/test', (_req, _res, next) => next(new Error('Deliberate test error')));

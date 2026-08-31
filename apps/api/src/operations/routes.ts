@@ -1,13 +1,21 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthService } from '../auth/authService.js';
-import { requireAuth, requireClientAccess, requireRole } from '../auth/middleware.js';
+import {
+  requireAuth,
+  requireCapability,
+  requireClientAccess,
+  requireRole,
+} from '../auth/middleware.js';
+import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
 import type { PrismaClient, WorkItemStatus } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate, subscribeToLiveUpdates, type LiveUpdate } from '../liveUpdates.js';
 import {
   createPrismaAuthorizationService,
+  createPrismaAuthorizationDenialRecorder,
   createRealtimeAuthorizationBridge,
+  type AuthorizationService,
 } from '../authorization/authorizationService.js';
 
 const supportCaseSchema = z.object({
@@ -118,11 +126,24 @@ export function createOperationsRouter(
   prisma: PrismaClient,
   auth: AuthService,
   options: { heartbeatIntervalMs?: number } = {},
+  authorization: AuthorizationService = createPrismaAuthorizationService(prisma),
+  denialRecorder: AuthorizationDenialRecorder = createPrismaAuthorizationDenialRecorder(prisma),
 ) {
   const router = Router();
-  const realtimeAuthorization = createRealtimeAuthorizationBridge(
-    createPrismaAuthorizationService(prisma),
-  );
+  const realtimeAuthorization = createRealtimeAuthorizationBridge(authorization);
+  const resolveSupportClient: import('express').RequestHandler = async (req, _res, next) => {
+    try {
+      const supportCase = await prisma.supportCase.findUnique({
+        where: { id: req.params.caseId as string },
+        select: { clientId: true },
+      });
+      if (!supportCase) throw new AppError('NOT_FOUND', 404, 'Support request was not found');
+      req.params.clientId = supportCase.clientId;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
   router.use(requireAuth);
   router.get('/live-updates', async (req, res) => {
     res.status(200);
@@ -857,6 +878,8 @@ export function createOperationsRouter(
   router.post(
     '/consultant/support-cases/:caseId/messages',
     requireRole('CONSULTANT', 'ADMIN'),
+    resolveSupportClient,
+    requireCapability(authorization, 'support.manage', 'clientId', undefined, denialRecorder),
     async (req, res, next) => {
       try {
         const parsed = consultantSupportReplySchema.safeParse(req.body);
@@ -865,17 +888,6 @@ export function createOperationsRouter(
         const supportCase = await prisma.supportCase.findFirst({
           where: {
             id: req.params.caseId as string,
-            ...(req.auth!.role === 'ADMIN'
-              ? {}
-              : {
-                  OR: [
-                    { assignedToUserId: req.auth!.userId },
-                    {
-                      assignedToUserId: null,
-                      client: { assignedConsultantId: req.auth!.userId },
-                    },
-                  ],
-                }),
           },
           include: { client: { select: { userId: true } } },
         });
@@ -933,6 +945,8 @@ export function createOperationsRouter(
   router.patch(
     '/consultant/support-cases/:caseId',
     requireRole('CONSULTANT', 'ADMIN'),
+    resolveSupportClient,
+    requireCapability(authorization, 'support.manage', 'clientId', undefined, denialRecorder),
     async (req, res, next) => {
       try {
         const parsed = z
@@ -955,17 +969,6 @@ export function createOperationsRouter(
         const supportCase = await prisma.supportCase.findFirst({
           where: {
             id: req.params.caseId as string,
-            ...(req.auth!.role === 'ADMIN'
-              ? {}
-              : {
-                  OR: [
-                    { assignedToUserId: req.auth!.userId },
-                    {
-                      assignedToUserId: null,
-                      client: { assignedConsultantId: req.auth!.userId },
-                    },
-                  ],
-                }),
           },
         });
         if (!supportCase) throw new AppError('NOT_FOUND', 404, 'Support request was not found');
@@ -1170,7 +1173,7 @@ export function createOperationsRouter(
   router.get(
     '/consultant/clients/:clientId',
     requireRole('CONSULTANT', 'ADMIN'),
-    requireClientAccess(auth),
+    requireClientAccess(authorization, 'clientId', denialRecorder),
     async (req, res, next) => {
       try {
         const client = await prisma.client.findUnique({

@@ -1,5 +1,6 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
 import type { AuthPrincipal } from '../auth/types.js';
+import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
 
 export const canonicalCapabilities = [
   'client.read',
@@ -106,6 +107,29 @@ export function createPrismaAuthorizationService(prisma: PrismaClient): Authoriz
       );
     },
   });
+}
+
+export function createPrismaAuthorizationDenialRecorder(
+  prisma: PrismaClient,
+): AuthorizationDenialRecorder {
+  return async ({ principal, capability, resource, category }) => {
+    await prisma.securityEvent.create({
+      data: {
+        actorId: principal.userId,
+        ...(resource.type === 'client' && resource.clientId !== 'invalid'
+          ? { clientId: resource.clientId }
+          : {}),
+        eventType: 'AUTHZ_ACCESS_DENIED',
+        severity: category === 'AUTHORIZATION_LOOKUP_FAILED' ? 'HIGH' : 'WARNING',
+        category,
+        entityType: resource.type === 'client' ? 'Client' : 'Platform',
+        ...(resource.type === 'client' && resource.clientId !== 'invalid'
+          ? { entityId: resource.clientId }
+          : {}),
+        metadata: { capability, role: principal.role },
+      },
+    });
+  };
 }
 
 export function createRealtimeAuthorizationBridge(service: AuthorizationService) {

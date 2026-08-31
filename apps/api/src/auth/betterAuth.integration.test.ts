@@ -6,7 +6,7 @@ import { createApp } from '../app.js';
 import { loadEnv } from '../config/env.js';
 import { createPrisma } from '../lib/prisma.js';
 import type { EmailMessage, EmailProvider } from '../notifications/emailProvider.js';
-import { createBetterAuth, resolveBetterAuthPrincipal } from './betterAuth.js';
+import { createBetterAuth, deriveMfaAssurance, resolveBetterAuthPrincipal } from './betterAuth.js';
 
 const databaseUrl =
   process.env.DATABASE_URL ??
@@ -115,6 +115,17 @@ afterAll(async () => {
 });
 
 describe.sequential('Better Auth client authentication', () => {
+  test('disabling staff MFA invalidates current and step-up assurance', () => {
+    const verifiedAt = new Date();
+    expect(deriveMfaAssurance('CONSULTANT', true, verifiedAt, 15)).toEqual({
+      staffMfaVerified: true,
+      stepUpVerified: true,
+    });
+    expect(deriveMfaAssurance('CONSULTANT', false, verifiedAt, 15)).toEqual({
+      staffMfaVerified: false,
+      stepUpVerified: false,
+    });
+  });
   test('registers one governed user/client/account and rejects duplicate effects', async () => {
     await register(email).then((response) => expect(response.status).toBe(200));
     await register(email).then((response) => expect(response.status).toBe(200));

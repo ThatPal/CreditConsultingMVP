@@ -2,7 +2,18 @@ import { randomUUID } from 'node:crypto';
 import express, { Router } from 'express';
 import { z } from 'zod';
 import type { AuthService } from '../auth/authService.js';
-import { requireAuth, requireClientAccess, requireRole } from '../auth/middleware.js';
+import {
+  requireAuth,
+  requireCapability,
+  requireClientAccess,
+  requireRole,
+} from '../auth/middleware.js';
+import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
+import {
+  createPrismaAuthorizationDenialRecorder,
+  createPrismaAuthorizationService,
+  type AuthorizationService,
+} from '../authorization/authorizationService.js';
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate } from '../liveUpdates.js';
@@ -227,6 +238,8 @@ export function createReviewRouter(
   prisma: PrismaClient,
   auth: AuthService,
   documentStorage: DocumentStorage = createLocalDocumentStorage(),
+  authorization: AuthorizationService = createPrismaAuthorizationService(prisma),
+  denialRecorder: AuthorizationDenialRecorder = createPrismaAuthorizationDenialRecorder(prisma),
 ) {
   const router = Router();
   router.use(requireAuth);
@@ -721,7 +734,7 @@ export function createReviewRouter(
   router.get(
     '/consultant/:clientId/:reviewId',
     requireRole('CONSULTANT', 'ADMIN'),
-    requireClientAccess(auth),
+    requireClientAccess(authorization, 'clientId', denialRecorder),
     async (req, res, next) => {
       try {
         const review = await prisma.creditReview.findFirst({
@@ -750,7 +763,7 @@ export function createReviewRouter(
   router.post(
     '/consultant/:clientId/:reviewId/request-information',
     requireRole('CONSULTANT', 'ADMIN'),
-    requireClientAccess(auth),
+    requireCapability(authorization, 'review.publish', 'clientId', undefined, denialRecorder),
     async (req, res, next) => {
       try {
         const input = parse(informationRequestSchema, req.body);
@@ -806,7 +819,7 @@ export function createReviewRouter(
   router.post(
     '/consultant/:clientId/:reviewId/start',
     requireRole('CONSULTANT', 'ADMIN'),
-    requireClientAccess(auth),
+    requireCapability(authorization, 'review.publish', 'clientId', undefined, denialRecorder),
     async (req, res, next) => {
       try {
         const clientId = req.params.clientId as string;
@@ -866,7 +879,13 @@ export function createReviewRouter(
   router.post(
     '/consultant/:clientId/:reviewId/complete',
     requireRole('CONSULTANT', 'ADMIN'),
-    requireClientAccess(auth),
+    requireCapability(
+      authorization,
+      'review.publish',
+      'clientId',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
     async (req, res, next) => {
       try {
         const input = parse(completionSchema, req.body);

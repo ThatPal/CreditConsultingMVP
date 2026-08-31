@@ -51,6 +51,49 @@ export function createAccessAdministration(prisma: PrismaClient) {
         },
       });
     },
+    deactivateAssignment(input: CommandContext & { assignmentId: string }) {
+      return executeConsequentialCommand<{ id: string; clientId: string }>(prisma, {
+        idempotency: {
+          scope: 'authorization',
+          subjectId: input.assignmentId,
+          operation: 'deactivate-assignment',
+          key: input.idempotencyKey,
+        },
+        audit: (result) => ({
+          action: 'STAFF_CLIENT_ASSIGNMENT_DEACTIVATED',
+          entityType: 'StaffClientAssignment',
+          entityId: result.id,
+          clientId: result.clientId,
+          actorId: input.actorId,
+        }),
+        outbox: {
+          eventType: 'authorization.staff-assignment-deactivated',
+          eventKey: input.idempotencyKey,
+          aggregateType: 'StaffClientAssignment',
+          aggregateId: input.assignmentId,
+          payload: (result) => result,
+        },
+        mutate: async (tx) => {
+          const assignment = await tx.staffClientAssignment.update({
+            where: { id: input.assignmentId },
+            data: { deactivatedAt: new Date() },
+            select: { id: true, clientId: true },
+          });
+          await tx.securityEvent.create({
+            data: {
+              actorId: input.actorId,
+              clientId: assignment.clientId,
+              eventType: 'AUTHZ_ASSIGNMENT_DEACTIVATED',
+              severity: 'WARNING',
+              category: 'AUTHORIZATION',
+              entityType: 'StaffClientAssignment',
+              entityId: assignment.id,
+            },
+          });
+          return assignment;
+        },
+      });
+    },
     grantAccess(
       input: CommandContext & {
         granteeId: string;

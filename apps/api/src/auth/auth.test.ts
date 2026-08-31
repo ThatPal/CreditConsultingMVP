@@ -7,6 +7,7 @@ import { loadEnv } from '../config/env.js';
 import { errorHandler } from '../http/errors.js';
 import { createAuthService, type ResetNotifier } from './authService.js';
 import { requireClientAccess, requireRole } from './middleware.js';
+import { createAuthorizationService } from '../authorization/authorizationService.js';
 import type { AuthPrincipal, AuthStore, PublicUser, SessionRecord } from './types.js';
 
 const env = loadEnv({
@@ -273,6 +274,11 @@ describe('authentication and authorization', () => {
       stepUpVerified: true,
     };
     store.assigned.set('client-a', principal.userId);
+    const authorization = createAuthorizationService({
+      hasRoleCapability: async (_role, capability) => capability === 'client.read',
+      hasActiveAssignment: async (userId, clientId) => store.assigned.get(clientId) === userId,
+      hasActiveGrant: async () => false,
+    });
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
@@ -282,7 +288,9 @@ describe('authentication and authorization', () => {
     app.get('/consultant', requireRole('CONSULTANT', 'ADMIN'), (_req, res) =>
       res.json({ ok: true }),
     );
-    app.get('/clients/:clientId', requireClientAccess(auth), (_req, res) => res.json({ ok: true }));
+    app.get('/clients/:clientId', requireClientAccess(authorization), (_req, res) =>
+      res.json({ ok: true }),
+    );
     app.use(errorHandler(pino({ level: 'silent' })));
     await request(app).get('/consultant').expect(200);
     await request(app).get('/clients/client-a').expect(200);

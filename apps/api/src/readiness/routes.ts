@@ -1,7 +1,18 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthService } from '../auth/authService.js';
-import { requireAuth, requireClientAccess, requireRole } from '../auth/middleware.js';
+import {
+  requireAuth,
+  requireCapability,
+  requireClientAccess,
+  requireRole,
+} from '../auth/middleware.js';
+import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
+import {
+  createPrismaAuthorizationDenialRecorder,
+  createPrismaAuthorizationService,
+  type AuthorizationService,
+} from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 
@@ -32,7 +43,12 @@ function present<T extends { targetAmount: { toNumber(): number } }>(assessment:
   return { ...assessment, targetAmount: assessment.targetAmount.toNumber() };
 }
 
-export function createReadinessRouter(prisma: PrismaClient, auth: AuthService) {
+export function createReadinessRouter(
+  prisma: PrismaClient,
+  auth: AuthService,
+  authorization: AuthorizationService = createPrismaAuthorizationService(prisma),
+  denialRecorder: AuthorizationDenialRecorder = createPrismaAuthorizationDenialRecorder(prisma),
+) {
   const router = Router();
   router.use(requireAuth);
 
@@ -125,7 +141,7 @@ export function createReadinessRouter(prisma: PrismaClient, auth: AuthService) {
   router.get(
     '/consultant/:clientId',
     requireRole('CONSULTANT', 'ADMIN'),
-    requireClientAccess(auth),
+    requireClientAccess(authorization, 'clientId', denialRecorder),
     async (req, res, next) => {
       try {
         const assessment = await prisma.readinessAssessment.findFirst({
@@ -143,7 +159,13 @@ export function createReadinessRouter(prisma: PrismaClient, auth: AuthService) {
   router.post(
     '/consultant/:clientId/:assessmentId/confirm',
     requireRole('CONSULTANT', 'ADMIN'),
-    requireClientAccess(auth),
+    requireCapability(
+      authorization,
+      'review.publish',
+      'clientId',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
     async (req, res, next) => {
       try {
         const input = parse(decisionSchema, req.body);

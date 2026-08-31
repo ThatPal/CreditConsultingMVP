@@ -265,6 +265,23 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
 
 export type BetterAuthInstance = ReturnType<typeof createBetterAuth>;
 
+export function deriveMfaAssurance(
+  role: 'CLIENT' | 'CONSULTANT' | 'ADMIN',
+  twoFactorEnabled: boolean,
+  verifiedAt: Date | null | undefined,
+  ttlMinutes: number,
+  now = Date.now(),
+) {
+  if (role === 'CLIENT') return { staffMfaVerified: true, stepUpVerified: true };
+  const staffMfaVerified = Boolean(twoFactorEnabled && verifiedAt);
+  return {
+    staffMfaVerified,
+    stepUpVerified: Boolean(
+      staffMfaVerified && verifiedAt && now - verifiedAt.getTime() <= ttlMinutes * 60_000,
+    ),
+  };
+}
+
 export async function resolveBetterAuthPrincipal(
   auth: BetterAuthInstance,
   prisma: PrismaClient,
@@ -288,6 +305,12 @@ export async function resolveBetterAuthPrincipal(
   const staffMfaVerifiedAt = (
     session.session as typeof session.session & { staffMfaVerifiedAt?: Date | null }
   ).staffMfaVerifiedAt;
+  const assurance = deriveMfaAssurance(
+    user.role,
+    user.twoFactorEnabled,
+    staffMfaVerifiedAt ? new Date(staffMfaVerifiedAt) : null,
+    mfaStepUpTtlMinutes,
+  );
   return {
     userId: user.id,
     email: user.email,
@@ -295,12 +318,6 @@ export async function resolveBetterAuthPrincipal(
     status: user.status,
     clientId: user.client?.id ?? null,
     staffMfaEnabled: user.twoFactorEnabled,
-    staffMfaVerified: user.role === 'CLIENT' || Boolean(staffMfaVerifiedAt),
-    stepUpVerified:
-      user.role === 'CLIENT' ||
-      Boolean(
-        staffMfaVerifiedAt &&
-        Date.now() - new Date(staffMfaVerifiedAt).getTime() <= mfaStepUpTtlMinutes * 60_000,
-      ),
+    ...assurance,
   };
 }
