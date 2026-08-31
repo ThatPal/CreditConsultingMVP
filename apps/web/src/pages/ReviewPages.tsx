@@ -424,10 +424,17 @@ function calculateProfileChanges(
   return changes;
 }
 
-export function SecureReportViewer({ documentId }: { documentId: string }) {
+export function SecureReportViewer({
+  documentId,
+  contentPath,
+}: {
+  documentId: string;
+  contentPath?: string;
+}) {
   const query = useQuery({
     queryKey: ['credit-report-content', documentId],
-    queryFn: () => apiBlobRequest(`/api/v1/reviews/report-documents/${documentId}/content`),
+    queryFn: () =>
+      apiBlobRequest(contentPath ?? `/api/v1/reviews/report-documents/${documentId}/content`),
   });
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   useEffect(() => {

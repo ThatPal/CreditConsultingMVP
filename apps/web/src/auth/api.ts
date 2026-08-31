@@ -43,13 +43,18 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
 }
 
-export async function apiFileRequest<T>(path: string, file: File): Promise<T> {
+export async function apiFileRequest<T>(
+  path: string,
+  file: File,
+  documentType?: string,
+): Promise<T> {
   const response = await fetch(`${webEnv.VITE_API_URL}${path}`, {
     method: 'POST',
     credentials: 'include',
     headers: {
       'Content-Type': file.type,
       'X-File-Name': encodeURIComponent(file.name),
+      ...(documentType ? { 'X-Document-Type': documentType } : {}),
     },
     body: file,
   });

@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { Readable } from 'node:stream';
 import { isAbsolute, posix, relative, resolve, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,8 +13,11 @@ export type StoredDocument = {
 };
 
 export interface DocumentStorage {
+  readonly provider: StoredDocument['provider'];
   put(storageKey: string, content: Buffer): Promise<StoredDocument>;
   read(storageKey: string): Promise<Buffer | null>;
+  openRead(storageKey: string): Promise<Readable | null>;
+  exists(storageKey: string): Promise<boolean>;
   delete(storageKey: string): Promise<void>;
 }
 
@@ -41,6 +46,7 @@ export function resolvePrivateStoragePath(root: string, storageKey: string) {
 }
 
 export class LocalDiskDocumentStorage implements DocumentStorage {
+  readonly provider = 'LOCAL_DISK' as const;
   constructor(
     private readonly root: string,
     private readonly legacyReadRoots: string[] = [],
@@ -70,6 +76,25 @@ export class LocalDiskDocumentStorage implements DocumentStorage {
     return null;
   }
 
+  async openRead(storageKey: string) {
+    for (const root of [this.root, ...this.legacyReadRoots]) {
+      const path = resolvePrivateStoragePath(root, storageKey);
+      const found = await stat(path).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      });
+      if (found?.isFile()) return createReadStream(path);
+    }
+    return null;
+  }
+
+  async exists(storageKey: string) {
+    const stream = await this.openRead(storageKey);
+    if (!stream) return false;
+    stream.destroy();
+    return true;
+  }
+
   async delete(storageKey: string) {
     const path = resolvePrivateStoragePath(this.root, storageKey);
     await unlink(path).catch((error: NodeJS.ErrnoException) => {
@@ -78,12 +103,80 @@ export class LocalDiskDocumentStorage implements DocumentStorage {
   }
 }
 
+export interface S3CompatibleClient {
+  putObject(input: { bucket: string; key: string; body: Buffer }): Promise<void>;
+  getObject(input: { bucket: string; key: string }): Promise<Buffer | Readable | null>;
+  headObject(input: { bucket: string; key: string }): Promise<{ sizeBytes: number } | null>;
+  deleteObject(input: { bucket: string; key: string }): Promise<void>;
+}
+
+export class S3CompatibleDocumentStorage implements DocumentStorage {
+  readonly provider = 'S3_COMPATIBLE' as const;
+  constructor(
+    private readonly config: S3CompatibleStorageConfig,
+    private readonly client: S3CompatibleClient,
+  ) {}
+
+  async put(storageKey: string, content: Buffer): Promise<StoredDocument> {
+    validateOpaqueStorageKey(storageKey);
+    await this.client.putObject({ bucket: this.config.bucket, key: storageKey, body: content });
+    return {
+      provider: this.provider,
+      storageKey,
+      sizeBytes: content.length,
+      sha256: createHash('sha256').update(content).digest('hex'),
+    };
+  }
+
+  async read(storageKey: string) {
+    const value = await this.openRead(storageKey);
+    if (!value) return null;
+    const chunks: Buffer[] = [];
+    for await (const chunk of value) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks);
+  }
+
+  async openRead(storageKey: string) {
+    validateOpaqueStorageKey(storageKey);
+    const value = await this.client.getObject({ bucket: this.config.bucket, key: storageKey });
+    if (!value) return null;
+    return Buffer.isBuffer(value) ? Readable.from(value) : value;
+  }
+
+  async exists(storageKey: string) {
+    validateOpaqueStorageKey(storageKey);
+    return Boolean(await this.client.headObject({ bucket: this.config.bucket, key: storageKey }));
+  }
+
+  async delete(storageKey: string) {
+    validateOpaqueStorageKey(storageKey);
+    await this.client.deleteObject({ bucket: this.config.bucket, key: storageKey });
+  }
+}
+
+export function validateOpaqueStorageKey(storageKey: string) {
+  resolvePrivateStoragePath('/', storageKey);
+  return storageKey;
+}
+
 const defaultRoot = fileURLToPath(new URL('../../.data/', import.meta.url));
 const legacyRoot = fileURLToPath(new URL('../../../../.data/', import.meta.url));
 export function createLocalDocumentStorage() {
-  const configured = process.env.CREDIT_REPORT_STORAGE_DIR;
+  const configured = process.env.DOCUMENT_STORAGE_DIR ?? process.env.CREDIT_REPORT_STORAGE_DIR;
   return new LocalDiskDocumentStorage(
     resolve(configured ?? defaultRoot),
     configured ? [] : [legacyRoot],
   );
+}
+
+export function createDocumentStorage(options?: {
+  provider?: 'LOCAL_DISK' | 'S3_COMPATIBLE';
+  s3Config?: S3CompatibleStorageConfig;
+  s3Client?: S3CompatibleClient;
+}) {
+  const provider = options?.provider ?? process.env.DOCUMENT_STORAGE_PROVIDER ?? 'LOCAL_DISK';
+  if (provider === 'LOCAL_DISK') return createLocalDocumentStorage();
+  if (provider !== 'S3_COMPATIBLE' || !options?.s3Config || !options.s3Client)
+    throw new Error('S3_STORAGE_CONFIGURATION_REQUIRED');
+  return new S3CompatibleDocumentStorage(options.s3Config, options.s3Client);
 }

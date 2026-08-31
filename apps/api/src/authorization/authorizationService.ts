@@ -9,6 +9,8 @@ export const canonicalCapabilities = [
   'review.publish',
   'support.read',
   'support.manage',
+  'document.read',
+  'document.manage',
   'settings.manage',
   'audit.read_platform',
 ] as const;
@@ -36,7 +38,13 @@ export interface AuthorizationService {
   ): Promise<boolean>;
 }
 
-const clientSelfCapabilities = new Set<Capability>(['client.read', 'review.read', 'support.read']);
+const clientSelfCapabilities = new Set<Capability>([
+  'client.read',
+  'review.read',
+  'support.read',
+  'document.read',
+  'document.manage',
+]);
 const platformCapabilities = new Set<Capability>(['settings.manage', 'audit.read_platform']);
 
 export function createAuthorizationService(store: AuthorizationAccessStore): AuthorizationService {

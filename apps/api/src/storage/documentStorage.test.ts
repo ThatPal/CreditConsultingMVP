@@ -2,21 +2,64 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
-import { LocalDiskDocumentStorage, resolvePrivateStoragePath } from './documentStorage.js';
+import {
+  LocalDiskDocumentStorage,
+  resolvePrivateStoragePath,
+  S3CompatibleDocumentStorage,
+  type DocumentStorage,
+  type S3CompatibleClient,
+} from './documentStorage.js';
 
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true }))));
 
 describe('private document storage', () => {
-  test('round-trips private bytes and stable metadata', async () => {
+  async function expectProviderContract(storage: DocumentStorage, key: string) {
+    const stored = await storage.put(key, Buffer.from('pdf'));
+    expect(stored).toMatchObject({ provider: storage.provider, sizeBytes: 3 });
+    expect(stored.sha256).toMatch(/^[a-f0-9]{64}$/);
+    await expect(storage.exists(key)).resolves.toBe(true);
+    await expect(storage.read(key)).resolves.toEqual(Buffer.from('pdf'));
+    const stream = await storage.openRead(key);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+    expect(Buffer.concat(chunks)).toEqual(Buffer.from('pdf'));
+    await storage.delete(key);
+    await expect(storage.exists(key)).resolves.toBe(false);
+    await expect(storage.read(key)).resolves.toBeNull();
+  }
+
+  test('local provider satisfies the shared private-storage contract', async () => {
     const root = await mkdtemp(join(tmpdir(), 'credit-storage-'));
     roots.push(root);
-    const storage = new LocalDiskDocumentStorage(root);
-    const stored = await storage.put('credit-reports/client-a/report.pdf', Buffer.from('pdf'));
-    expect(stored).toMatchObject({ provider: 'LOCAL_DISK', sizeBytes: 3 });
-    await expect(storage.read(stored.storageKey)).resolves.toEqual(Buffer.from('pdf'));
-    await storage.delete(stored.storageKey);
-    await expect(storage.read(stored.storageKey)).resolves.toBeNull();
+    await expectProviderContract(
+      new LocalDiskDocumentStorage(root),
+      'documents/client-a/document-a',
+    );
+  });
+
+  test('S3-compatible adapter satisfies the same contract without public URLs', async () => {
+    const objects = new Map<string, Buffer>();
+    const client: S3CompatibleClient = {
+      putObject: async ({ bucket, key, body }) => void objects.set(`${bucket}/${key}`, body),
+      getObject: async ({ bucket, key }) => objects.get(`${bucket}/${key}`) ?? null,
+      headObject: async ({ bucket, key }) => {
+        const value = objects.get(`${bucket}/${key}`);
+        return value ? { sizeBytes: value.length } : null;
+      },
+      deleteObject: async ({ bucket, key }) => void objects.delete(`${bucket}/${key}`),
+    };
+    const storage = new S3CompatibleDocumentStorage(
+      {
+        endpoint: 'http://s3.test',
+        region: 'test-1',
+        bucket: 'private-credit-documents',
+        accessKeyIdSecretRef: 'secret://s3/access-key',
+        secretAccessKeySecretRef: 'secret://s3/secret-key',
+      },
+      client,
+    );
+    await expectProviderContract(storage, 'documents/client-a/document-a');
   });
 
   test('rejects traversal and absolute storage keys', () => {

@@ -137,6 +137,13 @@ enum StorageProvider {
   S3_COMPATIBLE
 }
 
+enum DocumentStatus {
+  AVAILABLE
+  SUPERSEDED
+  RETENTION_HOLD
+  DELETED
+}
+
 enum ClientBusinessStatus {
   ACTIVE
   INACTIVE
@@ -377,6 +384,7 @@ model User {
   accessGrantsIssued   ClientAccessGrant[]     @relation("AccessGrantGrantor")
   accessGrantsRevoked  ClientAccessGrant[]     @relation("AccessGrantRevoker")
   securityEvents       SecurityEvent[]         @relation("SecurityEventActor")
+  documentsUploaded    Document[]              @relation("DocumentUploader")
 
   @@index([role, status])
 }
@@ -478,6 +486,7 @@ model Client {
   staffAssignments         StaffClientAssignment[]
   accessGrants             ClientAccessGrant[]
   securityEvents           SecurityEvent[]
+  documents                Document[]
 
   @@index([assignedConsultantId, status])
 }
@@ -737,6 +746,61 @@ model CreditReportDocument {
   intake           ReviewIntake?
 
   @@index([uploadedByUserId, uploadedAt])
+}
+
+model DocumentType {
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key                 String     @unique
+  name                String
+  allowedMimeTypes    String[]
+  allowedExtensions   String[]
+  maximumSizeBytes    Int
+  clientVisible       Boolean    @default(false)
+  clientUploadEnabled Boolean    @default(false)
+  retentionCategory   String
+  retentionDays       Int?
+  enabled             Boolean    @default(true)
+  createdAt           DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime   @updatedAt @db.Timestamptz(3)
+  documents           Document[]
+
+  @@index([enabled, clientUploadEnabled])
+}
+
+model Document {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId          String          @db.Uuid
+  documentTypeId    String          @db.Uuid
+  originalFileName  String
+  displayFileName   String
+  mimeType          String
+  sizeBytes         Int
+  sha256            String
+  storageProvider   StorageProvider
+  storageKey        String
+  status            DocumentStatus  @default(AVAILABLE)
+  clientVisible     Boolean
+  uploadedByUserId  String          @db.Uuid
+  source            String          @default("APPLICATION")
+  uploadedAt        DateTime        @default(now()) @db.Timestamptz(3)
+  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @db.Timestamptz(3)
+  supersededAt      DateTime?       @db.Timestamptz(3)
+  supersededById    String?         @unique @db.Uuid
+  retentionCategory String
+  retainUntil       DateTime?       @db.Timestamptz(3)
+  retentionHoldAt   DateTime?       @db.Timestamptz(3)
+  deletedAt         DateTime?       @db.Timestamptz(3)
+  client            Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  documentType      DocumentType    @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+  uploadedBy        User            @relation("DocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  supersededBy      Document?       @relation("DocumentReplacement", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes        Document?       @relation("DocumentReplacement")
+
+  @@unique([storageProvider, storageKey])
+  @@index([clientId, status, uploadedAt])
+  @@index([clientId, documentTypeId, status, uploadedAt])
+  @@index([retainUntil, status])
 }
 
 model ReviewFinding {

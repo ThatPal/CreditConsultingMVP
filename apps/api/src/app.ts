@@ -26,6 +26,8 @@ import {
   createPrismaAuthorizationDenialRecorder,
   createPrismaAuthorizationService,
 } from './authorization/authorizationService.js';
+import { createDocumentRouter } from './documents/routes.js';
+import { createDocumentStorage } from './storage/documentStorage.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -115,6 +117,10 @@ export function createApp(
     if (prisma) {
       const authorization = createPrismaAuthorizationService(prisma);
       const denialRecorder = createPrismaAuthorizationDenialRecorder(prisma);
+      app.use(
+        '/api/v1/documents',
+        createDocumentRouter(prisma, authorization, createDocumentStorage()),
+      );
       app.use(
         '/api/v1/reviews',
         createReviewRouter(prisma, auth, undefined, authorization, denialRecorder),

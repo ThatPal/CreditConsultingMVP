@@ -14,6 +14,7 @@ export type ReadinessResponse = {
 export const liveEventDomains = [
   'application-cycles',
   'credit-profile',
+  'documents',
   'notifications',
   'review',
   'services',

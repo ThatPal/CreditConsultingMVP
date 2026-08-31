@@ -1,7 +1,7 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
 
 export const roleCapabilityPolicy = {
-  CLIENT: ['client.read', 'review.read', 'support.read'],
+  CLIENT: ['client.read', 'review.read', 'support.read', 'document.read', 'document.manage'],
   CONSULTANT: [
     'client.read',
     'client.manage',
@@ -9,9 +9,25 @@ export const roleCapabilityPolicy = {
     'review.publish',
     'support.read',
     'support.manage',
+    'document.read',
+    'document.manage',
   ],
-  ADMIN: ['settings.manage', 'audit.read_platform', 'support.manage'],
+  ADMIN: ['settings.manage', 'audit.read_platform', 'support.manage', 'document.read'],
 } as const;
+
+export const systemDocumentTypes = [
+  {
+    key: 'GENERAL_CLIENT_DOCUMENT',
+    name: 'General document',
+    allowedMimeTypes: ['application/pdf', 'image/png', 'image/jpeg'],
+    allowedExtensions: ['.pdf', '.png', '.jpg', '.jpeg'],
+    maximumSizeBytes: 10 * 1024 * 1024,
+    clientVisible: true,
+    clientUploadEnabled: true,
+    retentionCategory: 'CLIENT_RECORD',
+    retentionDays: null,
+  },
+] as const;
 
 export const systemOptionTemplates = [
   [
@@ -129,6 +145,26 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
         update: {},
       }),
     ),
+    ...systemDocumentTypes.map((documentType) =>
+      prisma.documentType.upsert({
+        where: { key: documentType.key },
+        create: {
+          ...documentType,
+          allowedMimeTypes: [...documentType.allowedMimeTypes],
+          allowedExtensions: [...documentType.allowedExtensions],
+        },
+        update: {
+          ...documentType,
+          allowedMimeTypes: [...documentType.allowedMimeTypes],
+          allowedExtensions: [...documentType.allowedExtensions],
+          enabled: true,
+        },
+      }),
+    ),
   ]);
-  return { optionTemplates: systemOptionTemplates.length, roleCapabilities: capabilityRows.length };
+  return {
+    optionTemplates: systemOptionTemplates.length,
+    roleCapabilities: capabilityRows.length,
+    documentTypes: systemDocumentTypes.length,
+  };
 }

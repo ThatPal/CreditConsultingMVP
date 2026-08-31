@@ -5,6 +5,7 @@ import {
   roleCapabilityPolicy,
   seedSystemReferenceData,
   systemOptionTemplates,
+  systemDocumentTypes,
 } from './systemSeed.js';
 
 let prisma: PrismaClient;
@@ -25,6 +26,7 @@ describe('canonical system seed', () => {
     expect(first).toEqual({
       optionTemplates: systemOptionTemplates.length,
       roleCapabilities: Object.values(roleCapabilityPolicy).flat().length,
+      documentTypes: systemDocumentTypes.length,
     });
     expect(second).toEqual(first);
     expect(count).toBe(systemOptionTemplates.length);
