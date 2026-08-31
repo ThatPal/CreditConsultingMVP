@@ -5,6 +5,8 @@ import type {
   SupportCategory,
   SupportContextType,
 } from '../generated/prisma/client.js';
+import type { AuthPrincipal } from '../auth/types.js';
+import type { AuthorizationService } from '../authorization/authorizationService.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -19,6 +21,44 @@ export const supportTransitions: Record<SupportCaseStatus, readonly SupportCaseS
 export function assertSupportTransition(from: SupportCaseStatus, to: SupportCaseStatus) {
   if (from === to) return;
   if (!supportTransitions[from].includes(to)) throw new Error('INVALID_SUPPORT_TRANSITION');
+}
+
+export type SupportReplyKind = 'CLIENT_VISIBLE_REPLY' | 'CONSULTANT_VISIBLE_REPLY';
+
+export function supportReplyTransition(
+  from: SupportCaseStatus,
+  kind: SupportReplyKind,
+): SupportCaseStatus {
+  if (from === 'CLOSED') throw new Error('SUPPORT_CASE_CLOSED');
+  if (from === 'RESOLVED') throw new Error('SUPPORT_CASE_RESOLVED');
+  const to = kind === 'CLIENT_VISIBLE_REPLY' ? 'WAITING_ON_SUPPORT' : 'WAITING_ON_CLIENT';
+  assertSupportTransition(from, to);
+  return to;
+}
+
+export async function authorizedSupportClientIds(
+  prisma: PrismaClient,
+  authorization: AuthorizationService,
+  principal: AuthPrincipal,
+  at = new Date(),
+) {
+  if (principal.role !== 'CONSULTANT') return [];
+  const candidates = await prisma.supportCase.findMany({
+    distinct: ['clientId'],
+    select: { clientId: true },
+  });
+  const decisions = await Promise.all(
+    candidates.map(async ({ clientId }) => ({
+      clientId,
+      allowed: await authorization.authorize(
+        principal,
+        'support.manage',
+        { type: 'client', clientId },
+        { at },
+      ),
+    })),
+  );
+  return decisions.filter(({ allowed }) => allowed).map(({ clientId }) => clientId);
 }
 
 export async function resolveSupportContext(

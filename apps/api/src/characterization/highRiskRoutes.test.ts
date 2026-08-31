@@ -297,6 +297,157 @@ describe('Review entitlement and report authorization characterization', () => {
 });
 
 describe('Support, notification, and application-cycle characterization', () => {
+  test('uses canonical temporary grants for consultant inbox discovery and detail access', async () => {
+    const consultant = await createStaff('CONSULTANT', 'support-grantee');
+    const admin = await createStaff('ADMIN', 'support-grantor');
+    const owner = await createClient('support-grant-owner');
+    const supportCase = await prisma.supportCase.create({
+      data: {
+        clientId: owner.client.id,
+        createdByUserId: owner.user.id,
+        category: 'ACCOUNT',
+        subject: 'Grant-visible request',
+      },
+    });
+    const grant = await prisma.clientAccessGrant.create({
+      data: {
+        granteeId: consultant.user.id,
+        clientId: owner.client.id,
+        scope: 'SUPPORT_ONLY',
+        allowedCapabilities: ['support.manage'],
+        reason: 'Temporary support coverage',
+        startsAt: new Date(Date.now() - 1_000),
+        expiresAt: new Date(Date.now() + 60_000),
+        grantorId: admin.user.id,
+      },
+    });
+    const app = buildApp();
+    await request(app)
+      .get('/api/v1/consultant/support-cases')
+      .set('x-test-principal', consultant.header)
+      .expect(200)
+      .expect(({ body }) =>
+        expect(body.cases.map(({ id }: { id: string }) => id)).toContain(supportCase.id),
+      );
+    await request(app)
+      .get(`/api/v1/consultant/support-cases/${supportCase.id}`)
+      .set('x-test-principal', consultant.header)
+      .expect(200);
+
+    await prisma.clientAccessGrant.update({
+      where: { id: grant.id },
+      data: { revokedAt: new Date(), revokerId: admin.user.id },
+    });
+    await request(app)
+      .get('/api/v1/consultant/support-cases')
+      .set('x-test-principal', consultant.header)
+      .expect(200)
+      .expect(({ body }) =>
+        expect(body.cases.map(({ id }: { id: string }) => id)).not.toContain(supportCase.id),
+      );
+    await request(app)
+      .get(`/api/v1/consultant/support-cases/${supportCase.id}`)
+      .set('x-test-principal', consultant.header)
+      .expect(403);
+  });
+
+  test('governs visible reply lifecycle centrally and keeps retries duplicate-safe', async () => {
+    const consultant = await createStaff('CONSULTANT', 'support-lifecycle');
+    const owner = await createClient('support-lifecycle-owner', consultant.user.id);
+    const supportCase = await prisma.supportCase.create({
+      data: {
+        clientId: owner.client.id,
+        createdByUserId: owner.user.id,
+        assignedToUserId: consultant.user.id,
+        category: 'ACCOUNT',
+        subject: 'Lifecycle request',
+      },
+    });
+    const app = buildApp();
+    const clientKey = `client-reply-${crypto.randomUUID()}`;
+    await request(app)
+      .post(`/api/v1/client/support-cases/${supportCase.id}/messages`)
+      .set('x-test-principal', owner.header)
+      .set('Idempotency-Key', clientKey)
+      .send({ message: 'Client follow-up' })
+      .expect(201);
+    await request(app)
+      .post(`/api/v1/client/support-cases/${supportCase.id}/messages`)
+      .set('x-test-principal', owner.header)
+      .set('Idempotency-Key', clientKey)
+      .send({ message: 'Client follow-up' })
+      .expect(200);
+    expect(
+      (await prisma.supportCase.findUniqueOrThrow({ where: { id: supportCase.id } })).status,
+    ).toBe('WAITING_ON_SUPPORT');
+    expect(
+      await prisma.supportMessage.count({
+        where: { supportCaseId: supportCase.id, idempotencyKey: clientKey },
+      }),
+    ).toBe(1);
+
+    const staffKey = `staff-reply-${crypto.randomUUID()}`;
+    await request(app)
+      .post(`/api/v1/consultant/support-cases/${supportCase.id}/messages`)
+      .set('x-test-principal', consultant.header)
+      .set('Idempotency-Key', staffKey)
+      .send({ message: 'Consultant response', internal: false })
+      .expect(201);
+    await request(app)
+      .post(`/api/v1/consultant/support-cases/${supportCase.id}/messages`)
+      .set('x-test-principal', consultant.header)
+      .set('Idempotency-Key', staffKey)
+      .send({ message: 'Consultant response', internal: false })
+      .expect(200);
+    expect(
+      (await prisma.supportCase.findUniqueOrThrow({ where: { id: supportCase.id } })).status,
+    ).toBe('WAITING_ON_CLIENT');
+    expect(
+      await prisma.supportMessage.count({
+        where: { supportCaseId: supportCase.id, idempotencyKey: staffKey },
+      }),
+    ).toBe(1);
+
+    const beforeInternal = await prisma.supportCase.findUniqueOrThrow({
+      where: { id: supportCase.id },
+    });
+    const clientNotifications = await prisma.notification.count({
+      where: { userId: owner.user.id, clientId: owner.client.id },
+    });
+    await request(app)
+      .post(`/api/v1/consultant/support-cases/${supportCase.id}/messages`)
+      .set('x-test-principal', consultant.header)
+      .set('Idempotency-Key', crypto.randomUUID())
+      .send({ message: 'Internal-only note', internal: true })
+      .expect(201);
+    const afterInternal = await prisma.supportCase.findUniqueOrThrow({
+      where: { id: supportCase.id },
+    });
+    expect(afterInternal.status).toBe(beforeInternal.status);
+    expect(afterInternal.lastMessageAt).toEqual(beforeInternal.lastMessageAt);
+    expect(
+      await prisma.notification.count({
+        where: { userId: owner.user.id, clientId: owner.client.id },
+      }),
+    ).toBe(clientNotifications);
+
+    await prisma.supportCase.update({
+      where: { id: supportCase.id },
+      data: { status: 'RESOLVED' },
+    });
+    await request(app)
+      .post(`/api/v1/client/support-cases/${supportCase.id}/messages`)
+      .set('x-test-principal', owner.header)
+      .send({ message: 'Reply after resolution' })
+      .expect(409);
+    await prisma.supportCase.update({ where: { id: supportCase.id }, data: { status: 'CLOSED' } });
+    await request(app)
+      .post(`/api/v1/consultant/support-cases/${supportCase.id}/messages`)
+      .set('x-test-principal', consultant.header)
+      .send({ message: 'Reply after close', internal: false })
+      .expect(409);
+  });
+
   test('creates an auditable support request exactly once and preserves client isolation', async () => {
     const consultant = await createStaff('CONSULTANT', 'support-command');
     const owner = await createClient('support-command-owner', consultant.user.id);
@@ -350,6 +501,85 @@ describe('Support, notification, and application-cycle characterization', () => 
       .get(`/api/v1/consultant/support-cases/${first.body.case.id}`)
       .set('x-test-principal', consultant.header)
       .expect(200);
+  });
+
+  test('enforces typed-context and attachment ownership without leaking storage metadata', async () => {
+    const consultant = await createStaff('CONSULTANT', 'support-document');
+    const owner = await createClient('support-document-owner', consultant.user.id);
+    const stranger = await createClient('support-document-stranger');
+    const documentType = await prisma.documentType.findUniqueOrThrow({
+      where: { key: 'SUPPORT_ATTACHMENT' },
+    });
+    const ownDocument = await prisma.document.create({
+      data: {
+        clientId: owner.client.id,
+        documentTypeId: documentType.id,
+        originalFileName: 'owner.pdf',
+        displayFileName: 'Owner report.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 12,
+        sha256: 'a'.repeat(64),
+        storageProvider: 'LOCAL_DISK',
+        storageKey: `private/${crypto.randomUUID()}`,
+        clientVisible: true,
+        uploadedByUserId: owner.user.id,
+        retentionCategory: 'SUPPORT_RECORD',
+      },
+    });
+    const otherDocument = await prisma.document.create({
+      data: {
+        clientId: stranger.client.id,
+        documentTypeId: documentType.id,
+        originalFileName: 'other.pdf',
+        displayFileName: 'Other report.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 10,
+        sha256: 'b'.repeat(64),
+        storageProvider: 'LOCAL_DISK',
+        storageKey: `private/${crypto.randomUUID()}`,
+        clientVisible: true,
+        uploadedByUserId: stranger.user.id,
+        retentionCategory: 'SUPPORT_RECORD',
+      },
+    });
+    const app = buildApp();
+    const payload = {
+      category: 'DOCUMENTS',
+      subject: 'Question about my report',
+      message: 'Please review this report with me.',
+      contextType: 'DOCUMENT',
+      contextResourceId: ownDocument.id,
+      attachmentDocumentIds: [ownDocument.id],
+    };
+    const created = await request(app)
+      .post('/api/v1/client/support-cases')
+      .set('x-test-principal', owner.header)
+      .set('Idempotency-Key', crypto.randomUUID())
+      .send(payload)
+      .expect(201);
+    const serialized = JSON.stringify(created.body);
+    expect(serialized).toContain('Owner report.pdf');
+    expect(serialized).not.toContain('storageKey');
+    expect(serialized).not.toContain('storageProvider');
+    expect(serialized).not.toContain('private/');
+
+    await request(app)
+      .post('/api/v1/client/support-cases')
+      .set('x-test-principal', owner.header)
+      .set('Idempotency-Key', crypto.randomUUID())
+      .send({ ...payload, contextResourceId: otherDocument.id, attachmentDocumentIds: [] })
+      .expect(404);
+    await request(app)
+      .post('/api/v1/client/support-cases')
+      .set('x-test-principal', owner.header)
+      .set('Idempotency-Key', crypto.randomUUID())
+      .send({
+        ...payload,
+        contextType: 'GENERAL',
+        contextResourceId: null,
+        attachmentDocumentIds: [otherDocument.id],
+      })
+      .expect(404);
   });
 
   test('keeps support cases client-scoped, hides internal messages, and enforces staff assignment', async () => {

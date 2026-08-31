@@ -24,9 +24,11 @@ import {
 } from '../transactions/consequentialCommand.js';
 import {
   assertSupportTransition,
+  authorizedSupportClientIds,
   resolveSupportAttachments,
   resolveSupportContext,
   supportAttachmentProjection,
+  supportReplyTransition,
 } from '../support/supportDomain.js';
 
 const supportCaseSchema = z.object({
@@ -911,8 +913,6 @@ export function createOperationsRouter(
           include: { client: { select: { assignedConsultantId: true } } },
         });
         if (!supportCase) throw new AppError('NOT_FOUND', 404, 'Support request was not found');
-        if (supportCase.status === 'CLOSED')
-          throw new AppError('CASE_CLOSED', 409, 'This support request is closed');
         const idempotencyKey = supportIdempotencyKey(
           req,
           parsed.data.idempotencyKey ?? crypto.randomUUID(),
@@ -933,6 +933,13 @@ export function createOperationsRouter(
           res.status(200).json({ case: current, replayed: true });
           return;
         }
+        let nextStatus;
+        try {
+          nextStatus = supportReplyTransition(supportCase.status, 'CLIENT_VISIBLE_REPLY');
+        } catch (error) {
+          const code = error instanceof Error ? error.message : '';
+          throw new AppError(code, 409, 'Reopen this support request before replying');
+        }
         const now = new Date();
         const notificationRecipients = await getSupportNotificationRecipients(
           prisma,
@@ -949,7 +956,7 @@ export function createOperationsRouter(
           });
           await tx.supportCase.update({
             where: { id: supportCase.id },
-            data: { status: 'WAITING_ON_SUPPORT', resolvedAt: null, lastMessageAt: now },
+            data: { status: nextStatus, resolvedAt: null, lastMessageAt: now },
           });
           if (notificationRecipients.length)
             await tx.notification.createMany({
@@ -1074,16 +1081,9 @@ export function createOperationsRouter(
   );
   router.get('/consultant/support-cases', requireRole('CONSULTANT'), async (req, res, next) => {
     try {
+      const clientIds = await authorizedSupportClientIds(prisma, authorization, req.auth!);
       const cases = await prisma.supportCase.findMany({
-        where: {
-          OR: [
-            { assignedToUserId: req.auth!.userId },
-            {
-              assignedToUserId: null,
-              client: { assignedConsultantId: req.auth!.userId },
-            },
-          ],
-        },
+        where: { clientId: { in: clientIds } },
         include: {
           client: {
             select: {
@@ -1160,8 +1160,6 @@ export function createOperationsRouter(
           include: { client: { select: { userId: true } } },
         });
         if (!supportCase) throw new AppError('NOT_FOUND', 404, 'Support request was not found');
-        if (supportCase.status === 'CLOSED')
-          throw new AppError('CASE_CLOSED', 409, 'This support request is closed');
         const idempotencyKey = supportIdempotencyKey(
           req,
           parsed.data.idempotencyKey ?? crypto.randomUUID(),
@@ -1178,6 +1176,16 @@ export function createOperationsRouter(
           res.status(200).json({ ok: true, replayed: true });
           return;
         }
+        let nextStatus: typeof supportCase.status | null = null;
+        if (!parsed.data.internal)
+          try {
+            nextStatus = supportReplyTransition(supportCase.status, 'CONSULTANT_VISIBLE_REPLY');
+          } catch (error) {
+            const code = error instanceof Error ? error.message : '';
+            throw new AppError(code, 409, 'Reopen this support request before replying');
+          }
+        else if (supportCase.status === 'CLOSED')
+          throw new AppError('SUPPORT_CASE_CLOSED', 409, 'This support request is closed');
         const now = new Date();
         await prisma.$transaction(async (tx) => {
           await tx.supportMessage.create({
@@ -1195,7 +1203,7 @@ export function createOperationsRouter(
               assignedToUserId: supportCase.assignedToUserId ?? req.auth!.userId,
               ...(parsed.data.internal
                 ? {}
-                : { status: 'WAITING_ON_CLIENT', lastMessageAt: now, resolvedAt: null }),
+                : { status: nextStatus!, lastMessageAt: now, resolvedAt: null }),
             },
           });
           if (!parsed.data.internal && supportCase.client.userId)
