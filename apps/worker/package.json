@@ -13,8 +13,11 @@
   },
   "dependencies": {
     "@credit/runtime": "workspace:*",
+    "bullmq": "^6.3.2",
     "dotenv": "latest",
-    "pg": "latest"
+    "ioredis": "^5.7.0",
+    "pg": "latest",
+    "redis": "5.11.0"
   },
   "devDependencies": {
     "@types/node": "latest",

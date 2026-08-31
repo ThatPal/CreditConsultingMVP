@@ -12,6 +12,12 @@ import { createLogger } from './lib/logger.js';
 import { createPrisma } from './lib/prisma.js';
 import { createEmailProvider, createPasswordResetNotifier } from './notifications/emailProvider.js';
 import { createBetterAuth } from './auth/betterAuth.js';
+import { resolveBetterAuthPrincipal } from './auth/betterAuth.js';
+import {
+  createPrismaAuthorizationService,
+  createRealtimeAuthorizationBridge,
+} from './authorization/authorizationService.js';
+import { startRealtimeRuntime } from './realtime/runtime.js';
 
 const env = loadEnv();
 const logger = createLogger(env);
@@ -46,12 +52,22 @@ const server = createServer(
   ),
 );
 
-server.listen(env.PORT, () => logger.info({ port: env.PORT }, 'API listening'));
+const authorization = createRealtimeAuthorizationBridge(createPrismaAuthorizationService(prisma));
+const realtime = await startRealtimeRuntime({
+  server,
+  redisUrl: env.REDIS_URL,
+  webOrigin: env.WEB_ORIGIN,
+  logger,
+  resolvePrincipal: (headers) =>
+    resolveBetterAuthPrincipal(betterAuth, prisma, headers, env.MFA_STEP_UP_TTL_MINUTES),
+  canSubscribe: authorization.canSubscribeToClient,
+});
+server.listen(env.PORT, () => logger.info({ port: env.PORT }, 'API and realtime listening'));
 
 async function shutdown(signal: string) {
   logger.info({ signal }, 'Graceful shutdown started');
   server.close(async (error) => {
-    await Promise.allSettled([prisma.$disconnect(), closeRedis(redis)]);
+    await Promise.allSettled([realtime.close(), prisma.$disconnect(), closeRedis(redis)]);
     if (error) {
       logger.error({ err: error }, 'HTTP server shutdown failed');
       process.exitCode = 1;

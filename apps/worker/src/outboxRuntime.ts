@@ -1,0 +1,152 @@
+import { Queue, QueueEvents, Worker, type JobsOptions } from 'bullmq';
+import { createClient } from 'redis';
+import { Pool } from 'pg';
+import type { Logger } from 'pino';
+
+export const OUTBOX_QUEUE = 'credit-outbox-v1';
+export const REALTIME_CHANNEL = 'credit:realtime:events';
+export const outboxJobOptions: JobsOptions = {
+  attempts: 5,
+  backoff: { type: 'exponential', delay: 1000 },
+  removeOnComplete: 500,
+  removeOnFail: 1000,
+};
+export function outboxFailureDisposition(attemptCountBeforeClaim: number) {
+  return attemptCountBeforeClaim + 1 >= Number(outboxJobOptions.attempts) ? 'FAILED' : 'PENDING';
+}
+
+type ClaimedEvent = {
+  id: string;
+  eventType: string;
+  aggregateId: string | null;
+  payload: unknown;
+  payloadVersion: number;
+  createdAt: Date;
+  attemptCount: number;
+};
+
+function bullConnection(redisUrl: string) {
+  const url = new URL(redisUrl);
+  return {
+    host: url.hostname,
+    port: Number(url.port || 6379),
+    ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
+  };
+}
+
+export function toClientEnvelope(event: ClaimedEvent) {
+  const payload = event.payload as { clientId?: unknown; domains?: unknown };
+  if (typeof payload?.clientId !== 'string' || !Array.isArray(payload.domains))
+    throw new Error('OUTBOX_PAYLOAD_UNSAFE');
+  return {
+    id: event.id,
+    version: 1 as const,
+    type: 'resource.changed' as const,
+    occurredAt: event.createdAt.toISOString(),
+    publishedAt: new Date().toISOString(),
+    clientId: payload.clientId,
+    domains: payload.domains,
+    refetch: true as const,
+  };
+}
+
+export async function startOutboxRuntime(options: {
+  databaseUrl: string;
+  redisUrl: string;
+  logger: Logger;
+  pollIntervalMs?: number;
+}) {
+  const pool = new Pool({ connectionString: options.databaseUrl, max: 4 });
+  const connection = bullConnection(options.redisUrl);
+  const queue = new Queue(OUTBOX_QUEUE, { connection });
+  const queueEvents = new QueueEvents(OUTBOX_QUEUE, { connection });
+  await queueEvents.waitUntilReady();
+  const redis = createClient({ url: options.redisUrl });
+  await redis.connect();
+  const worker = new Worker(
+    OUTBOX_QUEUE,
+    async (job) => {
+      await redis.publish(REALTIME_CHANNEL, JSON.stringify(job.data));
+      return { published: true, eventId: job.id };
+    },
+    { connection, concurrency: 8 },
+  );
+  worker.on('failed', (job, error) =>
+    options.logger.error({ jobId: job?.id, err: error }, 'Outbox dispatch job failed'),
+  );
+
+  let active = true;
+  const publishBatch = async () => {
+    const client = await pool.connect();
+    let events: ClaimedEvent[];
+    try {
+      await client.query('BEGIN');
+      const result = await client.query<ClaimedEvent>(`
+        SELECT id, "eventType", "aggregateId", payload, "payloadVersion", "createdAt", "attemptCount"
+        FROM "OutboxEvent"
+        WHERE status = 'PENDING' AND "availableAt" <= now()
+        ORDER BY "createdAt"
+        FOR UPDATE SKIP LOCKED
+        LIMIT 25
+      `);
+      events = result.rows;
+      if (events.length)
+        await client.query(
+          `UPDATE "OutboxEvent" SET "attemptCount" = "attemptCount" + 1, "lastAttemptAt" = now()
+           WHERE id = ANY($1::uuid[])`,
+          [events.map(({ id }) => id)],
+        );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    for (const event of events) {
+      try {
+        const envelope = toClientEnvelope(event);
+        const job = await queue.add('dispatch-realtime', envelope, {
+          ...outboxJobOptions,
+          jobId: event.id,
+        });
+        await job.waitUntilFinished(queueEvents, 15_000);
+        await pool.query(
+          `UPDATE "OutboxEvent" SET status = 'PUBLISHED', "publishedAt" = now(), "lastErrorCode" = NULL WHERE id = $1`,
+          [event.id],
+        );
+      } catch (error) {
+        const disposition = outboxFailureDisposition(event.attemptCount);
+        await pool.query(
+          `UPDATE "OutboxEvent" SET status = $2::"OutboxEventStatus", "lastErrorCode" = $3,
+             "availableAt" = now() + interval '5 seconds' WHERE id = $1`,
+          [event.id, disposition, 'OUTBOX_PUBLISH_FAILED'],
+        );
+        options.logger.error({ eventId: event.id, err: error }, 'Outbox publication failed');
+      }
+    }
+    return events.length;
+  };
+  const timer = setInterval(
+    () =>
+      active &&
+      void publishBatch().catch((err) => options.logger.error({ err }, 'Outbox poll failed')),
+    options.pollIntervalMs ?? 1000,
+  );
+  await publishBatch();
+  return {
+    publishBatch,
+    async close() {
+      active = false;
+      clearInterval(timer);
+      await Promise.allSettled([
+        worker.close(),
+        queueEvents.close(),
+        queue.close(),
+        redis.quit(),
+        pool.end(),
+      ]);
+    },
+  };
+}

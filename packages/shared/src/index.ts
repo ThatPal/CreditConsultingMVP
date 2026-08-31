@@ -26,8 +26,10 @@ export type LiveEventEnvelope = {
   version: 1;
   type: 'resource.changed';
   occurredAt: string;
+  publishedAt?: string;
   clientId: string;
   domains: LiveEventDomain[];
+  refetch?: true;
 };
 
 export type PaymentProvider = 'PAYPAL' | 'STRIPE' | 'BOFA_MERCHANT';

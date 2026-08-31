@@ -31,6 +31,15 @@ export function createRuntimeLogger(
 }
 
 export type RedisConnection = RedisClientType;
+
+export function assertCreditDatabaseUrl(databaseUrl: string) {
+  const database = new URL(databaseUrl).pathname.replace(/^\//, '').toLowerCase();
+  if (database !== 'credit_strategy' && !database.startsWith('credit_strategy_'))
+    throw new Error(
+      'DATABASE_URL must target a Credit Platform database named credit_strategy or credit_strategy_*',
+    );
+  return databaseUrl;
+}
 export function createRedisConnection(redisUrl: string): RedisConnection {
   const client = createClient({
     url: redisUrl,

@@ -6,7 +6,7 @@ import { loadEnv } from './config/env.js';
 
 const env = loadEnv({
   NODE_ENV: 'test',
-  DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+  DATABASE_URL: 'postgresql://test:test@localhost:5432/credit_strategy_test',
   REDIS_URL: 'redis://localhost:6379',
   WEB_ORIGIN: 'http://localhost:5173',
 });

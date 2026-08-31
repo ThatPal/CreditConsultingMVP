@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { runtimeEnvSchema } from '@credit/runtime';
+import { assertCreditDatabaseUrl, runtimeEnvSchema } from '@credit/runtime';
 import { config } from 'dotenv';
 import { z } from 'zod';
 
@@ -50,5 +50,7 @@ const schema = runtimeEnvSchema
 
 export type AppEnv = z.infer<typeof schema>;
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
-  return schema.parse(source);
+  const parsed = schema.parse(source);
+  assertCreditDatabaseUrl(parsed.DATABASE_URL);
+  return parsed;
 }
