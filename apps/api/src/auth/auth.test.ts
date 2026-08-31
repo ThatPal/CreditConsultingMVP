@@ -12,6 +12,7 @@ import type { AuthPrincipal, AuthStore, PublicUser, SessionRecord } from './type
 const env = loadEnv({
   NODE_ENV: 'test',
   DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+  REDIS_URL: 'redis://localhost:6379',
   WEB_ORIGIN: 'http://localhost:5173',
 });
 

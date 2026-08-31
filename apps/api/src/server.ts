@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { closeRedis, connectAndPingRedis, createRedisConnection } from '@credit/runtime';
 import { createApp } from './app.js';
 import { createAuthService } from './auth/authService.js';
 import { createPrismaAuthStore } from './auth/prismaAuthStore.js';
@@ -14,6 +15,7 @@ import { createEmailProvider, createPasswordResetNotifier } from './notification
 const env = loadEnv();
 const logger = createLogger(env);
 const prisma = createPrisma(env.DATABASE_URL);
+const redis = createRedisConnection(env.REDIS_URL);
 const emailProvider = createEmailProvider(env, logger);
 const auth = createAuthService(
   createPrismaAuthStore(prisma),
@@ -22,14 +24,23 @@ const auth = createAuthService(
 );
 const goals = createGoalService(createPrismaGoalStore(prisma));
 const services = createServiceCatalog(createPrismaServiceStore(prisma));
-const server = createServer(createApp(env, logger, auth, goals, services, prisma));
+const server = createServer(
+  createApp(env, logger, auth, goals, services, prisma, {
+    postgresql: async () => {
+      await prisma.$queryRaw`SELECT 1`;
+    },
+    redis: async () => {
+      if (!(await connectAndPingRedis(redis))) throw new Error('Redis ping failed');
+    },
+  }),
+);
 
 server.listen(env.PORT, () => logger.info({ port: env.PORT }, 'API listening'));
 
 async function shutdown(signal: string) {
   logger.info({ signal }, 'Graceful shutdown started');
   server.close(async (error) => {
-    await prisma.$disconnect();
+    await Promise.allSettled([prisma.$disconnect(), closeRedis(redis)]);
     if (error) {
       logger.error({ err: error }, 'HTTP server shutdown failed');
       process.exitCode = 1;

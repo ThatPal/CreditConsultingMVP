@@ -19,6 +19,11 @@ import { createReadinessRouter } from './readiness/routes.js';
 import { createCreditProfileRouter, createReviewRouter } from './reviews/routes.js';
 import { createOperationsRouter } from './operations/routes.js';
 
+export type ReadinessChecks = {
+  postgresql(): Promise<void>;
+  redis(): Promise<void>;
+};
+
 export function createApp(
   env: AppEnv,
   logger: Logger,
@@ -26,6 +31,7 @@ export function createApp(
   goals?: GoalService,
   services?: ServiceCatalog,
   prisma?: PrismaClient,
+  readiness?: ReadinessChecks,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -45,6 +51,25 @@ export function createApp(
     }),
   );
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.get('/ready', async (_req, res) => {
+    if (!readiness)
+      return res.status(503).json({
+        status: 'not_ready',
+        dependencies: { postgresql: 'unavailable', redis: 'unavailable' },
+      });
+    const [postgresql, redis] = await Promise.allSettled([
+      readiness.postgresql(),
+      readiness.redis(),
+    ]);
+    const dependencies = {
+      postgresql: postgresql.status === 'fulfilled' ? 'ready' : 'unavailable',
+      redis: redis.status === 'fulfilled' ? 'ready' : 'unavailable',
+    } as const;
+    const ready = dependencies.postgresql === 'ready' && dependencies.redis === 'ready';
+    return res
+      .status(ready ? 200 : 503)
+      .json({ status: ready ? 'ready' : 'not_ready', dependencies });
+  });
   app.use((req, _res, next) => {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
       const origin = req.get('origin');

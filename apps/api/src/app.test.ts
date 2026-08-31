@@ -7,6 +7,7 @@ import { loadEnv } from './config/env.js';
 const env = loadEnv({
   NODE_ENV: 'test',
   DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+  REDIS_URL: 'redis://localhost:6379',
   WEB_ORIGIN: 'http://localhost:5173',
 });
 const app = createApp(env, pino({ level: 'silent' }));
@@ -16,6 +17,49 @@ describe('API foundation', () => {
     const response = await request(app).get('/health').expect(200);
     expect(response.body).toEqual({ status: 'ok' });
     expect(response.headers['x-request-id']).toBeTruthy();
+  });
+
+  test('reports dependency readiness separately from process health', async () => {
+    const ready = createApp(
+      env,
+      pino({ level: 'silent' }),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        postgresql: async () => undefined,
+        redis: async () => undefined,
+      },
+    );
+    await request(ready)
+      .get('/ready')
+      .expect(200, {
+        status: 'ready',
+        dependencies: { postgresql: 'ready', redis: 'ready' },
+      });
+
+    const unavailable = createApp(
+      env,
+      pino({ level: 'silent' }),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        postgresql: async () => undefined,
+        redis: async () => {
+          throw new Error('offline');
+        },
+      },
+    );
+    await request(unavailable).get('/health').expect(200, { status: 'ok' });
+    await request(unavailable)
+      .get('/ready')
+      .expect(503, {
+        status: 'not_ready',
+        dependencies: { postgresql: 'ready', redis: 'unavailable' },
+      });
   });
   test('serializes unexpected errors safely', async () => {
     const response = await request(app).get('/errors/test').expect(500);
@@ -35,6 +79,7 @@ describe('production configuration safety', () => {
       loadEnv({
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+        REDIS_URL: 'redis://localhost:6379',
         WEB_ORIGIN: 'https://app.example.com',
         EMAIL_PROVIDER: 'CONSOLE',
       }),

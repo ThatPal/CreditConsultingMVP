@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { runtimeEnvSchema } from '@credit/runtime';
 import { config } from 'dotenv';
 import { z } from 'zod';
 
@@ -7,15 +8,10 @@ config({
   quiet: true,
 });
 
-const schema = z
-  .object({
-    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+const schema = runtimeEnvSchema
+  .extend({
     PORT: z.coerce.number().int().positive().default(3001),
-    LOG_LEVEL: z
-      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
-      .default('info'),
     WEB_ORIGIN: z.url().default('http://localhost:5173'),
-    DATABASE_URL: z.string().min(1),
     SESSION_COOKIE_NAME: z
       .string()
       .regex(/^[A-Za-z0-9_-]+$/)

@@ -9,9 +9,12 @@
     "pnpm": ">=11.0.0"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @credit/web --filter @credit/api dev",
+    "dev": "pnpm --parallel --filter @credit/web --filter @credit/api --filter @credit/worker dev",
     "dev:web": "pnpm --filter @credit/web dev",
     "dev:api": "pnpm --filter @credit/api dev",
+    "dev:worker": "pnpm --filter @credit/worker dev",
+    "runtime:up": "docker compose up -d --wait postgres redis",
+    "runtime:down": "docker compose down",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",

@@ -3,6 +3,13 @@ export type ApiErrorBody = {
 };
 
 export type HealthResponse = { status: 'ok' };
+export type ReadinessResponse = {
+  status: 'ready' | 'not_ready';
+  dependencies: {
+    postgresql: 'ready' | 'unavailable';
+    redis: 'ready' | 'unavailable';
+  };
+};
 
 export const liveEventDomains = [
   'application-cycles',

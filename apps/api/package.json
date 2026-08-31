@@ -13,6 +13,7 @@
     "test:integration": "vitest run src/app.test.ts"
   },
   "dependencies": {
+    "@credit/runtime": "workspace:*",
     "@credit/shared": "workspace:*",
     "@prisma/adapter-pg": "latest",
     "@prisma/client": "7.9.1",
