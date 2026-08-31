@@ -6,7 +6,7 @@ import express, { Router } from 'express';
 import { z } from 'zod';
 import type { AuthService } from '../auth/authService.js';
 import { requireAuth, requireClientAccess, requireRole } from '../auth/middleware.js';
-import type { PrismaClient } from '../generated/prisma/client.js';
+import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate } from '../liveUpdates.js';
 
@@ -195,16 +195,21 @@ const includeReview = {
   findings: { orderBy: { sortOrder: 'asc' as const } },
   snapshot: { include: { accounts: true } },
 } as const;
-function present(review: any) {
+type ReviewWithDetails = Prisma.CreditReviewGetPayload<{ include: typeof includeReview }>;
+type ReviewWithOptionalClientSnapshots = ReviewWithDetails & {
+  client?: { creditSnapshots?: NonNullable<ReviewWithDetails['snapshot']>[] };
+};
+
+function present(review: ReviewWithOptionalClientSnapshots | null) {
   if (!review) return null;
-  const normalizeSnapshot = (snapshot: any) =>
+  const normalizeSnapshot = (snapshot: ReviewWithDetails['snapshot']) =>
     snapshot
       ? {
           ...snapshot,
           aggregateUtilization: snapshot.aggregateUtilization?.toNumber() ?? null,
           revolvingBalance: snapshot.revolvingBalance?.toNumber() ?? null,
           revolvingLimit: snapshot.revolvingLimit?.toNumber() ?? null,
-          accounts: snapshot.accounts.map((a: any) => ({
+          accounts: snapshot.accounts.map((a) => ({
             ...a,
             creditLimit: a.creditLimit?.toNumber() ?? null,
             balance: a.balance?.toNumber() ?? null,
@@ -324,7 +329,7 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
             409,
             'A Credit Profile Review is already active',
           );
-        let purchaseId: string | null = input.purchaseId ?? null;
+        const purchaseId: string | null = input.purchaseId ?? null;
         if (purchaseId) {
           const purchase = await tx.servicePurchase.findFirst({
             where: {

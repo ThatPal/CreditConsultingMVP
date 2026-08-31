@@ -3073,7 +3073,7 @@ export function ConsultantReviewWorkspacePage() {
   const [selected, setSelected] = useState<string[]>(['UTILIZATION']);
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [informationReasons, setInformationReasons] = useState<string[]>([]);
-  const [facts, setFacts] = useState({
+  const [facts] = useState({
     experian: '',
     equifax: '',
     transunion: '',

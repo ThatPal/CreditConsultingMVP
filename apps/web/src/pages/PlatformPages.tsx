@@ -13,13 +13,12 @@ import {
   Divider,
   Grid,
   LinearProgress,
-  Slider,
   Stack,
   Tab,
   Tabs,
   Typography,
 } from '@mui/material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';

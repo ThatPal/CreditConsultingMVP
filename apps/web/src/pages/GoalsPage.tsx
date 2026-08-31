@@ -45,15 +45,6 @@ type Goal = {
   priority: 'PRIMARY' | 'SECONDARY';
   status: 'ACTIVE' | 'ACHIEVED' | 'PAUSED';
 };
-const goalLabels: Record<GoalType, string> = {
-  ZERO_APR_CREDIT: 'Build 0% APR credit',
-  TOTAL_AVAILABLE_CREDIT: 'Increase total available credit',
-  BUSINESS_CREDIT: 'Build business credit',
-  PERSONAL_CREDIT: 'Build personal credit',
-  BALANCE_TRANSFER_CAPACITY: 'Create balance-transfer capacity',
-  EXISTING_LIMIT_INCREASES: 'Increase existing limits',
-  REWARDS_POINTS_PORTFOLIO: 'Build a rewards portfolio',
-};
 const additionalGoalOptions: [GoalType, string, string][] = [
   ['TOTAL_AVAILABLE_CREDIT', 'Increase total available credit', 'Grow overall revolving capacity.'],
   ['BUSINESS_CREDIT', 'Build business credit', 'Expand business credit capacity.'],

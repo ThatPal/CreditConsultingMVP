@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthService } from '../auth/authService.js';
 import { requireAuth, requireClientAccess, requireRole } from '../auth/middleware.js';
-import type { PrismaClient } from '../generated/prisma/client.js';
+import type { PrismaClient, WorkItemStatus } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate, subscribeToLiveUpdates } from '../liveUpdates.js';
 
@@ -996,15 +996,16 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
     requireRole('CONSULTANT', 'ADMIN'),
     async (req, res, next) => {
       try {
-        const status = req.query.status?.toString();
+        const status = z
+          .enum(['OPEN', 'IN_PROGRESS', 'WAITING', 'COMPLETED', 'CANCELLED'])
+          .optional()
+          .parse(req.query.status?.toString()) as WorkItemStatus | undefined;
         const items = await prisma.workItem.findMany({
           where: {
             ...(req.auth!.role === 'ADMIN'
               ? {}
               : { OR: [{ assigneeId: req.auth!.userId }, { assigneeId: null }] }),
-            ...(status
-              ? { status: status as any }
-              : { status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] } }),
+            ...(status ? { status } : { status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] } }),
           },
           include: { client: { select: { firstName: true, lastName: true } } },
           orderBy: [{ priority: 'desc' }, { dueAt: 'asc' }, { createdAt: 'asc' }],
