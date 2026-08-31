@@ -24,5 +24,10 @@ describe('private document storage', () => {
     expect(() => resolvePrivateStoragePath('C:\\safe', 'C:\\secret')).toThrow(
       'INVALID_STORAGE_KEY',
     );
+    expect(() => resolvePrivateStoragePath('/safe', 'C:/secret')).toThrow('INVALID_STORAGE_KEY');
+    expect(() => resolvePrivateStoragePath('/safe', '\\\\server\\share\\secret')).toThrow(
+      'INVALID_STORAGE_KEY',
+    );
+    expect(() => resolvePrivateStoragePath('C:\\safe', '/secret')).toThrow('INVALID_STORAGE_KEY');
   });
 });

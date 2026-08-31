@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { isAbsolute, posix, relative, resolve, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export type StoredDocument = {
@@ -26,9 +26,16 @@ export interface S3CompatibleStorageConfig {
 }
 
 export function resolvePrivateStoragePath(root: string, storageKey: string) {
+  if (
+    !storageKey ||
+    isAbsolute(storageKey) ||
+    posix.isAbsolute(storageKey) ||
+    win32.isAbsolute(storageKey)
+  )
+    throw new Error('INVALID_STORAGE_KEY');
   const path = resolve(root, storageKey);
   const relativePath = relative(root, path);
-  if (!storageKey || relativePath.startsWith('..') || isAbsolute(relativePath))
+  if (relativePath.startsWith('..') || isAbsolute(relativePath))
     throw new Error('INVALID_STORAGE_KEY');
   return path;
 }
