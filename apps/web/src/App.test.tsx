@@ -21,6 +21,9 @@ function renderAt(path: string, forcedRole?: 'CLIENT' | 'CONSULTANT' | 'ADMIN') 
             role,
             status: 'ACTIVE',
             clientId: role === 'CLIENT' ? 'test-client' : null,
+            staffMfaEnabled: role !== 'CLIENT',
+            staffMfaVerified: true,
+            stepUpVerified: true,
           }}
         >
           <MemoryRouter initialEntries={[path]}>

@@ -326,52 +326,85 @@ enum IdempotencyStatus {
   FAILED
 }
 
+enum ClientAccessScope {
+  READ
+  CONSULTANT_WORK
+  SUPPORT_ONLY
+}
+
+enum SecurityEventSeverity {
+  INFO
+  WARNING
+  HIGH
+}
+
 model User {
-  id                   String                @id @default(uuid()) @db.Uuid
-  email                String                @unique
-  name                 String                @default("")
-  emailVerified        Boolean               @default(false)
+  id                   String                  @id @default(uuid()) @db.Uuid
+  email                String                  @unique
+  name                 String                  @default("")
+  emailVerified        Boolean                 @default(false)
   image                String?
   authFirstName        String?
   authLastName         String?
   authPhone            String?
   authTimezone         String?
-  authTermsAccepted    Boolean               @default(false)
+  authTermsAccepted    Boolean                 @default(false)
+  twoFactorEnabled     Boolean                 @default(false)
   passwordHash         String?
   authProvider         String?
   role                 UserRole
-  status               UserStatus            @default(ACTIVE)
+  status               UserStatus              @default(ACTIVE)
   lastLoginAt          DateTime?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  client               Client?               @relation("ClientIdentity")
-  assignedClients      Client[]              @relation("AssignedConsultant")
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  client               Client?                 @relation("ClientIdentity")
+  assignedClients      Client[]                @relation("AssignedConsultant")
   sessions             AuthSession[]
   betterAuthSessions   BetterAuthSession[]
   betterAuthAccounts   BetterAuthAccount[]
   passwordResetTokens  PasswordResetToken[]
-  workItems            WorkItem[]            @relation("WorkItemAssignee")
-  auditEvents          AuditEvent[]          @relation("AuditActor")
-  readinessDecisions   ReadinessAssessment[] @relation("ReadinessConsultant")
-  completedReviews     CreditReview[]        @relation("ReviewConsultant")
-  createdSupportCases  SupportCase[]         @relation("SupportCaseCreator")
-  assignedSupportCases SupportCase[]         @relation("SupportCaseAssignee")
-  supportMessages      SupportMessage[]      @relation("SupportMessageAuthor")
+  workItems            WorkItem[]              @relation("WorkItemAssignee")
+  auditEvents          AuditEvent[]            @relation("AuditActor")
+  readinessDecisions   ReadinessAssessment[]   @relation("ReadinessConsultant")
+  completedReviews     CreditReview[]          @relation("ReviewConsultant")
+  createdSupportCases  SupportCase[]           @relation("SupportCaseCreator")
+  assignedSupportCases SupportCase[]           @relation("SupportCaseAssignee")
+  supportMessages      SupportMessage[]        @relation("SupportMessageAuthor")
   notifications        Notification[]
+  betterAuthTwoFactor  BetterAuthTwoFactor?
+  staffAssignments     StaffClientAssignment[] @relation("StaffAssignmentUser")
+  accessGrants         ClientAccessGrant[]     @relation("AccessGrantGrantee")
+  accessGrantsIssued   ClientAccessGrant[]     @relation("AccessGrantGrantor")
+  accessGrantsRevoked  ClientAccessGrant[]     @relation("AccessGrantRevoker")
+  securityEvents       SecurityEvent[]         @relation("SecurityEventActor")
 
   @@index([role, status])
 }
 
+model BetterAuthTwoFactor {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  secret                  String    @unique
+  backupCodes             String
+  userId                  String    @unique @db.Uuid
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime? @db.Timestamptz(3)
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 model BetterAuthSession {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  expiresAt DateTime @db.Timestamptz(3)
-  token     String   @unique
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  ipAddress String?
-  userAgent String?
-  userId    String   @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expiresAt          DateTime  @db.Timestamptz(3)
+  token              String    @unique
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  ipAddress          String?
+  userAgent          String?
+  userId             String    @db.Uuid
+  staffMfaVerifiedAt DateTime? @db.Timestamptz(3)
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
 }
@@ -442,8 +475,80 @@ model Client {
   serviceEntitlements      ServiceEntitlement[]
   reviewCreditTransactions ReviewCreditTransaction[]
   payments                 Payment[]
+  staffAssignments         StaffClientAssignment[]
+  accessGrants             ClientAccessGrant[]
+  securityEvents           SecurityEvent[]
 
   @@index([assignedConsultantId, status])
+}
+
+model RoleCapability {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  role       UserRole
+  capability String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([role, capability])
+  @@index([capability, role])
+}
+
+model StaffClientAssignment {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staffUserId   String    @db.Uuid
+  clientId      String    @db.Uuid
+  activatedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  deactivatedAt DateTime? @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  staffUser     User      @relation("StaffAssignmentUser", fields: [staffUserId], references: [id], onDelete: Cascade)
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([staffUserId, clientId])
+  @@index([clientId, deactivatedAt])
+  @@index([staffUserId, deactivatedAt])
+}
+
+model ClientAccessGrant {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  granteeId           String            @db.Uuid
+  clientId            String            @db.Uuid
+  scope               ClientAccessScope
+  allowedCapabilities String[]
+  reason              String
+  reference           String?
+  startsAt            DateTime          @db.Timestamptz(3)
+  expiresAt           DateTime          @db.Timestamptz(3)
+  revokedAt           DateTime?         @db.Timestamptz(3)
+  grantorId           String            @db.Uuid
+  revokerId           String?           @db.Uuid
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+  grantee             User              @relation("AccessGrantGrantee", fields: [granteeId], references: [id], onDelete: Cascade)
+  client              Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  grantor             User              @relation("AccessGrantGrantor", fields: [grantorId], references: [id], onDelete: Restrict)
+  revoker             User?             @relation("AccessGrantRevoker", fields: [revokerId], references: [id], onDelete: SetNull)
+
+  @@index([granteeId, clientId, startsAt, expiresAt, revokedAt])
+  @@index([clientId, scope, revokedAt])
+}
+
+model SecurityEvent {
+  id         String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId    String?               @db.Uuid
+  clientId   String?               @db.Uuid
+  eventType  String
+  severity   SecurityEventSeverity @default(INFO)
+  category   String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime              @default(now()) @db.Timestamptz(3)
+  actor      User?                 @relation("SecurityEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+  client     Client?               @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([actorId, createdAt])
+  @@index([clientId, createdAt])
 }
 
 model CreditSnapshot {

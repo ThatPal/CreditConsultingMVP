@@ -74,6 +74,12 @@ async function createClient(label: string, assignedConsultantId?: string) {
       ...(assignedConsultantId ? { assignedConsultantId } : {}),
     },
   });
+  if (assignedConsultantId)
+    await prisma.staffClientAssignment.upsert({
+      where: { staffUserId_clientId: { staffUserId: assignedConsultantId, clientId: client.id } },
+      create: { staffUserId: assignedConsultantId, clientId: client.id },
+      update: { deactivatedAt: null },
+    });
   const principal: AuthPrincipal = {
     userId: user.id,
     email: user.email,
@@ -98,6 +104,9 @@ async function createStaff(role: 'CONSULTANT' | 'ADMIN', label: string) {
     role,
     status: 'ACTIVE',
     clientId: null,
+    staffMfaEnabled: true,
+    staffMfaVerified: true,
+    stepUpVerified: true,
   };
   return { user, principal, header: principalHeader(principal) };
 }

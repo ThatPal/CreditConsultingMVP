@@ -20,6 +20,7 @@ import {
   ConsultantAccountPage,
   ForgotPasswordPage,
   LoginPage,
+  StaffMfaPage,
   RegisterPage,
   ResetPasswordPage,
 } from './pages/AuthPages';
@@ -49,6 +50,7 @@ export function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/mfa" element={<StaffMfaPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/lead-wizard" element={<OnboardingPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />

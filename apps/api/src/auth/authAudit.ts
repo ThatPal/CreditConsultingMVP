@@ -44,6 +44,19 @@ export function createAuthFailureAuditMiddleware(prisma: PrismaClient): RequestH
           metadata: { category, statusCode: response.statusCode },
         }).catch(() => undefined);
       }
+      if (request.path.endsWith('/two-factor/verify-totp') && response.statusCode >= 400) {
+        const category = response.statusCode === 429 ? 'RATE_LIMITED' : 'CHALLENGE_REJECTED';
+        void prisma.securityEvent
+          .create({
+            data: {
+              eventType: 'AUTH_MFA_CHALLENGE_FAILED',
+              severity: response.statusCode === 429 ? 'HIGH' : 'WARNING',
+              category: 'MFA_CHALLENGE',
+              metadata: { category, statusCode: response.statusCode },
+            },
+          })
+          .catch(() => undefined);
+      }
     });
     next();
   };

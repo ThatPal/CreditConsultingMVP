@@ -94,7 +94,7 @@ export function createApp(
     app.use(
       betterAuth && prisma
         ? authenticatePrincipal((headers) =>
-            resolveBetterAuthPrincipal(betterAuth, prisma, headers),
+            resolveBetterAuthPrincipal(betterAuth, prisma, headers, env.MFA_STEP_UP_TTL_MINUTES),
           )
         : authenticate(auth, env.SESSION_COOKIE_NAME),
     );

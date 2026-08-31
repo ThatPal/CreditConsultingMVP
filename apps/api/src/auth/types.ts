@@ -6,6 +6,9 @@ export type AuthPrincipal = {
   role: UserRole;
   status: UserStatus;
   clientId: string | null;
+  staffMfaEnabled?: boolean;
+  staffMfaVerified?: boolean;
+  stepUpVerified?: boolean;
 };
 
 export type PublicUser = AuthPrincipal & {

@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { fromNodeHeaders } from 'better-auth/node';
+import { twoFactor } from 'better-auth/plugins';
 import type { IncomingHttpHeaders } from 'node:http';
 import { verifyPassword, hashPassword } from './security.js';
 import type { AppEnv } from '../config/env.js';
@@ -67,9 +68,23 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
         authTermsAccepted: { type: 'boolean', required: false, input: true, returned: false },
       },
     },
-    session: { modelName: 'BetterAuthSession', expiresIn: env.SESSION_TTL_HOURS * 3600 },
+    session: {
+      modelName: 'BetterAuthSession',
+      expiresIn: env.SESSION_TTL_HOURS * 3600,
+      additionalFields: {
+        staffMfaVerifiedAt: { type: 'date', required: false, input: false },
+      },
+    },
     account: { modelName: 'BetterAuthAccount' },
     verification: { modelName: 'BetterAuthVerification' },
+    plugins: [
+      twoFactor({
+        issuer: 'Credit Strategy Platform',
+        twoFactorTable: 'BetterAuthTwoFactor',
+        backupCodeOptions: { storeBackupCodes: 'encrypted' },
+        trustDeviceMaxAge: 0,
+      }),
+    ],
     hooks: {
       before: createAuthMiddleware(async (context) => {
         const body = context.body as Record<string, unknown> | undefined;
@@ -89,6 +104,17 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
           await recordAuthAudit(prisma, 'AUTH_PASSWORD_RESET_COMPLETED', {
             metadata: { sessionPolicy: 'REVOKE_ALL' },
           });
+        if (context.path === '/two-factor/enable' && !isAPIError(context.context.returned)) {
+          const actorId = context.context.session?.user.id;
+          await prisma.securityEvent.create({
+            data: {
+              ...(actorId ? { actorId } : {}),
+              eventType: 'AUTH_MFA_ENROLLMENT_INITIATED',
+              category: 'MFA_ENROLLMENT',
+              metadata: { method: 'TOTP' },
+            },
+          });
+        }
       }),
     },
     emailAndPassword: {
@@ -164,11 +190,28 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
                 entityType: 'User',
                 entityId: user.id,
               });
+            if (context?.path === '/two-factor/verify-totp' && user.twoFactorEnabled)
+              await prisma.securityEvent.create({
+                data: {
+                  actorId: user.id,
+                  eventType: 'AUTH_MFA_ENROLLMENT_COMPLETED',
+                  category: 'MFA_ENROLLMENT',
+                  metadata: { method: 'TOTP' },
+                },
+              });
           },
         },
       },
       session: {
         create: {
+          before: async (session, context) => ({
+            data: {
+              ...session,
+              ...(context?.path === '/two-factor/verify-totp'
+                ? { staffMfaVerifiedAt: new Date() }
+                : {}),
+            },
+          }),
           after: async (session, context) => {
             await recordAuthAudit(prisma, 'AUTH_SESSION_CREATED', {
               actorId: session.userId,
@@ -182,6 +225,15 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
                 entityType: 'BetterAuthSession',
                 entityId: session.id,
                 metadata: { authenticationMethod: 'password' },
+              });
+            if (context?.path === '/two-factor/verify-totp')
+              await prisma.securityEvent.create({
+                data: {
+                  actorId: session.userId,
+                  eventType: 'AUTH_MFA_CHALLENGE_SUCCEEDED',
+                  category: 'MFA_CHALLENGE',
+                  metadata: { method: 'TOTP' },
+                },
               });
           },
         },
@@ -217,19 +269,38 @@ export async function resolveBetterAuthPrincipal(
   auth: BetterAuthInstance,
   prisma: PrismaClient,
   headers: IncomingHttpHeaders,
+  mfaStepUpTtlMinutes = 15,
 ) {
   const session = await auth.api.getSession({ headers: fromNodeHeaders(headers) });
   if (!session) return null;
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, email: true, role: true, status: true, client: { select: { id: true } } },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      status: true,
+      twoFactorEnabled: true,
+      client: { select: { id: true } },
+    },
   });
   if (!user || user.status !== 'ACTIVE') return null;
+  const staffMfaVerifiedAt = (
+    session.session as typeof session.session & { staffMfaVerifiedAt?: Date | null }
+  ).staffMfaVerifiedAt;
   return {
     userId: user.id,
     email: user.email,
     role: user.role,
     status: user.status,
     clientId: user.client?.id ?? null,
+    staffMfaEnabled: user.twoFactorEnabled,
+    staffMfaVerified: user.role === 'CLIENT' || Boolean(staffMfaVerifiedAt),
+    stepUpVerified:
+      user.role === 'CLIENT' ||
+      Boolean(
+        staffMfaVerifiedAt &&
+        Date.now() - new Date(staffMfaVerifiedAt).getTime() <= mfaStepUpTtlMinutes * 60_000,
+      ),
   };
 }

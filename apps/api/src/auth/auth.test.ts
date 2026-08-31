@@ -268,6 +268,9 @@ describe('authentication and authorization', () => {
       role: 'CONSULTANT',
       status: 'ACTIVE',
       clientId: null,
+      staffMfaEnabled: true,
+      staffMfaVerified: true,
+      stepUpVerified: true,
     };
     store.assigned.set('client-a', principal.userId);
     const app = express();

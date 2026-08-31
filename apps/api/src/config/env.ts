@@ -27,6 +27,7 @@ const schema = runtimeEnvSchema
       .transform((value) => value === 'true'),
     AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(1000).default(5),
+    MFA_STEP_UP_TTL_MINUTES: z.coerce.number().int().min(1).max(120).default(15),
     EMAIL_PROVIDER: z.enum(['CONSOLE', 'SMTP', 'EXTERNAL']).default('CONSOLE'),
     EMAIL_FROM: z.email().default('no-reply@example.invalid'),
     EMAIL_SMTP_HOST: z.string().min(1).optional(),

@@ -4,7 +4,13 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { theme } from '../theme';
-import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from './AuthPages';
+import {
+  ForgotPasswordPage,
+  LoginPage,
+  RegisterPage,
+  ResetPasswordPage,
+  StaffMfaPage,
+} from './AuthPages';
 
 const authState = vi.hoisted(() => ({ user: null, refresh: vi.fn(async () => undefined) }));
 vi.mock('../auth/AuthProvider', () => ({ useAuth: () => authState }));
@@ -42,6 +48,18 @@ afterEach(() => {
 });
 
 describe('client authentication pages', () => {
+  test('staff two-factor challenge has accessible retry and recovery states', async () => {
+    authState.user = null;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      response({ message: 'Code expired' }, 400),
+    );
+    renderPage(<StaffMfaPage />, '/mfa?mode=challenge&returnTo=%2Fconsultant%2Fdashboard');
+    expect(screen.getByRole('heading', { name: /verify it.s you/i })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/six-digit code/i), { target: { value: '123456' } });
+    fireEvent.submit(screen.getByRole('button', { name: /verify and continue/i }).closest('form')!);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/retry or contact support/i);
+  });
+
   test('registration submits required profile and terms fields then shows verification handoff', async () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')

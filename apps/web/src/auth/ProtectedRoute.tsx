@@ -9,5 +9,9 @@ export function ProtectedRoute({ roles }: { roles: Array<'CLIENT' | 'CONSULTANT'
   if (loading) return <LoadingSkeleton />;
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   if (!roles.includes(user.role)) return <Navigate to={homeFor(user)} replace />;
+  if (user.role !== 'CLIENT' && !user.staffMfaVerified)
+    return (
+      <Navigate to={`/mfa?mode=enroll&returnTo=${encodeURIComponent(location.pathname)}`} replace />
+    );
   return <Outlet />;
 }

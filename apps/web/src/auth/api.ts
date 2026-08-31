@@ -10,6 +10,9 @@ export type CurrentUser = {
   lastName?: string | null;
   phone?: string | null;
   timezone?: string | null;
+  staffMfaEnabled?: boolean;
+  staffMfaVerified?: boolean;
+  stepUpVerified?: boolean;
 };
 
 type ApiErrorBody = { error?: { message?: string }; message?: string };

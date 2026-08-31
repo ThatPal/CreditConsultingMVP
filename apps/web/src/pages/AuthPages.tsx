@@ -88,12 +88,24 @@ export function LoginPage() {
     const data = new FormData(event.currentTarget);
     const email = String(data.get('email') ?? '');
     try {
-      await apiRequest('/api/auth/sign-in/email', {
+      const signIn = await apiRequest<{ twoFactorRedirect?: boolean }>('/api/auth/sign-in/email', {
         method: 'POST',
         body: JSON.stringify({ email, password: data.get('password') }),
       });
+      const returnTo = safeReturnPath(
+        (location.state as { from?: unknown } | null)?.from,
+        '/consultant/dashboard',
+      );
+      if (signIn.twoFactorRedirect) {
+        navigate(`/mfa?mode=challenge&returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+        return;
+      }
       await refresh();
       const result = await apiRequest<{ user: CurrentUser }>('/api/me');
+      if (result.user.role !== 'CLIENT' && !result.user.staffMfaVerified) {
+        navigate(`/mfa?mode=enroll&returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+        return;
+      }
       navigate(
         safeReturnPath((location.state as { from?: unknown } | null)?.from, homeFor(result.user)),
         { replace: true },
@@ -149,6 +161,141 @@ export function LoginPage() {
           </Link>
         </Stack>
       </Stack>
+    </AuthFrame>
+  );
+}
+
+export function StaffMfaPage() {
+  const { user, refresh } = useAuth();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const mode = params.get('mode') === 'enroll' ? 'enroll' : 'challenge';
+  const returnTo = safeReturnPath(params.get('returnTo'), '/consultant/dashboard');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [totpURI, setTotpURI] = useState('');
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+
+  async function beginEnrollment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const password = new FormData(event.currentTarget).get('password');
+      const result = await apiRequest<{ totpURI: string; backupCodes: string[] }>(
+        '/api/auth/two-factor/enable',
+        {
+          method: 'POST',
+          body: JSON.stringify({ password, issuer: 'Credit Consulting' }),
+        },
+      );
+      setTotpURI(result.totpURI);
+      setBackupCodes(result.backupCodes);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to begin setup');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verify(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const code = new FormData(event.currentTarget).get('code');
+      await apiRequest('/api/auth/two-factor/verify-totp', {
+        method: 'POST',
+        body: JSON.stringify({ code, trustDevice: false }),
+      });
+      await refresh();
+      navigate(returnTo, { replace: true });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'That code could not be verified');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (mode === 'enroll' && !user) return <Navigate to="/login" replace />;
+  if (mode === 'enroll' && user?.role === 'CLIENT') return <Navigate to={homeFor(user)} replace />;
+  return (
+    <AuthFrame
+      title={mode === 'enroll' ? 'Protect your staff account' : 'Verify it’s you'}
+      subtitle={
+        mode === 'enroll'
+          ? 'Staff accounts require an authenticator code before accessing client information.'
+          : 'Enter the current six-digit code from your authenticator app.'
+      }
+    >
+      {error && (
+        <Alert severity="error" role="alert">
+          {error} You can retry or contact support for recovery.
+        </Alert>
+      )}
+      {mode === 'enroll' && !totpURI ? (
+        <Stack component="form" spacing={2} onSubmit={beginEnrollment}>
+          <TextField
+            name="password"
+            label="Confirm password"
+            type="password"
+            autoComplete="current-password"
+            required
+            autoFocus
+          />
+          <Button type="submit" variant="contained" disabled={busy}>
+            {busy ? 'Preparing…' : 'Set up authenticator'}
+          </Button>
+        </Stack>
+      ) : (
+        <Stack spacing={2}>
+          {totpURI && (
+            <>
+              <Alert severity="info">
+                Add this setup key to your authenticator app, then verify a code below.
+              </Alert>
+              <TextField
+                label="Authenticator setup URI"
+                value={totpURI}
+                multiline
+                slotProps={{ htmlInput: { readOnly: true } }}
+              />
+            </>
+          )}
+          {backupCodes.length > 0 && (
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography sx={{ fontWeight: 800 }}>Save these recovery codes now</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Each code can be used once. They will not be shown again.
+              </Typography>
+              <Box component="ul" aria-label="Recovery codes">
+                {backupCodes.map((code) => (
+                  <li key={code}>
+                    <code>{code}</code>
+                  </li>
+                ))}
+              </Box>
+            </Paper>
+          )}
+          <Stack component="form" spacing={2} onSubmit={verify}>
+            <TextField
+              name="code"
+              label="Six-digit code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              autoFocus={mode === 'challenge'}
+              slotProps={{ htmlInput: { pattern: '[0-9]{6}', maxLength: 6 } }}
+            />
+            <Button type="submit" variant="contained" disabled={busy}>
+              {busy ? 'Verifying…' : 'Verify and continue'}
+            </Button>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Lost your authenticator? Contact support to use the governed account-recovery process.
+          </Typography>
+        </Stack>
+      )}
     </AuthFrame>
   );
 }

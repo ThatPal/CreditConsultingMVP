@@ -1,5 +1,18 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
 
+export const roleCapabilityPolicy = {
+  CLIENT: ['client.read', 'review.read', 'support.read'],
+  CONSULTANT: [
+    'client.read',
+    'client.manage',
+    'review.read',
+    'review.publish',
+    'support.read',
+    'support.manage',
+  ],
+  ADMIN: ['settings.manage', 'audit.read_platform', 'support.manage'],
+} as const;
+
 export const systemOptionTemplates = [
   [
     'PAYMENT_HISTORY_STRONG',
@@ -95,14 +108,27 @@ export const systemOptionTemplates = [
 ] as const;
 
 export async function seedSystemReferenceData(prisma: PrismaClient) {
-  await prisma.$transaction(
-    systemOptionTemplates.map(([code, kind, label, description]) =>
+  const capabilityRows = Object.entries(roleCapabilityPolicy).flatMap(([role, capabilities]) =>
+    capabilities.map((capability) => ({
+      role: role as 'CLIENT' | 'CONSULTANT' | 'ADMIN',
+      capability,
+    })),
+  );
+  await prisma.$transaction([
+    ...systemOptionTemplates.map(([code, kind, label, description]) =>
       prisma.optionTemplate.upsert({
         where: { code_version: { code, version: 1 } },
         create: { code, kind, version: 1, label, description },
         update: { label, description, active: true },
       }),
     ),
-  );
-  return { optionTemplates: systemOptionTemplates.length };
+    ...capabilityRows.map(({ role, capability }) =>
+      prisma.roleCapability.upsert({
+        where: { role_capability: { role, capability } },
+        create: { role, capability },
+        update: {},
+      }),
+    ),
+  ]);
+  return { optionTemplates: systemOptionTemplates.length, roleCapabilities: capabilityRows.length };
 }

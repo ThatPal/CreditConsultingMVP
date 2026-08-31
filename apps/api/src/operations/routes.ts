@@ -5,6 +5,10 @@ import { requireAuth, requireClientAccess, requireRole } from '../auth/middlewar
 import type { PrismaClient, WorkItemStatus } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate, subscribeToLiveUpdates, type LiveUpdate } from '../liveUpdates.js';
+import {
+  createPrismaAuthorizationService,
+  createRealtimeAuthorizationBridge,
+} from '../authorization/authorizationService.js';
 
 const supportCaseSchema = z.object({
   category: z.enum([
@@ -116,6 +120,9 @@ export function createOperationsRouter(
   options: { heartbeatIntervalMs?: number } = {},
 ) {
   const router = Router();
+  const realtimeAuthorization = createRealtimeAuthorizationBridge(
+    createPrismaAuthorizationService(prisma),
+  );
   router.use(requireAuth);
   router.get('/live-updates', async (req, res) => {
     res.status(200);
@@ -128,11 +135,7 @@ export function createOperationsRouter(
     let active = true;
     const send = async (update: LiveUpdate) => {
       if (!active || res.writableEnded) return;
-      const allowed =
-        req.auth!.role === 'ADMIN' ||
-        (req.auth!.role === 'CLIENT' && req.auth!.clientId === update.clientId) ||
-        (req.auth!.role === 'CONSULTANT' &&
-          (await auth.canAccessClient(req.auth!, update.clientId)));
+      const allowed = await realtimeAuthorization.canSubscribeToClient(req.auth!, update.clientId);
       if (allowed) res.write(`event: refresh\ndata: ${JSON.stringify(update)}\n\n`);
     };
     const unsubscribe = subscribeToLiveUpdates((update) => void send(update));
