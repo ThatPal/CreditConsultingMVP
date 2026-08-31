@@ -146,6 +146,8 @@ const staffSupportCaseInclude = {
   categoryDefinition: { select: { key: true, name: true } },
   attachments: { select: supportAttachmentProjection },
 } as const;
+const activeSupportStatuses = ['OPEN', 'WAITING_ON_SUPPORT', 'WAITING_ON_CLIENT'] as const;
+const historicalSupportStatuses = ['RESOLVED', 'CLOSED'] as const;
 
 function requestHash(value: unknown) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -742,16 +744,58 @@ export function createOperationsRouter(
           ? { subject: { contains: query.search, mode: 'insensitive' as const } }
           : {}),
       };
-      const [cases, total] = await prisma.$transaction([
-        prisma.supportCase.findMany({
-        where,
-        include: supportCaseInclude,
-        orderBy: [{ resolvedAt: 'asc' }, { lastMessageAt: 'desc' }, { id: 'desc' }],
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
-      }),
+      const offset = (query.page - 1) * query.pageSize;
+      const requestedActive = query.status
+        ? activeSupportStatuses.includes(query.status as (typeof activeSupportStatuses)[number])
+        : true;
+      const requestedHistorical = query.status
+        ? historicalSupportStatuses.includes(
+            query.status as (typeof historicalSupportStatuses)[number],
+          )
+        : true;
+      const [total, activeCount] = await prisma.$transaction([
         prisma.supportCase.count({ where }),
+        requestedActive
+          ? prisma.supportCase.count({
+              where: {
+                ...where,
+                ...(!query.status ? { status: { in: [...activeSupportStatuses] } } : {}),
+              },
+            })
+          : prisma.supportCase.count({ where: { id: { in: [] } } }),
       ]);
+      const activeTake = requestedActive
+        ? Math.max(0, Math.min(query.pageSize, activeCount - offset))
+        : 0;
+      const historicalSkip = Math.max(0, offset - activeCount);
+      const historicalTake = requestedHistorical ? query.pageSize - activeTake : 0;
+      const [activeCases, historicalCases] = await Promise.all([
+        activeTake
+          ? prisma.supportCase.findMany({
+              where: {
+                ...where,
+                ...(!query.status ? { status: { in: [...activeSupportStatuses] } } : {}),
+              },
+              include: supportCaseInclude,
+              orderBy: [{ lastMessageAt: 'desc' }, { id: 'desc' }],
+              skip: offset,
+              take: activeTake,
+            })
+          : Promise.resolve([]),
+        historicalTake
+          ? prisma.supportCase.findMany({
+              where: {
+                ...where,
+                ...(!query.status ? { status: { in: [...historicalSupportStatuses] } } : {}),
+              },
+              include: supportCaseInclude,
+              orderBy: [{ lastMessageAt: 'desc' }, { id: 'desc' }],
+              skip: historicalSkip,
+              take: historicalTake,
+            })
+          : Promise.resolve([]),
+      ]);
+      const cases = [...activeCases, ...historicalCases];
       const projected = await Promise.all(
         cases.map(async (item) => ({
           ...item,
@@ -1135,7 +1179,7 @@ export function createOperationsRouter(
           categoryDefinition: { select: { key: true, name: true } },
           attachments: { select: supportAttachmentProjection },
         },
-        orderBy: [{ priority: 'desc' }, { lastMessageAt: 'desc' }],
+        orderBy: [{ priority: 'desc' }, { lastMessageAt: 'desc' }, { id: 'desc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),

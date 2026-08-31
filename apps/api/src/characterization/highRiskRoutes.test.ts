@@ -731,6 +731,63 @@ describe('Support, notification, and application-cycle characterization', () => 
       .expect(403);
   });
 
+  test('orders active client tickets first and keeps tied support pagination stable without gaps', async () => {
+    const assigned = await createStaff('CONSULTANT', 'pagination-support');
+    const owner = await createClient('pagination-owner', assigned.user.id);
+    const timestamp = new Date('2026-08-31T20:00:00.000Z');
+    const records = [
+      { id: '10000000-0000-4000-8000-000000000001', status: 'OPEN' as const },
+      { id: '10000000-0000-4000-8000-000000000002', status: 'WAITING_ON_CLIENT' as const },
+      { id: '10000000-0000-4000-8000-000000000003', status: 'RESOLVED' as const },
+      { id: '10000000-0000-4000-8000-000000000004', status: 'CLOSED' as const },
+    ];
+    await prisma.supportCase.createMany({
+      data: records.map((record) => ({
+        ...record,
+        clientId: owner.client.id,
+        createdByUserId: owner.user.id,
+        assignedToUserId: assigned.user.id,
+        category: 'ACCOUNT',
+        priority: 'NORMAL',
+        subject: `Pagination proof ${record.id.at(-1)}`,
+        lastMessageAt: timestamp,
+        ...(record.status === 'RESOLVED' || record.status === 'CLOSED'
+          ? { resolvedAt: timestamp }
+          : {}),
+      })),
+    });
+    const app = buildApp();
+    const clientPages = await Promise.all(
+      [1, 2].map((page) =>
+        request(app)
+          .get(`/api/v1/client/support-cases?search=Pagination%20proof&page=${page}&pageSize=2`)
+          .set('x-test-principal', owner.header)
+          .expect(200),
+      ),
+    );
+    const clientIds = clientPages.flatMap(({ body }) =>
+      body.cases.map(({ id }: { id: string }) => id),
+    );
+    expect(clientIds).toEqual([records[1]!.id, records[0]!.id, records[3]!.id, records[2]!.id]);
+    expect(new Set(clientIds).size).toBe(4);
+
+    const consultantPages = await Promise.all(
+      [1, 2].map((page) =>
+        request(app)
+          .get(
+            `/api/v1/consultant/support-cases?search=Pagination%20proof&page=${page}&pageSize=2`,
+          )
+          .set('x-test-principal', assigned.header)
+          .expect(200),
+      ),
+    );
+    const consultantIds = consultantPages.flatMap(({ body }) =>
+      body.cases.map(({ id }: { id: string }) => id),
+    );
+    expect(consultantIds).toEqual(records.map(({ id }) => id).reverse());
+    expect(new Set(consultantIds).size).toBe(4);
+  });
+
   test('scopes notification reads and updates to the authenticated user', async () => {
     const owner = await createClient('notification-owner');
     const stranger = await createClient('notification-stranger');

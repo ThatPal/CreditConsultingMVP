@@ -149,12 +149,19 @@ describe('canonical documents API', () => {
   });
 
   test('searches and paginates only the authenticated client document collection', async () => {
-    await request(app()).post('/documents').set('x-test-identity', 'one').set('x-document-type', 'GENERAL_CLIENT_DOCUMENT').set('x-file-name', 'searchable-statement.pdf').set('content-type', 'application/pdf').send(Buffer.from('%PDF-one')).expect(201);
-    await request(app()).post('/documents').set('x-test-identity', 'one').set('x-document-type', 'GENERAL_CLIENT_DOCUMENT').set('x-file-name', 'searchable-receipt.pdf').set('content-type', 'application/pdf').send(Buffer.from('%PDF-one-more')).expect(201);
+    const statement = await request(app()).post('/documents').set('x-test-identity', 'one').set('x-document-type', 'GENERAL_CLIENT_DOCUMENT').set('x-file-name', 'searchable-statement.pdf').set('content-type', 'application/pdf').send(Buffer.from('%PDF-one')).expect(201);
+    const receipt = await request(app()).post('/documents').set('x-test-identity', 'one').set('x-document-type', 'GENERAL_CLIENT_DOCUMENT').set('x-file-name', 'searchable-receipt.pdf').set('content-type', 'application/pdf').send(Buffer.from('%PDF-one-more')).expect(201);
     await request(app()).post('/documents').set('x-test-identity', 'two').set('x-document-type', 'GENERAL_CLIENT_DOCUMENT').set('x-file-name', 'searchable-secret.pdf').set('content-type', 'application/pdf').send(Buffer.from('%PDF-two')).expect(201);
+    await prisma.document.updateMany({
+      where: { id: { in: [statement.body.document.id, receipt.body.document.id] } },
+      data: { uploadedAt: new Date('2026-08-31T20:00:00.000Z') },
+    });
     const first = await request(app()).get('/documents?page=1&pageSize=1&search=searchable').set('x-test-identity', 'one').expect(200);
+    const second = await request(app()).get('/documents?page=2&pageSize=1&search=searchable').set('x-test-identity', 'one').expect(200);
     expect(first.body).toMatchObject({ page: 1, pageSize: 1, hasMore: true });
     expect(first.body.documents).toHaveLength(1);
+    const expectedIds = [statement.body.document.id, receipt.body.document.id].sort().reverse();
+    expect([first.body.documents[0].id, second.body.documents[0].id]).toEqual(expectedIds);
     expect(JSON.stringify(first.body)).not.toContain('searchable-secret.pdf');
     const absent = await request(app()).get('/documents?search=searchable-secret').set('x-test-identity', 'one').expect(200);
     expect(absent.body.documents).toEqual([]);
