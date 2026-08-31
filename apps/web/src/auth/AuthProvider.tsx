@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, type PropsWithChildren } from 'react';
-import { apiRequest, type CurrentUser } from './api';
+import { ApiRequestError, apiRequest, type CurrentUser } from './api';
 
 type AuthState = {
   user: CurrentUser | null;
@@ -34,7 +34,10 @@ export function AuthProvider({
       value={{
         user: initialUser ?? query.data?.user ?? null,
         loading: initialUser === undefined && query.isLoading,
-        error: initialUser === undefined && query.isError,
+        error:
+          initialUser === undefined &&
+          query.isError &&
+          !(query.error instanceof ApiRequestError && query.error.status === 401),
         refresh,
         logout,
       }}

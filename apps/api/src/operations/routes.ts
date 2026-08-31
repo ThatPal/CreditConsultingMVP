@@ -57,6 +57,14 @@ const consultantSupportReplySchema = supportReplySchema.extend({
   internal: z.boolean().default(false),
   macroCode: z.string().trim().max(80).nullish(),
 });
+const supportListQuery = z.object({
+  search: z.string().trim().max(120).optional(),
+  status: z.enum(['OPEN', 'WAITING_ON_SUPPORT', 'WAITING_ON_CLIENT', 'RESOLVED', 'CLOSED']).optional(),
+  category: supportCaseSchema.shape.category.optional(),
+  priority: z.enum(['NORMAL', 'HIGH', 'URGENT']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+});
 const applicationCycleSteps = [
   [
     'STARTED',
@@ -725,11 +733,25 @@ export function createOperationsRouter(
   });
   router.get('/client/support-cases', requireRole('CLIENT'), async (req, res, next) => {
     try {
-      const cases = await prisma.supportCase.findMany({
-        where: { clientId: req.auth!.clientId! },
+      const query = supportListQuery.parse(req.query);
+      const where = {
+        clientId: req.auth!.clientId!,
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.category ? { category: query.category } : {}),
+        ...(query.search
+          ? { subject: { contains: query.search, mode: 'insensitive' as const } }
+          : {}),
+      };
+      const [cases, total] = await prisma.$transaction([
+        prisma.supportCase.findMany({
+        where,
         include: supportCaseInclude,
-        orderBy: { lastMessageAt: 'desc' },
-      });
+        orderBy: [{ resolvedAt: 'asc' }, { lastMessageAt: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+        prisma.supportCase.count({ where }),
+      ]);
       const projected = await Promise.all(
         cases.map(async (item) => ({
           ...item,
@@ -737,7 +759,7 @@ export function createOperationsRouter(
           unread: !item.clientReadAt || item.lastMessageAt > item.clientReadAt,
         })),
       );
-      res.json({ cases: projected });
+      res.json({ cases: projected, page: query.page, pageSize: query.pageSize, total, hasMore: query.page * query.pageSize < total });
     } catch (error) {
       next(error);
     }
@@ -1081,9 +1103,22 @@ export function createOperationsRouter(
   );
   router.get('/consultant/support-cases', requireRole('CONSULTANT'), async (req, res, next) => {
     try {
+      const query = supportListQuery.parse(req.query);
       const clientIds = await authorizedSupportClientIds(prisma, authorization, req.auth!);
-      const cases = await prisma.supportCase.findMany({
-        where: { clientId: { in: clientIds } },
+      const where = {
+        clientId: { in: clientIds },
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.category ? { category: query.category } : {}),
+        ...(query.priority ? { priority: query.priority } : {}),
+        ...(query.search ? { OR: [
+          { subject: { contains: query.search, mode: 'insensitive' as const } },
+          { client: { firstName: { contains: query.search, mode: 'insensitive' as const } } },
+          { client: { lastName: { contains: query.search, mode: 'insensitive' as const } } },
+        ] } : {}),
+      };
+      const [cases, total] = await prisma.$transaction([
+        prisma.supportCase.findMany({
+        where,
         include: {
           client: {
             select: {
@@ -1101,8 +1136,11 @@ export function createOperationsRouter(
           attachments: { select: supportAttachmentProjection },
         },
         orderBy: [{ priority: 'desc' }, { lastMessageAt: 'desc' }],
-        take: 300,
-      });
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+        prisma.supportCase.count({ where }),
+      ]);
       const projected = await Promise.all(
         cases.map(async (item) => ({
           ...item,
@@ -1110,7 +1148,7 @@ export function createOperationsRouter(
           unread: !item.staffReadAt || item.lastMessageAt > item.staffReadAt,
         })),
       );
-      res.json({ cases: projected });
+      res.json({ cases: projected, page: query.page, pageSize: query.pageSize, total, hasMore: query.page * query.pageSize < total });
     } catch (error) {
       next(error);
     }

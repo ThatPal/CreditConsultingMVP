@@ -137,7 +137,7 @@ describe('PORTAL-39/40 support', () => {
       });
     });
     renderPage('client');
-    expect(await screen.findByText('Document question')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Document question' })).toBeInTheDocument();
     expect(screen.getByText(/Credit report: report.pdf/)).toBeInTheDocument();
     expect(screen.getByText('Safe visible message')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Reply' })).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe('PORTAL-39/40 support', () => {
     expect(screen.getByRole('dialog', { name: /new support request/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Subject' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'How can we help?' })).toBeInTheDocument();
-    expect(screen.getByLabelText(/attach existing documents/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /attach existing documents/i })).toBeInTheDocument();
     expect(screen.getByText(/attach a new file to this request/i)).toBeInTheDocument();
   });
 
@@ -249,9 +249,30 @@ describe('PORTAL-39/40 support', () => {
     });
     expect(await screen.findByText(/could not be uploaded/i)).toBeInTheDocument();
     expect(ticketCreates).toBe(0);
-    expect(screen.getByLabelText(/attach existing documents/i)).not.toHaveTextContent(
+    expect(screen.getByRole('button', { name: /attach existing documents/i })).not.toHaveTextContent(
       'support.pdf',
     );
+  });
+
+  test('uses a bounded searchable accessible existing-document picker', async () => {
+    const requested: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input); requested.push(url);
+      if (url.endsWith('/support-categories')) return json({ categories: [] });
+      if (url.endsWith('/documents/types')) return json({ documentTypes: [{ key: 'SUPPORT_ATTACHMENT', name: 'Support attachment', allowedMimeTypes: ['application/pdf'], allowedExtensions: ['.pdf'], maximumSizeBytes: 1000 }] });
+      if (url.includes('/documents?')) return json({ documents: [{ id: 'doc-1', displayFileName: 'statement.pdf', sizeBytes: 2048, uploadedAt: '2026-08-31T12:00:00Z', status: 'AVAILABLE', documentType: { key: 'SUPPORT_ATTACHMENT', name: 'Support attachment' } }], hasMore: true, total: 11 });
+      return json({ cases: [] });
+    });
+    renderPage('client');
+    await screen.findByRole('heading', { name: /how can we help/i });
+    fireEvent.click(screen.getByRole('button', { name: /create your first request/i }));
+    fireEvent.click(screen.getByRole('button', { name: /attach existing documents/i }));
+    expect(await screen.findByRole('dialog', { name: /choose existing documents/i })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: /search documents/i }), { target: { value: 'statement' } });
+    await waitFor(() => expect(requested.some((url) => url.includes('pageSize=10') && url.includes('search=statement'))).toBe(true));
+    fireEvent.click(screen.getByRole('button', { name: /statement.pdf/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
   });
 });
 

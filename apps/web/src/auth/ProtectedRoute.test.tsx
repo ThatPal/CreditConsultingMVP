@@ -1,0 +1,27 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { describe, expect, test, vi } from 'vitest';
+import { AuthProvider } from './AuthProvider';
+import { ProtectedRoute } from './ProtectedRoute';
+
+function Location() {
+  const location = useLocation();
+  return <div>{location.pathname}{location.search}{String((location.state as { from?: string } | null)?.from ?? '')}</div>;
+}
+
+describe('ProtectedRoute authentication routing', () => {
+  test('routes a confirmed logged-out protected request to login with its internal return path', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Authentication required' } }), { status: 401, headers: { 'Content-Type': 'application/json' } }));
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AuthProvider><MemoryRouter initialEntries={['/app/documents?status=AVAILABLE']}><Routes><Route path="/login" element={<Location />} /><Route element={<ProtectedRoute roles={['CLIENT']} />}><Route path="/app/documents" element={<div>private</div>} /></Route></Routes></MemoryRouter></AuthProvider></QueryClientProvider>);
+    expect(await screen.findByText('/login/app/documents?status=AVAILABLE')).toBeInTheDocument();
+    expect(screen.queryByText(/secure workspace/i)).not.toBeInTheDocument();
+  });
+
+  test('keeps a genuine workspace failure distinct from logged-out state', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Unavailable' } }), { status: 503, headers: { 'Content-Type': 'application/json' } }));
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AuthProvider><MemoryRouter initialEntries={['/app']}><Routes><Route path="/login" element={<div>login</div>} /><Route element={<ProtectedRoute roles={['CLIENT']} />}><Route path="/app" element={<div>private</div>} /></Route></Routes></MemoryRouter></AuthProvider></QueryClientProvider>);
+    expect(await screen.findByText(/couldn’t load your secure workspace/i)).toBeInTheDocument();
+    expect(screen.queryByText('login')).not.toBeInTheDocument();
+  });
+});

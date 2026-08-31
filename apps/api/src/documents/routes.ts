@@ -14,6 +14,13 @@ const typeKeySchema = z
   .max(80)
   .regex(/^[A-Z0-9_]+$/);
 const maximumUploadBytes = 10 * 1024 * 1024;
+const documentListQuery = z.object({
+  search: z.string().trim().max(120).optional(),
+  type: typeKeySchema.optional(),
+  status: z.enum(['AVAILABLE', 'SUPERSEDED']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+});
 
 export function sanitizeDocumentFileName(input: string) {
   const decoded = (() => {
@@ -118,16 +125,41 @@ export function createDocumentRouter(
         clientId: req.auth.clientId,
       });
       if (!allowed) throw new AppError('FORBIDDEN', 403, 'Document access is not permitted');
-      const documents = await prisma.document.findMany({
+      const query = documentListQuery.parse(req.query);
+      const where = {
+        clientId: req.auth.clientId,
+        clientVisible: true,
+        status: query.status ?? { not: 'DELETED' as const },
+        ...(query.type ? { documentType: { key: query.type } } : {}),
+        ...(query.search
+          ? {
+              OR: [
+                { displayFileName: { contains: query.search, mode: 'insensitive' as const } },
+                { originalFileName: { contains: query.search, mode: 'insensitive' as const } },
+                { documentType: { name: { contains: query.search, mode: 'insensitive' as const } } },
+              ],
+            }
+          : {}),
+      };
+      const [documents, total] = await prisma.$transaction([
+        prisma.document.findMany({
         where: {
-          clientId: req.auth.clientId,
-          clientVisible: true,
-          status: { not: 'DELETED' },
+          ...where,
         },
         include: { documentType: { select: { key: true, name: true } } },
-        orderBy: { uploadedAt: 'desc' },
+        orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+        prisma.document.count({ where }),
+      ]);
+      res.json({
+        documents: documents.map(present),
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+        hasMore: query.page * query.pageSize < total,
       });
-      res.json({ documents: documents.map(present) });
     } catch (error) {
       next(error);
     }

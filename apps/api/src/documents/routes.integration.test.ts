@@ -130,6 +130,7 @@ describe('canonical documents API', () => {
     expect(uploaded.body.document.sha256).toMatch(/^[a-f0-9]{64}$/);
     const listed = await request(app()).get('/documents').set('x-test-identity', 'one').expect(200);
     expect(listed.body.documents).toHaveLength(1);
+    expect(listed.body).toMatchObject({ page: 1, pageSize: 20, total: 1, hasMore: false });
     expect(JSON.stringify(listed.body)).not.toContain('documents/');
     await request(app())
       .get(`/documents/${documentId}/content`)
@@ -145,6 +146,18 @@ describe('canonical documents API', () => {
       .get(`/documents/${randomUUID()}/content`)
       .set('x-test-identity', 'two')
       .expect(404);
+  });
+
+  test('searches and paginates only the authenticated client document collection', async () => {
+    await request(app()).post('/documents').set('x-test-identity', 'one').set('x-document-type', 'GENERAL_CLIENT_DOCUMENT').set('x-file-name', 'searchable-statement.pdf').set('content-type', 'application/pdf').send(Buffer.from('%PDF-one')).expect(201);
+    await request(app()).post('/documents').set('x-test-identity', 'one').set('x-document-type', 'GENERAL_CLIENT_DOCUMENT').set('x-file-name', 'searchable-receipt.pdf').set('content-type', 'application/pdf').send(Buffer.from('%PDF-one-more')).expect(201);
+    await request(app()).post('/documents').set('x-test-identity', 'two').set('x-document-type', 'GENERAL_CLIENT_DOCUMENT').set('x-file-name', 'searchable-secret.pdf').set('content-type', 'application/pdf').send(Buffer.from('%PDF-two')).expect(201);
+    const first = await request(app()).get('/documents?page=1&pageSize=1&search=searchable').set('x-test-identity', 'one').expect(200);
+    expect(first.body).toMatchObject({ page: 1, pageSize: 1, hasMore: true });
+    expect(first.body.documents).toHaveLength(1);
+    expect(JSON.stringify(first.body)).not.toContain('searchable-secret.pdf');
+    const absent = await request(app()).get('/documents?search=searchable-secret').set('x-test-identity', 'one').expect(200);
+    expect(absent.body.documents).toEqual([]);
   });
 
   test('staff access follows active assignment and is denied after revocation', async () => {

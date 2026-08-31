@@ -24,7 +24,7 @@ import {
   useTheme,
   MenuItem,
 } from '@mui/material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
@@ -36,6 +36,7 @@ import {
   DocumentUploadDropzone,
   type UploadDocumentType,
 } from '../components/common/DocumentUploadDropzone';
+import { DocumentPicker } from '../components/common/DocumentPicker';
 
 type SupportCategory =
   | 'ACCOUNT'
@@ -109,6 +110,9 @@ export function SupportPage() {
   const [reply, setReply] = useState('');
   const [attachmentDocumentIds, setAttachmentDocumentIds] = useState<string[]>([]);
   const [attachmentUploadPending, setAttachmentUploadPending] = useState(false);
+  const [caseSearch, setCaseSearch] = useState('');
+  const [caseStatus, setCaseStatus] = useState('');
+  const [casePage, setCasePage] = useState(1);
   const createIdempotencyKey = useRef(crypto.randomUUID());
   const contextType = searchParams.get('contextType') ?? 'GENERAL';
   const contextResourceId = searchParams.get('contextId');
@@ -119,20 +123,17 @@ export function SupportPage() {
         categories: Array<{ key: SupportCategory; name: string; allowedContextTypes: string[] }>;
       }>('/api/v1/client/support-categories'),
   });
-  const documentQuery = useQuery({
-    queryKey: ['client-documents'],
-    queryFn: () =>
-      apiRequest<{
-        documents: Array<{ id: string; displayFileName: string; status: string }>;
-      }>('/api/v1/documents'),
-  });
   const documentTypesQuery = useQuery({
     queryKey: ['client-document-types'],
     queryFn: () => apiRequest<{ documentTypes: UploadDocumentType[] }>('/api/v1/documents/types'),
   });
+  const caseParams = new URLSearchParams({ page: String(casePage), pageSize: '20' });
+  if (caseSearch.trim()) caseParams.set('search', caseSearch.trim());
+  if (caseStatus) caseParams.set('status', caseStatus);
   const query = useQuery({
-    queryKey: ['support-cases'],
-    queryFn: () => apiRequest<{ cases: SupportCase[] }>('/api/v1/client/support-cases'),
+    queryKey: ['support-cases', caseSearch, caseStatus, casePage],
+    queryFn: () => apiRequest<{ cases: SupportCase[]; hasMore: boolean; total: number }>(`/api/v1/client/support-cases?${caseParams}`),
+    placeholderData: keepPreviousData,
   });
   const cases = query.data?.cases ?? [];
   const supportDocumentType = documentTypesQuery.data?.documentTypes?.find(
@@ -248,6 +249,13 @@ export function SupportPage() {
               <Typography variant="h3" sx={{ mb: 1 }}>
                 Your requests
               </Typography>
+              <Stack spacing={1.25} sx={{ mb: 1.5 }}>
+                <TextField size="small" label="Search requests" value={caseSearch} onChange={(event) => { setCaseSearch(event.target.value); setCasePage(1); }} />
+                <TextField select size="small" label="Status" value={caseStatus} onChange={(event) => { setCaseStatus(event.target.value); setCasePage(1); }}>
+                  <MenuItem value="">All statuses</MenuItem>
+                  {Object.entries(statusLabels).map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}
+                </TextField>
+              </Stack>
               <Stack divider={<Divider flexItem />}>
                 {cases.map((supportCase) => (
                   <Box
@@ -283,6 +291,11 @@ export function SupportPage() {
                     </Typography>
                   </Box>
                 ))}
+              </Stack>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
+                <Button size="small" disabled={casePage === 1} onClick={() => setCasePage((value) => value - 1)}>Previous</Button>
+                <Typography variant="caption">Page {casePage} · {query.data?.total ?? 0}</Typography>
+                <Button size="small" disabled={!query.data?.hasMore} onClick={() => setCasePage((value) => value + 1)}>Next</Button>
               </Stack>
             </SectionCard>
           </Grid>
@@ -536,26 +549,11 @@ export function SupportPage() {
               value={message}
               onChange={(event) => setMessage(event.target.value)}
             />
-            <TextField
-              select
-              label="Attach existing documents (optional)"
+            <DocumentPicker
               value={attachmentDocumentIds}
-              onChange={(event) =>
-                setAttachmentDocumentIds(
-                  typeof event.target.value === 'string'
-                    ? event.target.value.split(',')
-                    : event.target.value,
-                )
-              }
-              slotProps={{ select: { multiple: true } }}
-              helperText="Select up to five documents already in your secure library."
-            >
-              {(documentQuery.data?.documents ?? []).map((document) => (
-                <MenuItem key={document.id} value={document.id}>
-                  {document.displayFileName}
-                </MenuItem>
-              ))}
-            </TextField>
+              onChange={setAttachmentDocumentIds}
+              documentTypes={documentTypesQuery.data?.documentTypes ?? []}
+            />
             {supportDocumentType && (
               <Box>
                 <Typography sx={{ fontWeight: 850, mb: 1 }}>

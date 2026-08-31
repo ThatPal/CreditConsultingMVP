@@ -16,11 +16,12 @@ export function ProtectedRoute({ roles }: { roles: Array<'CLIENT' | 'CONSULTANT'
         </Alert>
       </Stack>
     );
-  if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  const returnPath = `${location.pathname}${location.search}${location.hash}`;
+  if (!user) return <Navigate to="/login" state={{ from: returnPath }} replace />;
   if (!roles.includes(user.role)) return <Navigate to={homeFor(user)} replace />;
   if (user.role !== 'CLIENT' && !user.staffMfaVerified)
     return (
-      <Navigate to={`/mfa?mode=enroll&returnTo=${encodeURIComponent(location.pathname)}`} replace />
+      <Navigate to={`/mfa?mode=enroll&returnTo=${encodeURIComponent(returnPath)}`} replace />
     );
   return <Outlet />;
 }

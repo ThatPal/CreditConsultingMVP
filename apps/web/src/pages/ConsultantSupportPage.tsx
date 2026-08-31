@@ -20,7 +20,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
@@ -105,9 +105,17 @@ export function ConsultantSupportPage() {
   const [composerType, setComposerType] = useState<'REPLY' | 'INTERNAL'>('REPLY');
   const [draft, setDraft] = useState('');
   const [macroCode, setMacroCode] = useState<string | null>(null);
+  const [caseSearch, setCaseSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const filterStatus = filter === 'WAITING_CLIENT' ? 'WAITING_ON_CLIENT' : filter === 'RESOLVED' ? 'RESOLVED' : '';
+  const params = new URLSearchParams({ page: String(page), pageSize: '20' });
+  if (caseSearch.trim()) params.set('search', caseSearch.trim());
+  if (filterStatus) params.set('status', filterStatus);
+  if (filter === 'URGENT') params.set('priority', 'URGENT');
   const query = useQuery({
-    queryKey: ['consultant-support-cases'],
-    queryFn: () => apiRequest<{ cases: ConsultantCase[] }>('/api/v1/consultant/support-cases'),
+    queryKey: ['consultant-support-cases', filter, caseSearch, page],
+    queryFn: () => apiRequest<{ cases: ConsultantCase[]; hasMore: boolean; total: number }>(`/api/v1/consultant/support-cases?${params}`),
+    placeholderData: keepPreviousData,
   });
   const allCases = query.data?.cases ?? [];
   const cases = allCases.filter((item) => {
@@ -186,6 +194,7 @@ export function ConsultantSupportPage() {
                 value={filter}
                 onChange={(_, value) => {
                   setFilter(value);
+                  setPage(1);
                   if (isMobile) setSelectedId(null);
                 }}
                 variant="scrollable"
@@ -202,6 +211,14 @@ export function ConsultantSupportPage() {
                 <Tab value="RESOLVED" label="Resolved" />
               </Tabs>
             </StickyTabs>
+            <TextField
+              fullWidth
+              size="small"
+              label="Search support queue"
+              value={caseSearch}
+              onChange={(event) => { setCaseSearch(event.target.value); setPage(1); }}
+              sx={{ mb: 1.5 }}
+            />
             <Stack spacing={1}>
               {cases.length === 0 && (
                 <Box sx={{ py: 5, textAlign: 'center' }}>
@@ -253,6 +270,11 @@ export function ConsultantSupportPage() {
                   </Stack>
                 </Box>
               ))}
+            </Stack>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
+              <Button size="small" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
+              <Typography variant="caption">Page {page} · {query.data?.total ?? 0}</Typography>
+              <Button size="small" disabled={!query.data?.hasMore} onClick={() => setPage((value) => value + 1)}>Next</Button>
             </Stack>
           </SectionCard>
         </Grid>

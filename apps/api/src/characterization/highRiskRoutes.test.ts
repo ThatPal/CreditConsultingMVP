@@ -699,12 +699,25 @@ describe('Support, notification, and application-cycle characterization', () => 
         ]);
       });
     await request(app)
+      .get('/api/v1/client/support-cases?search=Stranger&pageSize=1')
+      .set('x-test-principal', owner.header)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.cases).toEqual([]);
+        expect(body).toMatchObject({ page: 1, pageSize: 1, total: 0, hasMore: false });
+      });
+    await request(app)
       .get('/api/v1/consultant/support-cases')
       .set('x-test-principal', assigned.header)
       .expect(200)
       .expect(({ body }) =>
         expect(body.cases.map(({ id }: { id: string }) => id)).toEqual([ownerCase.id]),
       );
+    await request(app)
+      .get('/api/v1/consultant/support-cases?search=Stranger&pageSize=1')
+      .set('x-test-principal', assigned.header)
+      .expect(200)
+      .expect(({ body }) => expect(body.cases).toEqual([]));
     await request(app)
       .get('/api/v1/consultant/support-cases')
       .set('x-test-principal', unassigned.header)

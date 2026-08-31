@@ -11,12 +11,14 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
@@ -49,12 +51,21 @@ function fileSize(bytes: number) {
 
 export function DocumentsPage() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [type, setType] = useState('');
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
   const theme = useTheme();
   const fullScreenViewer = useMediaQuery(theme.breakpoints.down('sm'));
+  const params = new URLSearchParams({ page: String(page), pageSize: '20' });
+  if (search.trim()) params.set('search', search.trim());
+  if (type) params.set('type', type);
+  if (status) params.set('status', status);
   const query = useQuery({
-    queryKey: ['client-documents'],
-    queryFn: () => apiRequest<{ documents: ClientDocument[] }>('/api/v1/documents'),
+    queryKey: ['client-documents', search, type, status, page],
+    queryFn: () => apiRequest<{ documents: ClientDocument[]; hasMore: boolean; total: number }>(`/api/v1/documents?${params}`),
+    placeholderData: keepPreviousData,
   });
   const typesQuery = useQuery({
     queryKey: ['client-document-types'],
@@ -107,6 +118,16 @@ export function DocumentsPage() {
         </SectionCard>
       ) : (
         <SectionCard>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+            <TextField label="Search documents" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} sx={{ flex: 1 }} />
+            <TextField select label="Document type" value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} sx={{ minWidth: 180 }}>
+              <MenuItem value="">All types</MenuItem>
+              {(typesQuery.data?.documentTypes ?? []).map((item) => <MenuItem key={item.key} value={item.key}>{item.name}</MenuItem>)}
+            </TextField>
+            <TextField select label="Status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} sx={{ minWidth: 170 }}>
+              <MenuItem value="">All statuses</MenuItem><MenuItem value="AVAILABLE">Available</MenuItem><MenuItem value="SUPERSEDED">Previous versions</MenuItem>
+            </TextField>
+          </Stack>
           <Stack divider={<Divider flexItem />}>
             {documents.map((document) => (
               <Stack
@@ -141,6 +162,11 @@ export function DocumentsPage() {
                 </Stack>
               </Stack>
             ))}
+          </Stack>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+            <Button disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
+            <Typography variant="body2">Page {page} · {query.data?.total ?? 0} documents</Typography>
+            <Button disabled={!query.data?.hasMore} onClick={() => setPage((value) => value + 1)}>Next</Button>
           </Stack>
         </SectionCard>
       )}
