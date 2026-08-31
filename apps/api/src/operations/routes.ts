@@ -110,7 +110,11 @@ async function getSupportNotificationRecipients(
   ] as string[];
 }
 
-export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) {
+export function createOperationsRouter(
+  prisma: PrismaClient,
+  auth: AuthService,
+  options: { heartbeatIntervalMs?: number } = {},
+) {
   const router = Router();
   router.use(requireAuth);
   router.get('/live-updates', async (req, res) => {
@@ -134,7 +138,7 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
     const unsubscribe = subscribeToLiveUpdates((update) => void send(update));
     const heartbeat = setInterval(() => {
       if (!res.writableEnded) res.write(`: heartbeat ${new Date().toISOString()}\n\n`);
-    }, 5000);
+    }, options.heartbeatIntervalMs ?? 5000);
     req.on('close', () => {
       active = false;
       clearInterval(heartbeat);
