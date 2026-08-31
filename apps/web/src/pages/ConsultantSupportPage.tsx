@@ -325,7 +325,7 @@ export function ConsultantSupportPage() {
                   <Alert severity="info">Validated context: {selected.context.summary}</Alert>
                 )}
                 {!!selected.attachments?.length && (
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                     {selected.attachments.map(({ document }) => (
                       <Button
                         key={document.id}

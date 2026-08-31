@@ -368,7 +368,7 @@ export function SupportPage() {
                     <Alert severity="info">Linked context: {selected.context.summary}</Alert>
                   )}
                   {!!selected.attachments?.length && (
-                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                       {selected.attachments.map(({ document }) => (
                         <Button
                           key={document.id}
