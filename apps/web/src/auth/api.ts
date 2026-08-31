@@ -12,7 +12,7 @@ export type CurrentUser = {
   timezone?: string | null;
 };
 
-type ApiErrorBody = { error?: { message?: string } };
+type ApiErrorBody = { error?: { message?: string }; message?: string };
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${webEnv.VITE_API_URL}${path}`, {
@@ -22,7 +22,9 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-    throw new Error(body.error?.message ?? 'Something went wrong. Please try again.');
+    throw new Error(
+      body.error?.message ?? body.message ?? 'Something went wrong. Please try again.',
+    );
   }
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
 }

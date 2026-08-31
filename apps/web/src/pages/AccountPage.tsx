@@ -10,7 +10,17 @@ export function AccountPage() {
   const { user, refresh, logout } = useAuth();
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
+  const [sessions, setSessions] = useState<
+    Array<{ id: string; token: string; userAgent?: string; createdAt: string }>
+  >([]);
   useEffect(() => setMessage(''), [user]);
+  useEffect(() => {
+    void apiRequest<Array<{ id: string; token: string; userAgent?: string; createdAt: string }>>(
+      '/api/auth/list-sessions',
+    )
+      .then(setSessions)
+      .catch(() => setSessions([]));
+  }, []);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));
@@ -91,6 +101,51 @@ export function AccountPage() {
               size="small"
               sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}
             />
+          </Stack>
+          <Divider />
+          <Stack spacing={1.5} aria-label="Active sessions">
+            {sessions.map((session, index) => (
+              <Stack
+                key={session.id}
+                direction={{ xs: 'column', sm: 'row' }}
+                sx={{ gap: 1, justifyContent: 'space-between' }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {index === 0 ? 'Current session' : 'Signed-in device'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {session.userAgent || 'Unknown browser'}
+                  </Typography>
+                </Box>
+                {index > 0 && (
+                  <Button
+                    color="error"
+                    onClick={async () => {
+                      await apiRequest('/api/auth/revoke-session', {
+                        method: 'POST',
+                        body: JSON.stringify({ token: session.token }),
+                      });
+                      setSessions((current) => current.filter((item) => item.id !== session.id));
+                    }}
+                  >
+                    Revoke
+                  </Button>
+                )}
+              </Stack>
+            ))}
+            {sessions.length > 1 && (
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={async () => {
+                  await apiRequest('/api/auth/revoke-other-sessions', { method: 'POST' });
+                  setSessions((current) => current.slice(0, 1));
+                }}
+              >
+                Revoke other sessions
+              </Button>
+            )}
           </Stack>
           <Divider />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>

@@ -11,6 +11,7 @@ import { createServiceCatalog } from './services/service.js';
 import { createLogger } from './lib/logger.js';
 import { createPrisma } from './lib/prisma.js';
 import { createEmailProvider, createPasswordResetNotifier } from './notifications/emailProvider.js';
+import { createBetterAuth } from './auth/betterAuth.js';
 
 const env = loadEnv();
 const logger = createLogger(env);
@@ -22,17 +23,27 @@ const auth = createAuthService(
   env,
   createPasswordResetNotifier(emailProvider),
 );
+const betterAuth = createBetterAuth(prisma, env, emailProvider);
 const goals = createGoalService(createPrismaGoalStore(prisma));
 const services = createServiceCatalog(createPrismaServiceStore(prisma));
 const server = createServer(
-  createApp(env, logger, auth, goals, services, prisma, {
-    postgresql: async () => {
-      await prisma.$queryRaw`SELECT 1`;
+  createApp(
+    env,
+    logger,
+    auth,
+    goals,
+    services,
+    prisma,
+    {
+      postgresql: async () => {
+        await prisma.$queryRaw`SELECT 1`;
+      },
+      redis: async () => {
+        if (!(await connectAndPingRedis(redis))) throw new Error('Redis ping failed');
+      },
     },
-    redis: async () => {
-      if (!(await connectAndPingRedis(redis))) throw new Error('Redis ping failed');
-    },
-  }),
+    betterAuth,
+  ),
 );
 
 server.listen(env.PORT, () => logger.info({ port: env.PORT }, 'API listening'));

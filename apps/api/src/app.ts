@@ -2,11 +2,14 @@ import { randomUUID } from 'node:crypto';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import { toNodeHandler } from 'better-auth/node';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import type { Logger } from 'pino';
 import type { AuthService } from './auth/authService.js';
-import { authenticate } from './auth/middleware.js';
+import { authenticate, authenticatePrincipal } from './auth/middleware.js';
+import type { BetterAuthInstance } from './auth/betterAuth.js';
+import { resolveBetterAuthPrincipal } from './auth/betterAuth.js';
 import { createAuthRouter, createMeRouter } from './auth/routes.js';
 import type { AppEnv } from './config/env.js';
 import { AppError, errorHandler, notFound } from './http/errors.js';
@@ -32,11 +35,13 @@ export function createApp(
   services?: ServiceCatalog,
   prisma?: PrismaClient,
   readiness?: ReadinessChecks,
+  betterAuth?: BetterAuthInstance,
 ) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(cors({ origin: env.WEB_ORIGIN, credentials: true }));
+  if (betterAuth) app.all('/api/auth/*splat', toNodeHandler(betterAuth));
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use(
@@ -80,8 +85,14 @@ export function createApp(
     next();
   });
   if (auth) {
-    app.use(authenticate(auth, env.SESSION_COOKIE_NAME));
-    app.use('/api/auth', createAuthRouter(auth, env));
+    app.use(
+      betterAuth && prisma
+        ? authenticatePrincipal((headers) =>
+            resolveBetterAuthPrincipal(betterAuth, prisma, headers),
+          )
+        : authenticate(auth, env.SESSION_COOKIE_NAME),
+    );
+    if (!betterAuth) app.use('/api/auth', createAuthRouter(auth, env));
     app.use('/api/me', createMeRouter(auth));
     if (goals) {
       app.use('/api/goals', createGoalRouter(goals));

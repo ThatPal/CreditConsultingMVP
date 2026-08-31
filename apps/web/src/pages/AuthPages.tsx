@@ -12,9 +12,16 @@ import {
   Typography,
 } from '@mui/material';
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Link as RouterLink, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Link as RouterLink,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import { apiRequest, homeFor, type CurrentUser } from '../auth/api';
 import { useAuth } from '../auth/AuthProvider';
+import { safeReturnPath } from '../auth/safeReturnPath';
 import { designTokens } from '../theme';
 
 function AuthFrame({
@@ -68,8 +75,11 @@ function AuthFrame({
 export function LoginPage() {
   const { user, refresh } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [params] = useSearchParams();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
   if (user) return <Navigate to={homeFor(user)} replace />;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,14 +87,22 @@ export function LoginPage() {
     setError('');
     const data = new FormData(event.currentTarget);
     try {
-      const result = await apiRequest<{ user: CurrentUser }>('/api/auth/login', {
+      const email = String(data.get('email') ?? '');
+      await apiRequest('/api/auth/sign-in/email', {
         method: 'POST',
-        body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
+        body: JSON.stringify({ email, password: data.get('password') }),
       });
       await refresh();
-      navigate(homeFor(result.user), { replace: true });
+      const result = await apiRequest<{ user: CurrentUser }>('/api/me');
+      navigate(
+        safeReturnPath((location.state as { from?: unknown } | null)?.from, homeFor(result.user)),
+        { replace: true },
+      );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to sign in');
+      const message = cause instanceof Error ? cause.message : 'Unable to sign in';
+      setError(message);
+      if (/verif/i.test(message))
+        setVerificationEmail(String(new FormData(event.currentTarget).get('email') ?? ''));
     } finally {
       setBusy(false);
     }
@@ -92,7 +110,26 @@ export function LoginPage() {
   return (
     <AuthFrame title="Welcome back" subtitle="Sign in to your private credit strategy workspace.">
       <Stack component="form" spacing={2} onSubmit={submit}>
+        {params.get('verified') === '1' && (
+          <Alert severity="success">Email verified. You can sign in now.</Alert>
+        )}
         {error && <Alert severity="error">{error}</Alert>}
+        {verificationEmail && (
+          <Button
+            variant="outlined"
+            onClick={() =>
+              apiRequest('/api/auth/send-verification-email', {
+                method: 'POST',
+                body: JSON.stringify({
+                  email: verificationEmail,
+                  callbackURL: '/login?verified=1',
+                }),
+              })
+            }
+          >
+            Resend verification email
+          </Button>
+        )}
         <TextField name="email" label="Email" type="email" autoComplete="email" required />
         <TextField
           name="password"
@@ -118,10 +155,10 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
-  const { user, refresh } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
   if (user) return <Navigate to={homeFor(user)} replace />;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -129,12 +166,21 @@ export function RegisterPage() {
     setError('');
     const data = Object.fromEntries(new FormData(event.currentTarget));
     try {
-      const result = await apiRequest<{ user: CurrentUser }>('/api/auth/register', {
+      await apiRequest('/api/auth/sign-up/email', {
         method: 'POST',
-        body: JSON.stringify({ ...data, termsAccepted: data.termsAccepted === 'on' }),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          name: `${data.firstName ?? ''} ${data.lastName ?? ''}`.trim(),
+          authFirstName: data.firstName,
+          authLastName: data.lastName,
+          authPhone: data.phone || undefined,
+          authTimezone: data.timezone,
+          authTermsAccepted: data.termsAccepted === 'on',
+          callbackURL: '/login?verified=1',
+        }),
       });
-      await refresh();
-      navigate(homeFor(result.user), { replace: true });
+      setVerificationSent(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to create account');
     } finally {
@@ -146,38 +192,42 @@ export function RegisterPage() {
       title="Create your account"
       subtitle="Register directly for secure access to the client portal."
     >
-      <Stack component="form" spacing={2} onSubmit={submit}>
-        {error && <Alert severity="error">{error}</Alert>}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <TextField name="firstName" label="First name" required />
-          <TextField name="lastName" label="Last name" required />
+      {verificationSent ? (
+        <Alert severity="success">Check your email to verify the account before signing in.</Alert>
+      ) : (
+        <Stack component="form" spacing={2} onSubmit={submit}>
+          {error && <Alert severity="error">{error}</Alert>}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField name="firstName" label="First name" required />
+            <TextField name="lastName" label="Last name" required />
+          </Stack>
+          <TextField name="email" label="Email" type="email" required />
+          <TextField name="phone" label="Phone (optional)" />
+          <TextField
+            name="password"
+            label="Password"
+            type="password"
+            helperText="Use at least 12 characters"
+            slotProps={{ htmlInput: { minLength: 12 } }}
+            required
+          />
+          <input
+            type="hidden"
+            name="timezone"
+            value={Intl.DateTimeFormat().resolvedOptions().timeZone}
+          />
+          <FormControlLabel
+            control={<Checkbox name="termsAccepted" required />}
+            label="I accept the terms and privacy policy"
+          />
+          <Button type="submit" variant="contained" size="large" disabled={busy}>
+            {busy ? 'Creating…' : 'Create account'}
+          </Button>
+          <Link component={RouterLink} to="/login">
+            Already have an account? Sign in
+          </Link>
         </Stack>
-        <TextField name="email" label="Email" type="email" required />
-        <TextField name="phone" label="Phone (optional)" />
-        <TextField
-          name="password"
-          label="Password"
-          type="password"
-          helperText="Use at least 12 characters"
-          slotProps={{ htmlInput: { minLength: 12 } }}
-          required
-        />
-        <input
-          type="hidden"
-          name="timezone"
-          value={Intl.DateTimeFormat().resolvedOptions().timeZone}
-        />
-        <FormControlLabel
-          control={<Checkbox name="termsAccepted" required />}
-          label="I accept the terms and privacy policy"
-        />
-        <Button type="submit" variant="contained" size="large" disabled={busy}>
-          {busy ? 'Creating…' : 'Create account'}
-        </Button>
-        <Link component={RouterLink} to="/login">
-          Already have an account? Sign in
-        </Link>
-      </Stack>
+      )}
     </AuthFrame>
   );
 }
@@ -189,9 +239,9 @@ export function ForgotPasswordPage() {
     event.preventDefault();
     const email = new FormData(event.currentTarget).get('email');
     try {
-      await apiRequest('/api/auth/forgot-password', {
+      await apiRequest('/api/auth/request-password-reset', {
         method: 'POST',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, redirectTo: '/reset-password' }),
       });
       setSent(true);
     } catch (cause) {
@@ -231,7 +281,7 @@ export function ResetPasswordPage() {
     try {
       await apiRequest('/api/auth/reset-password', {
         method: 'POST',
-        body: JSON.stringify({ token: params.get('token'), password }),
+        body: JSON.stringify({ token: params.get('token'), newPassword: password }),
       });
       navigate('/login', { replace: true });
     } catch (cause) {

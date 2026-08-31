@@ -6,11 +6,26 @@ import {
   type Capability,
 } from '../authorization/authorizationService.js';
 import type { AuthService } from './authService.js';
+import type { AuthPrincipal } from './types.js';
 
 export function authenticate(auth: AuthService, cookieName: string): RequestHandler {
   return async (req, _res, next) => {
     try {
       const principal = await auth.authenticate(req.cookies?.[cookieName] as string | undefined);
+      if (principal) req.auth = principal;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+export function authenticatePrincipal(
+  resolve: (headers: import('node:http').IncomingHttpHeaders) => Promise<AuthPrincipal | null>,
+): RequestHandler {
+  return async (req, _res, next) => {
+    try {
+      const principal = await resolve(req.headers);
       if (principal) req.auth = principal;
       next();
     } catch (error) {

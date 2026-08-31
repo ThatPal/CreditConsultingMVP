@@ -329,6 +329,14 @@ enum IdempotencyStatus {
 model User {
   id                   String                @id @default(uuid()) @db.Uuid
   email                String                @unique
+  name                 String                @default("")
+  emailVerified        Boolean               @default(false)
+  image                String?
+  authFirstName        String?
+  authLastName         String?
+  authPhone            String?
+  authTimezone         String?
+  authTermsAccepted    Boolean               @default(false)
   passwordHash         String?
   authProvider         String?
   role                 UserRole
@@ -339,6 +347,8 @@ model User {
   client               Client?               @relation("ClientIdentity")
   assignedClients      Client[]              @relation("AssignedConsultant")
   sessions             AuthSession[]
+  betterAuthSessions   BetterAuthSession[]
+  betterAuthAccounts   BetterAuthAccount[]
   passwordResetTokens  PasswordResetToken[]
   workItems            WorkItem[]            @relation("WorkItemAssignee")
   auditEvents          AuditEvent[]          @relation("AuditActor")
@@ -350,6 +360,53 @@ model User {
   notifications        Notification[]
 
   @@index([role, status])
+}
+
+model BetterAuthSession {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expiresAt DateTime @db.Timestamptz(3)
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model BetterAuthAccount {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issuer                String
+  accountId             String
+  providerId            String
+  userId                String    @db.Uuid
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issuer, accountId])
+  @@index([userId])
+}
+
+model BetterAuthVerification {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@index([expiresAt])
 }
 
 model Client {

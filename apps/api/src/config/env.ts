@@ -19,6 +19,8 @@ const schema = runtimeEnvSchema
     SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(168),
     PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
     PASSWORD_RESET_BASE_URL: z.url().default('http://localhost:5173/reset-password'),
+    BETTER_AUTH_URL: z.url().default('http://localhost:3001'),
+    BETTER_AUTH_SECRET: z.string().min(32).default('development-only-better-auth-secret-change-me'),
     EMAIL_PROVIDER: z.enum(['CONSOLE', 'SMTP', 'EXTERNAL']).default('CONSOLE'),
     EMAIL_FROM: z.email().default('no-reply@example.invalid'),
     EMAIL_SMTP_HOST: z.string().min(1).optional(),

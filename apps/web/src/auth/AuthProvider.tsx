@@ -25,7 +25,7 @@ export function AuthProvider({
     await queryClient.invalidateQueries({ queryKey: ['current-user'] });
   };
   const logout = async () => {
-    await apiRequest<void>('/api/auth/logout', { method: 'POST' });
+    await apiRequest<void>('/api/auth/sign-out', { method: 'POST' });
     queryClient.setQueryData(['current-user'], null);
   };
   return (

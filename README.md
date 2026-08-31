@@ -29,6 +29,8 @@ A client portal and consultant console for coordinating credit profiles, goals, 
 
 Web runs at http://localhost:5173 and API at http://localhost:3001. `/health` proves the API process is alive; `/ready` returns 200 only when PostgreSQL and Redis are reachable. The worker logs structured dependency-ready and worker-ready events after both services respond. Use `pnpm dev:web`, `pnpm dev:api`, or `pnpm dev:worker` to run one process. Stop local infrastructure with `pnpm runtime:down`.
 
+Client email/password authentication is served by Better Auth at `/api/auth/*`. New accounts must verify their email before signing in. Configure `BETTER_AUTH_URL`, a secret of at least 32 characters, and a non-console email provider before production deployment. Account session controls are available in the client account page.
+
 ## Verification
 
 Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm format:check`, and `pnpm build`. `pnpm test:integration` runs the API HTTP tests. Database commands are `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:migrate:deploy`, and `pnpm db:seed:system`. The system seed is deterministic and safe to rerun. Optional demo fixtures are separate behind `pnpm db:seed:demo` and are never required for a canonical environment.

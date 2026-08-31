@@ -40,3 +40,26 @@ export function createPasswordResetNotifier(provider: EmailProvider) {
     if (!result.accepted) throw new Error('Password reset email was not accepted for delivery');
   };
 }
+
+export function createAuthEmailNotifier(provider: EmailProvider) {
+  return {
+    async verification(message: { email: string; url: string }) {
+      const result = await provider.send({
+        to: message.email,
+        subject: 'Verify your Credit Strategy Platform email',
+        text: `Verify your email: ${message.url}`,
+        sensitive: true,
+      });
+      if (!result.accepted) throw new Error('Verification email was not accepted for delivery');
+    },
+    async passwordReset(message: { email: string; url: string }) {
+      const result = await provider.send({
+        to: message.email,
+        subject: 'Reset your Credit Strategy Platform password',
+        text: `Reset your password: ${message.url}`,
+        sensitive: true,
+      });
+      if (!result.accepted) throw new Error('Password reset email was not accepted for delivery');
+    },
+  };
+}
