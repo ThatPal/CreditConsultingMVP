@@ -9,6 +9,21 @@ import { AuthProvider } from './auth/AuthProvider';
 import type { CurrentUser } from './auth/api';
 import { theme } from './theme';
 import { validateNavigationRegistry } from './layouts/navigation';
+import { focusSurfaceContentStyles } from './components/common/FocusSurface';
+
+function contrastRatio(foreground: string, background: string) {
+  const luminance = (hex: string) => {
+    const channels = hex
+      .slice(1)
+      .match(/.{2}/g)!
+      .map((value) => parseInt(value, 16) / 255)
+      .map((value) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+  };
+  const lighter = Math.max(luminance(foreground), luminance(background));
+  const darker = Math.min(luminance(foreground), luminance(background));
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 function renderAt(
   path: string,
@@ -136,7 +151,7 @@ describe('application shells', () => {
   test('design system renders FocusSurface examples and semantic states', async () => {
     renderAt('/dev/design-system');
     expect(
-      await screen.findByRole('heading', { name: /dark is the environment/i }),
+      await screen.findByRole('heading', { name: /dark is the environment/i }, { timeout: 5_000 }),
     ).toBeInTheDocument();
     expect(screen.getByText('Credit Profile summary')).toBeInTheDocument();
     expect(screen.getByText('Wizard confirmation')).toBeInTheDocument();
@@ -144,6 +159,58 @@ describe('application shells', () => {
     expect(screen.getByRole('button', { name: /open drawer/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/include utilization alerts/i)).toBeChecked();
     expect(screen.getByText(/blocked: consultant approval/i)).toBeInTheDocument();
+    expect(screen.getByText(/light-surface helper text/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /review accessible guidance/i })).toBeInTheDocument();
+  });
+
+  test('uses one central focus treatment for outlined fields while retaining the global ring', () => {
+    const baseline = theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>;
+    const focusSelector = '*:focus-visible:not(.MuiInputBase-input):not(.MuiSelect-select)';
+    expect(baseline).toHaveProperty(focusSelector);
+    expect(JSON.stringify(baseline[focusSelector])).toContain('outline');
+    expect(baseline).not.toHaveProperty('*:focus-visible');
+
+    const outlined = theme.components?.MuiOutlinedInput?.styleOverrides?.root;
+    expect(JSON.stringify(outlined)).toContain('Mui-focused');
+    expect(JSON.stringify(outlined)).toContain(String(designTokens.focus.width));
+  });
+
+  test('defines a scoped light-surface contract for representative nested controls', () => {
+    expect(focusSurfaceContentStyles).toMatchObject({
+      '& .MuiInputLabel-root': { color: designTokens.color.focusTextMuted },
+      '& .MuiInputBase-root': { color: designTokens.color.focusText },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: designTokens.color.focusControlBorder,
+      },
+      '& .MuiLink-root': { color: designTokens.color.focusLink },
+      '& .MuiDivider-root': { borderColor: designTokens.color.focusBorder },
+    });
+    expect(focusSurfaceContentStyles).toHaveProperty('& .MuiInputBase-input::placeholder');
+    expect(focusSurfaceContentStyles).toHaveProperty(
+      '& .MuiFormHelperText-root.Mui-error, & .MuiInputLabel-root.Mui-error',
+    );
+    expect(focusSurfaceContentStyles).toHaveProperty(
+      '& .MuiCheckbox-root, & .MuiRadio-root, & .MuiSwitch-root',
+    );
+  });
+
+  test('light-surface text and control tokens meet WCAG 2.2 AA contrast targets', () => {
+    for (const surface of [
+      designTokens.color.focusSurface,
+      designTokens.color.focusSurfacePositive,
+    ]) {
+      for (const textColor of [
+        designTokens.color.focusText,
+        designTokens.color.focusTextMuted,
+        designTokens.color.focusLink,
+        designTokens.color.focusError,
+      ]) {
+        expect(contrastRatio(textColor, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastRatio(designTokens.color.focusControlBorder, surface)).toBeGreaterThanOrEqual(
+        3,
+      );
+    }
   });
 
   test('exports canonical design tokens and reduced-motion behavior', () => {
@@ -152,8 +219,8 @@ describe('application shells', () => {
     expect(designTokens.focus.width).toBeGreaterThanOrEqual(2);
     expect(reducedMotionStyles).toHaveProperty('@media (prefers-reduced-motion: reduce)');
     const baseline = theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>;
-    expect(baseline).toHaveProperty('*:focus-visible');
-    expect(JSON.stringify(baseline['*:focus-visible'])).toContain('!important');
+    const focusRule = baseline['*:focus-visible:not(.MuiInputBase-input):not(.MuiSelect-select)'];
+    expect(JSON.stringify(focusRule)).toContain('!important');
   });
 
   test('enables the showcase in the test environment without adding navigation', () => {

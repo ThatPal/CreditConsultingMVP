@@ -30,7 +30,10 @@ export const designTokens = {
     focusText: '#18231f',
     focusTextMuted: '#53635d',
     focusBorder: '#cad8cf',
+    focusControlBorder: '#64756d',
     focusAccent: '#087f65',
+    focusLink: '#075f55',
+    focusError: '#a12b2b',
   },
   gradient: {
     brand: 'linear-gradient(135deg, #5b8cff 0%, #42d3f2 46%, #9b78ff 100%)',

@@ -15,6 +15,7 @@ import {
   FormHelperText,
   Grid,
   LinearProgress,
+  Link,
   MenuItem,
   Radio,
   RadioGroup,
@@ -224,35 +225,32 @@ export function DesignSystemPage() {
                 value="Quarterly"
                 fullWidth
                 slotProps={{ input: { readOnly: true } }}
-                sx={{
-                  '& .MuiInputBase-root': { color: designTokens.color.focusText },
-                  '& .MuiInputLabel-root': { color: designTokens.color.focusTextMuted },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: designTokens.color.focusBorder,
-                  },
-                }}
+                helperText="Light-surface helper text"
               />
-              <TextField
-                select
-                label="Primary goal"
-                value="increase"
-                fullWidth
-                sx={{
-                  '& .MuiInputBase-root': { color: designTokens.color.focusText },
-                  '& .MuiInputLabel-root': { color: designTokens.color.focusTextMuted },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: designTokens.color.focusBorder,
-                  },
-                }}
-              >
+              <TextField select label="Primary goal" value="increase" fullWidth>
                 <MenuItem value="increase">Increase total available credit</MenuItem>
               </TextField>
+              <Typography color="text.secondary">
+                Secondary guidance remains readable without flattening semantic colors.
+              </Typography>
+              <FormControlLabel control={<Checkbox defaultChecked />} label="Confirm strategy" />
+              <Link href="#focus-correction-evidence">Review accessible guidance</Link>
               <Button variant="contained">Confirm details</Button>
             </Stack>
           </FocusSurface>
         </Grid>
       </Grid>
       <SectionCard>
+        <Box id="focus-correction-evidence" sx={{ mb: 3 }}>
+          <Typography variant="overline" color="primary">
+            Focus correction evidence
+          </Typography>
+          <Typography variant="h2">One intentional keyboard-focus treatment</Typography>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            Focus the outlined field and button: the field uses its notched border while the button
+            retains the global focus-visible ring.
+          </Typography>
+        </Box>
         <Typography variant="overline" color="primary">
           Controls and interaction states
         </Typography>
@@ -266,6 +264,7 @@ export function DesignSystemPage() {
                 label="Applicant name"
                 defaultValue="Jordan Lee"
                 helperText="Synthetic showcase data"
+                slotProps={{ htmlInput: { 'data-focus-evidence': 'outlined-input' } }}
               />
               <TextField
                 label="Email"

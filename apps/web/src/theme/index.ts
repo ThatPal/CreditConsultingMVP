@@ -45,7 +45,7 @@ export const theme = createTheme({
           backgroundAttachment: 'fixed',
         },
         '*': { boxSizing: 'border-box' },
-        '*:focus-visible': {
+        '*:focus-visible:not(.MuiInputBase-input):not(.MuiSelect-select)': {
           outline: `${designTokens.focus.width}px solid ${alpha(designTokens.color.cyan, 0.9)} !important`,
           outlineOffset: `${designTokens.focus.offset}px !important`,
         },
@@ -82,6 +82,16 @@ export const theme = createTheme({
       ],
     },
     MuiTextField: { defaultProps: { size: 'small' } },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: designTokens.color.cyan,
+            borderWidth: designTokens.focus.width,
+          },
+        },
+      },
+    },
     MuiFormHelperText: { styleOverrides: { root: { marginInline: 0 } } },
     MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
     MuiDialog: {

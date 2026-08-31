@@ -2,6 +2,46 @@ import { Box, Divider, Stack, Typography, type SxProps, type Theme } from '@mui/
 import type { PropsWithChildren, ReactNode } from 'react';
 import { designTokens } from '../../theme';
 
+export const focusSurfaceContentStyles = {
+  '& .MuiTypography-root': { color: 'inherit' },
+  '& .MuiTypography-colorTextSecondary, & .MuiFormHelperText-root': {
+    color: designTokens.color.focusTextMuted,
+  },
+  '& .MuiFormHelperText-root.Mui-error, & .MuiInputLabel-root.Mui-error': {
+    color: designTokens.color.focusError,
+  },
+  '& .MuiInputLabel-root': { color: designTokens.color.focusTextMuted },
+  '& .MuiInputBase-root': { color: designTokens.color.focusText },
+  '& .MuiInputBase-input::placeholder': {
+    color: designTokens.color.focusTextMuted,
+    opacity: 1,
+  },
+  '& .MuiOutlinedInput-notchedOutline': {
+    borderColor: designTokens.color.focusControlBorder,
+  },
+  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+    borderColor: designTokens.color.focusAccent,
+  },
+  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+    borderColor: designTokens.color.focusAccent,
+  },
+  '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': {
+    borderColor: designTokens.color.focusError,
+  },
+  '& .MuiSvgIcon-root': { color: 'currentColor' },
+  '& .MuiInputAdornment-root, & .MuiSelect-icon': { color: designTokens.color.focusTextMuted },
+  '& .MuiCheckbox-root, & .MuiRadio-root, & .MuiSwitch-root': {
+    color: designTokens.color.focusTextMuted,
+  },
+  '& .MuiCheckbox-root.Mui-checked, & .MuiRadio-root.Mui-checked, & .MuiSwitch-switchBase.Mui-checked':
+    {
+      color: designTokens.color.focusAccent,
+    },
+  '& .MuiFormControlLabel-label': { color: designTokens.color.focusText },
+  '& .MuiLink-root': { color: designTokens.color.focusLink },
+  '& .MuiDivider-root': { borderColor: designTokens.color.focusBorder },
+} as const;
+
 export function FocusSurface({
   title,
   eyebrow,
@@ -29,9 +69,7 @@ export function FocusSurface({
           borderRadius: `${designTokens.radius.lg}px`,
           p: { xs: 2.5, sm: 4 },
           boxShadow: '0 18px 50px rgba(0, 0, 0, 0.18)',
-          '& .MuiTypography-root': { color: 'inherit' },
-          '& .MuiTypography-colorTextSecondary': { color: designTokens.color.focusTextMuted },
-          '& .MuiDivider-root': { borderColor: designTokens.color.focusBorder },
+          ...focusSurfaceContentStyles,
         },
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
