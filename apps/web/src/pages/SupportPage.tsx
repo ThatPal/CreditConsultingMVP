@@ -22,6 +22,7 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
+  MenuItem,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -50,6 +51,12 @@ type SupportCase = {
   subject: string;
   lastMessageAt: string;
   createdAt: string;
+  unread?: boolean;
+  context?: { type: string; resourceId: string | null; summary: string };
+  attachments?: Array<{
+    id: string;
+    document: { id: string; displayFileName: string; mimeType: string; sizeBytes: number };
+  }>;
   messages: Array<{
     id: string;
     body: string;
@@ -96,6 +103,23 @@ export function SupportPage() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [reply, setReply] = useState('');
+  const [attachmentDocumentIds, setAttachmentDocumentIds] = useState<string[]>([]);
+  const contextType = searchParams.get('contextType') ?? 'GENERAL';
+  const contextResourceId = searchParams.get('contextId');
+  const categoryQuery = useQuery({
+    queryKey: ['support-categories'],
+    queryFn: () =>
+      apiRequest<{
+        categories: Array<{ key: SupportCategory; name: string; allowedContextTypes: string[] }>;
+      }>('/api/v1/client/support-categories'),
+  });
+  const documentQuery = useQuery({
+    queryKey: ['documents'],
+    queryFn: () =>
+      apiRequest<{
+        documents: Array<{ id: string; displayFileName: string; status: string }>;
+      }>('/api/v1/documents'),
+  });
   const query = useQuery({
     queryKey: ['support-cases'],
     queryFn: () => apiRequest<{ cases: SupportCase[] }>('/api/v1/client/support-cases'),
@@ -114,7 +138,16 @@ export function SupportPage() {
     mutationFn: () =>
       apiRequest<{ case: SupportCase }>('/api/v1/client/support-cases', {
         method: 'POST',
-        body: JSON.stringify({ category, priority, subject, message }),
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({
+          category,
+          priority,
+          subject,
+          message,
+          contextType,
+          contextResourceId,
+          attachmentDocumentIds,
+        }),
       }),
     onSuccess: async ({ case: created }) => {
       await refresh();
@@ -123,6 +156,7 @@ export function SupportPage() {
       setSubject('');
       setMessage('');
       setPriority('NORMAL');
+      setAttachmentDocumentIds([]);
     },
   });
   const sendReply = useMutation({
@@ -330,6 +364,23 @@ export function SupportPage() {
                       </Button>
                     )}
                   </Stack>
+                  {selected.context && selected.context.type !== 'GENERAL' && (
+                    <Alert severity="info">Linked context: {selected.context.summary}</Alert>
+                  )}
+                  {!!selected.attachments?.length && (
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                      {selected.attachments.map(({ document }) => (
+                        <Button
+                          key={document.id}
+                          size="small"
+                          variant="outlined"
+                          href={`/api/v1/documents/${document.id}/content`}
+                        >
+                          {document.displayFileName}
+                        </Button>
+                      ))}
+                    </Stack>
+                  )}
                   <Divider />
                   <Stack
                     spacing={1.5}
@@ -437,9 +488,11 @@ export function SupportPage() {
                   '& .Mui-selected': { borderColor: 'primary.main !important' },
                 }}
               >
-                {categories.map(([value, label]) => (
-                  <ToggleButton key={value} value={value}>
-                    {label}
+                {(
+                  categoryQuery.data?.categories ?? categories.map(([key, name]) => ({ key, name }))
+                ).map(({ key, name }) => (
+                  <ToggleButton key={key} value={key}>
+                    {name}
                   </ToggleButton>
                 ))}
               </ToggleButtonGroup>
@@ -469,6 +522,32 @@ export function SupportPage() {
               value={message}
               onChange={(event) => setMessage(event.target.value)}
             />
+            <TextField
+              select
+              label="Attach existing documents (optional)"
+              value={attachmentDocumentIds}
+              onChange={(event) =>
+                setAttachmentDocumentIds(
+                  typeof event.target.value === 'string'
+                    ? event.target.value.split(',')
+                    : event.target.value,
+                )
+              }
+              slotProps={{ select: { multiple: true } }}
+              helperText="Upload new files in Documents first, then attach them here."
+            >
+              {(documentQuery.data?.documents ?? []).map((document) => (
+                <MenuItem key={document.id} value={document.id}>
+                  {document.displayFileName}
+                </MenuItem>
+              ))}
+            </TextField>
+            {contextType !== 'GENERAL' && (
+              <Alert severity="info">
+                This request will include the linked {contextType.toLowerCase().replace('_', ' ')}
+                context only. No broader profile data is shared.
+              </Alert>
+            )}
             {createCase.isError && <Alert severity="error">{createCase.error.message}</Alert>}
           </Stack>
         </DialogContent>

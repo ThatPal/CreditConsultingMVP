@@ -7,6 +7,7 @@ import {
   systemOptionTemplates,
   systemDocumentTypes,
   systemNotificationTemplates,
+  systemSupportCategories,
 } from './systemSeed.js';
 
 let prisma: PrismaClient;
@@ -29,6 +30,7 @@ describe('canonical system seed', () => {
       roleCapabilities: Object.values(roleCapabilityPolicy).flat().length,
       documentTypes: systemDocumentTypes.length,
       notificationTemplates: systemNotificationTemplates.length,
+      supportCategories: systemSupportCategories.length,
       integrations: 1,
     });
     expect(second).toEqual(first);

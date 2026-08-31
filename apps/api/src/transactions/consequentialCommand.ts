@@ -64,7 +64,7 @@ type CommandInput<TResult extends Prisma.InputJsonValue> = {
     eventType: string;
     eventKey: string;
     aggregateType: string;
-    aggregateId?: string | null;
+    aggregateId?: string | null | ((result: TResult) => string | null);
     payload: Prisma.InputJsonValue | ((result: TResult) => Prisma.InputJsonValue);
     payloadVersion?: number;
   };
@@ -137,7 +137,10 @@ export async function executeConsequentialCommand<TResult extends Prisma.InputJs
           eventType: input.outbox.eventType,
           eventKey: input.outbox.eventKey,
           aggregateType: input.outbox.aggregateType,
-          aggregateId: input.outbox.aggregateId ?? null,
+          aggregateId:
+            typeof input.outbox.aggregateId === 'function'
+              ? input.outbox.aggregateId(commandResult)
+              : (input.outbox.aggregateId ?? null),
           payload,
           payloadVersion: input.outbox.payloadVersion ?? 1,
         },

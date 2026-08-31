@@ -40,6 +40,13 @@ type ConsultantCase = {
   status: CaseStatus;
   createdAt: string;
   lastMessageAt: string;
+  updatedAt: string;
+  unread?: boolean;
+  context?: { type: string; resourceId: string | null; summary: string };
+  attachments?: Array<{
+    id: string;
+    document: { id: string; displayFileName: string; mimeType: string; sizeBytes: number };
+  }>;
   client: { id: string; firstName: string; lastName: string; user: { email: string } | null };
   messages: Array<{
     id: string;
@@ -124,6 +131,7 @@ export function ConsultantSupportPage() {
     mutationFn: () =>
       apiRequest(`/api/v1/consultant/support-cases/${selectedId}/messages`, {
         method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify({
           message: draft,
           internal: composerType === 'INTERNAL',
@@ -140,7 +148,7 @@ export function ConsultantSupportPage() {
     mutationFn: (body: { status?: CaseStatus; priority?: Priority }) =>
       apiRequest(`/api/v1/consultant/support-cases/${selectedId}`, {
         method: 'PATCH',
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, expectedUpdatedAt: selected?.updatedAt }),
       }),
     onSuccess: refresh,
   });
@@ -313,6 +321,23 @@ export function ConsultantSupportPage() {
                     Resolve
                   </Button>
                 </Stack>
+                {selected.context && selected.context.type !== 'GENERAL' && (
+                  <Alert severity="info">Validated context: {selected.context.summary}</Alert>
+                )}
+                {!!selected.attachments?.length && (
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    {selected.attachments.map(({ document }) => (
+                      <Button
+                        key={document.id}
+                        size="small"
+                        variant="outlined"
+                        href={`/api/v1/documents/${document.id}/content`}
+                      >
+                        {document.displayFileName}
+                      </Button>
+                    ))}
+                  </Stack>
+                )}
                 <Divider />
 
                 <Stack

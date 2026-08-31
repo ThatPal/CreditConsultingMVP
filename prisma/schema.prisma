@@ -278,6 +278,13 @@ enum SupportCaseStatus {
   CLOSED
 }
 
+enum SupportContextType {
+  GENERAL
+  DOCUMENT
+  REVIEW
+  APPLICATION_SESSION
+}
+
 enum OptionKind {
   FINDING
   RECOMMENDATION
@@ -416,6 +423,7 @@ model User {
   accessGrantsRevoked     ClientAccessGrant[]      @relation("AccessGrantRevoker")
   securityEvents          SecurityEvent[]          @relation("SecurityEventActor")
   documentsUploaded       Document[]               @relation("DocumentUploader")
+  supportAttachments      SupportAttachment[]      @relation("SupportAttachmentActor")
 
   @@index([role, status])
 }
@@ -799,34 +807,35 @@ model DocumentType {
 }
 
 model Document {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clientId          String          @db.Uuid
-  documentTypeId    String          @db.Uuid
-  originalFileName  String
-  displayFileName   String
-  mimeType          String
-  sizeBytes         Int
-  sha256            String
-  storageProvider   StorageProvider
-  storageKey        String
-  status            DocumentStatus  @default(AVAILABLE)
-  clientVisible     Boolean
-  uploadedByUserId  String          @db.Uuid
-  source            String          @default("APPLICATION")
-  uploadedAt        DateTime        @default(now()) @db.Timestamptz(3)
-  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime        @updatedAt @db.Timestamptz(3)
-  supersededAt      DateTime?       @db.Timestamptz(3)
-  supersededById    String?         @unique @db.Uuid
-  retentionCategory String
-  retainUntil       DateTime?       @db.Timestamptz(3)
-  retentionHoldAt   DateTime?       @db.Timestamptz(3)
-  deletedAt         DateTime?       @db.Timestamptz(3)
-  client            Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  documentType      DocumentType    @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
-  uploadedBy        User            @relation("DocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
-  supersededBy      Document?       @relation("DocumentReplacement", fields: [supersededById], references: [id], onDelete: SetNull)
-  supersedes        Document?       @relation("DocumentReplacement")
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId           String              @db.Uuid
+  documentTypeId     String              @db.Uuid
+  originalFileName   String
+  displayFileName    String
+  mimeType           String
+  sizeBytes          Int
+  sha256             String
+  storageProvider    StorageProvider
+  storageKey         String
+  status             DocumentStatus      @default(AVAILABLE)
+  clientVisible      Boolean
+  uploadedByUserId   String              @db.Uuid
+  source             String              @default("APPLICATION")
+  uploadedAt         DateTime            @default(now()) @db.Timestamptz(3)
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
+  supersededAt       DateTime?           @db.Timestamptz(3)
+  supersededById     String?             @unique @db.Uuid
+  retentionCategory  String
+  retainUntil        DateTime?           @db.Timestamptz(3)
+  retentionHoldAt    DateTime?           @db.Timestamptz(3)
+  deletedAt          DateTime?           @db.Timestamptz(3)
+  client             Client              @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  documentType       DocumentType        @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+  uploadedBy         User                @relation("DocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  supersededBy       Document?           @relation("DocumentReplacement", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes         Document?           @relation("DocumentReplacement")
+  supportAttachments SupportAttachment[]
 
   @@unique([storageProvider, storageKey])
   @@index([clientId, status, uploadedAt])
@@ -957,38 +966,73 @@ model WorkItem {
 }
 
 model SupportCase {
-  id               String            @id @default(uuid()) @db.Uuid
-  clientId         String            @db.Uuid
-  createdByUserId  String            @db.Uuid
-  assignedToUserId String?           @db.Uuid
-  category         SupportCategory
-  priority         SupportPriority   @default(NORMAL)
-  status           SupportCaseStatus @default(WAITING_ON_SUPPORT)
-  subject          String
-  lastMessageAt    DateTime          @default(now())
-  resolvedAt       DateTime?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  client           Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  createdBy        User              @relation("SupportCaseCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  assignedTo       User?             @relation("SupportCaseAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
-  messages         SupportMessage[]
+  id                 String                    @id @default(uuid()) @db.Uuid
+  clientId           String                    @db.Uuid
+  createdByUserId    String                    @db.Uuid
+  assignedToUserId   String?                   @db.Uuid
+  category           SupportCategory
+  priority           SupportPriority           @default(NORMAL)
+  status             SupportCaseStatus         @default(WAITING_ON_SUPPORT)
+  subject            String
+  contextType        SupportContextType        @default(GENERAL)
+  contextResourceId  String?                   @db.Uuid
+  lastMessageAt      DateTime                  @default(now())
+  clientReadAt       DateTime?
+  staffReadAt        DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  client             Client                    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdBy          User                      @relation("SupportCaseCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  assignedTo         User?                     @relation("SupportCaseAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  messages           SupportMessage[]
+  attachments        SupportAttachment[]
+  categoryDefinition SupportCategoryDefinition @relation(fields: [category], references: [key], onDelete: Restrict)
 
   @@index([clientId, status, lastMessageAt])
   @@index([assignedToUserId, status, priority, lastMessageAt])
 }
 
-model SupportMessage {
-  id            String      @id @default(uuid()) @db.Uuid
-  supportCaseId String      @db.Uuid
-  authorUserId  String      @db.Uuid
-  body          String
-  internal      Boolean     @default(false)
-  createdAt     DateTime    @default(now())
-  supportCase   SupportCase @relation(fields: [supportCaseId], references: [id], onDelete: Cascade)
-  author        User        @relation("SupportMessageAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+model SupportCategoryDefinition {
+  key                 SupportCategory      @id
+  name                String
+  enabled             Boolean              @default(true)
+  clientVisible       Boolean              @default(true)
+  allowedContextTypes SupportContextType[]
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
+  tickets             SupportCase[]
 
+  @@index([enabled, clientVisible])
+}
+
+model SupportMessage {
+  id             String      @id @default(uuid()) @db.Uuid
+  supportCaseId  String      @db.Uuid
+  authorUserId   String      @db.Uuid
+  body           String
+  idempotencyKey String?
+  internal       Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  supportCase    SupportCase @relation(fields: [supportCaseId], references: [id], onDelete: Cascade)
+  author         User        @relation("SupportMessageAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([supportCaseId, authorUserId, idempotencyKey])
   @@index([supportCaseId, createdAt])
+}
+
+model SupportAttachment {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supportCaseId    String      @db.Uuid
+  documentId       String      @db.Uuid
+  attachedByUserId String      @db.Uuid
+  createdAt        DateTime    @default(now()) @db.Timestamptz(3)
+  supportCase      SupportCase @relation(fields: [supportCaseId], references: [id], onDelete: Cascade)
+  document         Document    @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  attachedBy       User        @relation("SupportAttachmentActor", fields: [attachedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([supportCaseId, documentId])
+  @@index([documentId])
 }
 
 model Notification {

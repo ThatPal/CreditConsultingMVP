@@ -27,6 +27,28 @@ export const systemDocumentTypes = [
     retentionCategory: 'CLIENT_RECORD',
     retentionDays: null,
   },
+  {
+    key: 'SUPPORT_ATTACHMENT',
+    name: 'Support attachment',
+    allowedMimeTypes: ['application/pdf', 'image/png', 'image/jpeg'],
+    allowedExtensions: ['.pdf', '.png', '.jpg', '.jpeg'],
+    maximumSizeBytes: 10 * 1024 * 1024,
+    clientVisible: true,
+    clientUploadEnabled: true,
+    retentionCategory: 'SUPPORT_RECORD',
+    retentionDays: null,
+  },
+] as const;
+
+export const systemSupportCategories = [
+  ['ACCOUNT', 'Account', ['GENERAL']],
+  ['BILLING', 'Billing', ['GENERAL']],
+  ['CREDIT_REVIEW', 'Credit Review', ['GENERAL', 'DOCUMENT', 'REVIEW']],
+  ['DOCUMENTS', 'Documents', ['GENERAL', 'DOCUMENT']],
+  ['APPLICATION_ROUND', 'Application Round', ['GENERAL', 'APPLICATION_SESSION']],
+  ['MAJOR_READINESS', 'Credit Readiness', ['GENERAL', 'REVIEW']],
+  ['TECHNICAL', 'Technical', ['GENERAL']],
+  ['OTHER', 'Other', ['GENERAL']],
 ] as const;
 
 export const systemNotificationTemplates = [
@@ -191,6 +213,18 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
         update: { subject: template.subject, body: template.body, enabled: true },
       }),
     ),
+    ...systemSupportCategories.map(([key, name, allowedContextTypes]) =>
+      prisma.supportCategoryDefinition.upsert({
+        where: { key },
+        create: { key, name, allowedContextTypes: [...allowedContextTypes] },
+        update: {
+          name,
+          allowedContextTypes: [...allowedContextTypes],
+          enabled: true,
+          clientVisible: true,
+        },
+      }),
+    ),
     prisma.integration.upsert({
       where: { key: 'EMAIL_PRIMARY' },
       create: {
@@ -211,6 +245,7 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
     roleCapabilities: capabilityRows.length,
     documentTypes: systemDocumentTypes.length,
     notificationTemplates: systemNotificationTemplates.length,
+    supportCategories: systemSupportCategories.length,
     integrations: 1,
   };
 }

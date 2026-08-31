@@ -297,6 +297,61 @@ describe('Review entitlement and report authorization characterization', () => {
 });
 
 describe('Support, notification, and application-cycle characterization', () => {
+  test('creates an auditable support request exactly once and preserves client isolation', async () => {
+    const consultant = await createStaff('CONSULTANT', 'support-command');
+    const owner = await createClient('support-command-owner', consultant.user.id);
+    const stranger = await createClient('support-command-stranger');
+    const app = buildApp();
+    const idempotencyKey = `support-${crypto.randomUUID()}`;
+    const payload = {
+      category: 'ACCOUNT',
+      priority: 'NORMAL',
+      subject: 'Cannot update my profile',
+      message: 'Please help me update my profile.',
+      contextType: 'GENERAL',
+      attachmentDocumentIds: [],
+    };
+
+    const first = await request(app)
+      .post('/api/v1/client/support-cases')
+      .set('x-test-principal', owner.header)
+      .set('Idempotency-Key', idempotencyKey)
+      .send(payload)
+      .expect(201);
+    const replay = await request(app)
+      .post('/api/v1/client/support-cases')
+      .set('x-test-principal', owner.header)
+      .set('Idempotency-Key', idempotencyKey)
+      .send(payload)
+      .expect(200);
+
+    expect(replay.body.replayed).toBe(true);
+    expect(replay.body.case.id).toBe(first.body.case.id);
+    expect(await prisma.supportCase.count({ where: { id: first.body.case.id } })).toBe(1);
+    expect(
+      await prisma.supportMessage.count({ where: { supportCaseId: first.body.case.id } }),
+    ).toBe(1);
+    expect(
+      await prisma.auditEvent.count({
+        where: { action: 'SUPPORT_CASE_CREATED', entityId: first.body.case.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.outboxEvent.count({
+        where: { eventType: 'support.ticket.created', aggregateId: first.body.case.id },
+      }),
+    ).toBe(1);
+
+    await request(app)
+      .get(`/api/v1/client/support-cases/${first.body.case.id}`)
+      .set('x-test-principal', stranger.header)
+      .expect(404);
+    await request(app)
+      .get(`/api/v1/consultant/support-cases/${first.body.case.id}`)
+      .set('x-test-principal', consultant.header)
+      .expect(200);
+  });
+
   test('keeps support cases client-scoped, hides internal messages, and enforces staff assignment', async () => {
     const assigned = await createStaff('CONSULTANT', 'assigned-support');
     const unassigned = await createStaff('CONSULTANT', 'unassigned-support');
@@ -356,10 +411,7 @@ describe('Support, notification, and application-cycle characterization', () => 
     await request(app)
       .get('/api/v1/consultant/support-cases')
       .set('x-test-principal', admin.header)
-      .expect(200)
-      .expect(({ body }) =>
-        expect(body.cases.map(({ id }: { id: string }) => id)).toContain(ownerCase.id),
-      );
+      .expect(403);
   });
 
   test('scopes notification reads and updates to the authenticated user', async () => {
