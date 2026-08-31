@@ -40,6 +40,27 @@ export const focusSurfaceContentStyles = {
   '& .MuiFormControlLabel-label': { color: designTokens.color.focusText },
   '& .MuiLink-root': { color: designTokens.color.focusLink },
   '& .MuiDivider-root': { borderColor: designTokens.color.focusBorder },
+  '& .MuiTableCell-root': {
+    color: designTokens.color.focusText,
+    borderColor: designTokens.color.focusBorder,
+  },
+  '& .MuiTableCell-head': {
+    color: designTokens.color.focusText,
+    fontWeight: designTokens.typography.weight.strong,
+  },
+  '& .MuiTableCell-root .MuiTypography-colorTextSecondary': {
+    color: designTokens.color.focusTextMuted,
+  },
+  '& .MuiTableSortLabel-root, & .MuiTableSortLabel-icon': {
+    color: designTokens.color.focusTextMuted,
+  },
+  '& .MuiTableSortLabel-root:hover, & .MuiTableSortLabel-root.Mui-active': {
+    color: designTokens.color.focusAccent,
+  },
+  '& .MuiCircularProgress-root': { color: designTokens.color.focusAccent },
+  '& .MuiLinearProgress-root': { backgroundColor: designTokens.color.focusTrack },
+  '& .MuiLinearProgress-bar': { backgroundColor: designTokens.color.focusAccent },
+  '& .MuiSkeleton-root': { backgroundColor: designTokens.color.focusSkeleton },
 } as const;
 
 export function FocusSurface({

@@ -161,6 +161,12 @@ describe('application shells', () => {
     expect(screen.getByText(/blocked: consultant approval/i)).toBeInTheDocument();
     expect(screen.getByText(/light-surface helper text/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /review accessible guidance/i })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: /recent applications neutral/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('table', { name: /recent applications positive/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/neutral circular loading/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/positive progress 64 percent/i)).toBeInTheDocument();
   });
 
   test('uses one central focus treatment for outlined fields while retaining the global ring', () => {
@@ -191,6 +197,23 @@ describe('application shells', () => {
     );
     expect(focusSurfaceContentStyles).toHaveProperty(
       '& .MuiCheckbox-root, & .MuiRadio-root, & .MuiSwitch-root',
+    );
+    expect(focusSurfaceContentStyles).toMatchObject({
+      '& .MuiTableCell-root': {
+        color: designTokens.color.focusText,
+        borderColor: designTokens.color.focusBorder,
+      },
+      '& .MuiTableCell-head': {
+        color: designTokens.color.focusText,
+        fontWeight: designTokens.typography.weight.strong,
+      },
+      '& .MuiCircularProgress-root': { color: designTokens.color.focusAccent },
+      '& .MuiLinearProgress-root': { backgroundColor: designTokens.color.focusTrack },
+      '& .MuiLinearProgress-bar': { backgroundColor: designTokens.color.focusAccent },
+      '& .MuiSkeleton-root': { backgroundColor: designTokens.color.focusSkeleton },
+    });
+    expect(focusSurfaceContentStyles).toHaveProperty(
+      '& .MuiTableSortLabel-root, & .MuiTableSortLabel-icon',
     );
   });
 

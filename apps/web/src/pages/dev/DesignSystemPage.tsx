@@ -9,6 +9,7 @@ import {
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   Divider,
   Drawer,
   FormControlLabel,
@@ -19,6 +20,7 @@ import {
   MenuItem,
   Radio,
   RadioGroup,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -373,6 +375,58 @@ export function DesignSystemPage() {
           </Grid>
         </Grid>
       </FocusSurface>
+      <Grid container spacing={2.5}>
+        {(['neutral', 'positive'] as const).map((variant) => (
+          <Grid key={variant} size={{ xs: 12, lg: 6 }}>
+            <FocusSurface
+              eyebrow={`${variant} light-surface evidence`}
+              title={`Recent Applications — ${variant}`}
+              variant={variant}
+            >
+              <Table size="small" aria-label={`Recent Applications ${variant}`}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Applicant</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell align="right">Updated</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>
+                      Jordan Lee
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block' }}
+                      >
+                        Mortgage readiness review
+                      </Typography>
+                    </TableCell>
+                    <TableCell>In review</TableCell>
+                    <TableCell align="right">Today</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+              <Stack
+                direction="row"
+                spacing={2}
+                sx={{ alignItems: 'center', mt: 2.5 }}
+                aria-label={`${variant} light-surface loading indicators`}
+              >
+                <CircularProgress size={26} aria-label={`${variant} circular loading`} />
+                <LinearProgress
+                  variant="determinate"
+                  value={64}
+                  aria-label={`${variant} progress 64 percent`}
+                  sx={{ flex: 1, height: 8, borderRadius: 99 }}
+                />
+                <Skeleton width={72} height={30} />
+              </Stack>
+            </FocusSurface>
+          </Grid>
+        ))}
+      </Grid>
       <Box>
         <Typography variant="overline" color="primary">
           Surfaces and states
