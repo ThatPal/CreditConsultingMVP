@@ -1,14 +1,12 @@
-import { EventEmitter } from 'node:events';
+import type { LiveEventDomain, LiveEventEnvelope } from '@credit/shared';
+import { domainEventBus } from './events/eventBus.js';
 
-export type LiveUpdate = { clientId: string; domains: string[]; at: string };
-const events = new EventEmitter();
-events.setMaxListeners(500);
+export type LiveUpdate = LiveEventEnvelope;
 
-export function publishLiveUpdate(clientId: string, ...domains: string[]) {
-  events.emit('refresh', { clientId, domains, at: new Date().toISOString() } satisfies LiveUpdate);
+export function publishLiveUpdate(clientId: string, ...domains: LiveEventDomain[]) {
+  void domainEventBus.publish(clientId, domains);
 }
 
 export function subscribeToLiveUpdates(listener: (update: LiveUpdate) => void) {
-  events.on('refresh', listener);
-  return () => events.off('refresh', listener);
+  return domainEventBus.subscribe(listener);
 }

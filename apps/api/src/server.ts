@@ -9,11 +9,17 @@ import { createPrismaServiceStore } from './services/prismaServiceStore.js';
 import { createServiceCatalog } from './services/service.js';
 import { createLogger } from './lib/logger.js';
 import { createPrisma } from './lib/prisma.js';
+import { createEmailProvider, createPasswordResetNotifier } from './notifications/emailProvider.js';
 
 const env = loadEnv();
 const logger = createLogger(env);
 const prisma = createPrisma(env.DATABASE_URL);
-const auth = createAuthService(createPrismaAuthStore(prisma), env);
+const emailProvider = createEmailProvider(env, logger);
+const auth = createAuthService(
+  createPrismaAuthStore(prisma),
+  env,
+  createPasswordResetNotifier(emailProvider),
+);
 const goals = createGoalService(createPrismaGoalStore(prisma));
 const services = createServiceCatalog(createPrismaServiceStore(prisma));
 const server = createServer(createApp(env, logger, auth, goals, services, prisma));

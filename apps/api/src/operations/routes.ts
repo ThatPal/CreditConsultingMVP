@@ -4,7 +4,7 @@ import type { AuthService } from '../auth/authService.js';
 import { requireAuth, requireClientAccess, requireRole } from '../auth/middleware.js';
 import type { PrismaClient, WorkItemStatus } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
-import { publishLiveUpdate, subscribeToLiveUpdates } from '../liveUpdates.js';
+import { publishLiveUpdate, subscribeToLiveUpdates, type LiveUpdate } from '../liveUpdates.js';
 
 const supportCaseSchema = z.object({
   category: z.enum([
@@ -122,7 +122,7 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
     res.write(`event: ready\ndata: ${JSON.stringify({ at: new Date().toISOString() })}\n\n`);
 
     let active = true;
-    const send = async (update: { clientId: string; domains: string[]; at: string }) => {
+    const send = async (update: LiveUpdate) => {
       if (!active || res.writableEnded) return;
       const allowed =
         req.auth!.role === 'ADMIN' ||
@@ -133,10 +133,7 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
     };
     const unsubscribe = subscribeToLiveUpdates((update) => void send(update));
     const heartbeat = setInterval(() => {
-      if (!res.writableEnded)
-        res.write(
-          `event: refresh\ndata: ${JSON.stringify({ domains: ['all'], at: new Date().toISOString() })}\n\n`,
-        );
+      if (!res.writableEnded) res.write(`: heartbeat ${new Date().toISOString()}\n\n`);
     }, 5000);
     req.on('close', () => {
       active = false;
@@ -320,18 +317,34 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
         const cycleId = Array.isArray(req.params.cycleId)
           ? req.params.cycleId[0]
           : req.params.cycleId;
-        if (!cycleId) throw new AppError('APPLICATION_CYCLE_NOT_FOUND', 404, 'Active application cycle not found');
+        if (!cycleId)
+          throw new AppError(
+            'APPLICATION_CYCLE_NOT_FOUND',
+            404,
+            'Active application cycle not found',
+          );
         const cycle = await prisma.applicationCycle.findFirst({
           where: { id: cycleId, clientId, status: 'ACTIVE' },
           include: { steps: { orderBy: { sortOrder: 'asc' } } },
         });
-        if (!cycle) throw new AppError('APPLICATION_CYCLE_NOT_FOUND', 404, 'Active application cycle not found');
+        if (!cycle)
+          throw new AppError(
+            'APPLICATION_CYCLE_NOT_FOUND',
+            404,
+            'Active application cycle not found',
+          );
         const goal = await prisma.clientGoal.findFirst({
           where: { clientId, priority: 'PRIMARY', status: 'ACTIVE' },
         });
-        if (!goal) throw new AppError('PRIMARY_GOAL_REQUIRED', 409, 'Confirm a primary goal before continuing');
+        if (!goal)
+          throw new AppError(
+            'PRIMARY_GOAL_REQUIRED',
+            409,
+            'Confirm a primary goal before continuing',
+          );
         const goalStep = cycle.steps.find((step) => step.stage === 'STARTED');
-        if (!goalStep) throw new AppError('GOAL_STEP_NOT_FOUND', 409, 'Goal confirmation step is unavailable');
+        if (!goalStep)
+          throw new AppError('GOAL_STEP_NOT_FOUND', 409, 'Goal confirmation step is unavailable');
         if (goalStep.status !== 'COMPLETE') {
           const nextStep = cycle.steps.find((step) => step.stage === 'REVIEW_PURCHASE');
           await prisma.$transaction(async (tx) => {
@@ -390,14 +403,25 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
         const cycleId = Array.isArray(req.params.cycleId)
           ? req.params.cycleId[0]
           : req.params.cycleId;
-        if (!cycleId) throw new AppError('APPLICATION_CYCLE_NOT_FOUND', 404, 'Active application cycle not found');
+        if (!cycleId)
+          throw new AppError(
+            'APPLICATION_CYCLE_NOT_FOUND',
+            404,
+            'Active application cycle not found',
+          );
         const cycle = await prisma.applicationCycle.findFirst({
           where: { id: cycleId, clientId, status: 'ACTIVE' },
           include: { steps: true },
         });
-        if (!cycle) throw new AppError('APPLICATION_CYCLE_NOT_FOUND', 404, 'Active application cycle not found');
+        if (!cycle)
+          throw new AppError(
+            'APPLICATION_CYCLE_NOT_FOUND',
+            404,
+            'Active application cycle not found',
+          );
         const goalStep = cycle.steps.find((step) => step.stage === 'STARTED');
-        if (!goalStep) throw new AppError('GOAL_STEP_NOT_FOUND', 409, 'Goal confirmation step is unavailable');
+        if (!goalStep)
+          throw new AppError('GOAL_STEP_NOT_FOUND', 409, 'Goal confirmation step is unavailable');
         const reviewPurchaseStep = cycle.steps.find((step) => step.stage === 'REVIEW_PURCHASE');
         await prisma.$transaction(async (tx) => {
           const mockPurchase = await tx.servicePurchase.findFirst({
@@ -424,8 +448,11 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
           await tx.applicationCycleStep.updateMany({
             where: { cycleId: cycle.id },
             data: {
-              status: 'NOT_STARTED', startedAt: null, completedAt: null,
-              sourceType: null, sourceId: null,
+              status: 'NOT_STARTED',
+              startedAt: null,
+              completedAt: null,
+              sourceType: null,
+              sourceId: null,
             },
           });
           await tx.applicationCycleStep.update({
@@ -435,8 +462,11 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
           await tx.applicationCycle.update({
             where: { id: cycle.id },
             data: {
-              currentStage: 'STARTED', readinessDecision: null,
-              madeItToApplications: false, finalResult: null, closedAt: null,
+              currentStage: 'STARTED',
+              readinessDecision: null,
+              madeItToApplications: false,
+              finalResult: null,
+              closedAt: null,
             },
           });
           await tx.auditEvent.create({
@@ -466,19 +496,43 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
           throw new AppError('DEVELOPMENT_ONLY', 404, 'Route not found');
         }
         const clientId = req.auth!.clientId!;
-        const cycleId = Array.isArray(req.params.cycleId) ? req.params.cycleId[0] : req.params.cycleId;
-        if (!cycleId) throw new AppError('APPLICATION_CYCLE_NOT_FOUND', 404, 'Active application cycle not found');
+        const cycleId = Array.isArray(req.params.cycleId)
+          ? req.params.cycleId[0]
+          : req.params.cycleId;
+        if (!cycleId)
+          throw new AppError(
+            'APPLICATION_CYCLE_NOT_FOUND',
+            404,
+            'Active application cycle not found',
+          );
         const result = await prisma.$transaction(async (tx) => {
           const cycle = await tx.applicationCycle.findFirst({
             where: { id: cycleId, clientId, status: 'ACTIVE' },
             include: { steps: true },
           });
-          if (!cycle) throw new AppError('APPLICATION_CYCLE_NOT_FOUND', 404, 'Active application cycle not found');
+          if (!cycle)
+            throw new AppError(
+              'APPLICATION_CYCLE_NOT_FOUND',
+              404,
+              'Active application cycle not found',
+            );
           const purchaseStep = cycle.steps.find((step) => step.stage === 'REVIEW_PURCHASE');
           const reviewStep = cycle.steps.find((step) => step.stage === 'CREDIT_REVIEW');
-          if (!purchaseStep || !reviewStep) throw new AppError('REVIEW_STEP_NOT_FOUND', 409, 'Credit Profile Review step is unavailable');
-          const definition = await tx.serviceDefinition.findUnique({ where: { serviceType: 'CREDIT_PROFILE_REVIEW' } });
-          if (!definition?.active) throw new AppError('SERVICE_UNAVAILABLE', 409, 'Credit Profile Review is not available');
+          if (!purchaseStep || !reviewStep)
+            throw new AppError(
+              'REVIEW_STEP_NOT_FOUND',
+              409,
+              'Credit Profile Review step is unavailable',
+            );
+          const definition = await tx.serviceDefinition.findUnique({
+            where: { serviceType: 'CREDIT_PROFILE_REVIEW' },
+          });
+          if (!definition?.active)
+            throw new AppError(
+              'SERVICE_UNAVAILABLE',
+              409,
+              'Credit Profile Review is not available',
+            );
 
           let review = await tx.creditReview.findFirst({
             where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
@@ -513,17 +567,28 @@ export function createOperationsRouter(prisma: PrismaClient, auth: AuthService) 
               },
             });
           } else if (!review.purchaseId) {
-            review = await tx.creditReview.update({ where: { id: review.id }, data: { purchaseId } });
+            review = await tx.creditReview.update({
+              where: { id: review.id },
+              data: { purchaseId },
+            });
           }
           await tx.applicationCycleStep.update({
             where: { id: purchaseStep.id },
-            data: { status: 'COMPLETE', completedAt: purchaseStep.completedAt ?? new Date(), sourceType: 'ServicePurchase', sourceId: purchaseId },
+            data: {
+              status: 'COMPLETE',
+              completedAt: purchaseStep.completedAt ?? new Date(),
+              sourceType: 'ServicePurchase',
+              sourceId: purchaseId,
+            },
           });
           await tx.applicationCycleStep.update({
             where: { id: reviewStep.id },
             data: { status: 'AVAILABLE', startedAt: reviewStep.startedAt ?? new Date() },
           });
-          await tx.applicationCycle.update({ where: { id: cycle.id }, data: { currentStage: 'CREDIT_REVIEW' } });
+          await tx.applicationCycle.update({
+            where: { id: cycle.id },
+            data: { currentStage: 'CREDIT_REVIEW' },
+          });
           await tx.auditEvent.create({
             data: {
               clientId,

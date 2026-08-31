@@ -28,3 +28,16 @@ describe('API foundation', () => {
     expect(response.body.error.code).toBe('NOT_FOUND');
   });
 });
+
+describe('production configuration safety', () => {
+  test('rejects silent console-only password-reset delivery in production', () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+        WEB_ORIGIN: 'https://app.example.com',
+        EMAIL_PROVIDER: 'CONSOLE',
+      }),
+    ).toThrow(/outbound email provider/i);
+  });
+});

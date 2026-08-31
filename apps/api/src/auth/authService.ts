@@ -18,7 +18,7 @@ export type ResetNotifier = (message: {
 export function createAuthService(
   store: AuthStore,
   env: Pick<AppEnv, 'SESSION_TTL_HOURS' | 'PASSWORD_RESET_TTL_MINUTES' | 'PASSWORD_RESET_BASE_URL'>,
-  notifyReset: ResetNotifier = async () => undefined,
+  notifyReset: ResetNotifier,
 ) {
   const sessionExpiry = () => new Date(Date.now() + env.SESSION_TTL_HOURS * 3_600_000);
   async function issueSession(principal: AuthPrincipal, userAgent?: string) {

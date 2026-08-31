@@ -1,7 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { isAbsolute, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import express, { Router } from 'express';
 import { z } from 'zod';
 import type { AuthService } from '../auth/authService.js';
@@ -9,11 +6,7 @@ import { requireAuth, requireClientAccess, requireRole } from '../auth/middlewar
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate } from '../liveUpdates.js';
-
-const defaultReportStorageRoot = fileURLToPath(new URL('../../.data/', import.meta.url));
-const legacyReportStorageRoot = fileURLToPath(new URL('../../../../.data/', import.meta.url));
-const reportStorageRoot = () =>
-  resolve(process.env.CREDIT_REPORT_STORAGE_DIR ?? defaultReportStorageRoot);
+import { createLocalDocumentStorage, type DocumentStorage } from '../storage/documentStorage.js';
 
 const startSchema = z.object({ purchaseId: z.string().uuid().optional() });
 const creditAccountReviewSchema = z.object({
@@ -230,7 +223,11 @@ function present(review: ReviewWithOptionalClientSnapshots | null) {
   };
 }
 
-export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
+export function createReviewRouter(
+  prisma: PrismaClient,
+  auth: AuthService,
+  documentStorage: DocumentStorage = createLocalDocumentStorage(),
+) {
   const router = Router();
   router.use(requireAuth);
 
@@ -274,21 +271,11 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
         where: { id: documentId, ...access },
       });
       if (!document) throw new AppError('NOT_FOUND', 404, 'Credit report was not found');
-      const storageRoots = process.env.CREDIT_REPORT_STORAGE_DIR
-        ? [reportStorageRoot()]
-        : [reportStorageRoot(), legacyReportStorageRoot];
-      let file: Buffer | null = null;
-      for (const storageRoot of storageRoots) {
-        const filePath = resolve(storageRoot, document.storageKey);
-        const relativePath = relative(storageRoot, filePath);
-        if (relativePath.startsWith('..') || isAbsolute(relativePath))
+      const file = await documentStorage.read(document.storageKey).catch((error: Error) => {
+        if (error.message === 'INVALID_STORAGE_KEY')
           throw new AppError('INVALID_STORAGE_KEY', 500, 'Stored report path is invalid', false);
-        file = await readFile(filePath).catch((error: NodeJS.ErrnoException) => {
-          if (error.code === 'ENOENT') return null;
-          throw error;
-        });
-        if (file) break;
-      }
+        throw error;
+      });
       if (!file)
         throw new AppError('DOCUMENT_FILE_MISSING', 404, 'The stored document file is unavailable');
       res.setHeader('Content-Type', document.mimeType);
@@ -395,7 +382,7 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
     requireRole('CLIENT'),
     express.raw({ type: 'application/pdf', limit: '15mb' }),
     async (req, res, next) => {
-      let writtenPath: string | null = null;
+      let writtenStorageKey: string | null = null;
       try {
         const clientId = req.auth!.clientId!;
         const reviewId = req.params.reviewId as string;
@@ -413,7 +400,11 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
           throw new AppError('REPORT_FILE_REQUIRED', 400, 'Select a PDF credit-report file');
         const mimeType = req.get('content-type')?.split(';')[0] ?? '';
         if (mimeType !== 'application/pdf')
-          throw new AppError('REPORT_FILE_TYPE_INVALID', 415, 'Only PDF credit reports are accepted');
+          throw new AppError(
+            'REPORT_FILE_TYPE_INVALID',
+            415,
+            'Only PDF credit reports are accepted',
+          );
         const extension = '.pdf';
         const rawName = req.get('x-file-name');
         const originalFileName = rawName
@@ -421,10 +412,8 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
           : `credit-report${extension}`;
         const documentId = randomUUID();
         const storageKey = `credit-reports/${clientId}/${documentId}${extension}`;
-        const storageRoot = reportStorageRoot();
-        writtenPath = resolve(storageRoot, storageKey);
-        await mkdir(resolve(storageRoot, 'credit-reports', clientId), { recursive: true });
-        await writeFile(writtenPath, req.body, { flag: 'wx' });
+        const stored = await documentStorage.put(storageKey, req.body);
+        writtenStorageKey = storageKey;
         const document = await prisma.$transaction(async (tx) => {
           if (review.intake!.reportDocumentId)
             await tx.creditReportDocument.update({
@@ -437,8 +426,9 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
               storageKey,
               originalFileName,
               mimeType,
-              sizeBytes: req.body.length,
-              sha256: createHash('sha256').update(req.body).digest('hex'),
+              sizeBytes: stored.sizeBytes,
+              sha256: stored.sha256,
+              provider: stored.provider,
               uploadedByUserId: req.auth!.userId,
             },
           });
@@ -467,7 +457,8 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
           },
         });
       } catch (error) {
-        if (writtenPath) await unlink(writtenPath).catch(() => undefined);
+        if (writtenStorageKey)
+          await documentStorage.delete(writtenStorageKey).catch(() => undefined);
         next(error);
       }
     },
@@ -551,8 +542,7 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
           });
           cardId = card.id;
         } else {
-          if (!cardId)
-            throw new AppError('CARD_REQUIRED', 400, 'Select the card being reviewed');
+          if (!cardId) throw new AppError('CARD_REQUIRED', 400, 'Select the card being reviewed');
           const existing = await tx.clientCard.findFirst({ where: { id: cardId, clientId } });
           if (!existing) throw new AppError('NOT_FOUND', 404, 'Credit card was not found');
           if (input.status === 'UPDATED')
@@ -628,7 +618,10 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
             409,
             'Report upload and report date are required',
           );
-        if (!Array.isArray(current.intake.materialChanges) || current.intake.materialChanges.length === 0)
+        if (
+          !Array.isArray(current.intake.materialChanges) ||
+          current.intake.materialChanges.length === 0
+        )
           throw new AppError(
             'REVIEW_INTAKE_INCOMPLETE',
             409,
@@ -1011,7 +1004,9 @@ export function createReviewRouter(prisma: PrismaClient, auth: AuthService) {
           });
           if (activeCycle) {
             const reviewStep = activeCycle.steps.find((step) => step.stage === 'CREDIT_REVIEW');
-            const decisionStep = activeCycle.steps.find((step) => step.stage === 'CONSULTANT_DECISION');
+            const decisionStep = activeCycle.steps.find(
+              (step) => step.stage === 'CONSULTANT_DECISION',
+            );
             const advancedAt = new Date();
             if (reviewStep)
               await tx.applicationCycleStep.update({
