@@ -29,7 +29,8 @@
     "db:seed": "prisma db seed",
     "db:seed:system": "prisma db seed",
     "db:seed:demo": "pnpm demo:setup",
-    "demo:setup": "pnpm --filter @credit/api exec tsx src/scripts/setupDemo.ts"
+    "demo:setup": "pnpm --filter @credit/api exec tsx src/scripts/setupDemo.ts",
+    "review:setup": "pnpm db:migrate:deploy && pnpm db:seed:system && pnpm db:seed:demo"
   },
   "devDependencies": {
     "@eslint/js": "latest",

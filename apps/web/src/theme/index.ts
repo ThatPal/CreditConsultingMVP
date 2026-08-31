@@ -45,10 +45,15 @@ export const theme = createTheme({
           backgroundAttachment: 'fixed',
         },
         '*': { boxSizing: 'border-box' },
-        '*:focus-visible:not(.MuiInputBase-input):not(.MuiSelect-select)': {
+        '*:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"])': {
           outline: `${designTokens.focus.width}px solid ${alpha(designTokens.color.cyan, 0.9)} !important`,
           outlineOffset: `${designTokens.focus.offset}px !important`,
         },
+        ':where(input, textarea, select):focus-visible:not(.MuiInputBase-input):not(.MuiSelect-select)':
+          {
+            outline: `${designTokens.focus.width}px solid ${alpha(designTokens.color.cyan, 0.9)}`,
+            outlineOffset: designTokens.focus.offset,
+          },
         ...reducedMotionStyles,
       },
     },
@@ -89,6 +94,12 @@ export const theme = createTheme({
             borderColor: designTokens.color.cyan,
             borderWidth: designTokens.focus.width,
           },
+          '&.Mui-focused.Mui-error .MuiOutlinedInput-notchedOutline': {
+            borderColor: designTokens.color.coral,
+          },
+        },
+        input: {
+          '&:focus-visible': { outline: 'none' },
         },
       },
     },

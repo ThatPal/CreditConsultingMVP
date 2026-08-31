@@ -196,9 +196,6 @@ export function OnboardingPage() {
               transform: 'translateY(-1px)',
             },
           },
-          '& .MuiOutlinedInput-root.Mui-focused': {
-            boxShadow: '0 0 0 3px rgba(66,211,242,.08), 0 0 22px rgba(66,211,242,.06)',
-          },
         }}
       >
         <Stack spacing={3.5}>

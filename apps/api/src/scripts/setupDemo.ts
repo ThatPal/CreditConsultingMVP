@@ -1,6 +1,8 @@
 import { config } from 'dotenv';
+import { createHash } from 'node:crypto';
 import { hashPassword } from '../auth/security.js';
 import { createPrisma } from '../lib/prisma.js';
+import { createLocalDocumentStorage } from '../storage/documentStorage.js';
 
 config({ path: '../../.env' });
 const url = process.env.DATABASE_URL;
@@ -11,26 +13,103 @@ if (process.env.NODE_ENV === 'production' || !/localhost|127\.0\.0\.1/.test(url)
 const prisma = createPrisma(url);
 const passwordHash = await hashPassword('DemoAccess2026!');
 
+function makeReviewPdf() {
+  const stream =
+    'BT\n/F1 22 Tf\n72 700 Td\n(Credit Review Summary) Tj\n0 -36 Td\n/F1 12 Tf\n(Synthetic local review document.) Tj\nET';
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets
+    .slice(1)
+    .map((offset) => `${offset.toString().padStart(10, '0')} 00000 n \n`)
+    .join('');
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return Buffer.from(pdf);
+}
+
 try {
   const consultant = await prisma.user.upsert({
     where: { email: 'consultant@credit.local' },
     create: {
       email: 'consultant@credit.local',
+      name: 'Casey Consultant',
+      emailVerified: true,
       passwordHash,
       role: 'CONSULTANT',
       status: 'ACTIVE',
     },
-    update: { passwordHash, role: 'CONSULTANT', status: 'ACTIVE' },
+    update: {
+      name: 'Casey Consultant',
+      emailVerified: true,
+      passwordHash,
+      role: 'CONSULTANT',
+      status: 'ACTIVE',
+      twoFactorEnabled: false,
+    },
   });
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: 'admin@credit.local' },
-    create: { email: 'admin@credit.local', passwordHash, role: 'ADMIN', status: 'ACTIVE' },
-    update: { passwordHash, role: 'ADMIN', status: 'ACTIVE' },
+    create: {
+      email: 'admin@credit.local',
+      name: 'Avery Administrator',
+      emailVerified: true,
+      passwordHash,
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    },
+    update: {
+      name: 'Avery Administrator',
+      emailVerified: true,
+      passwordHash,
+      role: 'ADMIN',
+      status: 'ACTIVE',
+      twoFactorEnabled: false,
+    },
   });
   const clientUser = await prisma.user.upsert({
     where: { email: 'client@credit.local' },
-    create: { email: 'client@credit.local', passwordHash, role: 'CLIENT', status: 'ACTIVE' },
-    update: { passwordHash, role: 'CLIENT', status: 'ACTIVE' },
+    create: {
+      email: 'client@credit.local',
+      name: 'Jordan Blake',
+      emailVerified: true,
+      passwordHash,
+      role: 'CLIENT',
+      status: 'ACTIVE',
+    },
+    update: {
+      name: 'Jordan Blake',
+      emailVerified: true,
+      passwordHash,
+      role: 'CLIENT',
+      status: 'ACTIVE',
+    },
+  });
+  for (const user of [consultant, admin, clientUser])
+    await prisma.betterAuthAccount.upsert({
+      where: { issuer_accountId: { issuer: 'local:credential', accountId: user.id } },
+      create: {
+        issuer: 'local:credential',
+        accountId: user.id,
+        providerId: 'credential',
+        userId: user.id,
+        password: passwordHash,
+      },
+      update: { userId: user.id, providerId: 'credential', password: passwordHash },
+    });
+  await prisma.betterAuthTwoFactor.deleteMany({
+    where: { userId: { in: [consultant.id, admin.id] } },
   });
   const client = await prisma.client.upsert({
     where: { userId: clientUser.id },
@@ -117,6 +196,99 @@ try {
         dueAt: new Date(Date.now() + 86400000),
       },
     });
+  const supportSubject = 'Question about my Credit Review next steps';
+  const supportCase = await prisma.supportCase.findFirst({
+    where: { clientId: client.id, subject: supportSubject },
+  });
+  if (!supportCase)
+    await prisma.supportCase.create({
+      data: {
+        clientId: client.id,
+        createdByUserId: clientUser.id,
+        assignedToUserId: consultant.id,
+        category: 'CREDIT_REVIEW',
+        priority: 'HIGH',
+        status: 'WAITING_ON_CLIENT',
+        subject: supportSubject,
+        messages: {
+          create: [
+            {
+              authorUserId: clientUser.id,
+              body: 'I uploaded my report. Is there anything else I should complete?',
+            },
+            {
+              authorUserId: consultant.id,
+              body: 'Your report is ready. Please confirm that the account list is current.',
+            },
+          ],
+        },
+      },
+    });
+  await prisma.notification.upsert({
+    where: {
+      userId_semanticKey: {
+        userId: clientUser.id,
+        semanticKey: 'demo-review-ready',
+      },
+    },
+    create: {
+      userId: clientUser.id,
+      clientId: client.id,
+      semanticKey: 'demo-review-ready',
+      type: 'REVIEW_STATUS',
+      category: 'OPERATIONAL',
+      title: 'Your Credit Review is ready for the next step',
+      body: 'Confirm the account list and reply to your Consultant when ready.',
+      link: '/app/support',
+    },
+    update: {
+      readAt: null,
+      seenAt: null,
+      title: 'Your Credit Review is ready for the next step',
+      body: 'Confirm the account list and reply to your Consultant when ready.',
+      link: '/app/support',
+    },
+  });
+  const documentType = await prisma.documentType.findUniqueOrThrow({
+    where: { key: 'GENERAL_CLIENT_DOCUMENT' },
+  });
+  const documentStorage = createLocalDocumentStorage();
+  const obsoleteDocumentKey = `documents/${client.id}/demo-review-summary.pdf`;
+  await prisma.document.deleteMany({
+    where: { storageProvider: 'LOCAL_DISK', storageKey: obsoleteDocumentKey },
+  });
+  await documentStorage.delete(obsoleteDocumentKey);
+  const documentKey = `documents/${client.id}/demo-review-summary-v2.pdf`;
+  let documentContent = await documentStorage.read(documentKey);
+  if (!documentContent) {
+    documentContent = makeReviewPdf();
+    await documentStorage.put(documentKey, documentContent);
+  }
+  await prisma.document.upsert({
+    where: {
+      storageProvider_storageKey: { storageProvider: 'LOCAL_DISK', storageKey: documentKey },
+    },
+    create: {
+      clientId: client.id,
+      documentTypeId: documentType.id,
+      originalFileName: 'Credit Review Summary.pdf',
+      displayFileName: 'Credit Review Summary.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: documentContent.length,
+      sha256: createHash('sha256').update(documentContent).digest('hex'),
+      storageProvider: 'LOCAL_DISK',
+      storageKey: documentKey,
+      clientVisible: true,
+      uploadedByUserId: consultant.id,
+      retentionCategory: documentType.retentionCategory,
+    },
+    update: {
+      status: 'AVAILABLE',
+      clientVisible: true,
+      sizeBytes: documentContent.length,
+      sha256: createHash('sha256').update(documentContent).digest('hex'),
+    },
+  });
   console.info(
     JSON.stringify(
       {

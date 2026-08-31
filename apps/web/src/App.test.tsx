@@ -174,14 +174,22 @@ describe('application shells', () => {
 
   test('uses one central focus treatment for outlined fields while retaining the global ring', () => {
     const baseline = theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>;
-    const focusSelector = '*:focus-visible:not(.MuiInputBase-input):not(.MuiSelect-select)';
+    const focusSelector =
+      '*:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"])';
+    const nativeControlSelector =
+      ':where(input, textarea, select):focus-visible:not(.MuiInputBase-input):not(.MuiSelect-select)';
     expect(baseline).toHaveProperty(focusSelector);
     expect(JSON.stringify(baseline[focusSelector])).toContain('outline');
+    expect(baseline).toHaveProperty(nativeControlSelector);
     expect(baseline).not.toHaveProperty('*:focus-visible');
 
     const outlined = theme.components?.MuiOutlinedInput?.styleOverrides?.root;
     expect(JSON.stringify(outlined)).toContain('Mui-focused');
     expect(JSON.stringify(outlined)).toContain(String(designTokens.focus.width));
+    expect(JSON.stringify(outlined)).toContain(designTokens.color.coral);
+    expect(theme.components?.MuiOutlinedInput?.styleOverrides?.input).toMatchObject({
+      '&:focus-visible': { outline: 'none' },
+    });
   });
 
   test('defines a scoped light-surface contract for representative nested controls', () => {
@@ -263,7 +271,10 @@ describe('application shells', () => {
     expect(designTokens.focus.width).toBeGreaterThanOrEqual(2);
     expect(reducedMotionStyles).toHaveProperty('@media (prefers-reduced-motion: reduce)');
     const baseline = theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>;
-    const focusRule = baseline['*:focus-visible:not(.MuiInputBase-input):not(.MuiSelect-select)'];
+    const focusRule =
+      baseline[
+        '*:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"])'
+      ];
     expect(JSON.stringify(focusRule)).toContain('!important');
   });
 
