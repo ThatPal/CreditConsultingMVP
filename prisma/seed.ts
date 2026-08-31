@@ -1,5 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { assertCreditDatabaseUrl } from '@credit/runtime';
+import { assertCreditDatabaseUrl } from '../packages/runtime/src/index.js';
 import { PrismaClient } from '../apps/api/src/generated/prisma/client.js';
 import { seedSystemReferenceData } from '../apps/api/src/seeding/systemSeed.js';
 
