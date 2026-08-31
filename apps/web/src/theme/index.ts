@@ -16,8 +16,7 @@ export const theme = createTheme({
   shape: { borderRadius: designTokens.radius.md },
   spacing: 8,
   typography: {
-    fontFamily:
-      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontFamily: designTokens.typography.fontFamily,
     h1: {
       fontSize: 'clamp(2rem, 4vw, 3.4rem)',
       lineHeight: 1.05,
@@ -47,8 +46,8 @@ export const theme = createTheme({
         },
         '*': { boxSizing: 'border-box' },
         '*:focus-visible': {
-          outline: `3px solid ${alpha(designTokens.color.cyan, 0.68)}`,
-          outlineOffset: 3,
+          outline: `${designTokens.focus.width}px solid ${alpha(designTokens.color.cyan, 0.9)} !important`,
+          outlineOffset: `${designTokens.focus.offset}px !important`,
         },
         ...reducedMotionStyles,
       },
@@ -82,6 +81,8 @@ export const theme = createTheme({
         },
       ],
     },
+    MuiTextField: { defaultProps: { size: 'small' } },
+    MuiFormHelperText: { styleOverrides: { root: { marginInline: 0 } } },
     MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
     MuiDialog: {
       styleOverrides: {

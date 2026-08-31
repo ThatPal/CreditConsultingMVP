@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { App } from './App';
+import { App, isDesignSystemShowcaseEnabled } from './App';
+import { designTokens, reducedMotionStyles } from './theme/designTokens';
 import { AuthProvider } from './auth/AuthProvider';
 import { theme } from './theme';
 
@@ -70,9 +71,7 @@ describe('application shells', () => {
 
   test('credit readiness exposes prepared consultant decisions', () => {
     renderAt('/consultant/readiness');
-    expect(
-      screen.getByRole('heading', { name: /credit readiness/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /credit readiness/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^ready /i })).toHaveAttribute(
       'aria-pressed',
       'false',
@@ -82,7 +81,10 @@ describe('application shells', () => {
       'true',
     );
     fireEvent.click(screen.getByRole('button', { name: /not ready — negative items/i }));
-    expect(screen.getByRole('button', { name: /not ready — negative items/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /not ready — negative items/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   test('client overview presents the verified next action', () => {
@@ -111,12 +113,31 @@ describe('application shells', () => {
   });
 
   test('design system renders FocusSurface examples and semantic states', async () => {
-    renderAt('/client/design-system');
+    renderAt('/dev/design-system');
     expect(
       await screen.findByRole('heading', { name: /dark is the environment/i }),
     ).toBeInTheDocument();
     expect(screen.getByText('Credit Profile summary')).toBeInTheDocument();
     expect(screen.getByText('Wizard confirmation')).toBeInTheDocument();
     expect(screen.getByText('Positive')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open drawer/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/include utilization alerts/i)).toBeChecked();
+    expect(screen.getByText(/blocked: consultant approval/i)).toBeInTheDocument();
+  });
+
+  test('exports canonical design tokens and reduced-motion behavior', () => {
+    expect(designTokens.color.focusSurface).not.toBe('#ffffff');
+    expect(designTokens.spacing.md).toBe(16);
+    expect(designTokens.focus.width).toBeGreaterThanOrEqual(2);
+    expect(reducedMotionStyles).toHaveProperty('@media (prefers-reduced-motion: reduce)');
+    const baseline = theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>;
+    expect(baseline).toHaveProperty('*:focus-visible');
+    expect(JSON.stringify(baseline['*:focus-visible'])).toContain('!important');
+  });
+
+  test('enables the showcase in the test environment without adding navigation', () => {
+    expect(isDesignSystemShowcaseEnabled).toBe(true);
+    renderAt('/client/overview');
+    expect(screen.queryByRole('link', { name: /design system/i })).not.toBeInTheDocument();
   });
 });

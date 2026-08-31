@@ -42,6 +42,8 @@ const DesignSystemPage = lazy(() =>
   import('./pages/dev/DesignSystemPage').then((module) => ({ default: module.DesignSystemPage })),
 );
 
+export const isDesignSystemShowcaseEnabled = import.meta.env.DEV || import.meta.env.MODE === 'test';
+
 export function App() {
   return (
     <Routes>
@@ -51,6 +53,16 @@ export function App() {
       <Route path="/lead-wizard" element={<OnboardingPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {isDesignSystemShowcaseEnabled && (
+        <Route
+          path="/dev/design-system"
+          element={
+            <Suspense fallback={<LoadingSkeleton />}>
+              <DesignSystemPage />
+            </Suspense>
+          }
+        />
+      )}
       <Route element={<ProtectedRoute roles={['CLIENT']} />}>
         <Route path="/client" element={<ClientAppShell />}>
           {clientNavigation.map((item) => (
@@ -84,19 +96,20 @@ export function App() {
               }
             />
           ))}
-          <Route
-            path="design-system"
-            element={
-              <Suspense fallback={<LoadingSkeleton />}>
-                <DesignSystemPage />
-              </Suspense>
-            }
-          />
           <Route path="credit-profile/review" element={<ClientReviewPage />} />
-          <Route path="credit-profile-v2" element={<Navigate to="/client/credit-profile" replace />} />
+          <Route
+            path="credit-profile-v2"
+            element={<Navigate to="/client/credit-profile" replace />}
+          />
           <Route path="credit-center" element={<Navigate to="/client/credit-profile" replace />} />
-          <Route path="credit-center/review" element={<Navigate to="/client/credit-profile/review" replace />} />
-          <Route path="credit-center-v2" element={<Navigate to="/client/credit-profile" replace />} />
+          <Route
+            path="credit-center/review"
+            element={<Navigate to="/client/credit-profile/review" replace />}
+          />
+          <Route
+            path="credit-center-v2"
+            element={<Navigate to="/client/credit-profile" replace />}
+          />
           <Route path="credit-plan" element={<Navigate to="/client/credit-profile" replace />} />
           <Route index element={<Navigate to="overview" replace />} />
         </Route>

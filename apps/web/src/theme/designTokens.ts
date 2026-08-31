@@ -1,4 +1,10 @@
 export const designTokens = {
+  typography: {
+    fontFamily:
+      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    weight: { regular: 400, medium: 600, strong: 700, emphasis: 800 },
+  },
+  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 },
   color: {
     canvas: '#070b18',
     canvasRaised: '#0b1124',
@@ -45,6 +51,10 @@ export const designTokens = {
     standard: '220ms',
     slow: '360ms',
     easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+  },
+  focus: {
+    width: 3,
+    offset: 3,
   },
 } as const;
 

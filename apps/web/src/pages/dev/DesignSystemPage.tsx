@@ -2,15 +2,22 @@ import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import CreditScoreRounded from '@mui/icons-material/CreditScoreRounded';
 import LockRounded from '@mui/icons-material/LockRounded';
+import MenuRounded from '@mui/icons-material/MenuRounded';
 import RocketLaunchRounded from '@mui/icons-material/RocketLaunchRounded';
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Divider,
+  Drawer,
+  FormControlLabel,
+  FormHelperText,
   Grid,
   LinearProgress,
   MenuItem,
+  Radio,
+  RadioGroup,
   Stack,
   Table,
   TableBody,
@@ -18,7 +25,9 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
+  Switch,
 } from '@mui/material';
 import { useState } from 'react';
 import {
@@ -46,15 +55,23 @@ const statusTones: StatusTone[] = [
 
 export function DesignSystemPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   return (
-    <Stack spacing={{ xs: 4, md: 6 }}>
+    <Stack
+      spacing={{ xs: 4, md: 6 }}
+      sx={{ width: '100%', maxWidth: 1440, mx: 'auto', p: { xs: 2, sm: 3, lg: 5 } }}
+    >
       <PageHeader
-        eyebrow="Design system · Sprint 0.2"
+        eyebrow="Design system · Sprint 1.3"
         title="Dark is the environment. Light is the focus."
         description="A premium fintech system built for calm financial decisions: layered dark surfaces, selective blue–cyan–violet energy, and focused light canvases for critical reading."
         actions={
           <Stack direction="row" spacing={1}>
             <Button variant="outlined">Secondary</Button>
+            <Button variant="text">Tertiary</Button>
+            <Button variant="contained" color="error">
+              Destructive
+            </Button>
             <Button
               variant="contained"
               startIcon={<RocketLaunchRounded />}
@@ -235,6 +252,69 @@ export function DesignSystemPage() {
           </FocusSurface>
         </Grid>
       </Grid>
+      <SectionCard>
+        <Typography variant="overline" color="primary">
+          Controls and interaction states
+        </Typography>
+        <Typography variant="h2" sx={{ mb: 2.5 }}>
+          Accessible inputs and overlays
+        </Typography>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={2}>
+              <TextField
+                label="Applicant name"
+                defaultValue="Jordan Lee"
+                helperText="Synthetic showcase data"
+              />
+              <TextField
+                label="Email"
+                defaultValue="invalid"
+                error
+                helperText="Enter a valid email address"
+              />
+              <TextField select label="Review cadence" defaultValue="monthly">
+                <MenuItem value="monthly">Monthly</MenuItem>
+                <MenuItem value="quarterly">Quarterly</MenuItem>
+              </TextField>
+              <FormControlLabel
+                control={<Checkbox defaultChecked />}
+                label="Include utilization alerts"
+              />
+              <RadioGroup row defaultValue="personal" aria-label="Account type">
+                <FormControlLabel value="personal" control={<Radio />} label="Personal" />
+                <FormControlLabel value="business" control={<Radio />} label="Business" />
+              </RadioGroup>
+              <FormControlLabel
+                control={<Switch defaultChecked />}
+                label="Strategy notifications"
+              />
+              <FormHelperText>
+                All controls expose labels, selected, disabled, and error semantics.
+              </FormHelperText>
+            </Stack>
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
+              <Tooltip title="Synthetic guidance only">
+                <Button variant="outlined">Hover or focus for guidance</Button>
+              </Tooltip>
+              <Button startIcon={<MenuRounded />} onClick={() => setDrawerOpen(true)}>
+                Open drawer
+              </Button>
+              <Button variant="contained" disabled>
+                Blocked action
+              </Button>
+              <Button variant="contained" loading>
+                Loading action
+              </Button>
+              <Alert severity="warning">
+                Blocked: consultant approval is required before submission.
+              </Alert>
+            </Stack>
+          </Grid>
+        </Grid>
+      </SectionCard>
       <FocusSurface eyebrow="Report-like view" title="Account summary table">
         <Box sx={{ overflowX: 'auto' }}>
           <Table
@@ -271,6 +351,28 @@ export function DesignSystemPage() {
             </TableBody>
           </Table>
         </Box>
+        <Grid container spacing={2} sx={{ mt: 2 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Box aria-label="Loading table state" aria-busy="true">
+              <Typography variant="caption">Loading table state</Typography>
+              <LoadingSkeleton />
+            </Box>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Table size="small" aria-label="Empty table state">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Recent applications</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  <TableCell>No applications match this view.</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Grid>
+        </Grid>
       </FocusSurface>
       <Box>
         <Typography variant="overline" color="primary">
@@ -336,6 +438,15 @@ export function DesignSystemPage() {
         onClose={() => setDialogOpen(false)}
         onConfirm={() => setDialogOpen(false)}
       />
+      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <Stack spacing={2} sx={{ width: { xs: 280, sm: 360 }, p: 3 }}>
+          <Typography variant="h3">Strategy details</Typography>
+          <Typography color="text.secondary">
+            A keyboard-accessible shared drawer pattern.
+          </Typography>
+          <Button onClick={() => setDrawerOpen(false)}>Close drawer</Button>
+        </Stack>
+      </Drawer>
     </Stack>
   );
 }
