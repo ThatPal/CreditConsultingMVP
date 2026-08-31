@@ -6,6 +6,7 @@ import { Server } from 'socket.io';
 import { z } from 'zod';
 import type { Logger } from 'pino';
 import type { AuthPrincipal } from '../auth/types.js';
+import { publishLiveUpdate } from '../liveUpdates.js';
 
 export const REALTIME_CHANNEL = 'credit:realtime:events';
 export const PRESENCE_TTL_SECONDS = 90;
@@ -81,6 +82,7 @@ export async function startRealtimeRuntime(options: {
       options.logger.warn('Rejected malformed realtime envelope');
       return;
     }
+    publishLiveUpdate(event.clientId, ...event.domains);
     const sockets = await io.in(clientRoom(event.clientId)).fetchSockets();
     await Promise.all(
       sockets.map(async (socket) => {

@@ -8,6 +8,7 @@ import DescriptionRounded from '@mui/icons-material/DescriptionRounded';
 import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import HelpRounded from '@mui/icons-material/HelpRounded';
 import LockRounded from '@mui/icons-material/LockRounded';
+import NotificationsNoneRounded from '@mui/icons-material/NotificationsNoneRounded';
 import SupportAgentRounded from '@mui/icons-material/SupportAgentRounded';
 import TaskAltRounded from '@mui/icons-material/TaskAltRounded';
 import VideoCallRounded from '@mui/icons-material/VideoCallRounded';
@@ -68,6 +69,15 @@ const registry: NavigationItem[] = [
     label: 'Documents',
     path: '/app/documents',
     icon: DescriptionRounded,
+    shell: 'client',
+    section: 'utility',
+    status: 'available',
+  },
+  {
+    id: 'portal-notifications',
+    label: 'Notifications',
+    path: '/app/notifications',
+    icon: NotificationsNoneRounded,
     shell: 'client',
     section: 'utility',
     status: 'available',

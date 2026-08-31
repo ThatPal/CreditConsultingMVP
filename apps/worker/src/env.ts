@@ -9,5 +9,12 @@ export type WorkerEnv = ReturnType<typeof loadWorkerEnv>;
 export function loadWorkerEnv(source: NodeJS.ProcessEnv = process.env) {
   const parsed = runtimeEnvSchema.parse(source);
   assertCreditDatabaseUrl(parsed.DATABASE_URL);
-  return parsed;
+  const emailProvider = source.EMAIL_PROVIDER ?? 'CONSOLE';
+  if (!['CONSOLE', 'SMTP', 'EXTERNAL'].includes(emailProvider))
+    throw new Error('Invalid EMAIL_PROVIDER');
+  return {
+    ...parsed,
+    EMAIL_PROVIDER: emailProvider as 'CONSOLE' | 'SMTP' | 'EXTERNAL',
+    EMAIL_FROM: source.EMAIL_FROM ?? 'no-reply@example.invalid',
+  };
 }

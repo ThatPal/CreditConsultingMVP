@@ -10,22 +10,62 @@ export type EmailMessage = {
 export interface EmailProvider {
   readonly name: 'CONSOLE' | 'SMTP' | 'EXTERNAL';
   send(message: EmailMessage): Promise<{ accepted: boolean; providerMessageId?: string }>;
+  testConnection?(): Promise<void>;
 }
 
-export function createEmailProvider(env: AppEnv, logger: Logger): EmailProvider {
-  if (env.EMAIL_PROVIDER !== 'CONSOLE')
-    throw new Error(
-      `${env.EMAIL_PROVIDER} email is selected but its production adapter is not installed; refusing silent delivery`,
-    );
+export type SmtpConfiguration = {
+  host: string;
+  port: number;
+  secure: boolean;
+  username?: string;
+  passwordSecretRef: string;
+  from: string;
+};
+
+export interface SmtpTransport {
+  send(
+    configuration: SmtpConfiguration,
+    message: EmailMessage,
+  ): Promise<{ accepted: boolean; providerMessageId?: string }>;
+  testConnection(configuration: SmtpConfiguration): Promise<void>;
+}
+
+export function createEmailProvider(
+  env: AppEnv,
+  logger: Logger,
+  adapters?: { smtp?: SmtpTransport; external?: EmailProvider },
+): EmailProvider {
+  if (env.EMAIL_PROVIDER === 'CONSOLE')
+    return {
+      name: 'CONSOLE',
+      async send(message) {
+        logger.info(
+          { to: message.to, subject: message.subject, sensitive: message.sensitive ?? false },
+          'Development email captured by console provider',
+        );
+        return { accepted: true };
+      },
+      async testConnection() {},
+    };
+  if (env.EMAIL_PROVIDER === 'EXTERNAL') {
+    if (!adapters?.external)
+      throw new Error('EXTERNAL email is selected but no adapter is installed; refusing delivery');
+    return adapters.external;
+  }
+  if (!adapters?.smtp)
+    throw new Error('SMTP email is selected but no transport is installed; refusing delivery');
+  const configuration: SmtpConfiguration = {
+    host: env.EMAIL_SMTP_HOST!,
+    port: env.EMAIL_SMTP_PORT!,
+    secure: env.EMAIL_SMTP_SECURE,
+    ...(env.EMAIL_SMTP_USERNAME ? { username: env.EMAIL_SMTP_USERNAME } : {}),
+    passwordSecretRef: env.EMAIL_SMTP_PASSWORD_SECRET_REF!,
+    from: env.EMAIL_FROM,
+  };
   return {
-    name: 'CONSOLE',
-    async send(message) {
-      logger.info(
-        { to: message.to, subject: message.subject, sensitive: message.sensitive ?? false },
-        'Development email captured by console provider',
-      );
-      return { accepted: true };
-    },
+    name: 'SMTP',
+    send: (message) => adapters.smtp!.send(configuration, message),
+    testConnection: () => adapters.smtp!.testConnection(configuration),
   };
 }
 

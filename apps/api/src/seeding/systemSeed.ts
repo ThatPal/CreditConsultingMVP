@@ -29,6 +29,23 @@ export const systemDocumentTypes = [
   },
 ] as const;
 
+export const systemNotificationTemplates = [
+  {
+    key: 'ACCOUNT_OPERATIONAL_UPDATE',
+    version: 1,
+    channel: 'IN_APP' as const,
+    subject: null,
+    body: 'An account update is available.',
+  },
+  {
+    key: 'ACCOUNT_OPERATIONAL_UPDATE',
+    version: 1,
+    channel: 'EMAIL' as const,
+    subject: 'Your Credit Strategy Platform account was updated',
+    body: 'Sign in to view the latest account update.',
+  },
+] as const;
+
 export const systemOptionTemplates = [
   [
     'PAYMENT_HISTORY_STRONG',
@@ -161,10 +178,39 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
         },
       }),
     ),
+    ...systemNotificationTemplates.map((template) =>
+      prisma.notificationTemplate.upsert({
+        where: {
+          key_version_channel: {
+            key: template.key,
+            version: template.version,
+            channel: template.channel,
+          },
+        },
+        create: template,
+        update: { subject: template.subject, body: template.body, enabled: true },
+      }),
+    ),
+    prisma.integration.upsert({
+      where: { key: 'EMAIL_PRIMARY' },
+      create: {
+        key: 'EMAIL_PRIMARY',
+        type: 'EMAIL',
+        provider: 'CONFIGURED_EMAIL_PROVIDER',
+        configurationMetadata: {
+          supportedProviders: ['CONSOLE', 'SMTP', 'EXTERNAL'],
+          smtpDeploymentOptions: ['GENERIC_SMTP', 'GOOGLE_WORKSPACE_RELAY'],
+        },
+        secretReferences: [],
+      },
+      update: {},
+    }),
   ]);
   return {
     optionTemplates: systemOptionTemplates.length,
     roleCapabilities: capabilityRows.length,
     documentTypes: systemDocumentTypes.length,
+    notificationTemplates: systemNotificationTemplates.length,
+    integrations: 1,
   };
 }

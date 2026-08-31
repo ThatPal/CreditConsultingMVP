@@ -32,6 +32,12 @@ const schema = runtimeEnvSchema
     EMAIL_FROM: z.email().default('no-reply@example.invalid'),
     EMAIL_SMTP_HOST: z.string().min(1).optional(),
     EMAIL_SMTP_PORT: z.coerce.number().int().positive().optional(),
+    EMAIL_SMTP_SECURE: z
+      .union([z.boolean(), z.enum(['true', 'false'])])
+      .default('true')
+      .transform((value) => value === true || value === 'true'),
+    EMAIL_SMTP_USERNAME: z.string().min(1).optional(),
+    EMAIL_SMTP_PASSWORD_SECRET_REF: z.string().min(1).optional(),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'production' && value.EMAIL_PROVIDER === 'CONSOLE')
@@ -40,7 +46,10 @@ const schema = runtimeEnvSchema
         path: ['EMAIL_PROVIDER'],
         message: 'Production requires a configured outbound email provider',
       });
-    if (value.EMAIL_PROVIDER === 'SMTP' && (!value.EMAIL_SMTP_HOST || !value.EMAIL_SMTP_PORT))
+    if (
+      value.EMAIL_PROVIDER === 'SMTP' &&
+      (!value.EMAIL_SMTP_HOST || !value.EMAIL_SMTP_PORT || !value.EMAIL_SMTP_PASSWORD_SECRET_REF)
+    )
       context.addIssue({
         code: 'custom',
         path: ['EMAIL_SMTP_HOST'],

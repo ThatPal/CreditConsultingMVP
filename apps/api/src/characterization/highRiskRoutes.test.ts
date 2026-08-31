@@ -369,6 +369,7 @@ describe('Support, notification, and application-cycle characterization', () => 
       data: {
         userId: owner.user.id,
         clientId: owner.client.id,
+        semanticKey: `test-own-${owner.user.id}`,
         type: 'TEST',
         title: 'Own',
         body: 'Own',
@@ -378,6 +379,7 @@ describe('Support, notification, and application-cycle characterization', () => 
       data: {
         userId: stranger.user.id,
         clientId: stranger.client.id,
+        semanticKey: `test-other-${stranger.user.id}`,
         type: 'TEST',
         title: 'Other',
         body: 'Other',

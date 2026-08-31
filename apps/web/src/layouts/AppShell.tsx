@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type MouseEvent, type PropsWithChildren } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { useAuth } from '../auth/AuthProvider';
 import { designTokens } from '../theme';
@@ -201,10 +201,6 @@ export function AppShell({
     mutationFn: () => apiRequest<void>('/api/v1/notifications/read-all', { method: 'POST' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
-  const clearNotifications = useMutation({
-    mutationFn: () => apiRequest<void>('/api/v1/notifications', { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
-  });
   const openNotification = async (notification: AppNotification) => {
     if (!notification.readAt)
       await apiRequest(`/api/v1/notifications/${notification.id}/read`, { method: 'PATCH' });
@@ -376,16 +372,14 @@ export function AppShell({
                 Mark all read
               </Button>
             )}
-            {notifications.length > 0 && (
-              <Button
-                size="small"
-                color="inherit"
-                disabled={clearNotifications.isPending}
-                onClick={() => clearNotifications.mutate()}
-              >
-                {clearNotifications.isPending ? 'Clearing…' : 'Clear all'}
-              </Button>
-            )}
+            <Button
+              component={Link}
+              to="/app/notifications"
+              size="small"
+              onClick={() => setNotificationAnchor(null)}
+            >
+              View all
+            </Button>
           </Stack>
           <Divider />
           <Box sx={{ maxHeight: 440, overflowY: 'auto' }}>

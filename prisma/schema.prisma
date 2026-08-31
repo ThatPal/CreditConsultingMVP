@@ -333,6 +333,36 @@ enum IdempotencyStatus {
   FAILED
 }
 
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  RETRY_SCHEDULED
+  FAILED
+}
+
+enum IntegrationType {
+  EMAIL
+  STORAGE
+  PAYMENT
+  AI
+  CALENDAR
+  OTHER
+}
+
+enum IntegrationStatus {
+  UNTESTED
+  HEALTHY
+  DEGRADED
+  FAILED
+  DISABLED
+}
+
 enum ClientAccessScope {
   READ
   CONSULTANT_WORK
@@ -346,45 +376,46 @@ enum SecurityEventSeverity {
 }
 
 model User {
-  id                   String                  @id @default(uuid()) @db.Uuid
-  email                String                  @unique
-  name                 String                  @default("")
-  emailVerified        Boolean                 @default(false)
-  image                String?
-  authFirstName        String?
-  authLastName         String?
-  authPhone            String?
-  authTimezone         String?
-  authTermsAccepted    Boolean                 @default(false)
-  twoFactorEnabled     Boolean                 @default(false)
-  passwordHash         String?
-  authProvider         String?
-  role                 UserRole
-  status               UserStatus              @default(ACTIVE)
-  lastLoginAt          DateTime?
-  createdAt            DateTime                @default(now())
-  updatedAt            DateTime                @updatedAt
-  client               Client?                 @relation("ClientIdentity")
-  assignedClients      Client[]                @relation("AssignedConsultant")
-  sessions             AuthSession[]
-  betterAuthSessions   BetterAuthSession[]
-  betterAuthAccounts   BetterAuthAccount[]
-  passwordResetTokens  PasswordResetToken[]
-  workItems            WorkItem[]              @relation("WorkItemAssignee")
-  auditEvents          AuditEvent[]            @relation("AuditActor")
-  readinessDecisions   ReadinessAssessment[]   @relation("ReadinessConsultant")
-  completedReviews     CreditReview[]          @relation("ReviewConsultant")
-  createdSupportCases  SupportCase[]           @relation("SupportCaseCreator")
-  assignedSupportCases SupportCase[]           @relation("SupportCaseAssignee")
-  supportMessages      SupportMessage[]        @relation("SupportMessageAuthor")
-  notifications        Notification[]
-  betterAuthTwoFactor  BetterAuthTwoFactor?
-  staffAssignments     StaffClientAssignment[] @relation("StaffAssignmentUser")
-  accessGrants         ClientAccessGrant[]     @relation("AccessGrantGrantee")
-  accessGrantsIssued   ClientAccessGrant[]     @relation("AccessGrantGrantor")
-  accessGrantsRevoked  ClientAccessGrant[]     @relation("AccessGrantRevoker")
-  securityEvents       SecurityEvent[]         @relation("SecurityEventActor")
-  documentsUploaded    Document[]              @relation("DocumentUploader")
+  id                      String                   @id @default(uuid()) @db.Uuid
+  email                   String                   @unique
+  name                    String                   @default("")
+  emailVerified           Boolean                  @default(false)
+  image                   String?
+  authFirstName           String?
+  authLastName            String?
+  authPhone               String?
+  authTimezone            String?
+  authTermsAccepted       Boolean                  @default(false)
+  twoFactorEnabled        Boolean                  @default(false)
+  passwordHash            String?
+  authProvider            String?
+  role                    UserRole
+  status                  UserStatus               @default(ACTIVE)
+  lastLoginAt             DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  client                  Client?                  @relation("ClientIdentity")
+  assignedClients         Client[]                 @relation("AssignedConsultant")
+  sessions                AuthSession[]
+  betterAuthSessions      BetterAuthSession[]
+  betterAuthAccounts      BetterAuthAccount[]
+  passwordResetTokens     PasswordResetToken[]
+  workItems               WorkItem[]               @relation("WorkItemAssignee")
+  auditEvents             AuditEvent[]             @relation("AuditActor")
+  readinessDecisions      ReadinessAssessment[]    @relation("ReadinessConsultant")
+  completedReviews        CreditReview[]           @relation("ReviewConsultant")
+  createdSupportCases     SupportCase[]            @relation("SupportCaseCreator")
+  assignedSupportCases    SupportCase[]            @relation("SupportCaseAssignee")
+  supportMessages         SupportMessage[]         @relation("SupportMessageAuthor")
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  betterAuthTwoFactor     BetterAuthTwoFactor?
+  staffAssignments        StaffClientAssignment[]  @relation("StaffAssignmentUser")
+  accessGrants            ClientAccessGrant[]      @relation("AccessGrantGrantee")
+  accessGrantsIssued      ClientAccessGrant[]      @relation("AccessGrantGrantor")
+  accessGrantsRevoked     ClientAccessGrant[]      @relation("AccessGrantRevoker")
+  securityEvents          SecurityEvent[]          @relation("SecurityEventActor")
+  documentsUploaded       Document[]               @relation("DocumentUploader")
 
   @@index([role, status])
 }
@@ -961,20 +992,93 @@ model SupportMessage {
 }
 
 model Notification {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @db.Uuid
-  clientId  String?   @db.Uuid
-  type      String
-  title     String
-  body      String
-  link      String?
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client    Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  id          String                 @id @default(uuid()) @db.Uuid
+  userId      String                 @db.Uuid
+  clientId    String?                @db.Uuid
+  semanticKey String
+  type        String
+  category    String                 @default("OPERATIONAL")
+  title       String
+  body        String
+  safePayload Json?
+  link        String?
+  seenAt      DateTime?              @db.Timestamptz(3)
+  readAt      DateTime?
+  createdAt   DateTime               @default(now()) @db.Timestamptz(3)
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?                @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  deliveries  NotificationDelivery[]
 
+  @@unique([userId, semanticKey])
   @@index([userId, readAt, createdAt])
   @@index([clientId, createdAt])
+}
+
+model NotificationDelivery {
+  id                String                     @id @default(uuid()) @db.Uuid
+  notificationId    String                     @db.Uuid
+  channel           NotificationChannel
+  provider          String
+  status            NotificationDeliveryStatus @default(PENDING)
+  attemptCount      Int                        @default(0)
+  providerMessageId String?
+  nextAttemptAt     DateTime?                  @db.Timestamptz(3)
+  lastAttemptAt     DateTime?                  @db.Timestamptz(3)
+  deliveredAt       DateTime?                  @db.Timestamptz(3)
+  failureCategory   String?
+  createdAt         DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                   @updatedAt @db.Timestamptz(3)
+  notification      Notification               @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel, provider])
+  @@index([status, nextAttemptAt, createdAt])
+}
+
+model NotificationTemplate {
+  id           String              @id @default(uuid()) @db.Uuid
+  key          String
+  version      Int
+  channel      NotificationChannel
+  subject      String?
+  body         String
+  enabled      Boolean             @default(true)
+  safeMetadata Json?
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@unique([key, version, channel])
+  @@index([key, channel, enabled])
+}
+
+model NotificationPreference {
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @db.Uuid
+  category  String
+  channel   NotificationChannel
+  enabled   Boolean             @default(true)
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, channel])
+  @@index([userId, channel])
+}
+
+model Integration {
+  id                    String            @id @default(uuid()) @db.Uuid
+  key                   String            @unique
+  type                  IntegrationType
+  provider              String
+  enabled               Boolean           @default(false)
+  status                IntegrationStatus @default(UNTESTED)
+  configurationMetadata Json?
+  secretReferences      String[]
+  lastTestedAt          DateTime?         @db.Timestamptz(3)
+  lastSuccessAt         DateTime?         @db.Timestamptz(3)
+  lastErrorCategory     String?
+  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([type, enabled, status])
 }
 
 model OptionTemplate {

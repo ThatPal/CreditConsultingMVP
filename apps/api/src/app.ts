@@ -31,6 +31,8 @@ import {
   createDocumentStorageRegistry,
   type DocumentStorageRegistry,
 } from './storage/documentStorage.js';
+import { createIntegrationRouter, createNotificationRouter } from './notifications/routes.js';
+import type { EmailProvider } from './notifications/emailProvider.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -47,6 +49,7 @@ export function createApp(
   readiness?: ReadinessChecks,
   betterAuth?: BetterAuthInstance,
   documentStorageRegistry?: DocumentStorageRegistry,
+  emailProvider?: EmailProvider,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -121,6 +124,12 @@ export function createApp(
     if (prisma) {
       const authorization = createPrismaAuthorizationService(prisma);
       const denialRecorder = createPrismaAuthorizationDenialRecorder(prisma);
+      app.use('/api/v1/notifications', createNotificationRouter(prisma));
+      if (emailProvider)
+        app.use(
+          '/api/v1/integrations',
+          createIntegrationRouter(prisma, authorization, emailProvider),
+        );
       app.use(
         '/api/v1/documents',
         createDocumentRouter(

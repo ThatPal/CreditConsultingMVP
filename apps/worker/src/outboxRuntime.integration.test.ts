@@ -1,7 +1,7 @@
 import { createClient } from 'redis';
 import { Pool } from 'pg';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { REALTIME_CHANNEL, startOutboxRuntime } from './outboxRuntime.js';
 
 describe('database to realtime outbox pipeline', () => {
@@ -110,4 +110,73 @@ describe('database to realtime outbox pipeline', () => {
       await pool.query(`DELETE FROM "OutboxEvent" WHERE id = $1`, [eventId]);
     }
   });
+
+  test('resumes durable email delivery after restart without exposing delivery identity realtime', async () => {
+    const eventId = crypto.randomUUID();
+    const deliveryId = crypto.randomUUID();
+    const clientId = '22222222-2222-4222-8222-222222222222';
+    await pool.query(
+      `INSERT INTO "OutboxEvent"
+         (id, "eventType", "eventKey", "aggregateType", "aggregateId", payload)
+       VALUES ($1, 'notification.created', $2, 'Notification', $3, $4::jsonb)`,
+      [
+        eventId,
+        `sprint-3.3-delivery:${eventId}`,
+        crypto.randomUUID(),
+        JSON.stringify({
+          clientId,
+          domains: ['notifications'],
+          notificationDeliveryId: deliveryId,
+        }),
+      ],
+    );
+    const firstAttempt = vi.fn(async () => {
+      throw new Error('provider offline');
+    });
+    const firstRuntime = await startOutboxRuntime({
+      databaseUrl,
+      redisUrl,
+      logger: pino({ enabled: false }),
+      pollIntervalMs: 60_000,
+      processNotificationDelivery: firstAttempt,
+    });
+    await firstRuntime.close();
+    expect(firstAttempt).toHaveBeenCalledWith(deliveryId);
+    await pool.query(`UPDATE "OutboxEvent" SET "availableAt" = now() WHERE id = $1`, [eventId]);
+
+    const subscriber = createClient({ url: redisUrl });
+    await subscriber.connect();
+    const received = new Promise<Record<string, unknown>>((resolve) => {
+      void subscriber.subscribe(REALTIME_CHANNEL, (raw) => {
+        const event = JSON.parse(raw) as Record<string, unknown>;
+        if (event.id === eventId) resolve(event);
+      });
+    });
+    const recovered = vi.fn(async () => undefined);
+    const restarted = await startOutboxRuntime({
+      databaseUrl,
+      redisUrl,
+      logger: pino({ enabled: false }),
+      pollIntervalMs: 60_000,
+      processNotificationDelivery: recovered,
+    });
+    try {
+      await expect(received).resolves.toMatchObject({
+        id: eventId,
+        clientId,
+        domains: ['notifications'],
+      });
+      expect(await received).not.toHaveProperty('notificationDeliveryId');
+      expect(recovered).toHaveBeenCalledWith(deliveryId);
+      const persisted = await pool.query<{ status: string; attemptCount: number }>(
+        `SELECT status, "attemptCount" FROM "OutboxEvent" WHERE id = $1`,
+        [eventId],
+      );
+      expect(persisted.rows[0]).toEqual({ status: 'PUBLISHED', attemptCount: 2 });
+    } finally {
+      await restarted.close();
+      await subscriber.quit();
+      await pool.query(`DELETE FROM "OutboxEvent" WHERE id = $1`, [eventId]);
+    }
+  }, 30_000);
 });

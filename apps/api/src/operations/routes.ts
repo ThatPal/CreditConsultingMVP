@@ -706,7 +706,9 @@ export function createOperationsRouter(
             data: notificationRecipients.map((userId) => ({
               userId,
               clientId,
+              semanticKey: `support-case-created:${supportCase.id}`,
               type: 'SUPPORT_MESSAGE',
+              category: 'SUPPORT',
               title: 'New support request',
               body: `${client.firstName} ${client.lastName}: ${parsed.data.subject}`,
               link: `/consultant/support?case=${supportCase.id}`,
@@ -770,7 +772,9 @@ export function createOperationsRouter(
               data: notificationRecipients.map((userId) => ({
                 userId,
                 clientId: supportCase.clientId,
+                semanticKey: `support-client-message:${supportCase.id}:${now.getTime()}`,
                 type: 'SUPPORT_MESSAGE',
+                category: 'SUPPORT',
                 title: 'New client message',
                 body: supportCase.subject,
                 link: `/consultant/support?case=${supportCase.id}`,
@@ -918,10 +922,12 @@ export function createOperationsRouter(
               data: {
                 userId: supportCase.client.userId,
                 clientId: supportCase.clientId,
+                semanticKey: `support-staff-reply:${supportCase.id}:${now.getTime()}`,
                 type: 'SUPPORT_MESSAGE',
+                category: 'SUPPORT',
                 title: 'New support reply',
                 body: supportCase.subject,
-                link: `/client/support?case=${supportCase.id}`,
+                link: `/app/support?case=${supportCase.id}`,
               },
             });
           await tx.auditEvent.create({

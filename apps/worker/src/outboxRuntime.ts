@@ -57,6 +57,7 @@ export async function startOutboxRuntime(options: {
   redisUrl: string;
   logger: Logger;
   pollIntervalMs?: number;
+  processNotificationDelivery?: (deliveryId: string) => Promise<void>;
 }) {
   const pool = new Pool({ connectionString: options.databaseUrl, max: 4 });
   const connection = bullConnection(options.redisUrl);
@@ -68,7 +69,14 @@ export async function startOutboxRuntime(options: {
   const worker = new Worker(
     OUTBOX_QUEUE,
     async (job) => {
-      await redis.publish(REALTIME_CHANNEL, JSON.stringify(job.data));
+      const deliveryId = (job.data as { notificationDeliveryId?: unknown }).notificationDeliveryId;
+      if (typeof deliveryId === 'string') {
+        if (!options.processNotificationDelivery)
+          throw new Error('NOTIFICATION_DELIVERY_PROCESSOR_UNAVAILABLE');
+        await options.processNotificationDelivery(deliveryId);
+      }
+      const envelope = (job.data as { envelope?: unknown }).envelope ?? job.data;
+      await redis.publish(REALTIME_CHANNEL, JSON.stringify(envelope));
       return { published: true, eventId: job.id };
     },
     { connection, concurrency: 8 },
@@ -109,10 +117,18 @@ export async function startOutboxRuntime(options: {
     for (const event of events) {
       try {
         const envelope = toClientEnvelope(event);
-        const job = await queue.add('dispatch-realtime', envelope, {
-          ...outboxJobOptions,
-          jobId: event.id,
-        });
+        const deliveryId = (event.payload as { notificationDeliveryId?: unknown })
+          .notificationDeliveryId;
+        const job = await queue.add(
+          'dispatch-realtime',
+          typeof deliveryId === 'string'
+            ? { envelope, notificationDeliveryId: deliveryId }
+            : envelope,
+          {
+            ...outboxJobOptions,
+            jobId: event.id,
+          },
+        );
         await job.waitUntilFinished(queueEvents, 15_000);
         await pool.query(
           `UPDATE "OutboxEvent" SET status = 'PUBLISHED', "publishedAt" = now(), "lastErrorCode" = NULL WHERE id = $1`,

@@ -10,6 +10,7 @@ import { ApplicationCyclesPage } from './pages/ApplicationCyclesPage';
 import { CardsPage } from './pages/CardsPage';
 import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
 import { DocumentsPage } from './pages/DocumentsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { GoalsPage } from './pages/GoalsPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ServicesPage } from './pages/ServicesPage';
@@ -96,6 +97,7 @@ export function App() {
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="documents" element={<DocumentsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="support" element={<SupportPage />} />
           <Route path="account" element={<AccountPage />} />
           <Route path="account/security" element={<SecurityPage />} />
