@@ -1,9 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import { AppShell } from './AppShell';
-import { consultantNavigation } from './navigation';
+import { navigationFor } from './navigation';
+import { useAuth } from '../auth/AuthProvider';
 export function ConsultantAppShell() {
+  const { user } = useAuth();
   return (
-    <AppShell role="consultant" items={consultantNavigation}>
+    <AppShell role="consultant" items={user ? navigationFor(user, 'consultant') : []}>
       <Outlet />
     </AppShell>
   );

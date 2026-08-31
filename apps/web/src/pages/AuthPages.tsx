@@ -92,10 +92,7 @@ export function LoginPage() {
         method: 'POST',
         body: JSON.stringify({ email, password: data.get('password') }),
       });
-      const returnTo = safeReturnPath(
-        (location.state as { from?: unknown } | null)?.from,
-        '/consultant/dashboard',
-      );
+      const returnTo = safeReturnPath((location.state as { from?: unknown } | null)?.from, '/crm');
       if (signIn.twoFactorRedirect) {
         navigate(`/mfa?mode=challenge&returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
         return;
@@ -170,7 +167,7 @@ export function StaffMfaPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const mode = params.get('mode') === 'enroll' ? 'enroll' : 'challenge';
-  const returnTo = safeReturnPath(params.get('returnTo'), '/consultant/dashboard');
+  const returnTo = safeReturnPath(params.get('returnTo'), '/crm');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [totpURI, setTotpURI] = useState('');

@@ -14,6 +14,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Popover,
   Stack,
   Toolbar,
@@ -26,8 +28,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type MouseEvent, type PropsWithChildren } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
+import { useAuth } from '../auth/AuthProvider';
 import { designTokens } from '../theme';
-import type { NavigationItem } from './navigation';
+import type { NavigationItem, ShellKind } from './navigation';
 
 const sidebarWidth = 264;
 type AppNotification = {
@@ -77,10 +80,12 @@ function Brand({ compact = false }: { compact?: boolean }) {
 function Sidebar({
   items,
   dense,
+  role,
   onNavigate,
 }: {
   items: NavigationItem[];
   dense: boolean;
+  role: ShellKind;
   onNavigate?: () => void;
 }) {
   return (
@@ -98,7 +103,7 @@ function Sidebar({
       <Brand />
       <List
         component="nav"
-        aria-label={dense ? 'Consultant navigation' : 'Client navigation'}
+        aria-label={`${role === 'client' ? 'Client' : role === 'consultant' ? 'Consultant' : 'Admin'} navigation`}
         sx={{ px: 1.5, py: 1, flex: 1, minHeight: 0, overflowY: 'auto' }}
       >
         {items.map(({ label, path, icon: Icon }) => (
@@ -178,12 +183,14 @@ export function AppShell({
   items,
   role,
   children,
-}: PropsWithChildren<{ items: NavigationItem[]; role: 'client' | 'consultant' }>) {
+}: PropsWithChildren<{ items: NavigationItem[]; role: ShellKind }>) {
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('lg'));
   const [open, setOpen] = useState(false);
   const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
+  const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const queryClient = useQueryClient();
   const notificationsQuery = useQuery({
     queryKey: ['notifications'],
@@ -205,7 +212,20 @@ export function AppShell({
     setNotificationAnchor(null);
     if (notification.link) navigate(notification.link);
   };
-  const dense = role === 'consultant';
+  const dense = role !== 'client';
+  const shellLabel =
+    role === 'client'
+      ? 'Client portal'
+      : role === 'consultant'
+        ? 'Consultant CRM'
+        : 'Admin operations';
+  const accountPath =
+    role === 'client' ? '/app/account' : role === 'consultant' ? '/crm/account' : '/admin/account';
+  const closeAccountMenu = () => {
+    const trigger = accountAnchor;
+    setAccountAnchor(null);
+    requestAnimationFrame(() => trigger?.focus());
+  };
   const notifications = notificationsQuery.data?.notifications ?? [];
   const unread = notificationsQuery.data?.unread ?? 0;
   return (
@@ -222,7 +242,7 @@ export function AppShell({
         sx={{ width: { lg: sidebarWidth }, height: { lg: '100vh' }, flexShrink: 0 }}
       >
         {desktop ? (
-          <Sidebar items={items} dense={dense} />
+          <Sidebar items={items} dense={dense} role={role} />
         ) : (
           <Drawer
             open={open}
@@ -230,7 +250,7 @@ export function AppShell({
             ModalProps={{ keepMounted: true }}
             slotProps={{ paper: { sx: { bgcolor: 'transparent' } } }}
           >
-            <Sidebar items={items} dense={dense} onNavigate={() => setOpen(false)} />
+            <Sidebar items={items} dense={dense} role={role} onNavigate={() => setOpen(false)} />
           </Drawer>
         )}
       </Box>
@@ -266,7 +286,7 @@ export function AppShell({
               <Brand compact />
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ ml: { xs: 'auto', lg: 0 } }}>
-              {dense ? 'Consultant workspace' : 'Client portal'}
+              {shellLabel}
             </Typography>
             <Stack direction="row" spacing={1} sx={{ ml: 'auto', alignItems: 'center' }}>
               <Tooltip title="Notifications">
@@ -284,8 +304,9 @@ export function AppShell({
               <Tooltip title="Account">
                 <IconButton
                   aria-label="Account profile"
-                  component={NavLink}
-                  to={role === 'client' ? '/client/account' : '/consultant/account'}
+                  aria-haspopup="menu"
+                  aria-expanded={Boolean(accountAnchor)}
+                  onClick={(event) => setAccountAnchor(event.currentTarget)}
                 >
                   <Avatar
                     sx={{
@@ -302,6 +323,39 @@ export function AppShell({
             </Stack>
           </Toolbar>
         </AppBar>
+        <Menu
+          anchorEl={accountAnchor}
+          open={Boolean(accountAnchor)}
+          onClose={closeAccountMenu}
+          slotProps={{ list: { 'aria-label': 'Account menu' } }}
+        >
+          <MenuItem
+            onClick={() => {
+              setAccountAnchor(null);
+              navigate(accountPath);
+            }}
+          >
+            Account
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setAccountAnchor(null);
+              navigate(`${accountPath}/security`);
+            }}
+          >
+            Security & sessions
+          </MenuItem>
+          <Divider />
+          <MenuItem
+            onClick={async () => {
+              setAccountAnchor(null);
+              await logout();
+              navigate('/login', { replace: true });
+            }}
+          >
+            Sign out
+          </MenuItem>
+        </Menu>
         <Popover
           open={Boolean(notificationAnchor)}
           anchorEl={notificationAnchor}

@@ -5,6 +5,7 @@ import { apiRequest, type CurrentUser } from './api';
 type AuthState = {
   user: CurrentUser | null;
   loading: boolean;
+  error: boolean;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -33,6 +34,7 @@ export function AuthProvider({
       value={{
         user: initialUser ?? query.data?.user ?? null,
         loading: initialUser === undefined && query.isLoading,
+        error: initialUser === undefined && query.isError,
         refresh,
         logout,
       }}

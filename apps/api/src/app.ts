@@ -103,7 +103,7 @@ export function createApp(
         : authenticate(auth, env.SESSION_COOKIE_NAME),
     );
     if (!betterAuth) app.use('/api/auth', createAuthRouter(auth, env));
-    app.use('/api/me', createMeRouter(auth));
+    app.use('/api/me', createMeRouter(auth, prisma));
     if (goals) {
       app.use('/api/goals', createGoalRouter(goals));
       app.use('/api/v1/client/goals', createGoalRouter(goals));

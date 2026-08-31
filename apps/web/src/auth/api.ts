@@ -13,9 +13,19 @@ export type CurrentUser = {
   staffMfaEnabled?: boolean;
   staffMfaVerified?: boolean;
   stepUpVerified?: boolean;
+  capabilities?: string[];
 };
 
 type ApiErrorBody = { error?: { message?: string }; message?: string };
+
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${webEnv.VITE_API_URL}${path}`, {
@@ -25,8 +35,9 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-    throw new Error(
+    throw new ApiRequestError(
       body.error?.message ?? body.message ?? 'Something went wrong. Please try again.',
+      response.status,
     );
   }
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
@@ -59,4 +70,4 @@ export async function apiBlobRequest(path: string): Promise<Blob> {
 }
 
 export const homeFor = (user: CurrentUser) =>
-  user.role === 'CLIENT' ? '/client/overview' : '/consultant/dashboard';
+  user.role === 'CLIENT' ? '/app' : user.role === 'CONSULTANT' ? '/crm' : '/admin';

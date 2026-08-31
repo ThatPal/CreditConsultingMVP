@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../config/env.js';
 import { AppError } from '../http/errors.js';
 import type { AuthService } from './authService.js';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import { requireAuth, requireRole } from './middleware.js';
 
 const password = z.string().min(12, 'Password must contain at least 12 characters').max(128);
@@ -179,13 +180,30 @@ export function createAuthRouter(auth: AuthService, env: AppEnv) {
   return router;
 }
 
-export function createMeRouter(auth: AuthService) {
+export function createMeRouter(auth: AuthService, prisma?: PrismaClient) {
   const router = Router();
   router.get('/', requireAuth, async (req, res, next) => {
     try {
       const user = await auth.getMe(req.auth!.userId);
       if (!user) throw new AppError('AUTH_REQUIRED', 401, 'Authentication is required');
-      res.json({ user });
+      const capabilities = prisma
+        ? (
+            await prisma.roleCapability.findMany({
+              where: { role: req.auth!.role },
+              select: { capability: true },
+              orderBy: { capability: 'asc' },
+            })
+          ).map(({ capability }) => capability)
+        : [];
+      res.json({
+        user: {
+          ...user,
+          staffMfaEnabled: req.auth!.staffMfaEnabled,
+          staffMfaVerified: req.auth!.staffMfaVerified,
+          stepUpVerified: req.auth!.stepUpVerified,
+          capabilities,
+        },
+      });
     } catch (error) {
       next(error);
     }
@@ -193,6 +211,20 @@ export function createMeRouter(auth: AuthService) {
   router.patch('/', requireAuth, requireRole('CLIENT'), async (req, res, next) => {
     try {
       res.json({ user: await auth.updateMe(req.auth!.userId, parse(updateMeSchema, req.body)) });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.get('/sessions', requireAuth, async (req, res, next) => {
+    try {
+      if (!prisma)
+        throw new AppError('SERVICE_UNAVAILABLE', 503, 'Session details are unavailable');
+      const sessions = await prisma.betterAuthSession.findMany({
+        where: { userId: req.auth!.userId, expiresAt: { gt: new Date() } },
+        select: { id: true, userAgent: true, createdAt: true, updatedAt: true, expiresAt: true },
+        orderBy: { updatedAt: 'desc' },
+      });
+      res.json({ sessions });
     } catch (error) {
       next(error);
     }

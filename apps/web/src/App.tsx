@@ -1,35 +1,33 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { ProtectedRoute } from './auth/ProtectedRoute';
 import { LoadingSkeleton } from './components/common/Feedback';
+import { AdminAppShell } from './layouts/AdminAppShell';
 import { ClientAppShell } from './layouts/ClientAppShell';
 import { ConsultantAppShell } from './layouts/ConsultantAppShell';
-import { clientNavigation, consultantNavigation } from './layouts/navigation';
-import { PlaceholderPage } from './pages/PlaceholderPage';
-import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AccountPage } from './pages/AccountPage';
-import { OnboardingPage } from './pages/OnboardingPage';
-import { GoalsPage } from './pages/GoalsPage';
-import { DocumentsPage } from './pages/DocumentsPage';
-import { CardsPage } from './pages/CardsPage';
 import { ApplicationCyclesPage } from './pages/ApplicationCyclesPage';
-import { SupportPage } from './pages/SupportPage';
+import { CardsPage } from './pages/CardsPage';
 import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
+import { DocumentsPage } from './pages/DocumentsPage';
+import { GoalsPage } from './pages/GoalsPage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { ServicesPage } from './pages/ServicesPage';
-import { AdministrationPage } from './pages/AdministrationPage';
+import { SecurityPage } from './pages/SecurityPage';
+import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
+import { SupportPage } from './pages/SupportPage';
 import {
-  ConsultantAccountPage,
   ForgotPasswordPage,
   LoginPage,
-  StaffMfaPage,
   RegisterPage,
   ResetPasswordPage,
+  StaffMfaPage,
 } from './pages/AuthPages';
 import {
   ClientOverviewPage,
   ClientsPage,
   ConsultantDashboardPage,
   ReadinessPage,
-  SimpleDomainPage,
   WorkQueuePage,
 } from './pages/PlatformPages';
 import {
@@ -42,7 +40,9 @@ import {
 const DesignSystemPage = lazy(() =>
   import('./pages/dev/DesignSystemPage').then((module) => ({ default: module.DesignSystemPage })),
 );
-
+const ShellEvidencePage = lazy(() =>
+  import('./pages/dev/ShellEvidencePage').then((module) => ({ default: module.ShellEvidencePage })),
+);
 export const isDesignSystemShowcaseEnabled = import.meta.env.DEV || import.meta.env.MODE === 'test';
 
 export function App() {
@@ -65,93 +65,117 @@ export function App() {
           }
         />
       )}
+      {isDesignSystemShowcaseEnabled && (
+        <Route
+          path="/dev/shell/:role"
+          element={
+            <Suspense fallback={<LoadingSkeleton />}>
+              <ShellEvidencePage />
+            </Suspense>
+          }
+        />
+      )}
+
       <Route element={<ProtectedRoute roles={['CLIENT']} />}>
-        <Route path="/client" element={<ClientAppShell />}>
-          {clientNavigation.map((item) => (
-            <Route
-              key={item.path}
-              path={item.path.replace('/client/', '')}
-              element={
-                item.path === '/client/account' ? (
-                  <AccountPage />
-                ) : item.path === '/client/goals' ? (
-                  <GoalsPage />
-                ) : item.path === '/client/services' ? (
-                  <ServicesPage />
-                ) : item.path === '/client/overview' ? (
-                  <ClientOverviewPage />
-                ) : item.path === '/client/credit-profile' ? (
-                  <CreditProfilePage />
-                ) : item.path === '/client/readiness' ? (
-                  <ReadinessPage />
-                ) : item.path === '/client/cards' ? (
-                  <CardsPage />
-                ) : item.path === '/client/application-rounds' ? (
-                  <ApplicationCyclesPage />
-                ) : item.path === '/client/documents' ? (
-                  <DocumentsPage />
-                ) : item.path === '/client/support' ? (
-                  <SupportPage />
-                ) : (
-                  <PlaceholderPage />
-                )
-              }
-            />
-          ))}
-          <Route path="credit-profile/review" element={<ClientReviewPage />} />
+        <Route path="/app" element={<ClientAppShell />}>
+          <Route index element={<ClientOverviewPage />} />
           <Route
-            path="credit-profile-v2"
-            element={<Navigate to="/client/credit-profile" replace />}
+            path="journey"
+            element={
+              <FoundationPage
+                title="Journey"
+                description="Your secure journey workspace is ready for its owning product sprint."
+              />
+            }
           />
-          <Route path="credit-center" element={<Navigate to="/client/credit-profile" replace />} />
+          <Route path="credit-center" element={<CreditProfilePage />} />
+          <Route path="credit-center/review" element={<ClientReviewPage />} />
+          <Route path="readiness" element={<ReadinessPage />} />
+          <Route path="cards" element={<CardsPage />} />
+          <Route path="application-rounds" element={<ApplicationCyclesPage />} />
+          <Route path="goals" element={<GoalsPage />} />
+          <Route path="services" element={<ServicesPage />} />
+          <Route path="documents" element={<DocumentsPage />} />
+          <Route path="support" element={<SupportPage />} />
+          <Route path="account" element={<AccountPage />} />
+          <Route path="account/security" element={<SecurityPage />} />
           <Route
-            path="credit-center/review"
-            element={<Navigate to="/client/credit-profile/review" replace />}
+            path="*"
+            element={
+              <FoundationPage
+                title="Page not found"
+                description="This portal route is not available."
+              />
+            }
           />
-          <Route
-            path="credit-center-v2"
-            element={<Navigate to="/client/credit-profile" replace />}
-          />
-          <Route path="credit-plan" element={<Navigate to="/client/credit-profile" replace />} />
-          <Route index element={<Navigate to="overview" replace />} />
         </Route>
       </Route>
-      <Route element={<ProtectedRoute roles={['CONSULTANT', 'ADMIN']} />}>
-        <Route path="/consultant" element={<ConsultantAppShell />}>
-          {consultantNavigation.map((item) => (
-            <Route
-              key={item.path}
-              path={item.path.replace('/consultant/', '')}
-              element={
-                item.path === '/consultant/dashboard' ? (
-                  <ConsultantDashboardPage />
-                ) : item.path === '/consultant/work-queue' ? (
-                  <WorkQueuePage />
-                ) : item.path === '/consultant/clients' ? (
-                  <ClientsPage />
-                ) : item.path === '/consultant/readiness' ? (
-                  <ReadinessPage consultant />
-                ) : item.path === '/consultant/reviews' ? (
-                  <ConsultantReviewsPage />
-                ) : item.path === '/consultant/support' ? (
-                  <ConsultantSupportPage />
-                ) : item.path === '/consultant/administration' ? (
-                  <AdministrationPage />
-                ) : (
-                  <SimpleDomainPage
-                    title={item.label}
-                    description="A selection-first operational workspace with prepared decisions, suggested actions, and audit history."
-                    action="Open next item"
-                  />
-                )
-              }
-            />
-          ))}
+
+      <Route element={<ProtectedRoute roles={['CONSULTANT']} />}>
+        <Route path="/crm" element={<ConsultantAppShell />}>
+          <Route index element={<ConsultantDashboardPage />} />
+          <Route path="work-queue" element={<WorkQueuePage />} />
+          <Route path="clients" element={<ClientsPage />} />
+          <Route path="reviews" element={<ConsultantReviewsPage />} />
           <Route path="reviews/:clientId/:reviewId" element={<ConsultantReviewWorkspacePage />} />
-          <Route path="account" element={<ConsultantAccountPage />} />
-          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="readiness" element={<ReadinessPage consultant />} />
+          <Route path="support" element={<ConsultantSupportPage />} />
+          <Route
+            path="sessions"
+            element={
+              <FoundationPage
+                title="Live Sessions"
+                description="Persistent live-session supervision mounts here without introducing new realtime transport."
+              />
+            }
+          />
+          <Route
+            path="calendar"
+            element={
+              <FoundationPage
+                title="Calendar"
+                description="The CRM calendar mounting point is reserved for its owning sprint."
+              />
+            }
+          />
+          <Route path="account" element={<StaffAccountPage />} />
+          <Route path="account/security" element={<SecurityPage />} />
+          <Route
+            path="*"
+            element={
+              <FoundationPage
+                title="Page not found"
+                description="This CRM route is not available."
+              />
+            }
+          />
         </Route>
       </Route>
+
+      <Route element={<ProtectedRoute roles={['ADMIN']} />}>
+        <Route path="/admin" element={<AdminAppShell />}>
+          <Route index element={<AdminLandingPage />} />
+          <Route path="account" element={<StaffAccountPage />} />
+          <Route path="account/security" element={<SecurityPage />} />
+          <Route
+            path="*"
+            element={
+              <FoundationPage
+                title="Page not found"
+                description="This Admin route is not available or is not yet implemented."
+              />
+            }
+          />
+        </Route>
+      </Route>
+
+      <Route path="/client" element={<Navigate to="/app" replace />} />
+      <Route path="/client/overview" element={<Navigate to="/app" replace />} />
+      <Route path="/client/credit-profile" element={<Navigate to="/app/credit-center" replace />} />
+      <Route path="/client/account" element={<Navigate to="/app/account" replace />} />
+      <Route path="/consultant" element={<Navigate to="/crm" replace />} />
+      <Route path="/consultant/dashboard" element={<Navigate to="/crm" replace />} />
+      <Route path="/consultant/account" element={<Navigate to="/crm/account" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

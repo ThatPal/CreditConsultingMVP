@@ -214,7 +214,10 @@ describe('authentication and authorization', () => {
     await agent
       .get('/api/me')
       .expect(200)
-      .expect(({ body }) => expect(body.user.firstName).toBe('A'));
+      .expect(({ body }) => {
+        expect(body.user.firstName).toBe('A');
+        expect(body.user.capabilities).toEqual([]);
+      });
     await agent
       .patch('/api/me')
       .send({ firstName: 'Updated' })
