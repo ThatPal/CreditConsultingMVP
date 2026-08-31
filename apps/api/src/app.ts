@@ -27,7 +27,10 @@ import {
   createPrismaAuthorizationService,
 } from './authorization/authorizationService.js';
 import { createDocumentRouter } from './documents/routes.js';
-import { createDocumentStorage } from './storage/documentStorage.js';
+import {
+  createDocumentStorageRegistry,
+  type DocumentStorageRegistry,
+} from './storage/documentStorage.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -43,6 +46,7 @@ export function createApp(
   prisma?: PrismaClient,
   readiness?: ReadinessChecks,
   betterAuth?: BetterAuthInstance,
+  documentStorageRegistry?: DocumentStorageRegistry,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -119,7 +123,11 @@ export function createApp(
       const denialRecorder = createPrismaAuthorizationDenialRecorder(prisma);
       app.use(
         '/api/v1/documents',
-        createDocumentRouter(prisma, authorization, createDocumentStorage()),
+        createDocumentRouter(
+          prisma,
+          authorization,
+          documentStorageRegistry ?? createDocumentStorageRegistry(),
+        ),
       );
       app.use(
         '/api/v1/reviews',

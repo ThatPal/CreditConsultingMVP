@@ -21,6 +21,41 @@ export interface DocumentStorage {
   delete(storageKey: string): Promise<void>;
 }
 
+export class DocumentStorageProviderUnavailableError extends Error {
+  readonly code = 'DOCUMENT_STORAGE_PROVIDER_UNAVAILABLE';
+
+  constructor(readonly provider: StoredDocument['provider']) {
+    super(`Document storage provider is unavailable: ${provider}`);
+    this.name = 'DocumentStorageProviderUnavailableError';
+  }
+}
+
+export class DocumentStorageRegistry {
+  private readonly providers = new Map<StoredDocument['provider'], DocumentStorage>();
+
+  constructor(
+    readonly defaultProvider: StoredDocument['provider'],
+    storages: Iterable<DocumentStorage>,
+  ) {
+    for (const storage of storages) {
+      if (this.providers.has(storage.provider))
+        throw new Error(`DUPLICATE_DOCUMENT_STORAGE_PROVIDER:${storage.provider}`);
+      this.providers.set(storage.provider, storage);
+    }
+    this.forProvider(defaultProvider);
+  }
+
+  forNewUpload() {
+    return this.forProvider(this.defaultProvider);
+  }
+
+  forProvider(provider: StoredDocument['provider']) {
+    const storage = this.providers.get(provider);
+    if (!storage) throw new DocumentStorageProviderUnavailableError(provider);
+    return storage;
+  }
+}
+
 export interface S3CompatibleStorageConfig {
   endpoint: string;
   region: string;
@@ -179,4 +214,20 @@ export function createDocumentStorage(options?: {
   if (provider !== 'S3_COMPATIBLE' || !options?.s3Config || !options.s3Client)
     throw new Error('S3_STORAGE_CONFIGURATION_REQUIRED');
   return new S3CompatibleDocumentStorage(options.s3Config, options.s3Client);
+}
+
+export function createDocumentStorageRegistry(options?: {
+  defaultProvider?: StoredDocument['provider'];
+  storages?: Iterable<DocumentStorage>;
+  s3Config?: S3CompatibleStorageConfig;
+  s3Client?: S3CompatibleClient;
+}) {
+  const defaultProvider =
+    options?.defaultProvider ??
+    (process.env.DOCUMENT_STORAGE_PROVIDER as StoredDocument['provider'] | undefined) ??
+    'LOCAL_DISK';
+  const storages = options?.storages
+    ? [...options.storages]
+    : [createDocumentStorage({ provider: defaultProvider, ...options })];
+  return new DocumentStorageRegistry(defaultProvider, storages);
 }

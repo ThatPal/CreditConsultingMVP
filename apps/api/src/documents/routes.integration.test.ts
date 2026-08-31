@@ -5,13 +5,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import pino from 'pino';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { createPrismaAuthorizationService } from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { errorHandler } from '../http/errors.js';
 import { createPrisma } from '../lib/prisma.js';
 import { seedSystemReferenceData } from '../seeding/systemSeed.js';
-import { LocalDiskDocumentStorage, type DocumentStorage } from '../storage/documentStorage.js';
+import {
+  DocumentStorageRegistry,
+  LocalDiskDocumentStorage,
+  type DocumentStorage,
+} from '../storage/documentStorage.js';
 import { createDocumentRouter } from './routes.js';
 
 describe('canonical documents API', () => {
@@ -67,7 +71,13 @@ describe('canonical documents API', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  function app(storage: DocumentStorage = new LocalDiskDocumentStorage(root)) {
+  function app(
+    storage: DocumentStorage | DocumentStorageRegistry = new LocalDiskDocumentStorage(root),
+  ) {
+    const registry =
+      storage instanceof DocumentStorageRegistry
+        ? storage
+        : new DocumentStorageRegistry(storage.provider, [storage]);
     const application = express();
     application.use((req, _res, next) => {
       const identity = req.get('x-test-identity');
@@ -100,7 +110,7 @@ describe('canonical documents API', () => {
     });
     application.use(
       '/documents',
-      createDocumentRouter(prisma, createPrismaAuthorizationService(prisma), storage),
+      createDocumentRouter(prisma, createPrismaAuthorizationService(prisma), registry),
     );
     application.use(errorHandler(pino({ enabled: false })));
     return application;
@@ -230,5 +240,99 @@ describe('canonical documents API', () => {
       .expect(500);
     expect(await prisma.document.count({ where: { clientId: clientTwo.id } })).toBe(before);
     await expect(base.exists(attemptedKey)).resolves.toBe(false);
+  });
+
+  test('routes historical reads and cross-provider replacements by persisted provider', async () => {
+    const local = new LocalDiskDocumentStorage(root);
+    const s3Objects = new Map<string, Buffer>();
+    const s3: DocumentStorage = {
+      provider: 'S3_COMPATIBLE',
+      put: async (key, content) => {
+        s3Objects.set(key, content);
+        return {
+          provider: 'S3_COMPATIBLE',
+          storageKey: key,
+          sizeBytes: content.length,
+          sha256: 'a'.repeat(64),
+        };
+      },
+      read: async (key) => s3Objects.get(key) ?? null,
+      openRead: async (key) => {
+        const value = s3Objects.get(key);
+        return value ? (await import('node:stream')).Readable.from(value) : null;
+      },
+      exists: async (key) => s3Objects.has(key),
+      delete: async (key) => void s3Objects.delete(key),
+    };
+
+    const localDefault = new DocumentStorageRegistry('LOCAL_DISK', [local, s3]);
+    const first = await request(app(localDefault))
+      .post('/documents')
+      .set('x-test-identity', 'two')
+      .set('x-document-type', 'GENERAL_CLIENT_DOCUMENT')
+      .set('x-file-name', 'local-history.pdf')
+      .set('content-type', 'application/pdf')
+      .send(Buffer.from('%PDF-local-history'))
+      .expect(201);
+    await expect(
+      prisma.document.findUniqueOrThrow({ where: { id: first.body.document.id } }),
+    ).resolves.toMatchObject({ storageProvider: 'LOCAL_DISK' });
+
+    const s3Default = new DocumentStorageRegistry('S3_COMPATIBLE', [local, s3]);
+    await request(app(s3Default))
+      .get(`/documents/${first.body.document.id}/content`)
+      .set('x-test-identity', 'two')
+      .expect(200)
+      .expect((res) => expect(res.body).toEqual(Buffer.from('%PDF-local-history')));
+    const replacement = await request(app(s3Default))
+      .post(`/documents/${first.body.document.id}/replace`)
+      .set('x-test-identity', 'two')
+      .set('x-file-name', 's3-replacement.pdf')
+      .set('content-type', 'application/pdf')
+      .send(Buffer.from('%PDF-s3-replacement'))
+      .expect(201);
+    await expect(
+      prisma.document.findUniqueOrThrow({ where: { id: replacement.body.document.id } }),
+    ).resolves.toMatchObject({ storageProvider: 'S3_COMPATIBLE' });
+    await request(app(s3Default))
+      .get(`/documents/${replacement.body.document.id}/content`)
+      .set('x-test-identity', 'two')
+      .expect(200)
+      .expect((res) => expect(res.body).toEqual(Buffer.from('%PDF-s3-replacement')));
+    await request(app(s3Default))
+      .delete(`/documents/${replacement.body.document.id}`)
+      .set('x-test-identity', 'two')
+      .expect(204);
+    expect(s3Objects.size).toBe(0);
+    const localRecord = await prisma.document.findUniqueOrThrow({
+      where: { id: first.body.document.id },
+    });
+    await expect(local.exists(localRecord.storageKey)).resolves.toBe(true);
+    await request(app(s3Default))
+      .delete(`/documents/${first.body.document.id}`)
+      .set('x-test-identity', 'two')
+      .expect(204);
+    await expect(local.exists(localRecord.storageKey)).resolves.toBe(false);
+  });
+
+  test('fails closed when a historical record provider is unavailable', async () => {
+    const localDocument = await prisma.document.findFirstOrThrow({
+      where: { clientId: clientOne.id, storageProvider: 'LOCAL_DISK' },
+    });
+    const fallbackRead = vi.fn(async () => null);
+    const onlyS3: DocumentStorage = {
+      provider: 'S3_COMPATIBLE',
+      put: vi.fn(),
+      read: fallbackRead,
+      openRead: fallbackRead,
+      exists: vi.fn(async () => false),
+      delete: vi.fn(),
+    };
+    const registry = new DocumentStorageRegistry('S3_COMPATIBLE', [onlyS3]);
+    await request(app(registry))
+      .get(`/documents/${localDocument.id}/content`)
+      .set('x-test-identity', 'one')
+      .expect(500);
+    expect(fallbackRead).not.toHaveBeenCalled();
   });
 });

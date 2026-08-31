@@ -9,6 +9,8 @@ Sprint 3.2 adds a canonical `Document` record and a provider-neutral private sto
 
 Storage keys are generated opaque identifiers. Both POSIX and Windows absolute paths and traversal keys are rejected on every platform.
 
+The provider registry chooses its configured default only for new uploads. Every read, delete, cleanup, and replacement-history operation resolves the provider from the document record's persisted `storageProvider`. Multiple providers can therefore coexist while defaults change over time, and a replacement may be written to a different provider without moving its predecessor. If a historical provider is not registered, the operation fails closed; the registry never probes or falls back to another provider.
+
 ## Authorization and lifecycle
 
 Clients may upload enabled, client-uploadable document types and may list or download only documents belonging to their own client record. Staff access is evaluated from current canonical assignments on every request, so revocation takes effect immediately. Download responses use safe filenames and never return storage keys or provider details.

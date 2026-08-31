@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import {
   LocalDiskDocumentStorage,
+  DocumentStorageProviderUnavailableError,
+  DocumentStorageRegistry,
   resolvePrivateStoragePath,
   S3CompatibleDocumentStorage,
   type DocumentStorage,
@@ -72,5 +74,19 @@ describe('private document storage', () => {
       'INVALID_STORAGE_KEY',
     );
     expect(() => resolvePrivateStoragePath('C:\\safe', '/secret')).toThrow('INVALID_STORAGE_KEY');
+  });
+
+  test('registry selects the default only for new writes and never falls back for records', () => {
+    const local = { provider: 'LOCAL_DISK' } as DocumentStorage;
+    const s3 = { provider: 'S3_COMPATIBLE' } as DocumentStorage;
+    const registry = new DocumentStorageRegistry('S3_COMPATIBLE', [local, s3]);
+    expect(registry.forNewUpload()).toBe(s3);
+    expect(registry.forProvider('LOCAL_DISK')).toBe(local);
+    expect(registry.forProvider('S3_COMPATIBLE')).toBe(s3);
+
+    const unavailable = new DocumentStorageRegistry('LOCAL_DISK', [local]);
+    expect(() => unavailable.forProvider('S3_COMPATIBLE')).toThrow(
+      DocumentStorageProviderUnavailableError,
+    );
   });
 });

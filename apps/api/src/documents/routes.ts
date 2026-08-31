@@ -5,7 +5,7 @@ import type { AuthorizationService } from '../authorization/authorizationService
 import type { AuthPrincipal } from '../auth/types.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
-import type { DocumentStorage } from '../storage/documentStorage.js';
+import type { DocumentStorageRegistry } from '../storage/documentStorage.js';
 
 const typeKeySchema = z
   .string()
@@ -80,7 +80,7 @@ async function canRead(
 export function createDocumentRouter(
   prisma: PrismaClient,
   authorization: AuthorizationService,
-  storage: DocumentStorage,
+  storageRegistry: DocumentStorageRegistry,
 ) {
   const router = Router();
 
@@ -155,6 +155,7 @@ export function createDocumentRouter(
     express.raw({ type: () => true, limit: maximumUploadBytes }),
     async (req, res, next) => {
       let storageKey: string | null = null;
+      let cleanupStorage: ReturnType<DocumentStorageRegistry['forNewUpload']> | null = null;
       try {
         if (!req.auth?.clientId || req.auth.role !== 'CLIENT')
           throw new AppError('FORBIDDEN', 403, 'Client document upload is required');
@@ -189,7 +190,9 @@ export function createDocumentRouter(
 
         const documentId = randomUUID();
         storageKey = `documents/${clientId}/${documentId}`;
-        const stored = await storage.put(storageKey, req.body);
+        const uploadStorage = storageRegistry.forNewUpload();
+        cleanupStorage = uploadStorage;
+        const stored = await uploadStorage.put(storageKey, req.body);
         const retainUntil = documentType.retentionDays
           ? new Date(Date.now() + documentType.retentionDays * 86_400_000)
           : null;
@@ -240,7 +243,8 @@ export function createDocumentRouter(
         });
         res.status(201).json({ document: present(document) });
       } catch (error) {
-        if (storageKey) await storage.delete(storageKey).catch(() => undefined);
+        if (storageKey && cleanupStorage)
+          await cleanupStorage.delete(storageKey).catch(() => undefined);
         next(
           error instanceof z.ZodError
             ? new AppError('INVALID_DOCUMENT_TYPE', 400, 'Invalid document type')
@@ -262,7 +266,9 @@ export function createDocumentRouter(
         !(await canRead(authorization, req.auth, document.clientId, document.clientVisible))
       )
         throw new AppError('NOT_FOUND', 404, 'Document was not found');
-      const stream = await storage.openRead(document.storageKey);
+      const stream = await storageRegistry
+        .forProvider(document.storageProvider)
+        .openRead(document.storageKey);
       if (!stream) throw new AppError('DOCUMENT_FILE_MISSING', 404, 'Document file is unavailable');
       res.setHeader('Content-Type', document.mimeType);
       res.setHeader('Content-Length', String(document.sizeBytes));
@@ -282,6 +288,7 @@ export function createDocumentRouter(
     express.raw({ type: () => true, limit: maximumUploadBytes }),
     async (req, res, next) => {
       let storageKey: string | null = null;
+      let cleanupStorage: ReturnType<DocumentStorageRegistry['forNewUpload']> | null = null;
       try {
         if (!req.auth) throw new AppError('AUTH_REQUIRED', 401, 'Authentication is required');
         const prior = await prisma.document.findUnique({
@@ -316,7 +323,9 @@ export function createDocumentRouter(
 
         const replacementId = randomUUID();
         storageKey = `documents/${prior.clientId}/${replacementId}`;
-        const stored = await storage.put(storageKey, req.body);
+        const uploadStorage = storageRegistry.forNewUpload();
+        cleanupStorage = uploadStorage;
+        const stored = await uploadStorage.put(storageKey, req.body);
         const replacement = await prisma.$transaction(async (tx) => {
           const created = await tx.document.create({
             data: {
@@ -364,7 +373,8 @@ export function createDocumentRouter(
         });
         res.status(201).json({ document: present(replacement) });
       } catch (error) {
-        if (storageKey) await storage.delete(storageKey).catch(() => undefined);
+        if (storageKey && cleanupStorage)
+          await cleanupStorage.delete(storageKey).catch(() => undefined);
         next(error);
       }
     },
@@ -387,6 +397,7 @@ export function createDocumentRouter(
         throw new AppError('NOT_FOUND', 404, 'Document was not found');
       if (document.retentionHoldAt)
         throw new AppError('DOCUMENT_RETENTION_HOLD', 409, 'Document is subject to retention hold');
+      const recordStorage = storageRegistry.forProvider(document.storageProvider);
       await prisma.$transaction(async (tx) => {
         await tx.document.update({
           where: { id: document.id },
@@ -411,7 +422,7 @@ export function createDocumentRouter(
           },
         });
       });
-      await storage.delete(document.storageKey);
+      await recordStorage.delete(document.storageKey);
       res.status(204).end();
     } catch (error) {
       next(error);
