@@ -10,6 +10,7 @@ import type { AuthService } from './auth/authService.js';
 import { authenticate, authenticatePrincipal } from './auth/middleware.js';
 import type { BetterAuthInstance } from './auth/betterAuth.js';
 import { resolveBetterAuthPrincipal } from './auth/betterAuth.js';
+import { createAuthFailureAuditMiddleware } from './auth/authAudit.js';
 import { createAuthRouter, createMeRouter } from './auth/routes.js';
 import type { AppEnv } from './config/env.js';
 import { AppError, errorHandler, notFound } from './http/errors.js';
@@ -41,7 +42,12 @@ export function createApp(
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(cors({ origin: env.WEB_ORIGIN, credentials: true }));
-  if (betterAuth) app.all('/api/auth/*splat', toNodeHandler(betterAuth));
+  if (betterAuth)
+    app.all(
+      '/api/auth/*splat',
+      ...(prisma ? [createAuthFailureAuditMiddleware(prisma)] : []),
+      toNodeHandler(betterAuth),
+    );
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use(

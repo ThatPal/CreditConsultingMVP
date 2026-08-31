@@ -21,6 +21,12 @@ const schema = runtimeEnvSchema
     PASSWORD_RESET_BASE_URL: z.url().default('http://localhost:5173/reset-password'),
     BETTER_AUTH_URL: z.url().default('http://localhost:3001'),
     BETTER_AUTH_SECRET: z.string().min(32).default('development-only-better-auth-secret-change-me'),
+    AUTH_RATE_LIMIT_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(1000).default(5),
     EMAIL_PROVIDER: z.enum(['CONSOLE', 'SMTP', 'EXTERNAL']).default('CONSOLE'),
     EMAIL_FROM: z.email().default('no-reply@example.invalid'),
     EMAIL_SMTP_HOST: z.string().min(1).optional(),

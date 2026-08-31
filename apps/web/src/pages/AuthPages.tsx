@@ -86,8 +86,8 @@ export function LoginPage() {
     setBusy(true);
     setError('');
     const data = new FormData(event.currentTarget);
+    const email = String(data.get('email') ?? '');
     try {
-      const email = String(data.get('email') ?? '');
       await apiRequest('/api/auth/sign-in/email', {
         method: 'POST',
         body: JSON.stringify({ email, password: data.get('password') }),
@@ -101,8 +101,7 @@ export function LoginPage() {
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Unable to sign in';
       setError(message);
-      if (/verif/i.test(message))
-        setVerificationEmail(String(new FormData(event.currentTarget).get('email') ?? ''));
+      if (/verif/i.test(message)) setVerificationEmail(email);
     } finally {
       setBusy(false);
     }
@@ -275,15 +274,16 @@ export function ResetPasswordPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const token = params.get('token');
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const password = new FormData(event.currentTarget).get('password');
     try {
       await apiRequest('/api/auth/reset-password', {
         method: 'POST',
-        body: JSON.stringify({ token: params.get('token'), newPassword: password }),
+        body: JSON.stringify({ token, newPassword: password }),
       });
-      navigate('/login', { replace: true });
+      navigate('/login?reset=1', { replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to reset password');
     }
@@ -293,19 +293,37 @@ export function ResetPasswordPage() {
       title="Choose a new password"
       subtitle="Your other signed-in sessions will be closed."
     >
-      <Stack component="form" spacing={2} onSubmit={submit}>
-        {error && <Alert severity="error">{error}</Alert>}
-        <TextField
-          name="password"
-          label="New password"
-          type="password"
-          slotProps={{ htmlInput: { minLength: 12 } }}
-          required
-        />
-        <Button type="submit" variant="contained">
-          Update password
-        </Button>
-      </Stack>
+      {!token || params.has('error') ? (
+        <Alert severity="error">
+          This reset link is invalid or expired.{' '}
+          <Link component={RouterLink} to="/forgot-password">
+            Request a new link
+          </Link>
+          .
+        </Alert>
+      ) : (
+        <Stack component="form" spacing={2} onSubmit={submit}>
+          {error && (
+            <Alert severity="error">
+              {error}{' '}
+              <Link component={RouterLink} to="/forgot-password">
+                Request a new link
+              </Link>
+              .
+            </Alert>
+          )}
+          <TextField
+            name="password"
+            label="New password"
+            type="password"
+            slotProps={{ htmlInput: { minLength: 12 } }}
+            required
+          />
+          <Button type="submit" variant="contained">
+            Update password
+          </Button>
+        </Stack>
+      )}
     </AuthFrame>
   );
 }

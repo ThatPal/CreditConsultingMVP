@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth';
-import { APIError, createAuthMiddleware } from 'better-auth/api';
+import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { fromNodeHeaders } from 'better-auth/node';
 import type { IncomingHttpHeaders } from 'node:http';
@@ -8,6 +8,7 @@ import type { AppEnv } from '../config/env.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import type { EmailProvider } from '../notifications/emailProvider.js';
 import { createAuthEmailNotifier } from '../notifications/emailProvider.js';
+import { recordAuthAudit } from './authAudit.js';
 
 export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: EmailProvider) {
   const email = createAuthEmailNotifier(provider);
@@ -27,6 +28,23 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: [env.WEB_ORIGIN],
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
+    rateLimit: {
+      enabled: env.AUTH_RATE_LIMIT_ENABLED,
+      window: env.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+      max: env.AUTH_RATE_LIMIT_MAX,
+      customRules: Object.fromEntries(
+        [
+          '/sign-in/email',
+          '/sign-up/email',
+          '/request-password-reset',
+          '/send-verification-email',
+          '/reset-password',
+        ].map((path) => [
+          path,
+          { window: env.AUTH_RATE_LIMIT_WINDOW_SECONDS, max: env.AUTH_RATE_LIMIT_MAX },
+        ]),
+      ),
+    },
     advanced: {
       database: { generateId: 'uuid' },
       useSecureCookies: env.NODE_ENV === 'production',
@@ -55,12 +73,22 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
     hooks: {
       before: createAuthMiddleware(async (context) => {
         const body = context.body as Record<string, unknown> | undefined;
-        if (!isTrustedReturnTarget(body?.callbackURL) || !isTrustedReturnTarget(body?.redirectTo))
+        if (!isTrustedReturnTarget(body?.callbackURL) || !isTrustedReturnTarget(body?.redirectTo)) {
+          await recordAuthAudit(prisma, 'AUTH_RETURN_PATH_BLOCKED', {
+            metadata: { endpoint: context.path, category: 'UNTRUSTED_RETURN_TARGET' },
+          });
           throw APIError.fromStatus('FORBIDDEN', {
             message: 'Return URL must stay within the client application',
           });
+        }
         if (context.path === '/sign-up/email' && body?.authTermsAccepted !== true)
           throw APIError.fromStatus('BAD_REQUEST', { message: 'Terms acceptance is required' });
+      }),
+      after: createAuthMiddleware(async (context) => {
+        if (context.path === '/reset-password' && !isAPIError(context.context.returned))
+          await recordAuthAudit(prisma, 'AUTH_PASSWORD_RESET_COMPLETED', {
+            metadata: { sessionPolicy: 'REVOKE_ALL' },
+          });
       }),
     },
     emailAndPassword: {
@@ -128,25 +156,54 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
             });
           },
         },
+        update: {
+          after: async (user, context) => {
+            if (context?.path === '/verify-email' && user.emailVerified)
+              await recordAuthAudit(prisma, 'AUTH_EMAIL_VERIFIED', {
+                actorId: user.id,
+                entityType: 'User',
+                entityId: user.id,
+              });
+          },
+        },
       },
       session: {
         create: {
-          after: async (session) => {
-            const client = await prisma.client.findUnique({
-              where: { userId: session.userId },
-              select: { id: true },
+          after: async (session, context) => {
+            await recordAuthAudit(prisma, 'AUTH_SESSION_CREATED', {
+              actorId: session.userId,
+              entityType: 'BetterAuthSession',
+              entityId: session.id,
+              metadata: { authenticationMethod: 'password' },
             });
-            await prisma.auditEvent.create({
-              data: {
+            if (context?.path === '/sign-in/email')
+              await recordAuthAudit(prisma, 'AUTH_LOGIN_SUCCEEDED', {
                 actorId: session.userId,
-                ...(client ? { clientId: client.id } : {}),
-                action: 'AUTH_SESSION_CREATED',
                 entityType: 'BetterAuthSession',
                 entityId: session.id,
-                source: 'BETTER_AUTH',
                 metadata: { authenticationMethod: 'password' },
-              },
-            });
+              });
+          },
+        },
+        delete: {
+          after: async (session, context) => {
+            const path = context?.path;
+            if (path === '/sign-out')
+              await recordAuthAudit(prisma, 'AUTH_LOGOUT', {
+                actorId: session.userId,
+                entityType: 'BetterAuthSession',
+                entityId: session.id,
+              });
+            if (
+              path &&
+              ['/revoke-session', '/revoke-other-sessions', '/revoke-sessions'].includes(path)
+            )
+              await recordAuthAudit(prisma, 'AUTH_SESSION_REVOKED', {
+                actorId: session.userId,
+                entityType: 'BetterAuthSession',
+                entityId: session.id,
+                metadata: { endpoint: path },
+              });
           },
         },
       },

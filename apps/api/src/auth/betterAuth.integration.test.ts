@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import pino from 'pino';
+import request from 'supertest';
+import { createApp } from '../app.js';
 import { loadEnv } from '../config/env.js';
 import { createPrisma } from '../lib/prisma.js';
 import type { EmailMessage, EmailProvider } from '../notifications/emailProvider.js';
-import { createBetterAuth } from './betterAuth.js';
+import { createBetterAuth, resolveBetterAuthPrincipal } from './betterAuth.js';
 
 const databaseUrl =
   process.env.DATABASE_URL ??
@@ -15,6 +18,7 @@ const env = loadEnv({
   WEB_ORIGIN: 'http://localhost:5173',
   BETTER_AUTH_URL: 'http://localhost:3001',
   BETTER_AUTH_SECRET: 'sprint-2.1-integration-test-secret-at-least-32-characters',
+  AUTH_RATE_LIMIT_ENABLED: 'false',
 });
 const prisma = createPrisma(databaseUrl);
 const messages: EmailMessage[] = [];
@@ -26,6 +30,16 @@ const provider: EmailProvider = {
   },
 };
 const auth = createBetterAuth(prisma, env, provider);
+const rateLimitedAuth = createBetterAuth(
+  prisma,
+  loadEnv({
+    ...env,
+    AUTH_RATE_LIMIT_ENABLED: 'true',
+    AUTH_RATE_LIMIT_WINDOW_SECONDS: '60',
+    AUTH_RATE_LIMIT_MAX: '2',
+  }),
+  provider,
+);
 const suffix = randomUUID();
 const email = `sprint21-${suffix}@example.com`;
 const secondEmail = `sprint21-other-${suffix}@example.com`;
@@ -126,7 +140,22 @@ describe.sequential('Better Auth client authentication', () => {
     await call('/api/auth/send-verification-email', {
       body: { email, callbackURL: 'https://attacker.example/steal' },
     }).then((response) => expect(response.status).toBe(403));
+    const blocked = await prisma.auditEvent.findFirstOrThrow({
+      where: { action: 'AUTH_RETURN_PATH_BLOCKED' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(blocked.actorId).toBeNull();
+    expect(blocked.metadata).toEqual({
+      endpoint: '/send-verification-email',
+      category: 'UNTRUSTED_RETURN_TARGET',
+    });
     await verify();
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(
+      await prisma.auditEvent.count({
+        where: { actorId: user.id, action: 'AUTH_EMAIL_VERIFIED' },
+      }),
+    ).toBe(1);
   });
 
   test('signs in, lists sessions, and revokes another session', async () => {
@@ -144,6 +173,11 @@ describe.sequential('Better Auth client authentication', () => {
         where: { actorId: sessions[0]?.userId, action: 'AUTH_SESSION_CREATED' },
       }),
     ).toBeGreaterThanOrEqual(2);
+    expect(
+      await prisma.auditEvent.count({
+        where: { actorId: sessions[0]?.userId, action: 'AUTH_LOGIN_SUCCEEDED' },
+      }),
+    ).toBeGreaterThanOrEqual(2);
 
     const secondSession = await auth.api.getSession({
       headers: new Headers({ cookie: second.cookie }),
@@ -159,6 +193,24 @@ describe.sequential('Better Auth client authentication', () => {
     expect(
       await auth.api.getSession({ headers: new Headers({ cookie: second.cookie }) }),
     ).toBeNull();
+    expect(await resolveBetterAuthPrincipal(auth, prisma, { cookie: second.cookie })).toBeNull();
+    expect(
+      await prisma.auditEvent.count({
+        where: {
+          actorId: sessions[0]?.userId,
+          action: 'AUTH_SESSION_REVOKED',
+          entityId: secondSession?.session.id,
+        },
+      }),
+    ).toBe(1);
+    await call('/api/auth/sign-out', { cookie: first.cookie, body: {} }).then((response) =>
+      expect(response.status).toBe(200),
+    );
+    expect(
+      await prisma.auditEvent.count({
+        where: { actorId: sessions[0]?.userId, action: 'AUTH_LOGOUT' },
+      }),
+    ).toBeGreaterThanOrEqual(1);
   });
 
   test('does not disclose account existence during password reset', async () => {
@@ -175,6 +227,9 @@ describe.sequential('Better Auth client authentication', () => {
 
   test('uses reset links once and revokes every existing session', async () => {
     const prior = await signIn();
+    const resetAuditCount = await prisma.auditEvent.count({
+      where: { action: 'AUTH_PASSWORD_RESET_COMPLETED' },
+    });
     const resetLink = linkFrom(/reset/i);
     const callback = await call(resetLink);
     const token = new URL(callback.headers.get('location') ?? '').searchParams.get('token');
@@ -193,6 +248,11 @@ describe.sequential('Better Auth client authentication', () => {
     await signIn(email, 'A-New-Correct-Horse-Password-21!').then(({ response }) =>
       expect(response.status).toBe(200),
     );
+    expect(
+      await prisma.auditEvent.count({
+        where: { action: 'AUTH_PASSWORD_RESET_COMPLETED' },
+      }),
+    ).toBe(resetAuditCount + 1);
   });
 
   test('does not allow one user to revoke another user session', async () => {
@@ -211,5 +271,51 @@ describe.sequential('Better Auth client authentication', () => {
     expect(
       await auth.api.getSession({ headers: new Headers({ cookie: other.cookie }) }),
     ).not.toBeNull();
+  });
+
+  test('audits a failed login with a safe category and no submitted identity', async () => {
+    const app = createApp(
+      env,
+      pino({ level: 'silent' }),
+      undefined,
+      undefined,
+      undefined,
+      prisma,
+      undefined,
+      auth,
+    );
+    await request(app)
+      .post('/api/auth/sign-in/email')
+      .set('origin', env.WEB_ORIGIN)
+      .send({ email, password: 'Definitely-Wrong-Password-21!' })
+      .expect(401);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const event = await prisma.auditEvent.findFirstOrThrow({
+      where: { action: 'AUTH_LOGIN_FAILED' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(event.actorId).toBeNull();
+    expect(event.metadata).toEqual({
+      category: 'CREDENTIAL_OR_ACCOUNT_REJECTED',
+      statusCode: 401,
+    });
+  });
+
+  test('deterministically rejects the request after the configured auth limit', async () => {
+    const limitedCall = () =>
+      rateLimitedAuth.handler(
+        new Request(`${env.BETTER_AUTH_URL}/api/auth/sign-in/email`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', origin: env.WEB_ORIGIN },
+          body: JSON.stringify({
+            email: `rate-${suffix}@example.com`,
+            password: 'Definitely-Wrong-Password-21!',
+          }),
+        }),
+      );
+    expect((await limitedCall()).status).toBe(401);
+    expect((await limitedCall()).status).toBe(401);
+    const rejected = await limitedCall();
+    expect(rejected.status).toBe(429);
   });
 });
