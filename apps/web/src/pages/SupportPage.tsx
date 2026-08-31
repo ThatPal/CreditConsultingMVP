@@ -25,13 +25,17 @@ import {
   MenuItem,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import {
+  DocumentUploadDropzone,
+  type UploadDocumentType,
+} from '../components/common/DocumentUploadDropzone';
 
 type SupportCategory =
   | 'ACCOUNT'
@@ -104,6 +108,8 @@ export function SupportPage() {
   const [message, setMessage] = useState('');
   const [reply, setReply] = useState('');
   const [attachmentDocumentIds, setAttachmentDocumentIds] = useState<string[]>([]);
+  const [attachmentUploadPending, setAttachmentUploadPending] = useState(false);
+  const createIdempotencyKey = useRef(crypto.randomUUID());
   const contextType = searchParams.get('contextType') ?? 'GENERAL';
   const contextResourceId = searchParams.get('contextId');
   const categoryQuery = useQuery({
@@ -114,17 +120,24 @@ export function SupportPage() {
       }>('/api/v1/client/support-categories'),
   });
   const documentQuery = useQuery({
-    queryKey: ['documents'],
+    queryKey: ['client-documents'],
     queryFn: () =>
       apiRequest<{
         documents: Array<{ id: string; displayFileName: string; status: string }>;
       }>('/api/v1/documents'),
+  });
+  const documentTypesQuery = useQuery({
+    queryKey: ['client-document-types'],
+    queryFn: () => apiRequest<{ documentTypes: UploadDocumentType[] }>('/api/v1/documents/types'),
   });
   const query = useQuery({
     queryKey: ['support-cases'],
     queryFn: () => apiRequest<{ cases: SupportCase[] }>('/api/v1/client/support-cases'),
   });
   const cases = query.data?.cases ?? [];
+  const supportDocumentType = documentTypesQuery.data?.documentTypes?.find(
+    (documentType) => documentType.key === 'SUPPORT_ATTACHMENT',
+  );
   const selected = cases.find((supportCase) => supportCase.id === selectedId) ?? null;
   useEffect(() => {
     const linkedCaseId = searchParams.get('case');
@@ -138,7 +151,7 @@ export function SupportPage() {
     mutationFn: () =>
       apiRequest<{ case: SupportCase }>('/api/v1/client/support-cases', {
         method: 'POST',
-        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        headers: { 'Idempotency-Key': createIdempotencyKey.current },
         body: JSON.stringify({
           category,
           priority,
@@ -157,6 +170,7 @@ export function SupportPage() {
       setMessage('');
       setPriority('NORMAL');
       setAttachmentDocumentIds([]);
+      createIdempotencyKey.current = crypto.randomUUID();
     },
   });
   const sendReply = useMutation({
@@ -534,7 +548,7 @@ export function SupportPage() {
                 )
               }
               slotProps={{ select: { multiple: true } }}
-              helperText="Upload new files in Documents first, then attach them here."
+              helperText="Select up to five documents already in your secure library."
             >
               {(documentQuery.data?.documents ?? []).map((document) => (
                 <MenuItem key={document.id} value={document.id}>
@@ -542,6 +556,24 @@ export function SupportPage() {
                 </MenuItem>
               ))}
             </TextField>
+            {supportDocumentType && (
+              <Box>
+                <Typography sx={{ fontWeight: 850, mb: 1 }}>
+                  Upload a new attachment (optional)
+                </Typography>
+                <DocumentUploadDropzone
+                  documentType={supportDocumentType}
+                  title="Attach a new file to this request"
+                  onBusyChange={setAttachmentUploadPending}
+                  onUploaded={async (document) => {
+                    setAttachmentDocumentIds((current) =>
+                      current.includes(document.id) ? current : [...current, document.id],
+                    );
+                    await queryClient.invalidateQueries({ queryKey: ['client-documents'] });
+                  }}
+                />
+              </Box>
+            )}
             {contextType !== 'GENERAL' && (
               <Alert severity="info">
                 This request will include the linked {contextType.toLowerCase().replace('_', ' ')}
@@ -567,7 +599,10 @@ export function SupportPage() {
             startIcon={<ForumRounded />}
             onClick={() => createCase.mutate()}
             disabled={
-              subject.trim().length < 4 || message.trim().length < 10 || createCase.isPending
+              subject.trim().length < 4 ||
+              message.trim().length < 10 ||
+              createCase.isPending ||
+              attachmentUploadPending
             }
             sx={{
               minWidth: { xs: 158, sm: 180 },

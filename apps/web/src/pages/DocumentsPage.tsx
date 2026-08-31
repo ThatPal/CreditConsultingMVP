@@ -16,10 +16,14 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiFileRequest, apiRequest } from '../auth/api';
+import { apiRequest } from '../auth/api';
+import {
+  DocumentUploadDropzone,
+  type UploadDocumentType,
+} from '../components/common/DocumentUploadDropzone';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
@@ -45,7 +49,6 @@ function fileSize(bytes: number) {
 
 export function DocumentsPage() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const theme = useTheme();
   const fullScreenViewer = useMediaQuery(theme.breakpoints.down('sm'));
@@ -55,19 +58,7 @@ export function DocumentsPage() {
   });
   const typesQuery = useQuery({
     queryKey: ['client-document-types'],
-    queryFn: () =>
-      apiRequest<{ documentTypes: Array<{ key: string; name: string }> }>(
-        '/api/v1/documents/types',
-      ),
-  });
-  const upload = useMutation({
-    mutationFn: (file: File) =>
-      apiFileRequest('/api/v1/documents', file, typesQuery.data?.documentTypes[0]?.key),
-    onSuccess: async () => {
-      setUploadError(null);
-      await queryClient.invalidateQueries({ queryKey: ['client-documents'] });
-    },
-    onError: (error: Error) => setUploadError(error.message),
+    queryFn: () => apiRequest<{ documentTypes: UploadDocumentType[] }>('/api/v1/documents/types'),
   });
 
   if (query.isLoading) return <LoadingSkeleton />;
@@ -86,25 +77,15 @@ export function DocumentsPage() {
 
       {typesQuery.data?.documentTypes.length ? (
         <SectionCard>
-          <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+          <Stack spacing={1.5}>
             <Typography variant="h3">Upload a document</Typography>
-            <Typography color="text.secondary">
-              PDF, PNG and JPEG files up to 10 MB are accepted for the general document type.
-            </Typography>
-            {uploadError && <Alert severity="error">{uploadError}</Alert>}
-            <Button component="label" variant="contained" disabled={upload.isPending}>
-              {upload.isPending ? 'Uploading…' : 'Choose file'}
-              <input
-                hidden
-                type="file"
-                accept="application/pdf,image/png,image/jpeg"
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  if (file) upload.mutate(file);
-                  event.currentTarget.value = '';
-                }}
-              />
-            </Button>
+            <DocumentUploadDropzone
+              documentType={typesQuery.data.documentTypes[0]!}
+              title="Add to your secure document library"
+              onUploaded={async () => {
+                await queryClient.invalidateQueries({ queryKey: ['client-documents'] });
+              }}
+            />
           </Stack>
         </SectionCard>
       ) : null}

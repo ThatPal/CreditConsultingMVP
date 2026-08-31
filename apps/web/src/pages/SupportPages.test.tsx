@@ -1,6 +1,6 @@
 import { ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { AuthProvider } from '../auth/AuthProvider';
@@ -82,6 +82,18 @@ describe('PORTAL-39/40 support', () => {
             { key: 'DOCUMENTS', name: 'Documents', allowedContextTypes: ['GENERAL', 'DOCUMENT'] },
           ],
         });
+      if (url.endsWith('/documents/types'))
+        return json({
+          documentTypes: [
+            {
+              key: 'SUPPORT_ATTACHMENT',
+              name: 'Support attachment',
+              allowedMimeTypes: ['application/pdf'],
+              allowedExtensions: ['.pdf'],
+              maximumSizeBytes: 10 * 1024 * 1024,
+            },
+          ],
+        });
       if (url.includes('/documents'))
         return json({
           documents: [{ id: 'document-1', displayFileName: 'report.pdf', status: 'AVAILABLE' }],
@@ -135,6 +147,111 @@ describe('PORTAL-39/40 support', () => {
     expect(screen.getByRole('textbox', { name: 'Subject' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'How can we help?' })).toBeInTheDocument();
     expect(screen.getByLabelText(/attach existing documents/i)).toBeInTheDocument();
+    expect(screen.getByText(/attach a new file to this request/i)).toBeInTheDocument();
+  });
+
+  test('uploads a new support document, selects it, and preserves one ticket idempotency key', async () => {
+    const createRequests: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith('/support-categories')) return json({ categories: [] });
+      if (url.endsWith('/documents/types'))
+        return json({
+          documentTypes: [
+            {
+              key: 'SUPPORT_ATTACHMENT',
+              name: 'Support attachment',
+              allowedMimeTypes: ['application/pdf'],
+              allowedExtensions: ['.pdf'],
+              maximumSizeBytes: 10 * 1024 * 1024,
+            },
+          ],
+        });
+      if (url.endsWith('/documents') && init?.method === 'POST')
+        return json(
+          {
+            document: {
+              id: 'uploaded-support-document',
+              displayFileName: 'support.pdf',
+              mimeType: 'application/pdf',
+              sizeBytes: 10,
+            },
+          },
+          201,
+        );
+      if (url.endsWith('/documents')) return json({ documents: [] });
+      if (url.endsWith('/support-cases') && init?.method === 'POST') {
+        createRequests.push(init);
+        return json({
+          case: {
+            id: 'case-new',
+            category: 'CREDIT_REVIEW',
+            priority: 'NORMAL',
+            status: 'WAITING_ON_SUPPORT',
+            subject: 'Uploaded evidence',
+            createdAt: '2026-08-31T12:00:00Z',
+            lastMessageAt: '2026-08-31T12:00:00Z',
+            messages: [],
+          },
+        });
+      }
+      return json({ cases: [] });
+    });
+    renderPage('client');
+    await screen.findByRole('heading', { name: /how can we help/i });
+    fireEvent.click(screen.getByRole('button', { name: /create your first request/i }));
+    fireEvent.change(screen.getByLabelText(/choose file to upload/i), {
+      target: { files: [new File(['safe'], 'support.pdf', { type: 'application/pdf' })] },
+    });
+    expect(await screen.findByText(/support.pdf uploaded successfully/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Subject' }), {
+      target: { value: 'Uploaded evidence' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'How can we help?' }), {
+      target: { value: 'Please review this uploaded evidence.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /submit request/i }));
+    await waitFor(() => expect(createRequests).toHaveLength(1));
+    expect(JSON.parse(String(createRequests[0]!.body)).attachmentDocumentIds).toEqual([
+      'uploaded-support-document',
+    ]);
+    expect((createRequests[0]!.headers as Record<string, string>)['Idempotency-Key']).toBeTruthy();
+  });
+
+  test('a failed direct upload does not submit or attach invalid state', async () => {
+    let ticketCreates = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith('/support-categories')) return json({ categories: [] });
+      if (url.endsWith('/documents/types'))
+        return json({
+          documentTypes: [
+            {
+              key: 'SUPPORT_ATTACHMENT',
+              name: 'Support attachment',
+              allowedMimeTypes: ['application/pdf'],
+              allowedExtensions: ['.pdf'],
+              maximumSizeBytes: 10 * 1024 * 1024,
+            },
+          ],
+        });
+      if (url.endsWith('/documents') && init?.method === 'POST')
+        return json({ error: { message: 'The file could not be uploaded.' } }, 500);
+      if (url.endsWith('/documents')) return json({ documents: [] });
+      if (url.endsWith('/support-cases') && init?.method === 'POST') ticketCreates += 1;
+      return json({ cases: [] });
+    });
+    renderPage('client');
+    await screen.findByRole('heading', { name: /how can we help/i });
+    fireEvent.click(screen.getByRole('button', { name: /create your first request/i }));
+    fireEvent.change(screen.getByLabelText(/choose file to upload/i), {
+      target: { files: [new File(['safe'], 'support.pdf', { type: 'application/pdf' })] },
+    });
+    expect(await screen.findByText(/could not be uploaded/i)).toBeInTheDocument();
+    expect(ticketCreates).toBe(0);
+    expect(screen.getByLabelText(/attach existing documents/i)).not.toHaveTextContent(
+      'support.pdf',
+    );
   });
 });
 
