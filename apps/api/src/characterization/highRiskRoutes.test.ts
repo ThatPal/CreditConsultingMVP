@@ -299,6 +299,7 @@ describe('Review entitlement and report authorization characterization', () => {
 describe('Support, notification, and application-cycle characterization', () => {
   test('uses canonical temporary grants for consultant inbox discovery and detail access', async () => {
     const consultant = await createStaff('CONSULTANT', 'support-grantee');
+    const expiredConsultant = await createStaff('CONSULTANT', 'expired-support-grantee');
     const admin = await createStaff('ADMIN', 'support-grantor');
     const owner = await createClient('support-grant-owner');
     const supportCase = await prisma.supportCase.create({
@@ -321,6 +322,18 @@ describe('Support, notification, and application-cycle characterization', () => 
         grantorId: admin.user.id,
       },
     });
+    await prisma.clientAccessGrant.create({
+      data: {
+        granteeId: expiredConsultant.user.id,
+        clientId: owner.client.id,
+        scope: 'SUPPORT_ONLY',
+        allowedCapabilities: ['support.manage'],
+        reason: 'Expired temporary support coverage',
+        startsAt: new Date(Date.now() - 120_000),
+        expiresAt: new Date(Date.now() - 60_000),
+        grantorId: admin.user.id,
+      },
+    });
     const app = buildApp();
     await request(app)
       .get('/api/v1/consultant/support-cases')
@@ -333,6 +346,17 @@ describe('Support, notification, and application-cycle characterization', () => 
       .get(`/api/v1/consultant/support-cases/${supportCase.id}`)
       .set('x-test-principal', consultant.header)
       .expect(200);
+    await request(app)
+      .get('/api/v1/consultant/support-cases')
+      .set('x-test-principal', expiredConsultant.header)
+      .expect(200)
+      .expect(({ body }) =>
+        expect(body.cases.map(({ id }: { id: string }) => id)).not.toContain(supportCase.id),
+      );
+    await request(app)
+      .get(`/api/v1/consultant/support-cases/${supportCase.id}`)
+      .set('x-test-principal', expiredConsultant.header)
+      .expect(403);
 
     await prisma.clientAccessGrant.update({
       where: { id: grant.id },
@@ -385,6 +409,31 @@ describe('Support, notification, and application-cycle characterization', () => 
         where: { supportCaseId: supportCase.id, idempotencyKey: clientKey },
       }),
     ).toBe(1);
+    expect(
+      await Promise.all([
+        prisma.outboxEvent.count({
+          where: { eventKey: `support.message.created:${supportCase.id}:${clientKey}` },
+        }),
+        prisma.notification.count({
+          where: {
+            userId: consultant.user.id,
+            clientId: owner.client.id,
+            type: 'SUPPORT_MESSAGE',
+            title: 'New client message',
+            link: `/consultant/support?case=${supportCase.id}`,
+          },
+        }),
+        prisma.auditEvent.count({
+          where: {
+            clientId: owner.client.id,
+            actorId: owner.user.id,
+            action: 'SUPPORT_MESSAGE_SENT',
+            entityType: 'SupportCase',
+            entityId: supportCase.id,
+          },
+        }),
+      ]),
+    ).toEqual([1, 1, 1]);
 
     const staffKey = `staff-reply-${crypto.randomUUID()}`;
     await request(app)
@@ -407,6 +456,31 @@ describe('Support, notification, and application-cycle characterization', () => 
         where: { supportCaseId: supportCase.id, idempotencyKey: staffKey },
       }),
     ).toBe(1);
+    expect(
+      await Promise.all([
+        prisma.outboxEvent.count({
+          where: { eventKey: `support.message.created:${supportCase.id}:${staffKey}` },
+        }),
+        prisma.notification.count({
+          where: {
+            userId: owner.user.id,
+            clientId: owner.client.id,
+            type: 'SUPPORT_MESSAGE',
+            title: 'New support reply',
+            link: `/app/support?case=${supportCase.id}`,
+          },
+        }),
+        prisma.auditEvent.count({
+          where: {
+            clientId: owner.client.id,
+            actorId: consultant.user.id,
+            action: 'SUPPORT_REPLY_SENT',
+            entityType: 'SupportCase',
+            entityId: supportCase.id,
+          },
+        }),
+      ]),
+    ).toEqual([1, 1, 1]);
 
     const beforeInternal = await prisma.supportCase.findUniqueOrThrow({
       where: { id: supportCase.id },
