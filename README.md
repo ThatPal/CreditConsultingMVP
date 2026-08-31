@@ -24,14 +24,14 @@ A client portal and consultant console for coordinating credit profiles, goals, 
 3. Start PostgreSQL and Redis and wait for healthchecks: `pnpm runtime:up`
 4. Generate Prisma Client: `pnpm db:generate`
 5. Apply migrations: `pnpm db:migrate`
-6. Run the seed check: `pnpm db:seed`
+6. Apply the idempotent system/reference seed: `pnpm db:seed:system`
 7. Start web, API, and worker: `pnpm dev`
 
 Web runs at http://localhost:5173 and API at http://localhost:3001. `/health` proves the API process is alive; `/ready` returns 200 only when PostgreSQL and Redis are reachable. The worker logs structured dependency-ready and worker-ready events after both services respond. Use `pnpm dev:web`, `pnpm dev:api`, or `pnpm dev:worker` to run one process. Stop local infrastructure with `pnpm runtime:down`.
 
 ## Verification
 
-Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm format:check`, and `pnpm build`. `pnpm test:integration` runs the API HTTP tests. Database commands are `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:migrate:deploy`, and `pnpm db:seed`.
+Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm format:check`, and `pnpm build`. `pnpm test:integration` runs the API HTTP tests. Database commands are `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:migrate:deploy`, and `pnpm db:seed:system`. The system seed is deterministic and safe to rerun. Optional demo fixtures are separate behind `pnpm db:seed:demo` and are never required for a canonical environment.
 
 ## Environment and security
 
@@ -54,3 +54,7 @@ The development showcase is available at `/client/design-system`. Client and con
 - **Docker config access warning on Windows:** verify Docker Desktop is running and that the current account can read its Docker configuration.
 
 Sprint 1.1 adds no business schema or queue/job semantics. Redis and the worker are foundational runtime boundaries only.
+
+## Transaction foundation
+
+Consequential database writes that need idempotency, audit evidence, and durable event intent use `executeConsequentialCommand` in `apps/api/src/transactions`. Its documented contract commits business state, append-only `AuditEvent`, `OutboxEvent`, and the completed idempotency result atomically, or rolls the business/audit/outbox effects back together. `OutboxEvent` is durable intent only; no publisher or queue behavior exists yet.

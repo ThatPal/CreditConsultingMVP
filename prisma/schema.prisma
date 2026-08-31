@@ -314,6 +314,18 @@ enum FindingSeverity {
   CRITICAL
 }
 
+enum OutboxEventStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+enum IdempotencyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model User {
   id                   String                @id @default(uuid()) @db.Uuid
   email                String                @unique
@@ -758,19 +770,67 @@ model OptionTemplate {
 }
 
 model AuditEvent {
-  id         String   @id @default(uuid()) @db.Uuid
-  clientId   String?  @db.Uuid
-  actorId    String?  @db.Uuid
-  action     String
-  entityType String
-  entityId   String?
-  metadata   Json?
-  createdAt  DateTime @default(now())
-  client     Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  id            String   @id @default(uuid()) @db.Uuid
+  clientId      String?  @db.Uuid
+  actorId       String?  @db.Uuid
+  action        String
+  entityType    String
+  entityId      String?
+  source        String   @default("APPLICATION")
+  requestId     String?
+  correlationId String?
+  metadata      Json?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  client        Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  actor         User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([clientId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
   @@index([entityType, entityId])
+  @@index([correlationId])
+}
+
+model OutboxEvent {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventType      String
+  eventKey       String            @unique
+  aggregateType  String
+  aggregateId    String?
+  payload        Json
+  payloadVersion Int               @default(1)
+  status         OutboxEventStatus @default(PENDING)
+  availableAt    DateTime          @default(now()) @db.Timestamptz(3)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  publishedAt    DateTime?         @db.Timestamptz(3)
+  attemptCount   Int               @default(0)
+  lastAttemptAt  DateTime?         @db.Timestamptz(3)
+  lastErrorCode  String?
+
+  @@index([status, availableAt, createdAt])
+  @@index([aggregateType, aggregateId, createdAt])
+}
+
+model IdempotencyRecord {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope       String
+  subjectId   String
+  operation   String
+  key         String
+  requestHash String?
+  status      IdempotencyStatus @default(PROCESSING)
+  result      Json?
+  errorCode   String?
+  startedAt   DateTime          @default(now()) @db.Timestamptz(3)
+  completedAt DateTime?         @db.Timestamptz(3)
+  failedAt    DateTime?         @db.Timestamptz(3)
+  expiresAt   DateTime?         @db.Timestamptz(3)
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@unique([scope, subjectId, operation, key])
+  @@index([status, expiresAt])
+  @@index([subjectId, operation, createdAt])
 }
 
 model ServicePurchase {
@@ -797,7 +857,7 @@ model ServicePurchase {
 }
 
 model ClientBusiness {
-  id                     String                        @id @default(uuid()) @db.Uuid
+  id                     String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId               String                        @db.Uuid
   legalName              String
   displayName            String?
@@ -815,7 +875,7 @@ model ClientBusiness {
 }
 
 model ClientFinancialRelationship {
-  id                    String                      @id @default(uuid()) @db.Uuid
+  id                    String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId              String                      @db.Uuid
   clientBusinessId      String?                     @db.Uuid
   institutionName       String
@@ -836,7 +896,7 @@ model ClientFinancialRelationship {
 }
 
 model ServiceEntitlement {
-  id          String            @id @default(uuid()) @db.Uuid
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId    String            @db.Uuid
   purchaseId  String?           @db.Uuid
   serviceType ServiceType
@@ -855,7 +915,7 @@ model ServiceEntitlement {
 }
 
 model ReviewCreditTransaction {
-  id                 String                      @id @default(uuid()) @db.Uuid
+  id                 String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId           String                      @db.Uuid
   purchaseId         String?                     @db.Uuid
   reviewId           String?                     @db.Uuid
@@ -877,7 +937,7 @@ model ReviewCreditTransaction {
 }
 
 model Payment {
-  id                      String          @id @default(uuid()) @db.Uuid
+  id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId                String          @db.Uuid
   purchaseId              String          @db.Uuid
   provider                PaymentProvider
