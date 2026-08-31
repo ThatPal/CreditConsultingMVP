@@ -167,6 +167,9 @@ describe('application shells', () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/neutral circular loading/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/positive progress 64 percent/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/shared loading skeleton on a light focus surface/i),
+    ).toBeInTheDocument();
   });
 
   test('uses one central focus treatment for outlined fields while retaining the global ring', () => {
@@ -207,11 +210,26 @@ describe('application shells', () => {
         color: designTokens.color.focusText,
         fontWeight: designTokens.typography.weight.strong,
       },
-      '& .MuiCircularProgress-root': { color: designTokens.color.focusAccent },
-      '& .MuiLinearProgress-root': { backgroundColor: designTokens.color.focusTrack },
+      '& .MuiCircularProgress-root': {
+        color: designTokens.color.focusAccent,
+        position: 'relative',
+      },
+      '& .MuiLinearProgress-root': {
+        backgroundColor: designTokens.color.focusLoaderTrack,
+      },
       '& .MuiLinearProgress-bar': { backgroundColor: designTokens.color.focusAccent },
       '& .MuiSkeleton-root': { backgroundColor: designTokens.color.focusSkeleton },
+      '& .AppLoadingSkeleton-root': {
+        backgroundColor: designTokens.color.focusLoaderContainer,
+        backgroundImage: 'none',
+        borderColor: designTokens.color.focusBorder,
+        boxShadow: 'none',
+      },
     });
+    expect(focusSurfaceContentStyles['& .MuiCircularProgress-root']).toHaveProperty(
+      '&::before.border',
+      `3px solid ${designTokens.color.focusLoaderTrack}`,
+    );
     expect(focusSurfaceContentStyles).toHaveProperty(
       '& .MuiTableSortLabel-root, & .MuiTableSortLabel-icon',
     );
@@ -234,6 +252,9 @@ describe('application shells', () => {
         3,
       );
     }
+    expect(
+      contrastRatio(designTokens.color.focusAccent, designTokens.color.focusLoaderTrack),
+    ).toBeGreaterThanOrEqual(3);
   });
 
   test('exports canonical design tokens and reduced-motion behavior', () => {

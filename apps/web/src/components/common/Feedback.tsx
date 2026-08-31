@@ -59,7 +59,7 @@ export function ErrorAlert({
 }
 export function LoadingSkeleton() {
   return (
-    <SectionCard>
+    <SectionCard className="AppLoadingSkeleton-root">
       <Stack spacing={2}>
         <Skeleton width="28%" />
         <Skeleton height={52} />

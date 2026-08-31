@@ -34,7 +34,8 @@ export const designTokens = {
     focusAccent: '#087f65',
     focusLink: '#075f55',
     focusError: '#a12b2b',
-    focusTrack: '#9bafa6',
+    focusLoaderTrack: '#cadbd2',
+    focusLoaderContainer: '#e2ebe6',
     focusSkeleton: '#c7d5ce',
   },
   gradient: {

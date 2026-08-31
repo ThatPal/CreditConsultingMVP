@@ -8,7 +8,12 @@ export function SectionCard({
   children,
   variant = 'standard',
   sx,
-}: PropsWithChildren<{ variant?: SectionCardVariant; sx?: SxProps<Theme> }>) {
+  className,
+}: PropsWithChildren<{
+  variant?: SectionCardVariant;
+  sx?: SxProps<Theme>;
+  className?: string;
+}>) {
   const styles: Record<SectionCardVariant, SxProps<Theme>> = {
     standard: { bgcolor: designTokens.color.surface, borderColor: designTokens.color.border },
     elevated: {
@@ -35,6 +40,7 @@ export function SectionCard({
   };
   return (
     <Box
+      className={className}
       sx={[
         {
           border: '1px solid',

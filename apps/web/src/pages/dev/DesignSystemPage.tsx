@@ -409,19 +409,25 @@ export function DesignSystemPage() {
                 </TableBody>
               </Table>
               <Stack
-                direction="row"
                 spacing={2}
-                sx={{ alignItems: 'center', mt: 2.5 }}
+                sx={{ mt: 2.5 }}
                 aria-label={`${variant} light-surface loading indicators`}
               >
-                <CircularProgress size={26} aria-label={`${variant} circular loading`} />
-                <LinearProgress
-                  variant="determinate"
-                  value={64}
-                  aria-label={`${variant} progress 64 percent`}
-                  sx={{ flex: 1, height: 8, borderRadius: 99 }}
-                />
-                <Skeleton width={72} height={30} />
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                  <CircularProgress size={26} aria-label={`${variant} circular loading`} />
+                  <LinearProgress
+                    variant="determinate"
+                    value={64}
+                    aria-label={`${variant} progress 64 percent`}
+                    sx={{ flex: 1, height: 8, borderRadius: 99 }}
+                  />
+                  <Skeleton width={72} height={30} />
+                </Stack>
+                {variant === 'neutral' && (
+                  <Box aria-label="Shared loading skeleton on a light focus surface">
+                    <LoadingSkeleton />
+                  </Box>
+                )}
               </Stack>
             </FocusSurface>
           </Grid>

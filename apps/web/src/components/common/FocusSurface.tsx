@@ -57,10 +57,29 @@ export const focusSurfaceContentStyles = {
   '& .MuiTableSortLabel-root:hover, & .MuiTableSortLabel-root.Mui-active': {
     color: designTokens.color.focusAccent,
   },
-  '& .MuiCircularProgress-root': { color: designTokens.color.focusAccent },
-  '& .MuiLinearProgress-root': { backgroundColor: designTokens.color.focusTrack },
+  '& .MuiCircularProgress-root': {
+    color: designTokens.color.focusAccent,
+    position: 'relative',
+    '&::before': {
+      border: `3px solid ${designTokens.color.focusLoaderTrack}`,
+      borderRadius: '50%',
+      boxSizing: 'border-box',
+      content: '""',
+      inset: 0,
+      position: 'absolute',
+    },
+  },
+  '& .MuiLinearProgress-root': {
+    backgroundColor: designTokens.color.focusLoaderTrack,
+  },
   '& .MuiLinearProgress-bar': { backgroundColor: designTokens.color.focusAccent },
   '& .MuiSkeleton-root': { backgroundColor: designTokens.color.focusSkeleton },
+  '& .AppLoadingSkeleton-root': {
+    backgroundColor: designTokens.color.focusLoaderContainer,
+    backgroundImage: 'none',
+    borderColor: designTokens.color.focusBorder,
+    boxShadow: 'none',
+  },
 } as const;
 
 export function FocusSurface({
