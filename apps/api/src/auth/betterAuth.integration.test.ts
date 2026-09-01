@@ -43,6 +43,19 @@ const rateLimitedAuth = createBetterAuth(
 const suffix = randomUUID();
 const email = `sprint21-${suffix}@example.com`;
 const secondEmail = `sprint21-other-${suffix}@example.com`;
+
+async function waitForAudit(action: string, timeoutMs = 1_000) {
+  const deadline = Date.now() + timeoutMs;
+  do {
+    const event = await prisma.auditEvent.findFirst({
+      where: { action },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (event) return event;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  } while (Date.now() < deadline);
+  throw new Error(`Timed out waiting for ${action} audit event`);
+}
 const password = 'Correct-Horse-Battery-21!';
 
 async function call(
@@ -300,11 +313,7 @@ describe.sequential('Better Auth client authentication', () => {
       .set('origin', env.WEB_ORIGIN)
       .send({ email, password: 'Definitely-Wrong-Password-21!' })
       .expect(401);
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    const event = await prisma.auditEvent.findFirstOrThrow({
-      where: { action: 'AUTH_LOGIN_FAILED' },
-      orderBy: { createdAt: 'desc' },
-    });
+    const event = await waitForAudit('AUTH_LOGIN_FAILED');
     expect(event.actorId).toBeNull();
     expect(event.metadata).toEqual({
       category: 'CREDENTIAL_OR_ACCOUNT_REJECTED',
