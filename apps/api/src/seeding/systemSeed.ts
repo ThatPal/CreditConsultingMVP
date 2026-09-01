@@ -15,6 +15,8 @@ export const roleCapabilityPolicy = {
   ADMIN: [
     'settings.manage',
     'commerce.manage',
+    'payment.read',
+    'payment.manage',
     'audit.read_platform',
     'support.manage',
     'document.read',

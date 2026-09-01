@@ -215,11 +215,19 @@ enum ReviewCreditTransactionType {
 
 enum PaymentState {
   PENDING
+  AWAITING_CUSTOMER
+  PROCESSING
   SUCCEEDED
   FAILED
   CANCELLED
   PARTIALLY_REFUNDED
   REFUNDED
+}
+
+enum PaymentEventDisposition {
+  APPLIED
+  DUPLICATE
+  IGNORED
 }
 
 enum ServiceProductVersionStatus {
@@ -472,6 +480,7 @@ model User {
   securityEvents          SecurityEvent[]          @relation("SecurityEventActor")
   documentsUploaded       Document[]               @relation("DocumentUploader")
   supportAttachments      SupportAttachment[]      @relation("SupportAttachmentActor")
+  paymentEvents           PaymentProviderEvent[]   @relation("PaymentEventActor")
 
   @@index([role, status])
 }
@@ -1476,16 +1485,43 @@ model Payment {
   providerPaymentId       String?
   providerOrderId         String?
   providerCustomerId      String?
+  checkoutUrl             String?
+  providerEnvironment     String          @default("SANDBOX")
+  lastErrorCode           String?
   verifiedProviderEventId String?
   occurredAt              DateTime?
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
   client                  Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
   purchase                ServicePurchase @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  providerEvents          PaymentProviderEvent[]
 
   @@unique([provider, verifiedProviderEventId])
   @@index([purchaseId, createdAt])
   @@index([clientId, state, createdAt])
+  @@index([provider, providerOrderId])
+  @@index([provider, providerPaymentId])
+}
+
+model PaymentProviderEvent {
+  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider          PaymentProvider
+  providerEventId   String
+  eventType         String
+  disposition       PaymentEventDisposition @default(APPLIED)
+  normalizedState   PaymentState?
+  paymentId         String?                 @db.Uuid
+  actorId           String?                 @db.Uuid
+  safeMetadata      Json?
+  occurredAt        DateTime?               @db.Timestamptz(3)
+  verifiedAt        DateTime                @default(now()) @db.Timestamptz(3)
+  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
+  payment           Payment?                @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  actor             User?                   @relation("PaymentEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@index([paymentId, createdAt])
+  @@index([provider, createdAt])
 }
 
 model ServiceDefinition {

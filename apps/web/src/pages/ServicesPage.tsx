@@ -12,7 +12,8 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar } from '../components/common/DataNavigation';
@@ -69,10 +70,45 @@ type Purchase = {
   terms: { name?: string; version?: number } | null;
   product: { name: string; version: number } | null;
   reviewCreditsGranted: number;
+  payment?: { provider: string; providerEnvironment: string; state: string } | null;
 };
 const money = (amount: string, currency: string) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(Number(amount));
 const words = (value: string) => value.replaceAll('_', ' ').toLowerCase();
+
+function PurchaseButton({ service }: { service: Service }) {
+  const navigate = useNavigate();
+  const mutation = useMutation({
+    mutationFn: () =>
+      apiRequest<{ purchaseId: string }>('/api/v1/client/checkouts', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ productId: service.id }),
+      }),
+    onSuccess: ({ purchaseId }) => navigate(`/app/checkout/${purchaseId}`),
+  });
+  return (
+    <Stack spacing={1}>
+      <Button
+        disabled={!service.checkoutAvailable || mutation.isPending}
+        fullWidth
+        variant="contained"
+        onClick={() => mutation.mutate()}
+      >
+        {mutation.isPending
+          ? 'Starting secure checkout…'
+          : service.checkoutAvailable
+            ? 'Purchase with PayPal'
+            : 'Checkout temporarily unavailable'}
+      </Button>
+      {mutation.isError && (
+        <Alert severity="error">
+          Checkout could not be started. No charge or entitlement was created.
+        </Alert>
+      )}
+    </Stack>
+  );
+}
 
 export function ClientServicesSummary({ data }: { data: CommerceData }) {
   return (
@@ -161,9 +197,7 @@ export function ServicesPage() {
                   {service.eligibility ?? 'No additional prerequisite is configured.'}
                 </Alert>
                 <Box sx={{ mt: 'auto !important' }}>
-                  <Button disabled fullWidth variant="contained">
-                    Checkout available in Sprint 5.2
-                  </Button>
+                  <PurchaseButton service={service} />
                   <Typography variant="caption">
                     No payment or outcome is implied. Access begins only after a verified commercial
                     grant.
@@ -325,8 +359,10 @@ export function PurchaseHistoryPage() {
                         {new Date(purchase.purchasedAt ?? purchase.createdAt).toLocaleDateString()}
                       </Typography>
                       <Typography variant="caption">
-                        {purchase.reviewCreditsGranted} Review Credits granted · provider details
-                        intentionally absent
+                        {purchase.reviewCreditsGranted} Review Credits granted
+                        {purchase.payment
+                          ? ` · ${purchase.payment.provider} ${purchase.payment.providerEnvironment} · ${words(purchase.payment.state)}`
+                          : ''}
                       </Typography>
                     </Stack>
                     <Stack sx={{ alignItems: { sm: 'flex-end' } }}>

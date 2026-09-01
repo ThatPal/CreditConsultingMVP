@@ -15,6 +15,12 @@ import { GoalsPage } from './pages/GoalsPage';
 import { GoalIntakePage } from './pages/GoalIntakePage';
 import { ActiveServicesPage, PurchaseHistoryPage, ServicesPage } from './pages/ServicesPage';
 import { AdminServiceDetailPage, AdminServicesPage } from './pages/AdminServicesPages';
+import { CheckoutPage } from './pages/CheckoutPage';
+import {
+  AdminPaymentDetailPage,
+  AdminPaymentsPage,
+  AdminPayPalPage,
+} from './pages/AdminPaymentsPages';
 import { SecurityPage } from './pages/SecurityPage';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
@@ -90,6 +96,7 @@ export function App() {
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/active" element={<ActiveServicesPage />} />
           <Route path="services/history" element={<PurchaseHistoryPage />} />
+          <Route path="checkout/:purchaseIntentId" element={<CheckoutPage />} />
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="support" element={<SupportPage />} />
@@ -154,6 +161,9 @@ export function App() {
           <Route index element={<AdminLandingPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
+          <Route path="payments" element={<AdminPaymentsPage />} />
+          <Route path="payments/:paymentId" element={<AdminPaymentDetailPage />} />
+          <Route path="integrations/paypal" element={<AdminPayPalPage />} />
           <Route path="account" element={<StaffAccountPage />} />
           <Route path="account/security" element={<SecurityPage />} />
           <Route

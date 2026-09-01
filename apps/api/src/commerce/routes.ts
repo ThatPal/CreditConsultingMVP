@@ -12,6 +12,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
 import { deriveReviewCreditBalance, validateActivatableProduct } from './domain.js';
+import type { PaymentGateway } from './paymentGateway.js';
 
 const serviceTypes = [
   'CREDIT_PROFILE_REVIEW',
@@ -82,6 +83,11 @@ async function clientCommerce(prisma: PrismaClient, clientId: string) {
         productVersion: { include: { serviceProduct: { select: { key: true } } } },
         entitlements: { select: { id: true, status: true, quantityGranted: true } },
         reviewCreditTransactions: { select: { availableDelta: true } },
+        payments: {
+          select: { provider: true, providerEnvironment: true, state: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 100,
@@ -138,6 +144,7 @@ async function clientCommerce(prisma: PrismaClient, clientId: string) {
         (sum, transaction) => sum + Math.max(0, transaction.availableDelta),
         0,
       ),
+      payment: item.payments[0] ?? null,
     })),
   };
 }
@@ -146,6 +153,7 @@ export function createCommerceRouter(
   prisma: PrismaClient,
   authorization: AuthorizationService,
   denialRecorder?: AuthorizationDenialRecorder,
+  paymentGateway?: PaymentGateway,
 ) {
   const router = Router();
 
@@ -158,6 +166,7 @@ export function createCommerceRouter(
         },
         orderBy: [{ updatedAt: 'desc' }, { key: 'asc' }],
       });
+      const checkoutAvailable = paymentGateway ? (await paymentGateway.health()).healthy : false;
       res.json({
         services: products.flatMap((product) =>
           product.versions.map((version) => ({
@@ -173,7 +182,7 @@ export function createCommerceRouter(
             includedReviewCredits: version.includedReviewCredits,
             prerequisiteCode: version.prerequisiteCode,
             eligibility: version.clientEligibilityCopy,
-            checkoutAvailable: false,
+            checkoutAvailable,
           })),
         ),
       });

@@ -37,6 +37,8 @@ import { createClientContextRouter } from './clientContext/routes.js';
 import { createGoalIntakeBindingRouter, createGoalIntakePublicRouter } from './goals/goalIntake.js';
 import { createJourneyRouter } from './journey/routes.js';
 import { createCommerceRouter } from './commerce/routes.js';
+import { createPaymentGateway } from './commerce/paymentGateway.js';
+import { createPaymentRouter, createPaymentWebhookRouter } from './commerce/paymentRoutes.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -79,6 +81,8 @@ export function createApp(
     }),
   );
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  const paymentGateway = createPaymentGateway();
+  if (prisma) app.use('/api/v1/webhooks', createPaymentWebhookRouter(prisma, paymentGateway));
   if (prisma) app.use('/api/v1/goal-intakes', createGoalIntakePublicRouter(prisma));
   app.get('/ready', async (_req, res) => {
     if (!readiness)
@@ -133,7 +137,14 @@ export function createApp(
       app.use('/api/v1/client/goal-intakes', createGoalIntakeBindingRouter(prisma));
       app.use('/api/v1', createClientContextRouter(prisma, authorization, denialRecorder));
       app.use('/api/v1', createJourneyRouter(prisma, authorization, denialRecorder));
-      app.use('/api/v1', createCommerceRouter(prisma, authorization, denialRecorder));
+      app.use(
+        '/api/v1',
+        createCommerceRouter(prisma, authorization, denialRecorder, paymentGateway),
+      );
+      app.use(
+        '/api/v1',
+        createPaymentRouter(prisma, authorization, paymentGateway, env.WEB_ORIGIN, denialRecorder),
+      );
       if (emailProvider)
         app.use(
           '/api/v1/integrations',

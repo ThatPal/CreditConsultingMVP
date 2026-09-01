@@ -13,6 +13,8 @@ export const canonicalCapabilities = [
   'document.manage',
   'settings.manage',
   'commerce.manage',
+  'payment.read',
+  'payment.manage',
   'audit.read_platform',
 ] as const;
 
@@ -54,6 +56,8 @@ const clientSelfCapabilities = new Set<Capability>([
 const platformCapabilities = new Set<Capability>([
   'settings.manage',
   'commerce.manage',
+  'payment.read',
+  'payment.manage',
   'audit.read_platform',
 ]);
 
