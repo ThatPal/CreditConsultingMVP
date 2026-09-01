@@ -63,6 +63,33 @@ export function requireClientAccess(
   return requireCapability(authorization, 'client.read', parameter, undefined, recorder);
 }
 
+export function requireCanonicalCapability(
+  authorization: AuthorizationService,
+  capability: Capability,
+  options?: { requireStepUp?: boolean },
+  recorder?: AuthorizationDenialRecorder,
+): RequestHandler {
+  return async (req, _res, next) => {
+    if (!req.auth) return next(new AppError('AUTH_REQUIRED', 401, 'Authentication is required'));
+    const resource: ResourceScope = { type: 'platform' };
+    let category: AuthorizationDenial['category'] = 'ACCESS_DENIED';
+    let allowed = false;
+    try {
+      allowed = await authorization.authorizeCapability(req.auth, capability, options);
+    } catch {
+      category = 'AUTHORIZATION_LOOKUP_FAILED';
+    }
+    if (allowed) return next();
+    if (recorder)
+      await recorder({ principal: req.auth, capability, resource, category }).catch(
+        () => undefined,
+      );
+    return next(
+      new AppError('FORBIDDEN', 403, 'You do not have permission to perform this action'),
+    );
+  };
+}
+
 export function requireCapability(
   authorization: AuthorizationService,
   capability: Capability,

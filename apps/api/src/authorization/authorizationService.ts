@@ -30,6 +30,11 @@ export interface AuthorizationAccessStore {
 }
 
 export interface AuthorizationService {
+  authorizeCapability(
+    principal: AuthPrincipal,
+    capability: Capability,
+    options?: { requireStepUp?: boolean },
+  ): Promise<boolean>;
   authorize(
     principal: AuthPrincipal,
     capability: Capability,
@@ -48,12 +53,21 @@ const clientSelfCapabilities = new Set<Capability>([
 const platformCapabilities = new Set<Capability>(['settings.manage', 'audit.read_platform']);
 
 export function createAuthorizationService(store: AuthorizationAccessStore): AuthorizationService {
+  async function authorizeCapability(
+    principal: AuthPrincipal,
+    capability: Capability,
+    options?: { requireStepUp?: boolean },
+  ) {
+    if (principal.status !== 'ACTIVE') return false;
+    if (principal.role !== 'CLIENT' && !principal.staffMfaVerified) return false;
+    if (options?.requireStepUp && !principal.stepUpVerified) return false;
+    return store.hasRoleCapability(principal.role, capability);
+  }
+
   return {
+    authorizeCapability,
     async authorize(principal, capability, resource, options) {
-      if (principal.status !== 'ACTIVE') return false;
-      if (principal.role !== 'CLIENT' && !principal.staffMfaVerified) return false;
-      if (options?.requireStepUp && !principal.stepUpVerified) return false;
-      if (!(await store.hasRoleCapability(principal.role, capability))) return false;
+      if (!(await authorizeCapability(principal, capability, options))) return false;
 
       if (resource.type === 'platform') {
         return principal.role === 'ADMIN' && platformCapabilities.has(capability);

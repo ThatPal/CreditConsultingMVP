@@ -116,6 +116,10 @@ describe('notification and integration routes', () => {
       next();
     });
     const authorization: AuthorizationService = {
+      authorizeCapability: async (principal, capability, options) =>
+        principal.role === 'ADMIN' &&
+        capability === 'settings.manage' &&
+        Boolean(options?.requireStepUp && principal.stepUpVerified),
       authorize: async (principal, capability, resource, options) =>
         principal.role === 'ADMIN' &&
         capability === 'settings.manage' &&

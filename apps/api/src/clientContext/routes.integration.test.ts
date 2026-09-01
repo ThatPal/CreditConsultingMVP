@@ -4,7 +4,10 @@ import pino from 'pino';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type { AuthPrincipal } from '../auth/types.js';
-import { createPrismaAuthorizationService } from '../authorization/authorizationService.js';
+import {
+  createPrismaAuthorizationService,
+  type AuthorizationService,
+} from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { errorHandler } from '../http/errors.js';
 import { createPrisma } from '../lib/prisma.js';
@@ -18,6 +21,7 @@ describe('client and relationship context', () => {
   let prisma: PrismaClient;
   let consultant: { id: string; email: string };
   let outsider: { id: string; email: string };
+  let admin: { id: string; email: string };
   const clients: Array<{ id: string; userId: string; email: string }> = [];
 
   const principal = (identity: string): AuthPrincipal | undefined => {
@@ -31,13 +35,19 @@ describe('client and relationship context', () => {
         status: 'ACTIVE',
       };
     const staff =
-      identity === 'consultant' ? consultant : identity === 'outsider' ? outsider : undefined;
+      identity === 'consultant'
+        ? consultant
+        : identity === 'outsider'
+          ? outsider
+          : identity === 'admin'
+            ? admin
+            : undefined;
     return staff
       ? {
           userId: staff.id,
           clientId: null,
           email: staff.email,
-          role: 'CONSULTANT',
+          role: identity === 'admin' ? 'ADMIN' : 'CONSULTANT',
           status: 'ACTIVE',
           staffMfaEnabled: true,
           staffMfaVerified: true,
@@ -45,17 +55,14 @@ describe('client and relationship context', () => {
         }
       : undefined;
   };
-  const app = () => {
+  const app = (authorization = createPrismaAuthorizationService(prisma)) => {
     const application = express();
     application.use(express.json());
     application.use((req, _res, next) => {
       req.auth = principal(req.get('x-test-identity') ?? '');
       next();
     });
-    application.use(
-      '/api/v1',
-      createClientContextRouter(prisma, createPrismaAuthorizationService(prisma)),
-    );
+    application.use('/api/v1', createClientContextRouter(prisma, authorization));
     application.use(errorHandler(pino({ enabled: false })));
     return application;
   };
@@ -72,11 +79,16 @@ describe('client and relationship context', () => {
       data: { email: `${suite}-outsider@example.test`, role: 'CONSULTANT' },
       select: { id: true, email: true },
     });
+    admin = await prisma.user.create({
+      data: { email: `${suite}-admin@example.test`, role: 'ADMIN' },
+      select: { id: true, email: true },
+    });
     for (const [firstName, lastName] of [
       ['Personal', 'Same'],
       ['Many', 'Same'],
       ['Expired', 'Same'],
       ['Revoked', 'Same'],
+      ['Granted', 'Same'],
     ]) {
       const user = await prisma.user.create({
         data: {
@@ -119,13 +131,23 @@ describe('client and relationship context', () => {
           grantorId: outsider.id,
           revokerId: outsider.id,
         },
+        {
+          granteeId: consultant.id,
+          clientId: clients[4]!.id,
+          scope: 'READ',
+          allowedCapabilities: ['client.read'],
+          reason: suite,
+          startsAt: new Date(Date.now() - 3600000),
+          expiresAt: new Date(Date.now() + 3600000),
+          grantorId: outsider.id,
+        },
       ],
     });
   });
 
   afterAll(async () => {
     const clientIds = clients.map((item) => item.id);
-    const userIds = [...clients.map((item) => item.userId), consultant.id, outsider.id];
+    const userIds = [...clients.map((item) => item.userId), consultant.id, outsider.id, admin.id];
     const businessIds = (
       await prisma.clientBusiness.findMany({
         where: { clientId: { in: clientIds } },
@@ -227,17 +249,57 @@ describe('client and relationship context', () => {
       .get('/api/v1/consultant/client-context?page=2&pageSize=1')
       .set('x-test-identity', 'consultant')
       .expect(200);
-    expect(first.body.total).toBe(2);
-    expect(new Set([first.body.clients[0].id, second.body.clients[0].id]).size).toBe(2);
-    expect([first.body.clients[0].id, second.body.clients[0].id].sort()).toEqual(
-      clients
-        .slice(0, 2)
-        .map((item) => item.id)
-        .sort(),
-    );
+    const third = await request(app())
+      .get('/api/v1/consultant/client-context?page=3&pageSize=1')
+      .set('x-test-identity', 'consultant')
+      .expect(200);
+    expect(first.body.total).toBe(3);
+    const pageIds = [first.body.clients[0].id, second.body.clients[0].id, third.body.clients[0].id];
+    expect(new Set(pageIds).size).toBe(3);
+    expect(pageIds.sort()).toEqual([clients[0]!.id, clients[1]!.id, clients[4]!.id].sort());
+    await request(app())
+      .get(`/api/v1/consultant/client-context/${clients[4]!.id}`)
+      .set('x-test-identity', 'consultant')
+      .expect(200);
     await request(app())
       .get(`/api/v1/consultant/client-context/${clients[0]!.id}`)
       .set('x-test-identity', 'outsider')
+      .expect(403);
+  });
+
+  test('requires canonical client.read capability before assignment or grant scope can disclose clients', async () => {
+    const denied: AuthorizationService = {
+      authorizeCapability: async () => false,
+      authorize: async () => false,
+    };
+    await request(app(denied))
+      .get('/api/v1/consultant/client-context')
+      .set('x-test-identity', 'consultant')
+      .expect(403)
+      .expect(({ body }) => expect(body).not.toHaveProperty('total'));
+    await request(app(denied))
+      .get(`/api/v1/consultant/client-context/${clients[0]!.id}`)
+      .set('x-test-identity', 'consultant')
+      .expect(403);
+  });
+
+  test('keeps directory and known-client detail fail closed for unauthorized staff and Admin', async () => {
+    await request(app())
+      .get('/api/v1/consultant/client-context')
+      .set('x-test-identity', 'outsider')
+      .expect(200)
+      .expect(({ body }) => expect(body).toMatchObject({ total: 0, clients: [] }));
+    await request(app())
+      .get(`/api/v1/consultant/client-context/${clients[0]!.id}`)
+      .set('x-test-identity', 'outsider')
+      .expect(403);
+    await request(app())
+      .get('/api/v1/consultant/client-context')
+      .set('x-test-identity', 'admin')
+      .expect(403);
+    await request(app())
+      .get(`/api/v1/consultant/client-context/${clients[0]!.id}`)
+      .set('x-test-identity', 'admin')
       .expect(403);
   });
 });

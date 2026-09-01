@@ -4,6 +4,7 @@ import { hashPassword } from '../auth/security.js';
 import { createPrisma } from '../lib/prisma.js';
 import { createLocalDocumentStorage } from '../storage/documentStorage.js';
 import { reconcileSupportAttention } from '../attention/attentionService.js';
+import { resetReviewStaffMfa } from '../seeding/reviewMfaReset.js';
 
 config({ path: '../../.env' });
 const url = process.env.DATABASE_URL;
@@ -109,9 +110,7 @@ try {
       },
       update: { userId: user.id, providerId: 'credential', password: passwordHash },
     });
-  await prisma.betterAuthTwoFactor.deleteMany({
-    where: { userId: { in: [consultant.id, admin.id] } },
-  });
+  await resetReviewStaffMfa(prisma, [consultant.id, admin.id]);
   const client = await prisma.client.upsert({
     where: { userId: clientUser.id },
     create: {

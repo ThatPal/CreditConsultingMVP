@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import pino from 'pino';
 import request from 'supertest';
@@ -7,6 +7,8 @@ import { loadEnv } from '../config/env.js';
 import { createPrisma } from '../lib/prisma.js';
 import type { EmailMessage, EmailProvider } from '../notifications/emailProvider.js';
 import { createBetterAuth, deriveMfaAssurance, resolveBetterAuthPrincipal } from './betterAuth.js';
+import { hashPassword } from './security.js';
+import { resetReviewStaffMfa } from '../seeding/reviewMfaReset.js';
 
 const databaseUrl =
   process.env.DATABASE_URL ??
@@ -43,6 +45,8 @@ const rateLimitedAuth = createBetterAuth(
 const suffix = randomUUID();
 const email = `sprint21-${suffix}@example.com`;
 const secondEmail = `sprint21-other-${suffix}@example.com`;
+const staffEmail = `sprint41-staff-${suffix}@example.com`;
+const adminEmail = `sprint41-admin-${suffix}@example.com`;
 
 async function waitForAudit(action: string, timeoutMs = 1_000) {
   const deadline = Date.now() + timeoutMs;
@@ -78,6 +82,26 @@ async function call(
 
 function cookieFrom(response: Response) {
   return response.headers.get('set-cookie')?.split(';')[0] ?? '';
+}
+
+function totp(secret: string, now = Date.now()) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const character of secret.replace(/=+$/, '').toUpperCase())
+    bits += alphabet.indexOf(character).toString(2).padStart(5, '0');
+  const key = Buffer.from(
+    bits
+      .match(/.{8}/g)
+      ?.map((byte) => String.fromCharCode(Number.parseInt(byte, 2)))
+      .join('') ?? '',
+    'binary',
+  );
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(now / 30_000)));
+  const digest = createHmac('sha1', key).update(counter).digest();
+  const offset = digest[digest.length - 1]! & 0x0f;
+  const value = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
+  return value.toString().padStart(6, '0');
 }
 
 function linkFrom(subject: RegExp, recipient = email) {
@@ -123,7 +147,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await prisma.client.deleteMany({ where: { user: { email: { in: [email, secondEmail] } } } });
-  await prisma.user.deleteMany({ where: { email: { in: [email, secondEmail] } } });
+  await prisma.user.deleteMany({
+    where: { email: { in: [email, secondEmail, staffEmail, adminEmail] } },
+  });
   await prisma.$disconnect();
 });
 
@@ -138,6 +164,109 @@ describe.sequential('Better Auth client authentication', () => {
       staffMfaVerified: false,
       stepUpVerified: false,
     });
+  });
+
+  test('enrolls seeded staff with an otpauth URI, verifies TOTP, and resets to an enrollable state', async () => {
+    await prisma.user.deleteMany({ where: { email: staffEmail } });
+    const passwordHash = await hashPassword(password);
+    const staff = await prisma.user.create({
+      data: {
+        email: staffEmail,
+        name: 'Sprint 4.1 Staff',
+        emailVerified: true,
+        passwordHash,
+        role: 'CONSULTANT',
+        status: 'ACTIVE',
+      },
+    });
+    await prisma.betterAuthAccount.create({
+      data: {
+        issuer: 'local:credential',
+        accountId: staff.id,
+        userId: staff.id,
+        providerId: 'credential',
+        password: passwordHash,
+      },
+    });
+    const signedIn = await signIn(staffEmail);
+    expect(signedIn.response.status).toBe(200);
+    const enabled = await call('/api/auth/two-factor/enable', {
+      cookie: signedIn.cookie,
+      body: { password },
+    });
+    expect(enabled.status).toBe(200);
+    const enrollment = (await enabled.json()) as { totpURI: string; backupCodes: string[] };
+    expect(enrollment.totpURI).toMatch(/^otpauth:\/\/totp\//);
+    expect(enrollment.backupCodes.length).toBeGreaterThan(0);
+    const secret = new URL(enrollment.totpURI).searchParams.get('secret');
+    expect(secret).toBeTruthy();
+    const verified = await call('/api/auth/two-factor/verify-totp', {
+      cookie: signedIn.cookie,
+      body: { code: totp(secret!) },
+    });
+    expect(verified.status).toBe(200);
+    expect(
+      await prisma.user.findUniqueOrThrow({
+        where: { id: staff.id },
+        select: { twoFactorEnabled: true },
+      }),
+    ).toMatchObject({ twoFactorEnabled: true });
+
+    await call('/api/auth/sign-out', { cookie: cookieFrom(verified) || signedIn.cookie, body: {} });
+    await resetReviewStaffMfa(prisma, [staff.id]);
+    expect(await prisma.betterAuthTwoFactor.count({ where: { userId: staff.id } })).toBe(0);
+    expect(await prisma.betterAuthSession.count({ where: { userId: staff.id } })).toBe(0);
+    const resetSignIn = await signIn(staffEmail);
+    const reenabled = await call('/api/auth/two-factor/enable', {
+      cookie: resetSignIn.cookie,
+      body: { password },
+    });
+    expect(reenabled.status).toBe(200);
+    expect(((await reenabled.json()) as { totpURI: string }).totpURI).toMatch(
+      /^otpauth:\/\/totp\//,
+    );
+  });
+
+  test('gives seeded Admin the same verified QR-first enrollment and deterministic reset', async () => {
+    await prisma.user.deleteMany({ where: { email: adminEmail } });
+    const passwordHash = await hashPassword(password);
+    const admin = await prisma.user.create({
+      data: {
+        email: adminEmail,
+        name: 'Sprint 4.1 Admin',
+        emailVerified: true,
+        passwordHash,
+        role: 'ADMIN',
+        status: 'ACTIVE',
+      },
+    });
+    await prisma.betterAuthAccount.create({
+      data: {
+        issuer: 'local:credential',
+        accountId: admin.id,
+        userId: admin.id,
+        providerId: 'credential',
+        password: passwordHash,
+      },
+    });
+    const signedIn = await signIn(adminEmail);
+    const enabled = await call('/api/auth/two-factor/enable', {
+      cookie: signedIn.cookie,
+      body: { password },
+    });
+    expect(enabled.status).toBe(200);
+    const enrollment = (await enabled.json()) as { totpURI: string; backupCodes: string[] };
+    expect(enrollment.totpURI).toMatch(/^otpauth:\/\/totp\//);
+    expect(enrollment.backupCodes.length).toBeGreaterThan(0);
+    const secret = new URL(enrollment.totpURI).searchParams.get('secret');
+    const verified = await call('/api/auth/two-factor/verify-totp', {
+      cookie: signedIn.cookie,
+      body: { code: totp(secret!) },
+    });
+    expect(verified.status).toBe(200);
+    await resetReviewStaffMfa(prisma, [admin.id]);
+    expect(await prisma.betterAuthTwoFactor.count({ where: { userId: admin.id } })).toBe(0);
+    expect(await prisma.betterAuthSession.count({ where: { userId: admin.id } })).toBe(0);
   });
   test('registers one governed user/client/account and rejects duplicate effects', async () => {
     await register(email).then((response) => expect(response.status).toBe(200));

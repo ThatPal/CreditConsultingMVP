@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
-import { requireAuth, requireClientAccess, requireRole } from '../auth/middleware.js';
+import {
+  requireAuth,
+  requireCanonicalCapability,
+  requireClientAccess,
+  requireRole,
+} from '../auth/middleware.js';
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
@@ -477,6 +482,7 @@ export function createClientContextRouter(
     '/consultant/client-context',
     requireAuth,
     requireRole('CONSULTANT'),
+    requireCanonicalCapability(authorization, 'client.read', undefined, denialRecorder),
     async (req, res, next) => {
       try {
         const input = parse(

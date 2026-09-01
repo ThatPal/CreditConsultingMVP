@@ -233,6 +233,7 @@ describe.sequential('canonical Prisma authorization through HTTP', () => {
     const target = await client('lookup-target');
     const key = principal(consultant, 'lookup-failure-principal');
     const failing: AuthorizationService = {
+      authorizeCapability: async () => Promise.reject(new Error('db')),
       authorize: async () => Promise.reject(new Error('db')),
     };
     await request(appFor(failing))
