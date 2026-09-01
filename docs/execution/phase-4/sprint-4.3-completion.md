@@ -40,8 +40,8 @@ No Sprint 5.1 commerce, service-purchase, payment, or entitlement behavior was a
 - Focused Portal shell and CRM Client 360 regression: **PASS**, 23/23.
 - Broader incidental API run: 97/97 collected tests passed; two realtime suites were not collected because that accidental command omitted `REDIS_URL`. This is not counted as the focused gate.
 - Broader incidental Web run: Sprint 4.3-relevant tests passed; one unrelated Support document-picker test timed out. The corrected exact focused run is the reported gate above.
-- Changed-workspace lint/build: recorded after final execution below.
-- Risk-based GitHub CI: initial run `33537587538` exposed a migration-order defect; the corrective run is recorded after the final branch push below.
+- Changed-workspace lint/build: **PASS** for API and Web; the existing Vite large-chunk advisory remains non-blocking.
+- Risk-based GitHub CI: **PASS** — corrective run `33538026708` completed successfully after the initial run exposed the migration-order defect. All clean-install, clean-migration, double system seed, lint, typecheck, test, and build steps passed.
 
 ## Requirement reconciliation
 
@@ -73,4 +73,4 @@ No Sprint 5.1 commerce, service-purchase, payment, or entitlement behavior was a
 
 ## Final handoff
 
-The exact final Sprint 4.3 SHA and GitHub CI URL/status are supplied in the task handoff after this report is committed and the rapid branch is pushed.
+The exact final Sprint 4.3 SHA is supplied in the task handoff. Successful risk-based CI evidence: <https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33538026708>.
