@@ -100,7 +100,7 @@ export function ClientContextSections() {
         existing ? `/api/v1/client/businesses/${existing.id}` : '/api/v1/client/businesses',
         {
           method: existing ? 'PATCH' : 'POST',
-          headers: existing ? undefined : { 'Idempotency-Key': idempotency() },
+          ...(!existing ? { headers: { 'Idempotency-Key': idempotency() } } : {}),
           body: JSON.stringify(body),
         },
       );
@@ -128,7 +128,7 @@ export function ClientContextSections() {
           : '/api/v1/client/financial-relationships',
         {
           method: existing ? 'PATCH' : 'POST',
-          headers: existing ? undefined : { 'Idempotency-Key': idempotency() },
+          ...(!existing ? { headers: { 'Idempotency-Key': idempotency() } } : {}),
           body: JSON.stringify(body),
         },
       );

@@ -223,7 +223,9 @@ export function Client360Page() {
           ) : (
             client.businesses.map((item) => (
               <Box key={item.id}>
-                <Typography fontWeight={700}>{item.displayName ?? item.legalName}</Typography>
+                <Typography sx={{ fontWeight: 700 }}>
+                  {item.displayName ?? item.legalName}
+                </Typography>
                 <Typography color="text.secondary">
                   {[item.entityType, item.industry, item.status].filter(Boolean).join(' · ')}
                 </Typography>
@@ -247,7 +249,7 @@ export function Client360Page() {
           ) : (
             client.financialRelationships.map((item) => (
               <Box key={item.id}>
-                <Typography fontWeight={700}>{item.institutionName}</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{item.institutionName}</Typography>
                 <Typography color="text.secondary">
                   {[
                     item.relationshipType.replaceAll('_', ' '),
