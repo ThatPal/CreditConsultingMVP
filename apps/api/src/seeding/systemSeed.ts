@@ -12,7 +12,13 @@ export const roleCapabilityPolicy = {
     'document.read',
     'document.manage',
   ],
-  ADMIN: ['settings.manage', 'audit.read_platform', 'support.manage', 'document.read'],
+  ADMIN: [
+    'settings.manage',
+    'commerce.manage',
+    'audit.read_platform',
+    'support.manage',
+    'document.read',
+  ],
 } as const;
 
 export const systemDocumentTypes = [
@@ -240,6 +246,71 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
       update: {},
     }),
   ]);
+
+  const serviceProducts = [
+    {
+      key: 'CREDIT_PROFILE_REVIEW',
+      name: 'Credit Profile Review',
+      description: 'A consultant review of the client credit profile with prioritized next steps.',
+      price: '149.00',
+      entitlementType: 'CREDIT_PROFILE_REVIEW' as const,
+      includedReviewCredits: 1,
+      clientEligibilityCopy: 'Available to active clients with a current credit profile.',
+    },
+    {
+      key: 'CREDIT_CARD_ROUND',
+      name: 'Credit Card Strategy Round',
+      description:
+        'A guided strategy round for selecting and sequencing a credit-card application.',
+      price: '249.00',
+      entitlementType: 'CREDIT_CARD_ROUND' as const,
+      includedReviewCredits: 1,
+      clientEligibilityCopy: 'Eligibility is confirmed by a consultant before activation.',
+    },
+    {
+      key: 'MAJOR_APPLICATION_READINESS',
+      name: 'Major Application Readiness',
+      description:
+        'A readiness assessment for a mortgage, auto, or other major credit application.',
+      price: '399.00',
+      entitlementType: 'MAJOR_APPLICATION_READINESS' as const,
+      includedReviewCredits: 2,
+      clientEligibilityCopy: 'Best used after the client profile and goal are current.',
+    },
+  ];
+  for (const definition of serviceProducts) {
+    await prisma.serviceDefinition.upsert({
+      where: { serviceType: definition.entitlementType },
+      create: {
+        serviceType: definition.entitlementType,
+        price: definition.price,
+        currency: 'USD',
+      },
+      update: {},
+    });
+    const product = await prisma.serviceProduct.upsert({
+      where: { key: definition.key },
+      create: { key: definition.key },
+      update: {},
+    });
+    await prisma.serviceProductVersion.upsert({
+      where: { serviceProductId_version: { serviceProductId: product.id, version: 1 } },
+      create: {
+        serviceProductId: product.id,
+        version: 1,
+        status: 'DRAFT',
+        name: definition.name,
+        description: definition.description,
+        price: definition.price,
+        currency: 'USD',
+        entitlementType: definition.entitlementType,
+        includedQuantity: 1,
+        includedReviewCredits: definition.includedReviewCredits,
+        clientEligibilityCopy: definition.clientEligibilityCopy,
+      },
+      update: {},
+    });
+  }
   return {
     optionTemplates: systemOptionTemplates.length,
     roleCapabilities: capabilityRows.length,
@@ -247,5 +318,6 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
     notificationTemplates: systemNotificationTemplates.length,
     supportCategories: systemSupportCategories.length,
     integrations: 1,
+    serviceProducts: serviceProducts.length,
   };
 }

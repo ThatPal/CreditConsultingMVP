@@ -222,6 +222,12 @@ enum PaymentState {
   REFUNDED
 }
 
+enum ServiceProductVersionStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
 enum PlanActionKind {
   ACTION
   GUIDANCE
@@ -1340,16 +1346,19 @@ model ServicePurchase {
   id                       String                    @id @default(uuid()) @db.Uuid
   clientId                 String                    @db.Uuid
   serviceType              ServiceType
+  productVersionId         String?                   @db.Uuid
+  termsSnapshot            Json?
   amount                   Decimal                   @db.Decimal(12, 2)
   currency                 String                    @default("USD")
   status                   PurchaseStatus            @default(PENDING)
-  paymentProvider          PaymentProvider
+  paymentProvider          PaymentProvider?
   paymentReference         String?
   purchasedAt              DateTime?
   refundedAt               DateTime?
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   client                   Client                    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  productVersion           ServiceProductVersion?    @relation(fields: [productVersionId], references: [id], onDelete: Restrict)
   creditReview             CreditReview?
   entitlements             ServiceEntitlement[]
   payments                 Payment[]
@@ -1357,6 +1366,7 @@ model ServicePurchase {
 
   @@index([clientId, createdAt])
   @@index([status, serviceType])
+  @@index([productVersionId, createdAt])
 }
 
 model ClientBusiness {
@@ -1403,28 +1413,37 @@ model ClientFinancialRelationship {
 }
 
 model ServiceEntitlement {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clientId    String            @db.Uuid
-  purchaseId  String?           @db.Uuid
-  serviceType ServiceType
-  status      EntitlementStatus @default(ACTIVE)
-  grantedAt   DateTime          @default(now())
-  reservedAt  DateTime?
-  consumedAt  DateTime?
-  expiresAt   DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  client      Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  purchase    ServicePurchase?  @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId         String                 @db.Uuid
+  purchaseId       String?                @db.Uuid
+  productVersionId String?                @db.Uuid
+  sourceKey        String?                @unique
+  serviceType      ServiceType
+  quantityGranted  Int                    @default(1)
+  quantityUsed     Int                    @default(0)
+  status           EntitlementStatus      @default(ACTIVE)
+  grantedAt        DateTime               @default(now())
+  reservedAt       DateTime?
+  consumedAt       DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  client           Client                 @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  purchase         ServicePurchase?       @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  productVersion   ServiceProductVersion? @relation(fields: [productVersionId], references: [id], onDelete: Restrict)
 
   @@index([clientId, serviceType, status])
   @@index([purchaseId])
+  @@index([productVersionId])
 }
 
 model ReviewCreditTransaction {
   id                 String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId           String                      @db.Uuid
   purchaseId         String?                     @db.Uuid
+  productVersionId   String?                     @db.Uuid
+  sourceKey          String?                     @unique
+  correlationId      String?
   reviewId           String?                     @db.Uuid
   transactionType    ReviewCreditTransactionType
   availableDelta     Int                         @default(0)
@@ -1436,11 +1455,14 @@ model ReviewCreditTransaction {
   createdAt          DateTime                    @default(now())
   client             Client                      @relation(fields: [clientId], references: [id], onDelete: Restrict)
   purchase           ServicePurchase?            @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  productVersion     ServiceProductVersion?      @relation(fields: [productVersionId], references: [id], onDelete: Restrict)
   review             CreditReview?               @relation(fields: [reviewId], references: [id], onDelete: Restrict)
 
   @@index([clientId, createdAt])
   @@index([purchaseId])
   @@index([reviewId])
+  @@index([productVersionId])
+  @@index([correlationId])
 }
 
 model Payment {
@@ -1472,6 +1494,44 @@ model ServiceDefinition {
   currency    String      @default("USD")
   active      Boolean     @default(true)
   updatedAt   DateTime    @updatedAt
+}
+
+model ServiceProduct {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key            String                  @unique
+  active         Boolean                 @default(false)
+  currentVersion Int?
+  createdAt      DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                @updatedAt @db.Timestamptz(3)
+  versions       ServiceProductVersion[]
+
+  @@index([active, updatedAt])
+}
+
+model ServiceProductVersion {
+  id                       String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceProductId         String                      @db.Uuid
+  version                  Int
+  status                   ServiceProductVersionStatus @default(DRAFT)
+  name                     String
+  description              String
+  price                    Decimal                     @db.Decimal(12, 2)
+  currency                 String                      @default("USD")
+  entitlementType          ServiceType
+  includedQuantity         Int                         @default(1)
+  includedReviewCredits    Int                         @default(0)
+  prerequisiteCode         String?
+  clientEligibilityCopy    String?
+  effectiveAt              DateTime?                   @db.Timestamptz(3)
+  createdAt                DateTime                    @default(now()) @db.Timestamptz(3)
+  serviceProduct           ServiceProduct              @relation(fields: [serviceProductId], references: [id], onDelete: Restrict)
+  purchases                ServicePurchase[]
+  entitlements             ServiceEntitlement[]
+  reviewCreditTransactions ReviewCreditTransaction[]
+
+  @@unique([serviceProductId, version])
+  @@index([status, effectiveAt])
+  @@index([entitlementType])
 }
 
 model ReviewPlan {

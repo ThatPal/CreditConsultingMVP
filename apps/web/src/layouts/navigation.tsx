@@ -184,6 +184,16 @@ const registry: NavigationItem[] = [
     status: 'foundation',
   },
   {
+    id: 'admin-services',
+    label: 'Services',
+    path: '/admin/services',
+    icon: StorefrontRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'commerce.manage',
+    status: 'available',
+  },
+  {
     id: 'admin-account',
     label: 'Account',
     path: '/admin/account',

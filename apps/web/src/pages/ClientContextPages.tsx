@@ -20,6 +20,7 @@ import { DataNavigationToolbar, DataPagination } from '../components/common/Data
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { JourneySummary, type JourneyProjection } from './JourneyPages';
+import { ClientServicesSummary, type CommerceData } from './ServicesPage';
 
 type DirectoryClient = {
   id: string;
@@ -163,6 +164,12 @@ export function Client360Page() {
     enabled: Boolean(clientId),
     retry: false,
   });
+  const servicesQuery = useQuery({
+    queryKey: ['consultant-client-services', clientId],
+    queryFn: () => apiRequest<CommerceData>(`/api/v1/consultant/clients/${clientId}/services`),
+    enabled: Boolean(clientId),
+    retry: false,
+  });
   if (query.isLoading)
     return (
       <Stack sx={{ alignItems: 'center', py: 8 }}>
@@ -224,6 +231,7 @@ export function Client360Page() {
         <Alert severity="warning">Journey context is unavailable or access changed.</Alert>
       )}
       {journeyQuery.data?.journey && <JourneySummary data={journeyQuery.data} staff />}
+      {servicesQuery.data?.balance && <ClientServicesSummary data={servicesQuery.data} />}
       <SectionCard>
         <Stack spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>

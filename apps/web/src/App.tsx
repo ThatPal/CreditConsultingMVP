@@ -13,7 +13,8 @@ import { DocumentsPage } from './pages/DocumentsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { GoalsPage } from './pages/GoalsPage';
 import { GoalIntakePage } from './pages/GoalIntakePage';
-import { ServicesPage } from './pages/ServicesPage';
+import { ActiveServicesPage, PurchaseHistoryPage, ServicesPage } from './pages/ServicesPage';
+import { AdminServiceDetailPage, AdminServicesPage } from './pages/AdminServicesPages';
 import { SecurityPage } from './pages/SecurityPage';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
@@ -87,6 +88,8 @@ export function App() {
           <Route path="application-rounds" element={<ApplicationCyclesPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
+          <Route path="services/active" element={<ActiveServicesPage />} />
+          <Route path="services/history" element={<PurchaseHistoryPage />} />
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="support" element={<SupportPage />} />
@@ -149,6 +152,8 @@ export function App() {
       <Route element={<ProtectedRoute roles={['ADMIN']} />}>
         <Route path="/admin" element={<AdminAppShell />}>
           <Route index element={<AdminLandingPage />} />
+          <Route path="services" element={<AdminServicesPage />} />
+          <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
           <Route path="account" element={<StaffAccountPage />} />
           <Route path="account/security" element={<SecurityPage />} />
           <Route

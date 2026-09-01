@@ -1,297 +1,345 @@
-import AssessmentRounded from '@mui/icons-material/AssessmentRounded';
-import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
-import CreditCardRounded from '@mui/icons-material/CreditCardRounded';
-import HomeWorkRounded from '@mui/icons-material/HomeWorkRounded';
-import { Alert, Box, Chip, Paper, Stack, Typography } from '@mui/material';
+import HistoryRounded from '@mui/icons-material/HistoryRounded';
+import LocalActivityRounded from '@mui/icons-material/LocalActivityRounded';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  Grid,
+  LinearProgress,
+  Paper,
+  Stack,
+  Typography,
+} from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
-import { LoadingSkeleton } from '../components/common/Feedback';
+import { DataNavigationToolbar } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
-import { designTokens } from '../theme';
-type ServiceType = 'CREDIT_PROFILE_REVIEW' | 'CREDIT_CARD_ROUND' | 'MAJOR_APPLICATION_READINESS';
-type Data = {
-  catalog: Array<{
-    serviceType: ServiceType;
-    name: string;
-    description: string;
-    availability: 'PRICING_REQUIRED' | 'PROFILE_REQUIRED' | 'COMING_LATER';
-  }>;
-  purchases: Array<{
+
+type Service = {
+  id: string;
+  key: string;
+  version: number;
+  name: string;
+  description: string;
+  price: string;
+  currency: string;
+  entitlementType: string;
+  includedQuantity: number;
+  includedReviewCredits: number;
+  prerequisiteCode: string | null;
+  eligibility: string | null;
+  checkoutAvailable: boolean;
+};
+export type CommerceData = {
+  balance: { available: number; reserved: number; consumed: number; expired: number };
+  entitlements: Array<{
     id: string;
-    serviceType: ServiceType;
-    amount: number;
-    currency: string;
+    serviceType: string;
     status: string;
-    purchasedAt: string | null;
+    quantityGranted: number;
+    quantityUsed: number;
+    grantedAt: string;
+    expiresAt: string | null;
+    product: { name: string; version: number } | null;
+    purchaseId: string | null;
+  }>;
+  creditTransactions: Array<{
+    id: string;
+    transactionType: string;
+    availableDelta: number;
+    reservedDelta: number;
+    consumedDelta: number;
+    expiredDelta: number;
+    reason: string | null;
     createdAt: string;
   }>;
-  reviewPlans: unknown[];
+  purchases: Purchase[];
 };
-const icons = {
-  CREDIT_PROFILE_REVIEW: AssessmentRounded,
-  CREDIT_CARD_ROUND: CreditCardRounded,
-  MAJOR_APPLICATION_READINESS: HomeWorkRounded,
+type Purchase = {
+  id: string;
+  status: string;
+  amount: string;
+  currency: string;
+  purchasedAt: string | null;
+  createdAt: string;
+  terms: { name?: string; version?: number } | null;
+  product: { name: string; version: number } | null;
+  reviewCreditsGranted: number;
 };
-const serviceNames: Record<ServiceType, string> = {
-  CREDIT_PROFILE_REVIEW: 'Credit Profile Review',
-  CREDIT_CARD_ROUND: 'Optimized Credit Applications',
-  MAJOR_APPLICATION_READINESS: 'Credit Readiness',
-};
-const servicePresentation: Record<
-  ServiceType,
-  {
-    number: string;
-    category: string;
-    outcome: string;
-    includes: string[];
-    accent: string;
-    glow: string;
-  }
-> = {
-  CREDIT_PROFILE_REVIEW: {
-    number: '01',
-    category: 'Foundation',
-    outcome: 'Understand where your credit stands and what should happen next.',
-    includes: [
-      'Consultant report review',
-      'Application readiness decision',
-      'Prepared next actions',
-    ],
-    accent: '#42D3F2',
-    glow: 'rgba(66, 211, 242, 0.18)',
-  },
-  CREDIT_CARD_ROUND: {
-    number: '02',
-    category: 'Application strategy',
-    outcome: 'Apply in a coordinated sequence designed around your current profile and goals.',
-    includes: [
-      'Personalized card strategy',
-      'Guided application session',
-      'Results and follow-up plan',
-    ],
-    accent: '#9B78FF',
-    glow: 'rgba(155, 120, 255, 0.18)',
-  },
-  MAJOR_APPLICATION_READINESS: {
-    number: '03',
-    category: 'Major decision',
-    outcome: 'Prepare the timing and credit activity around one important upcoming application.',
-    includes: ['Application-specific assessment', 'Timing recommendation', 'Preparation checklist'],
-    accent: '#36D399',
-    glow: 'rgba(54, 211, 153, 0.16)',
-  },
-};
-const purchaseStatus: Record<
-  string,
-  { label: string; color: 'default' | 'info' | 'success' | 'warning' | 'error' }
-> = {
-  PENDING: { label: 'Payment pending', color: 'warning' },
-  PAID: { label: 'Paid', color: 'success' },
-  FAILED: { label: 'Payment failed', color: 'error' },
-  REFUNDED: { label: 'Refunded', color: 'info' },
-  CANCELLED: { label: 'Cancelled', color: 'default' },
-};
+const money = (amount: string, currency: string) =>
+  new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(Number(amount));
+const words = (value: string) => value.replaceAll('_', ' ').toLowerCase();
+
+export function ClientServicesSummary({ data }: { data: CommerceData }) {
+  return (
+    <SectionCard>
+      <Stack spacing={2}>
+        <Typography variant="h3">Services & Review Credits</Typography>
+        <Stack direction="row" spacing={1}>
+          <Chip color="success" label={`${data.balance.available} available credits`} />
+          <Chip label={`${data.balance.reserved} reserved`} />
+          <Chip
+            label={`${data.entitlements.filter((item) => item.status === 'ACTIVE').length} active entitlements`}
+          />
+        </Stack>
+        {data.purchases.length ? (
+          <Typography color="text.secondary">
+            Most recent purchase:{' '}
+            {data.purchases[0]!.terms?.name ??
+              data.purchases[0]!.product?.name ??
+              'Historical service'}{' '}
+            · {data.purchases[0]!.status.toLowerCase()}
+          </Typography>
+        ) : (
+          <Typography color="text.secondary">No commercial purchase history.</Typography>
+        )}
+        <Alert severity="info">
+          Consultants can view governed service access but cannot mint credits, create paid
+          purchases, or perform refunds.
+        </Alert>
+      </Stack>
+    </SectionCard>
+  );
+}
+
 export function ServicesPage() {
   const query = useQuery({
-    queryKey: ['services'],
-    queryFn: () => apiRequest<Data>('/api/services'),
+    queryKey: ['available-services'],
+    queryFn: () => apiRequest<{ services: Service[] }>('/api/v1/client/services'),
   });
-  if (query.isLoading) return <LoadingSkeleton />;
-  if (query.isError || !query.data) return <Alert severity="error">Unable to load services.</Alert>;
+  if (query.isLoading) return <LinearProgress />;
+  if (query.isError) return <Alert severity="error">Available services could not be loaded.</Alert>;
   return (
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Services"
-        title="Services"
-        description="Choose expert guidance for your next credit decision and review every previous purchase."
+        title="Choose the right support"
+        description="Current product terms, eligibility, and included access come directly from the governed catalog."
+        actions={
+          <Stack direction="row" spacing={1}>
+            <Button component={Link} to="/app/services/active">
+              Credits & active
+            </Button>
+            <Button component={Link} to="/app/services/history">
+              Purchase history
+            </Button>
+          </Stack>
+        }
       />
-      <Box>
-        <Typography variant="overline" color="primary">
-          Available services
-        </Typography>
-        <Typography variant="h3">Choose the support you need</Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-          Each service is purchased independently. A current Credit Profile is required before
-          Credit Applications or Credit Readiness can advance.
-        </Typography>
-      </Box>
-      <Box
-        sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, 1fr)' }, gap: 2 }}
-      >
-        {query.data.catalog.map((service) => {
-          const Icon = icons[service.serviceType];
-          const presentation = servicePresentation[service.serviceType];
-          const review = service.serviceType === 'CREDIT_PROFILE_REVIEW';
-          return (
-            <SectionCard
-              key={service.serviceType}
-              variant="standard"
-              sx={{
-                height: '100%',
-                position: 'relative',
-                overflow: 'hidden',
-                borderColor: `${presentation.accent}55`,
-                background: `radial-gradient(circle at 100% 0%, ${presentation.glow}, transparent 42%), ${designTokens.color.surface}`,
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  inset: '0 auto 0 0',
-                  width: 3,
-                  bgcolor: presentation.accent,
-                },
-              }}
-            >
-              <Stack spacing={2.5} sx={{ height: '100%', position: 'relative' }}>
-                <Stack direction="row" sx={{ alignItems: 'center' }}>
-                  <Box
-                    sx={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 2.5,
-                      display: 'grid',
-                      placeItems: 'center',
-                      bgcolor: presentation.glow,
-                      color: presentation.accent,
-                      border: '1px solid',
-                      borderColor: `${presentation.accent}66`,
-                    }}
-                  >
-                    <Icon />
-                  </Box>
-                  <Typography
-                    sx={{ ml: 'auto', color: presentation.accent, fontWeight: 900, fontSize: 18 }}
-                  >
-                    {presentation.number}
-                  </Typography>
+      {query.data!.services.length === 0 && (
+        <Alert severity="info">
+          No services are currently offered. Existing access and purchases remain in your history.
+        </Alert>
+      )}
+      <Grid container spacing={2}>
+        {query.data!.services.map((service) => (
+          <Grid key={service.id} size={{ xs: 12, md: 6, lg: 4 }}>
+            <SectionCard variant="interactive" sx={{ height: '100%' }}>
+              <Stack spacing={2} sx={{ height: '100%' }}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
+                  <LocalActivityRounded color="primary" />
+                  <Chip label={`Version ${service.version}`} size="small" />
                 </Stack>
                 <Box>
-                  <Chip
-                    size="small"
-                    label={presentation.category}
-                    sx={{
-                      mb: 1.5,
-                      color: presentation.accent,
-                      borderColor: `${presentation.accent}66`,
-                    }}
-                    variant="outlined"
-                  />
-                  <Typography variant="h4">{serviceNames[service.serviceType]}</Typography>
-                  <Typography color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
-                    {presentation.outcome}
+                  <Typography variant="h3">{service.name}</Typography>
+                  <Typography color="text.secondary" sx={{ mt: 1 }}>
+                    {service.description}
                   </Typography>
                 </Box>
-                <Stack spacing={1.1}>
-                  {presentation.includes.map((item) => (
-                    <Stack key={item} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                      <CheckCircleRounded sx={{ color: presentation.accent, fontSize: 18 }} />
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        {item}
-                      </Typography>
-                    </Stack>
-                  ))}
-                </Stack>
-                <Box
-                  sx={{
-                    mt: { xs: '24px !important', lg: 'auto !important' },
-                    pt: 2,
-                    borderTop: '1px solid',
-                    borderColor: `${presentation.accent}3D`,
-                  }}
-                >
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row', lg: 'column', xl: 'row' }}
-                    spacing={1.25}
-                    sx={{
-                      alignItems: {
-                        xs: 'flex-start',
-                        sm: 'center',
-                        lg: 'flex-start',
-                        xl: 'center',
-                      },
-                    }}
-                  >
-                    <Box sx={{ flex: 1 }}>
-                      <Typography
-                        variant="overline"
-                        sx={{ color: presentation.accent, lineHeight: 1.2 }}
-                      >
-                        Eligibility
-                      </Typography>
-                      <Typography sx={{ mt: 0.25, fontWeight: 850 }}>
-                        {review ? 'Credit Profile not current' : 'Current Credit Profile required'}
-                      </Typography>
-                    </Box>
-                    <Chip
-                      size="small"
-                      label="Checkout coming soon"
-                      sx={{
-                        flexShrink: 0,
-                        bgcolor: presentation.glow,
-                        color: presentation.accent,
-                        fontWeight: 800,
-                      }}
-                    />
-                  </Stack>
+                <Typography variant="h2">{money(service.price, service.currency)}</Typography>
+                <Typography sx={{ fontWeight: 800 }}>
+                  {service.includedQuantity} service unit(s)
+                  {service.includedReviewCredits
+                    ? ` · ${service.includedReviewCredits} Review Credit(s)`
+                    : ''}
+                </Typography>
+                <Alert severity={service.prerequisiteCode ? 'info' : 'success'}>
+                  {service.eligibility ?? 'No additional prerequisite is configured.'}
+                </Alert>
+                <Box sx={{ mt: 'auto !important' }}>
+                  <Button disabled fullWidth variant="contained">
+                    Checkout available in Sprint 5.2
+                  </Button>
+                  <Typography variant="caption">
+                    No payment or outcome is implied. Access begins only after a verified commercial
+                    grant.
+                  </Typography>
                 </Box>
               </Stack>
             </SectionCard>
-          );
-        })}
-      </Box>
+          </Grid>
+        ))}
+      </Grid>
+    </Stack>
+  );
+}
+
+export function ActiveServicesPage() {
+  const query = useQuery({
+    queryKey: ['active-services'],
+    queryFn: () => apiRequest<CommerceData>('/api/v1/client/services/active'),
+  });
+  if (query.isLoading) return <LinearProgress />;
+  if (query.isError)
+    return <Alert severity="error">Credits and active services could not be loaded.</Alert>;
+  const data = query.data!;
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="Services"
+        title="Credits & active services"
+        description="Review Credit balances are calculated from the append-only ledger and cannot be edited here."
+        actions={
+          <Button component={Link} to="/app/services">
+            Available services
+          </Button>
+        }
+      />
+      <Grid container spacing={2}>
+        {[
+          ['Available', data.balance.available],
+          ['Reserved', data.balance.reserved],
+          ['Used', data.balance.consumed],
+          ['Expired', data.balance.expired],
+        ].map(([label, value]) => (
+          <Grid key={String(label)} size={{ xs: 6, md: 3 }}>
+            <SectionCard>
+              <Typography variant="overline">{label}</Typography>
+              <Typography variant="h2">{value}</Typography>
+              <Typography color="text.secondary">Review Credits</Typography>
+            </SectionCard>
+          </Grid>
+        ))}
+      </Grid>
       <SectionCard>
-        <Stack spacing={2}>
-          <Box>
-            <Typography variant="overline" color="text.secondary">
-              Purchase history
-            </Typography>
-            <Typography variant="h3">Previous purchases</Typography>
-            <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-              Every service purchase remains available here, including completed, pending, refunded,
-              and cancelled transactions.
-            </Typography>
-          </Box>
-          {query.data.purchases.length === 0 ? (
-            <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
-              <Typography sx={{ fontWeight: 800 }}>No purchases yet</Typography>
-              <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-                Your complete service purchase history will appear here.
-              </Typography>
-            </Paper>
+        <Stack spacing={2} divider={<Divider />}>
+          <Typography variant="h3">Service access</Typography>
+          {data.entitlements.length === 0 ? (
+            <Alert severity="info">No service entitlements yet.</Alert>
           ) : (
-            query.data.purchases.map((purchase) => (
-              <Paper key={purchase.id} variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={1.5}
-                  sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
-                >
-                  <Box>
-                    <Typography sx={{ fontWeight: 850 }}>
-                      {serviceNames[purchase.serviceType]}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
-                      Purchased{' '}
-                      {new Date(purchase.purchasedAt ?? purchase.createdAt).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                    <Typography sx={{ fontWeight: 800 }}>
-                      {new Intl.NumberFormat(undefined, {
-                        style: 'currency',
-                        currency: purchase.currency,
-                      }).format(purchase.amount)}
-                    </Typography>
-                    <Chip
-                      size="small"
-                      color={purchaseStatus[purchase.status]?.color ?? 'default'}
-                      label={purchaseStatus[purchase.status]?.label ?? purchase.status}
-                    />
-                  </Stack>
-                </Stack>
-              </Paper>
+            data.entitlements.map((item) => (
+              <Stack
+                key={item.id}
+                direction={{ xs: 'column', sm: 'row' }}
+                sx={{ justifyContent: 'space-between' }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 800 }}>
+                    {item.product?.name ?? words(item.serviceType)}
+                  </Typography>
+                  <Typography color="text.secondary">
+                    Granted {new Date(item.grantedAt).toLocaleDateString()} · {item.quantityUsed} of{' '}
+                    {item.quantityGranted} used
+                  </Typography>
+                </Box>
+                <Chip
+                  label={words(item.status)}
+                  color={item.status === 'ACTIVE' ? 'success' : 'default'}
+                />
+              </Stack>
             ))
           )}
+        </Stack>
+      </SectionCard>
+      <SectionCard>
+        <Stack spacing={2} divider={<Divider />}>
+          <Typography variant="h3">Credit ledger</Typography>
+          {data.creditTransactions.length === 0 ? (
+            <Typography color="text.secondary">No Review Credit activity.</Typography>
+          ) : (
+            data.creditTransactions.map((item) => (
+              <Stack key={item.id} direction="row" sx={{ justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography sx={{ fontWeight: 700 }}>{words(item.transactionType)}</Typography>
+                  <Typography variant="caption">
+                    {item.reason ?? new Date(item.createdAt).toLocaleDateString()}
+                  </Typography>
+                </Box>
+                <Typography sx={{ fontWeight: 900 }}>
+                  {item.availableDelta > 0 ? '+' : ''}
+                  {item.availableDelta || item.reservedDelta}
+                </Typography>
+              </Stack>
+            ))
+          )}
+        </Stack>
+      </SectionCard>
+    </Stack>
+  );
+}
+
+export function PurchaseHistoryPage() {
+  const query = useQuery({
+    queryKey: ['purchase-history'],
+    queryFn: () => apiRequest<{ purchases: Purchase[] }>('/api/v1/client/services/history'),
+  });
+  if (query.isLoading) return <LinearProgress />;
+  if (query.isError) return <Alert severity="error">Purchase history could not be loaded.</Alert>;
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="Services"
+        title="Purchase history"
+        description="Historical product terms remain frozen even when today’s catalog changes."
+        actions={
+          <Button component={Link} to="/app/services">
+            Available services
+          </Button>
+        }
+      />
+      <SectionCard variant="operational">
+        <Stack spacing={2}>
+          <DataNavigationToolbar
+            searchLabel="Search purchase history"
+            searchPlaceholder="Search is not needed for this review set"
+            searchValue=""
+            onSearchChange={() => undefined}
+            resultLabel={`${query.data!.purchases.length} purchases`}
+            loading={query.isFetching}
+          />
+          <Stack spacing={1.5}>
+            {query.data!.purchases.length === 0 ? (
+              <Alert severity="info">No commercial purchase history yet.</Alert>
+            ) : (
+              query.data!.purchases.map((purchase) => (
+                <Paper key={purchase.id} variant="outlined" sx={{ p: 2.5 }}>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={2}
+                    sx={{ justifyContent: 'space-between' }}
+                  >
+                    <Stack>
+                      <Stack direction="row" spacing={1}>
+                        <HistoryRounded color="primary" />
+                        <Typography variant="h3">
+                          {purchase.terms?.name ?? purchase.product?.name ?? 'Historical service'}
+                        </Typography>
+                      </Stack>
+                      <Typography color="text.secondary">
+                        Terms version{' '}
+                        {purchase.terms?.version ?? purchase.product?.version ?? 'legacy'} ·{' '}
+                        {new Date(purchase.purchasedAt ?? purchase.createdAt).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="caption">
+                        {purchase.reviewCreditsGranted} Review Credits granted · provider details
+                        intentionally absent
+                      </Typography>
+                    </Stack>
+                    <Stack sx={{ alignItems: { sm: 'flex-end' } }}>
+                      <Typography variant="h3">
+                        {money(purchase.amount, purchase.currency)}
+                      </Typography>
+                      <Chip label={words(purchase.status)} />
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))
+            )}
+          </Stack>
         </Stack>
       </SectionCard>
     </Stack>
