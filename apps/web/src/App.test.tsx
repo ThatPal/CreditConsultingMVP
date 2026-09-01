@@ -96,7 +96,7 @@ describe('application shells', () => {
     expect(within(navigation).getByRole('link', { name: 'Work Queue' })).toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Support' })).toBeInTheDocument();
     expect(within(navigation).queryByText('Goals')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /good morning/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /consultant workspace/i })).toBeInTheDocument();
   });
 
   test('administrator lands in a distinct shell without consultant advisory navigation', () => {
@@ -125,10 +125,12 @@ describe('application shells', () => {
     );
   });
 
-  test('client overview presents the verified next action', () => {
+  test('client overview is an honest foundation without fabricated metrics or dead actions', () => {
     renderAt('/app');
     expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /start guided update/i })).toBeInTheDocument();
+    expect(screen.queryByText('$62,000')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start guided update/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /open/i })).toHaveLength(3);
   });
 
   test('mobile navigation opens and closes through accessible controls', () => {
@@ -309,7 +311,7 @@ describe('application shells', () => {
   test('consultant cannot render the admin shell', () => {
     renderAt('/admin', 'CONSULTANT');
     expect(screen.queryByRole('navigation', { name: /admin navigation/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /good morning/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /consultant workspace/i })).toBeInTheDocument();
   });
 
   test('staff without current MFA assurance is directed to AUTH-05', () => {
@@ -342,17 +344,19 @@ describe('application shells', () => {
             sessions: [
               {
                 id: 'one',
-                userAgent: 'Browser A',
+                userAgent: 'Mozilla/5.0 Firefox/120 Windows',
                 createdAt: '2026-08-31T00:00:00Z',
                 updatedAt: '2026-08-31T00:00:00Z',
                 expiresAt: '2026-09-01T00:00:00Z',
+                isCurrent: false,
               },
               {
                 id: 'two',
-                userAgent: 'Browser B',
+                userAgent: 'Mozilla/5.0 Chrome/120 Windows',
                 createdAt: '2026-08-31T00:00:00Z',
-                updatedAt: '2026-08-31T00:00:00Z',
+                updatedAt: '2026-08-30T00:00:00Z',
                 expiresAt: '2026-09-01T00:00:00Z',
+                isCurrent: true,
               },
             ],
           }),
@@ -366,8 +370,10 @@ describe('application shells', () => {
       });
     });
     renderAt('/app/account/security');
-    expect(await screen.findByText('Browser A')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /revoke other sessions/i }));
+    expect(await screen.findByText('Firefox on Windows computer')).toBeInTheDocument();
+    expect(screen.getByText('Chrome on Windows computer').closest('div')).toHaveTextContent('Current session');
+    fireEvent.click(screen.getByRole('button', { name: /revoke all other sessions/i }));
+    fireEvent.click(screen.getByRole('button', { name: /revoke access/i }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/api/auth/revoke-other-sessions'),

@@ -23,6 +23,7 @@ import {
   RegisterPage,
   ResetPasswordPage,
   StaffMfaPage,
+  VerifyEmailPage,
 } from './pages/AuthPages';
 import {
   ClientOverviewPage,
@@ -53,6 +54,7 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/mfa" element={<StaffMfaPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/lead-wizard" element={<OnboardingPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -85,7 +87,7 @@ export function App() {
             element={
               <FoundationPage
                 title="Journey"
-                description="Your secure journey workspace is ready for its owning product sprint."
+                description="Personalized journey projections will appear after their complete, verified workflow is accepted."
               />
             }
           />
@@ -127,7 +129,7 @@ export function App() {
             element={
               <FoundationPage
                 title="Live Sessions"
-                description="Persistent live-session supervision mounts here without introducing new realtime transport."
+                description="Live session supervision is not available yet. No scheduled activity is inferred or displayed."
               />
             }
           />
@@ -136,7 +138,7 @@ export function App() {
             element={
               <FoundationPage
                 title="Calendar"
-                description="The CRM calendar mounting point is reserved for its owning sprint."
+                description="Calendar scheduling is not available yet. No example appointments are displayed."
               />
             }
           />

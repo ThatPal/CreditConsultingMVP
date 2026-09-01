@@ -11,6 +11,24 @@ const preferenceSchema = z.object({
   enabled: z.boolean(),
 });
 
+const notificationCursorSchema = z.object({
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+});
+
+export function encodeNotificationCursor(value: { createdAt: Date; id: string }) {
+  return Buffer.from(JSON.stringify({ createdAt: value.createdAt.toISOString(), id: value.id }))
+    .toString('base64url');
+}
+
+export function decodeNotificationCursor(value: string) {
+  try {
+    return notificationCursorSchema.parse(JSON.parse(Buffer.from(value, 'base64url').toString()));
+  } catch {
+    throw new AppError('INVALID_CURSOR', 400, 'Notification continuation is invalid');
+  }
+}
+
 const publicIntegrationMetadataKeys = new Set([
   'host',
   'port',
@@ -32,11 +50,23 @@ export function createNotificationRouter(prisma: PrismaClient) {
     try {
       if (!req.auth) throw new AppError('AUTH_REQUIRED', 401, 'Authentication is required');
       const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+      const cursor =
+        typeof req.query.cursor === 'string' ? decodeNotificationCursor(req.query.cursor) : null;
       const [notifications, unread] = await Promise.all([
         prisma.notification.findMany({
-          where: { userId: req.auth.userId },
+          where: {
+            userId: req.auth.userId,
+            ...(cursor
+              ? {
+                  OR: [
+                    { createdAt: { lt: new Date(cursor.createdAt) } },
+                    { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
+                  ],
+                }
+              : {}),
+          },
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          take: limit,
+          take: limit + 1,
           select: {
             id: true,
             type: true,
@@ -52,7 +82,15 @@ export function createNotificationRouter(prisma: PrismaClient) {
         }),
         prisma.notification.count({ where: { userId: req.auth.userId, readAt: null } }),
       ]);
-      res.json({ notifications, unread });
+      const hasMore = notifications.length > limit;
+      const page = notifications.slice(0, limit);
+      const last = page.at(-1);
+      res.json({
+        notifications: page,
+        unread,
+        hasMore,
+        nextCursor: hasMore && last ? encodeNotificationCursor(last) : null,
+      });
     } catch (error) {
       next(error);
     }

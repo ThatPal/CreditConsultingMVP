@@ -1,4 +1,4 @@
-import { Alert, Button, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Autocomplete, Button, Stack, TextField, Typography } from '@mui/material';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest, type CurrentUser } from '../auth/api';
@@ -11,6 +11,11 @@ export function AccountPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timezoneOptions = (() => {
+    const supported = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'UTC'];
+    return Array.from(new Set([...supported, browserTimezone, user?.timezone].filter((value): value is string => Boolean(value)))).sort();
+  })();
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -47,7 +52,7 @@ export function AccountPage() {
               label="Verified email"
               value={user?.email ?? ''}
               disabled
-              helperText="Email changes follow a separate verification flow."
+              helperText="This verified sign-in email cannot be changed from the current account tools."
             />
             <TextField
               name="firstName"
@@ -62,11 +67,12 @@ export function AccountPage() {
               required
             />
             <TextField name="phone" label="Phone" defaultValue={user?.phone ?? ''} />
-            <TextField
-              name="timezone"
-              label="Timezone"
-              defaultValue={user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone}
-              required
+            <Autocomplete
+              options={timezoneOptions}
+              defaultValue={user?.timezone ?? browserTimezone}
+              autoHighlight
+              disableClearable
+              renderInput={(params) => <TextField {...params} name="timezone" label="Timezone" helperText={`Browser timezone: ${browserTimezone}`} required />}
             />
             <Button type="submit" variant="contained" disabled={saving}>
               {saving ? 'Saving…' : 'Save changes'}

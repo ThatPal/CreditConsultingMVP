@@ -10,6 +10,7 @@ import {
   RegisterPage,
   ResetPasswordPage,
   StaffMfaPage,
+  VerifyEmailPage,
 } from './AuthPages';
 
 const authState = vi.hoisted(() => ({
@@ -108,13 +109,23 @@ describe('client authentication pages', () => {
     expect(terms).toBeRequired();
     fireEvent.click(terms);
     fireEvent.submit(screen.getByRole('button', { name: 'Create account' }).closest('form')!);
-    expect(await screen.findByText(/check your email to verify/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/verify-email'));
     const [, init] = fetchMock.mock.calls[0]!;
     expect(JSON.parse(String(init?.body))).toMatchObject({
       authFirstName: 'Ada',
       authLastName: 'Lovelace',
       authTermsAccepted: true,
     });
+  });
+
+  test('verification-required screen recovers from invalid links with bounded resend states', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(() => response({ status: true }));
+    renderPage(<VerifyEmailPage />, '/verify-email?status=expired');
+    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'client@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /resend verification/i }));
+    expect(await screen.findByText(/new verification email has been sent/i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   test('login shows loading and follows only the safe internal return path', async () => {

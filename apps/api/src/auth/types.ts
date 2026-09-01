@@ -1,6 +1,7 @@
 import type { UserRole, UserStatus } from '../generated/prisma/enums.js';
 
 export type AuthPrincipal = {
+  sessionId?: string;
   userId: string;
   email: string;
   role: UserRole;

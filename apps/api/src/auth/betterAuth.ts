@@ -312,6 +312,7 @@ export async function resolveBetterAuthPrincipal(
     mfaStepUpTtlMinutes,
   );
   return {
+    sessionId: session.session.id,
     userId: user.id,
     email: user.email,
     role: user.role,

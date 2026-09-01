@@ -9,6 +9,15 @@ import { requireAuth, requireRole } from './middleware.js';
 
 const password = z.string().min(12, 'Password must contain at least 12 characters').max(128);
 const email = z.string().trim().pipe(z.email());
+export function isValidTimeZone(value: string) {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+const timezone = z.string().trim().min(1).max(80).refine(isValidTimeZone, 'Select a valid timezone');
 const goalType = z.enum([
   'ZERO_APR_CREDIT',
   'TOTAL_AVAILABLE_CREDIT',
@@ -42,7 +51,7 @@ const registerSchema = z
       (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
       z.string().trim().min(7).max(30).optional(),
     ),
-    timezone: z.string().trim().min(1).max(80).default('America/New_York'),
+    timezone: timezone.default('America/New_York'),
     termsAccepted: z.literal(true),
     goals: z.array(goalSchema).min(1).max(7).optional(),
   })
@@ -78,7 +87,7 @@ const updateMeSchema = z
     firstName: z.string().trim().min(1).max(80).optional(),
     lastName: z.string().trim().min(1).max(80).optional(),
     phone: z.string().trim().min(7).max(30).nullable().optional(),
-    timezone: z.string().trim().min(1).max(80).optional(),
+    timezone: timezone.optional(),
   })
   .refine((input) => Object.keys(input).length > 0, 'At least one field is required');
 
@@ -224,7 +233,42 @@ export function createMeRouter(auth: AuthService, prisma?: PrismaClient) {
         select: { id: true, userAgent: true, createdAt: true, updatedAt: true, expiresAt: true },
         orderBy: { updatedAt: 'desc' },
       });
-      res.json({ sessions });
+      res.json({
+        sessions: sessions.map((session) => ({
+          ...session,
+          isCurrent: session.id === req.auth!.sessionId,
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.delete('/sessions/:sessionId', requireAuth, async (req, res, next) => {
+    try {
+      if (!prisma)
+        throw new AppError('SERVICE_UNAVAILABLE', 503, 'Session details are unavailable');
+      const sessionId = req.params.sessionId as string;
+      if (sessionId === req.auth!.sessionId)
+        throw new AppError(
+          'CURRENT_SESSION_REQUIRES_SIGN_OUT',
+          409,
+          'Use sign out to end your current session',
+        );
+      const deleted = await prisma.betterAuthSession.deleteMany({
+        where: { id: sessionId, userId: req.auth!.userId },
+      });
+      if (!deleted.count) throw new AppError('NOT_FOUND', 404, 'Session was not found');
+      await prisma.auditEvent.create({
+        data: {
+          actorId: req.auth!.userId,
+          clientId: req.auth!.clientId,
+          action: 'AUTH_SESSION_REVOKED',
+          entityType: 'BetterAuthSession',
+          entityId: sessionId,
+          metadata: { scope: 'INDIVIDUAL_OTHER_SESSION' },
+        },
+      });
+      res.status(204).end();
     } catch (error) {
       next(error);
     }

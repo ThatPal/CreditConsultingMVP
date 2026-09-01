@@ -34,6 +34,8 @@ describe('PORTAL-41 notifications', () => {
       if (init?.method === 'PATCH') return json({ notification: { id: 'notification-1' } });
       return json({
         unread: 1,
+        hasMore: false,
+        nextCursor: null,
         notifications: [
           {
             id: 'notification-1',
@@ -49,9 +51,9 @@ describe('PORTAL-41 notifications', () => {
       });
     });
     renderPage();
-    expect(await screen.findByText('Account update')).toBeInTheDocument();
-    expect(screen.getByText('Unread')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Account update'));
+    expect(await screen.findByRole('heading', { name: 'New' })).toBeInTheDocument();
+    expect(screen.getByText('New', { selector: '.MuiChip-label' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /account update/i }));
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/v1/notifications/notification-1/read'),
@@ -61,10 +63,10 @@ describe('PORTAL-41 notifications', () => {
   });
 
   test('renders empty and safe error states', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ unread: 0, notifications: [] }));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ unread: 0, notifications: [], hasMore: false, nextCursor: null }));
     const first = renderPage();
     expect(
-      await screen.findByRole('heading', { name: /no notifications yet/i }),
+      await screen.findByRole('heading', { name: /all caught up/i }),
     ).toBeInTheDocument();
     first.unmount();
     vi.restoreAllMocks();
@@ -73,6 +75,7 @@ describe('PORTAL-41 notifications', () => {
     );
     renderPage();
     expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
     expect(screen.queryByText(/smtp password/i)).not.toBeInTheDocument();
   });
 });

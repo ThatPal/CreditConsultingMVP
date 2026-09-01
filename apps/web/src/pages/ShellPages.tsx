@@ -66,11 +66,15 @@ export function StaffAccountPage() {
 export function FoundationPage({ title, description }: { title: string; description: string }) {
   return (
     <Stack spacing={3}>
-      <PageHeader eyebrow="Foundation" title={title} description={description} />
+      <PageHeader eyebrow="Coming in a future product phase" title={title} description={description} />
       <SectionCard>
-        <Typography color="text.secondary">
-          This mounting point is ready. Its business workflow remains owned by a later sprint.
-        </Typography>
+        <Stack spacing={1.5}>
+          <Chip label="Future owner" color="info" sx={{ alignSelf: 'flex-start' }} />
+          <Typography variant="h3">No placeholder activity is shown</Typography>
+          <Typography color="text.secondary">
+            This area will become available when its complete, authoritative workflow is ready. Use the navigation to continue with currently available tools.
+          </Typography>
+        </Stack>
       </SectionCard>
     </Stack>
   );

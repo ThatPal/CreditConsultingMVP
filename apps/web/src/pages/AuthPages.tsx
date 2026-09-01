@@ -83,6 +83,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
+  const [resendState, setResendState] = useState<'idle' | 'busy' | 'success' | 'error'>('idle');
   if (user) return <Navigate to={homeFor(user)} replace />;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -125,20 +126,23 @@ export function LoginPage() {
           <Alert severity="success">Email verified. You can sign in now.</Alert>
         )}
         {error && <Alert severity="error">{error}</Alert>}
+        {resendState === 'success' && <Alert severity="success">If the account is eligible, a new verification email has been sent.</Alert>}
+        {resendState === 'error' && <Alert severity="error">The verification email could not be sent. Please retry.</Alert>}
         {verificationEmail && (
           <Button
             variant="outlined"
-            onClick={() =>
-              apiRequest('/api/auth/send-verification-email', {
-                method: 'POST',
-                body: JSON.stringify({
-                  email: verificationEmail,
-                  callbackURL: '/login?verified=1',
-                }),
-              })
-            }
+            disabled={resendState === 'busy'}
+            onClick={async () => {
+              setResendState('busy');
+              try {
+                await apiRequest('/api/auth/send-verification-email', { method: 'POST', body: JSON.stringify({ email: verificationEmail, callbackURL: '/verify-email?status=success' }) });
+                setResendState('success');
+              } catch {
+                setResendState('error');
+              }
+            }}
           >
-            Resend verification email
+            {resendState === 'busy' ? 'Sending…' : 'Resend verification email'}
           </Button>
         )}
         <TextField name="email" label="Email" type="email" autoComplete="email" required />
@@ -391,9 +395,9 @@ export function StaffMfaPage() {
 
 export function RegisterPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [verificationSent, setVerificationSent] = useState(false);
   if (user) return <Navigate to={homeFor(user)} replace />;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -412,10 +416,10 @@ export function RegisterPage() {
           authPhone: data.phone || undefined,
           authTimezone: data.timezone,
           authTermsAccepted: data.termsAccepted === 'on',
-          callbackURL: '/login?verified=1',
+          callbackURL: '/verify-email?status=success',
         }),
       });
-      setVerificationSent(true);
+      navigate('/verify-email', { replace: true, state: { email: String(data.email ?? '') } });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to create account');
     } finally {
@@ -427,9 +431,6 @@ export function RegisterPage() {
       title="Create your account"
       subtitle="Register directly for secure access to the client portal."
     >
-      {verificationSent ? (
-        <Alert severity="success">Check your email to verify the account before signing in.</Alert>
-      ) : (
         <Stack component="form" spacing={2} onSubmit={submit}>
           {error && <Alert severity="error">{error}</Alert>}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -462,9 +463,40 @@ export function RegisterPage() {
             Already have an account? Sign in
           </Link>
         </Stack>
-      )}
     </AuthFrame>
   );
+}
+
+export function VerifyEmailPage() {
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const stateEmail = (location.state as { email?: string } | null)?.email ?? '';
+  const [email, setEmail] = useState(stateEmail);
+  const [status, setStatus] = useState<'idle' | 'busy' | 'success' | 'error'>('idle');
+  const result = params.get('status');
+  const verificationFailed = result === 'expired' || result === 'invalid' || params.has('error');
+  async function resend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus('busy');
+    try {
+      await apiRequest('/api/auth/send-verification-email', { method: 'POST', body: JSON.stringify({ email, callbackURL: '/verify-email?status=success' }) });
+      setStatus('success');
+    } catch {
+      setStatus('error');
+    }
+  }
+  return <AuthFrame title={result === 'success' ? 'Email verified' : 'Verify your email'} subtitle={result === 'success' ? 'Your secure account is ready for sign in.' : 'Open the private verification link sent to your inbox.'}>
+    <Stack spacing={2.5}>
+      {result === 'success' ? <Alert severity="success">Verification complete. Continue to sign in.</Alert> : verificationFailed ? <Alert severity="warning">This verification link is no longer valid. Request a new link below.</Alert> : <Alert severity="info">Check your inbox. For security, the link can expire or be used only once.</Alert>}
+      {result !== 'success' && <Stack component="form" spacing={2} onSubmit={resend}>
+        {status === 'success' && <Alert severity="success">If the account is eligible, a new verification email has been sent.</Alert>}
+        {status === 'error' && <Alert severity="error">We could not send the email. Please retry.</Alert>}
+        <TextField label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+        <Button type="submit" variant="outlined" disabled={status === 'busy'}>{status === 'busy' ? 'Sending…' : 'Resend verification email'}</Button>
+      </Stack>}
+      <Button component={RouterLink} to="/login" variant={result === 'success' ? 'contained' : 'text'}>Return to sign in</Button>
+    </Stack>
+  </AuthFrame>;
 }
 
 export function ForgotPasswordPage() {

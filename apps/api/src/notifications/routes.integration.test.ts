@@ -159,6 +159,41 @@ describe('notification and integration routes', () => {
     await request(app()).post('/notifications/read-all').set('x-test-identity', 'one').expect(204);
   });
 
+  test('paginates equal-timestamp notification history without duplicates or omissions', async () => {
+    const createdAt = new Date('2026-08-30T12:00:00.000Z');
+    const rows = await Promise.all(
+      ['a', 'b', 'c'].map((suffix) =>
+        prisma.notification.create({
+          data: {
+            userId: one.userId,
+            clientId: one.clientId,
+            semanticKey: `${suite}:page:${suffix}`,
+            type: 'TEST',
+            title: `Page ${suffix}`,
+            body: 'Stable pagination evidence.',
+            createdAt,
+          },
+        }),
+      ),
+    );
+    const first = await request(app())
+      .get('/notifications?limit=2')
+      .set('x-test-identity', 'one')
+      .expect(200);
+    expect(first.body.hasMore).toBe(true);
+    expect(first.body.nextCursor).toEqual(expect.any(String));
+    const second = await request(app())
+      .get(`/notifications?limit=2&cursor=${encodeURIComponent(first.body.nextCursor)}`)
+      .set('x-test-identity', 'one')
+      .expect(200);
+    const expected = [notificationId, ...rows.map(({ id }) => id)];
+    const observed = [...first.body.notifications, ...second.body.notifications].map(
+      ({ id }: { id: string }) => id,
+    );
+    expect(new Set(observed).size).toBe(observed.length);
+    expect(observed.sort()).toEqual(expected.sort());
+  });
+
   test('preserves required in-app preferences', async () => {
     await request(app())
       .put('/notifications/preferences/current')

@@ -1,9 +1,7 @@
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import AssignmentTurnedInRounded from '@mui/icons-material/AssignmentTurnedInRounded';
-import BoltRounded from '@mui/icons-material/BoltRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded';
-import ScheduleRounded from '@mui/icons-material/ScheduleRounded';
 import ShieldRounded from '@mui/icons-material/ShieldRounded';
 import {
   Alert,
@@ -29,127 +27,22 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 
-const demoNotice = (
-  <Alert severity="info">Preview data — connect a client record to begin verified work.</Alert>
-);
-
-function TaskRow({
-  title,
-  client,
-  due,
-  action,
-  urgent = false,
-}: {
-  title: string;
-  client: string;
-  due: string;
-  action: string;
-  urgent?: boolean;
-}) {
-  return (
-    <Box
-      sx={{
-        display: 'grid',
-        gridTemplateColumns: { xs: '1fr', md: 'minmax(180px,1.4fr) 1fr 110px auto' },
-        gap: 1.5,
-        alignItems: 'center',
-        py: 1.7,
-      }}
-    >
-      <Box>
-        <Typography sx={{ fontWeight: 800 }}>{title}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {client}
-        </Typography>
-      </Box>
-      <Chip
-        size="small"
-        icon={urgent ? <ErrorOutlineRounded /> : <ScheduleRounded />}
-        color={urgent ? 'warning' : 'default'}
-        label={due}
-        sx={{ justifySelf: 'start' }}
-      />
-      <Typography variant="body2" color="text.secondary">
-        Suggested
-      </Typography>
-      <Button variant="outlined" endIcon={<ArrowForwardRounded />}>
-        {action}
-      </Button>
-    </Box>
-  );
-}
+const demoNotice = <Alert severity="info">Design evidence — values shown on this development-only component are not authoritative client data.</Alert>;
 
 export function ConsultantDashboardPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Consultant operations"
-        title="Good morning"
-        description="One place to see what needs attention and move each client forward."
-        actions={
-          <Button variant="contained" startIcon={<BoltRounded />}>
-            Start next task
-          </Button>
-        }
+        title="Consultant workspace"
+        description="Use the accepted operational tools below while the full consultant dashboard remains in its owning product phase."
       />
-      {demoNotice}
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-          <MetricCard
-            label="Needs attention"
-            value="6"
-            supportingText="2 due today"
-            accent="info"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-          <MetricCard
-            label="Active clients"
-            value="18"
-            supportingText="4 progressing this week"
-            accent="info"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-          <MetricCard
-            label="Credit readiness"
-            value="3"
-            supportingText="1 awaiting decision"
-            accent="gradient"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-          <MetricCard
-            label="Upcoming sessions"
-            value="4"
-            supportingText="Next at 11:30 AM"
-            accent="positive"
-          />
-        </Grid>
-      </Grid>
-      <SectionCard variant="operational">
-        <Stack divider={<Divider />}>
-          <TaskRow
-            title="Confirm readiness outcome"
-            client="Jordan Blake"
-            due="Due today"
-            action="Review"
-            urgent
-          />
-          <TaskRow
-            title="Review updated credit profile"
-            client="Taylor Morgan"
-            due="2 hours old"
-            action="Open review"
-          />
-          <TaskRow
-            title="Release card sequence"
-            client="Alex Rivera"
-            due="Tomorrow"
-            action="Open round"
-          />
-        </Stack>
-      </SectionCard>
+      <Alert severity="info">Dashboard metrics and scheduled-session summaries will appear only when their canonical workflows are implemented with authoritative data.</Alert>
+      <Grid container spacing={2}>{[
+        { title: 'Work queue', description: 'Review prioritized, API-backed attention items and claim available work.', path: '/crm/work-queue' },
+        { title: 'Client reviews', description: 'Continue accepted review work without fabricated client summaries.', path: '/crm/reviews' },
+        { title: 'Support', description: 'Respond to authorized client support cases.', path: '/crm/support' },
+      ].map(({ title, description, path }) => <Grid key={title} size={{ xs: 12, md: 4 }}><SectionCard variant="interactive"><Stack spacing={1.5}><Typography variant="h3">{title}</Typography><Typography color="text.secondary">{description}</Typography><Button component={Link} to={path} variant="outlined" endIcon={<ArrowForwardRounded />} sx={{ alignSelf: 'flex-start' }}>Open</Button></Stack></SectionCard></Grid>)}</Grid>
     </Stack>
   );
 }
@@ -388,34 +281,9 @@ export function ClientsPage() {
       <PageHeader
         eyebrow="Relationships"
         title="Clients"
-        description="Open a client’s complete strategy and take the next action without searching across tools."
-        actions={<Button variant="contained">Add client</Button>}
+        description="Client directory and Client 360 workflows are reserved for their owning product phase."
       />
-      {demoNotice}
-      <Grid container spacing={2}>
-        {['Jordan Blake', 'Taylor Morgan', 'Alex Rivera'].map((name, i) => (
-          <Grid key={name} size={{ xs: 12, md: 4 }}>
-            <SectionCard variant="interactive">
-              <Stack spacing={2}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-                  <Typography variant="h3">{name}</Typography>
-                  <Chip
-                    size="small"
-                    color={i === 0 ? 'warning' : 'success'}
-                    label={i === 0 ? 'Needs review' : 'On track'}
-                  />
-                </Stack>
-                <Typography color="text.secondary">
-                  Primary goal · ${[100, 75, 50][i]},000{' '}
-                  {i === 1 ? 'business' : 'personal + business'} credit
-                </Typography>
-                <LinearProgress variant="determinate" value={[62, 44, 78][i]} />
-                <Button endIcon={<ArrowForwardRounded />}>Open Client 360</Button>
-              </Stack>
-            </SectionCard>
-          </Grid>
-        ))}
-      </Grid>
+      <SectionCard><Stack spacing={2}><Chip label="Future owner" color="info" sx={{ alignSelf: 'flex-start' }} /><Typography variant="h3">A trustworthy directory starts with governed client records</Typography><Typography color="text.secondary">No example people or financial figures are shown here. Until the accepted directory is available, use the Work Queue, Reviews, and Support areas for authorized client work.</Typography><Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}><Button component={Link} to="/crm/work-queue" variant="contained">Open work queue</Button><Button component={Link} to="/crm/reviews" variant="outlined">Open reviews</Button><Button component={Link} to="/crm/support" variant="outlined">Open support</Button></Stack></Stack></SectionCard>
     </Stack>
   );
 }
@@ -426,59 +294,14 @@ export function ClientOverviewPage() {
       <PageHeader
         eyebrow="Your strategy"
         title="Welcome back"
-        description="Your next actions, progress, and consultant updates in one view."
+        description="Your secure starting point for the Phase 1–3 tools currently available."
       />
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 8 }}>
-          <SectionCard variant="elevated">
-            <Stack spacing={2}>
-              <Chip label="Next best action" color="primary" sx={{ alignSelf: 'flex-start' }} />
-              <Typography variant="h2">Update your credit profile</Typography>
-              <Typography color="text.secondary">
-                Your consultant needs a current snapshot before confirming Major Credit Application
-                Readiness.
-              </Typography>
-              <Button variant="contained" sx={{ alignSelf: 'flex-start' }}>
-                Start guided update
-              </Button>
-            </Stack>
-          </SectionCard>
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <MetricCard
-            label="Goal progress"
-            value="62%"
-            supportingText="$62,000 of $100,000 verified"
-            accent="gradient"
-          />
-        </Grid>
-      </Grid>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <MetricCard
-            label="Plan actions"
-            value="3"
-            supportingText="1 due this week"
-            accent="info"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <MetricCard
-            label="Readiness"
-            value="Prepare"
-            supportingText="2 blockers remain"
-            accent="info"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <MetricCard
-            label="Next session"
-            value="Sep 4"
-            supportingText="Strategy check-in · 11:30 AM"
-            accent="positive"
-          />
-        </Grid>
-      </Grid>
+      <Alert severity="info">Personalized progress, financial totals, and next-best-action projections will appear only when their owning product workflow supplies verified data.</Alert>
+      <Grid container spacing={2}>{[
+        { title: 'Credit Center', description: 'Review your accepted credit-profile and review workflows.', path: '/app/credit-center' },
+        { title: 'Documents', description: 'Upload, find, and securely view your files.', path: '/app/documents' },
+        { title: 'Support', description: 'Ask for help and follow your existing cases.', path: '/app/support' },
+      ].map(({ title, description, path }) => <Grid key={title} size={{ xs: 12, md: 4 }}><SectionCard variant="interactive"><Stack spacing={1.5}><Typography variant="h3">{title}</Typography><Typography color="text.secondary">{description}</Typography><Button component={Link} to={path} variant="outlined" endIcon={<ArrowForwardRounded />} sx={{ alignSelf: 'flex-start' }}>Open</Button></Stack></SectionCard></Grid>)}</Grid>
     </Stack>
   );
 }
