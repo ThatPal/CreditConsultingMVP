@@ -14,7 +14,7 @@ No Sprint 5.1 commerce, service-purchase, payment, or entitlement behavior was a
 ## Material implementation
 
 - Schema/domain: `CreditJourney` (one per client), adapted `ApplicationCycle.journeyId`, `CycleGoalSnapshot`, `NurturePeriod`, and `CreditProfileState`, with explicit enums, relations, uniqueness, and indexes.
-- Migration: forward-only migration `20260901043000_journey_cycle_nurture_foundation`; it preserves all historical migrations, creates one Journey for every existing Client, attaches existing cycles, captures available historical goal facts, and derives a conservative profile-state projection from accepted Reviews.
+- Migration: forward-only migration `20260901173000_journey_cycle_nurture_foundation`; it preserves all historical migrations, creates one Journey for every existing Client, attaches existing cycles, captures available historical goal facts, and derives a conservative profile-state projection from accepted Reviews.
 - Cycle reconciliation: **ADAPT**. `ApplicationCycle` and its accepted steps/applications are retained as canonical cycle persistence. No parallel `CreditCycle` table or competing lifecycle was created. The API/UI describe these records as cycles; the legacy `/application-rounds` workflow remains available for accepted behavior. Full Start/Resume lifecycle redesign is **DEFERRED** to Phase 11.
 - Queries: stable `GET /api/v1/client/home`, `GET /api/v1/client/journey`, and scoped `GET /api/v1/consultant/clients/:clientId/journey` projections.
 - Current focus: one pure deterministic resolver used by both Portal and CRM projections. It prioritizes an explicit active nurture period, then the active cycle’s canonical stage, then factual goal onboarding; it does not infer future work.
@@ -41,7 +41,7 @@ No Sprint 5.1 commerce, service-purchase, payment, or entitlement behavior was a
 - Broader incidental API run: 97/97 collected tests passed; two realtime suites were not collected because that accidental command omitted `REDIS_URL`. This is not counted as the focused gate.
 - Broader incidental Web run: Sprint 4.3-relevant tests passed; one unrelated Support document-picker test timed out. The corrected exact focused run is the reported gate above.
 - Changed-workspace lint/build: recorded after final execution below.
-- Risk-based GitHub CI: recorded after the final branch push below.
+- Risk-based GitHub CI: initial run `33537587538` exposed a migration-order defect; the corrective run is recorded after the final branch push below.
 
 ## Requirement reconciliation
 
