@@ -19,6 +19,7 @@ export type GoalRecord = {
   allowAnnualFee: boolean;
   priority: GoalPriority;
   status: GoalStatus;
+  version: number;
   achievedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -31,6 +32,7 @@ export type GoalInput = {
   priority: GoalPriority;
 };
 export type GoalUpdate = {
+  version?: number | undefined;
   goalType?: GoalType | undefined;
   scope?: GoalScope | undefined;
   targetAmount?: number | null | undefined;
@@ -38,9 +40,23 @@ export type GoalUpdate = {
   priority?: GoalPriority | undefined;
   status?: GoalStatus | undefined;
 };
+export type GoalCommandContext = {
+  actorId: string;
+  idempotencyKey: string;
+  requestHash: string;
+};
 export interface GoalStore {
   list(clientId: string): Promise<GoalRecord[]>;
-  create(clientId: string, input: GoalInput): Promise<GoalRecord>;
-  update(clientId: string, goalId: string, input: GoalUpdate): Promise<GoalRecord | null>;
-  archive(clientId: string, goalId: string): Promise<GoalRecord | null>;
+  create(clientId: string, input: GoalInput, context?: GoalCommandContext): Promise<GoalRecord>;
+  update(
+    clientId: string,
+    goalId: string,
+    input: GoalUpdate,
+    context?: GoalCommandContext,
+  ): Promise<GoalRecord | null>;
+  archive(
+    clientId: string,
+    goalId: string,
+    context?: GoalCommandContext,
+  ): Promise<GoalRecord | null>;
 }

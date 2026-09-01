@@ -508,6 +508,8 @@ model Client {
   user                     User?                         @relation("ClientIdentity", fields: [userId], references: [id], onDelete: Restrict)
   assignedConsultant       User?                         @relation("AssignedConsultant", fields: [assignedConsultantId], references: [id], onDelete: SetNull)
   goals                    ClientGoal[]
+  goalRevisions            ClientGoalRevision[]
+  consumedGoalIntakes      AnonymousGoalIntake[]
   servicePurchases         ServicePurchase[]
   reviewPlans              ReviewPlan[]
   creditSnapshots          CreditSnapshot[]
@@ -1389,13 +1391,55 @@ model ClientGoal {
   allowAnnualFee Boolean      @default(false)
   priority       GoalPriority
   status         GoalStatus   @default(ACTIVE)
+  version        Int          @default(1)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   achievedAt     DateTime?
   client         Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  revisions      ClientGoalRevision[]
 
   @@unique([clientId, goalType, scope])
   @@index([clientId, status, priority])
+}
+
+model ClientGoalRevision {
+  id             String       @id @default(uuid()) @db.Uuid
+  goalId         String       @db.Uuid
+  clientId       String       @db.Uuid
+  version        Int
+  goalType       GoalType
+  scope          GoalScope
+  targetAmount   Decimal?     @db.Decimal(14, 2)
+  allowAnnualFee Boolean
+  priority       GoalPriority
+  status         GoalStatus
+  changedById    String?      @db.Uuid
+  changeSource   String       @default("CLIENT_COMMAND")
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  goal           ClientGoal   @relation(fields: [goalId], references: [id], onDelete: Restrict)
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@unique([goalId, version])
+  @@index([clientId, createdAt])
+}
+
+model AnonymousGoalIntake {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tokenHash          String    @unique
+  goalType           GoalType
+  scope              GoalScope
+  targetAmount       Decimal   @db.Decimal(14, 2)
+  allowAnnualFee     Boolean   @default(false)
+  version            Int       @default(1)
+  expiresAt          DateTime  @db.Timestamptz(3)
+  consumedAt         DateTime? @db.Timestamptz(3)
+  consumedByClientId String?   @db.Uuid
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  consumedByClient   Client?   @relation(fields: [consumedByClientId], references: [id], onDelete: Restrict)
+
+  @@index([expiresAt, consumedAt])
+  @@index([consumedByClientId])
 }
 
 model AuthSession {

@@ -34,6 +34,7 @@ import {
 import { createIntegrationRouter, createNotificationRouter } from './notifications/routes.js';
 import type { EmailProvider } from './notifications/emailProvider.js';
 import { createClientContextRouter } from './clientContext/routes.js';
+import { createGoalIntakeBindingRouter, createGoalIntakePublicRouter } from './goals/goalIntake.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -66,7 +67,7 @@ export function createApp(
   app.use(cookieParser());
   app.use(
     pinoHttp({
-      logger,
+      level: logger.level,
       genReqId: (req, res) => {
         const id = req.headers['x-request-id']?.toString() ?? randomUUID();
         res.setHeader('x-request-id', id);
@@ -76,6 +77,7 @@ export function createApp(
     }),
   );
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  if (prisma) app.use('/api/v1/goal-intakes', createGoalIntakePublicRouter(prisma));
   app.get('/ready', async (_req, res) => {
     if (!readiness)
       return res.status(503).json({
@@ -126,6 +128,7 @@ export function createApp(
       const authorization = createPrismaAuthorizationService(prisma);
       const denialRecorder = createPrismaAuthorizationDenialRecorder(prisma);
       app.use('/api/v1/notifications', createNotificationRouter(prisma));
+      app.use('/api/v1/client/goal-intakes', createGoalIntakeBindingRouter(prisma));
       app.use('/api/v1', createClientContextRouter(prisma, authorization, denialRecorder));
       if (emailProvider)
         app.use(

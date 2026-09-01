@@ -110,7 +110,8 @@ try {
       },
       update: { userId: user.id, providerId: 'credential', password: passwordHash },
     });
-  await resetReviewStaffMfa(prisma, [consultant.id, admin.id]);
+  if (process.env.RESET_REVIEW_STAFF_MFA === 'true')
+    await resetReviewStaffMfa(prisma, [consultant.id, admin.id]);
   const client = await prisma.client.upsert({
     where: { userId: clientUser.id },
     create: {
@@ -215,7 +216,7 @@ try {
         });
     }
   }
-  await prisma.clientGoal.upsert({
+  const seededGoal = await prisma.clientGoal.upsert({
     where: {
       clientId_goalType_scope: { clientId: client.id, goalType: 'ZERO_APR_CREDIT', scope: 'BOTH' },
     },
@@ -229,6 +230,45 @@ try {
     },
     update: { targetAmount: 100000, currentAmount: 62000, priority: 'PRIMARY', status: 'ACTIVE' },
   });
+  await prisma.clientGoalRevision.upsert({
+    where: { goalId_version: { goalId: seededGoal.id, version: seededGoal.version } },
+    create: {
+      goalId: seededGoal.id,
+      clientId: client.id,
+      version: seededGoal.version,
+      goalType: seededGoal.goalType,
+      scope: seededGoal.scope,
+      targetAmount: seededGoal.targetAmount,
+      allowAnnualFee: seededGoal.allowAnnualFee,
+      priority: seededGoal.priority,
+      status: seededGoal.status,
+      changedById: clientUser.id,
+      changeSource: 'DEMO_SEED',
+    },
+    update: {},
+  });
+  const seededIntakes = [
+    { token: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', expired: false },
+    { token: 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', expired: true },
+  ];
+  for (const scenario of seededIntakes) {
+    await prisma.anonymousGoalIntake.upsert({
+      where: { tokenHash: createHash('sha256').update(scenario.token).digest('hex') },
+      create: {
+        tokenHash: createHash('sha256').update(scenario.token).digest('hex'),
+        goalType: 'TOTAL_AVAILABLE_CREDIT',
+        scope: 'PERSONAL',
+        targetAmount: scenario.expired ? 35_000 : 80_000,
+        allowAnnualFee: false,
+        expiresAt: new Date(Date.now() + (scenario.expired ? -1 : 72) * 3_600_000),
+      },
+      update: {
+        consumedAt: null,
+        consumedByClientId: null,
+        expiresAt: new Date(Date.now() + (scenario.expired ? -1 : 72) * 3_600_000),
+      },
+    });
+  }
   let purchase = await prisma.servicePurchase.findFirst({
     where: {
       clientId: client.id,
@@ -499,6 +539,11 @@ try {
           'one-business client',
           'multiple businesses',
           'active and closed financial relationships',
+        ],
+        goalScenarios: [
+          'current client primary goal with revision history',
+          'active anonymous goal intake',
+          'expired anonymous goal intake',
         ],
       },
       null,

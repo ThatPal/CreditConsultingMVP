@@ -37,6 +37,7 @@ type GoalType =
   | 'REWARDS_POINTS_PORTFOLIO';
 type Goal = {
   id: string;
+  version: number;
   goalType: GoalType;
   scope: 'PERSONAL' | 'BUSINESS' | 'BOTH';
   targetAmount: number | null;
@@ -127,7 +128,9 @@ export function GoalsPage() {
       primary
         ? apiRequest(`/api/v1/client/goals/${primary.id}`, {
             method: 'PATCH',
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
             body: JSON.stringify({
+              version: primary.version,
               goalType: zeroApr ? 'ZERO_APR_CREDIT' : 'TOTAL_AVAILABLE_CREDIT',
               scope,
               targetAmount: target,
@@ -137,6 +140,7 @@ export function GoalsPage() {
           })
         : apiRequest('/api/v1/client/goals', {
             method: 'POST',
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
             body: JSON.stringify({
               goalType: zeroApr ? 'ZERO_APR_CREDIT' : 'TOTAL_AVAILABLE_CREDIT',
               scope,
@@ -168,6 +172,7 @@ export function GoalsPage() {
         if (selected && !existing)
           await apiRequest('/api/v1/client/goals', {
             method: 'POST',
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
             body: JSON.stringify({
               goalType,
               scope: 'BOTH',
@@ -178,10 +183,18 @@ export function GoalsPage() {
         else if (selected && existing && existing.status !== 'ACTIVE')
           await apiRequest(`/api/v1/client/goals/${existing.id}`, {
             method: 'PATCH',
-            body: JSON.stringify({ status: 'ACTIVE', priority: 'SECONDARY' }),
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
+            body: JSON.stringify({
+              version: existing.version,
+              status: 'ACTIVE',
+              priority: 'SECONDARY',
+            }),
           });
         else if (!selected && existing?.status === 'ACTIVE')
-          await apiRequest(`/api/v1/client/goals/${existing.id}/archive`, { method: 'POST' });
+          await apiRequest(`/api/v1/client/goals/${existing.id}/archive`, {
+            method: 'POST',
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
+          });
       }
     },
     onSuccess: async () => {
@@ -342,9 +355,17 @@ export function GoalsPage() {
               <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
                 <Box
                   sx={{
-                    width: 48, height: 48, flex: '0 0 auto', display: 'grid', placeItems: 'center',
+                    width: 48,
+                    height: 48,
+                    flex: '0 0 auto',
+                    display: 'grid',
+                    placeItems: 'center',
                     borderRadius: 2,
-                    color: profileCurrent ? '#42e6a4' : reviewInProgress ? '#ffb34d' : 'primary.main',
+                    color: profileCurrent
+                      ? '#42e6a4'
+                      : reviewInProgress
+                        ? '#ffb34d'
+                        : 'primary.main',
                     bgcolor: profileCurrent
                       ? 'rgba(66, 230, 164, .1)'
                       : reviewInProgress
@@ -362,7 +383,9 @@ export function GoalsPage() {
                   )}
                 </Box>
                 <Box>
-                  <Typography variant="overline" color="primary">Begin working on your goal</Typography>
+                  <Typography variant="overline" color="primary">
+                    Begin working on your goal
+                  </Typography>
                   <Typography variant="h2" sx={{ mt: 0.35 }}>
                     {profileCurrent
                       ? 'Your Credit Profile Review is complete'
@@ -382,7 +405,11 @@ export function GoalsPage() {
                           : 'A Credit Profile Review establishes the verified facts your consultant needs to begin planning work toward this goal.'}
                   </Typography>
                   {reviewComplete && review?.completedAt && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mt: 1 }}
+                    >
                       Review completed {new Date(review.completedAt).toLocaleDateString()}
                     </Typography>
                   )}

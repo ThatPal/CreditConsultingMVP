@@ -1,5 +1,5 @@
 import { AppError } from '../http/errors.js';
-import type { GoalInput, GoalStore, GoalType, GoalUpdate } from './types.js';
+import type { GoalCommandContext, GoalInput, GoalStore, GoalType, GoalUpdate } from './types.js';
 const monetary = new Set<GoalType>([
   'ZERO_APR_CREDIT',
   'TOTAL_AVAILABLE_CREDIT',
@@ -22,18 +22,23 @@ function validate(input: GoalUpdate) {
 export function createGoalService(store: GoalStore) {
   return {
     list: (clientId: string) => store.list(clientId),
-    async create(clientId: string, input: GoalInput) {
+    async create(clientId: string, input: GoalInput, context?: GoalCommandContext) {
       validate(input);
-      return store.create(clientId, input);
+      return store.create(clientId, input, context);
     },
-    async update(clientId: string, goalId: string, input: GoalUpdate) {
+    async update(
+      clientId: string,
+      goalId: string,
+      input: GoalUpdate,
+      context?: GoalCommandContext,
+    ) {
       validate(input);
-      const goal = await store.update(clientId, goalId, input);
+      const goal = await store.update(clientId, goalId, input, context);
       if (!goal) throw new AppError('NOT_FOUND', 404, 'Goal not found');
       return goal;
     },
-    async archive(clientId: string, goalId: string) {
-      const goal = await store.archive(clientId, goalId);
+    async archive(clientId: string, goalId: string, context?: GoalCommandContext) {
+      const goal = await store.archive(clientId, goalId, context);
       if (!goal) throw new AppError('NOT_FOUND', 404, 'Goal not found');
       return goal;
     },

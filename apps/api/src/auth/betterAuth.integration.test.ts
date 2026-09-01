@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import pino from 'pino';
 import request from 'supertest';
@@ -47,6 +47,7 @@ const email = `sprint21-${suffix}@example.com`;
 const secondEmail = `sprint21-other-${suffix}@example.com`;
 const staffEmail = `sprint41-staff-${suffix}@example.com`;
 const adminEmail = `sprint41-admin-${suffix}@example.com`;
+const goalRegistrationEmail = `goal-registration-${suffix}@example.com`;
 
 async function waitForAudit(action: string, timeoutMs = 1_000) {
   const deadline = Date.now() + timeoutMs;
@@ -111,7 +112,7 @@ function linkFrom(subject: RegExp, recipient = email) {
   return match[0];
 }
 
-async function register(address: string) {
+async function register(address: string, authGoalIntakeToken?: string) {
   return call('/api/auth/sign-up/email', {
     body: {
       email: address,
@@ -121,6 +122,7 @@ async function register(address: string) {
       authLastName: 'Client',
       authTimezone: 'America/New_York',
       authTermsAccepted: true,
+      authGoalIntakeToken,
       callbackURL: '/login?verified=1',
     },
   });
@@ -146,9 +148,29 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await prisma.client.deleteMany({ where: { user: { email: { in: [email, secondEmail] } } } });
+  const goalRegistrationClient = await prisma.client.findFirst({
+    where: { user: { email: goalRegistrationEmail } },
+  });
+  if (goalRegistrationClient) {
+    const goals = await prisma.clientGoal.findMany({
+      where: { clientId: goalRegistrationClient.id },
+      select: { id: true },
+    });
+    await prisma.outboxEvent.deleteMany({
+      where: { aggregateId: { in: goals.map(({ id }) => id) } },
+    });
+    await prisma.auditEvent.deleteMany({ where: { clientId: goalRegistrationClient.id } });
+    await prisma.anonymousGoalIntake.deleteMany({
+      where: { consumedByClientId: goalRegistrationClient.id },
+    });
+    await prisma.clientGoalRevision.deleteMany({ where: { clientId: goalRegistrationClient.id } });
+    await prisma.clientGoal.deleteMany({ where: { clientId: goalRegistrationClient.id } });
+  }
+  await prisma.client.deleteMany({
+    where: { user: { email: { in: [email, secondEmail, goalRegistrationEmail] } } },
+  });
   await prisma.user.deleteMany({
-    where: { email: { in: [email, secondEmail, staffEmail, adminEmail] } },
+    where: { email: { in: [email, secondEmail, staffEmail, adminEmail, goalRegistrationEmail] } },
   });
   await prisma.$disconnect();
 });
@@ -164,6 +186,34 @@ describe.sequential('Better Auth client authentication', () => {
       staffMfaVerified: false,
       stepUpVerified: false,
     });
+  });
+
+  test('binds a goal-first intake to a newly registered client exactly once', async () => {
+    const address = goalRegistrationEmail;
+    const rawToken = createHash('sha256').update(randomUUID()).digest('base64url');
+    const intake = await prisma.anonymousGoalIntake.create({
+      data: {
+        tokenHash: createHash('sha256').update(rawToken).digest('hex'),
+        goalType: 'TOTAL_AVAILABLE_CREDIT',
+        scope: 'BOTH',
+        targetAmount: 95_000,
+        allowAnnualFee: true,
+        expiresAt: new Date(Date.now() + 3_600_000),
+      },
+    });
+
+    const response = await register(address, rawToken);
+    expect(response.status).toBe(200);
+    const created = await prisma.user.findUniqueOrThrow({
+      where: { email: address },
+      include: { client: { include: { goals: true, goalRevisions: true } } },
+    });
+    expect(created.client?.goals).toHaveLength(1);
+    expect(created.client?.goalRevisions).toHaveLength(1);
+    expect(created.client?.goals[0]).toMatchObject({ scope: 'BOTH', allowAnnualFee: true });
+    expect(
+      await prisma.outboxEvent.count({ where: { eventKey: `goal-intake-bound:${intake.id}` } }),
+    ).toBe(1);
   });
 
   test('enrolls seeded staff with an otpauth URI, verifies TOTP, and resets to an enrollable state', async () => {

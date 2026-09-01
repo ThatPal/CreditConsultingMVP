@@ -13,6 +13,8 @@ const record = {
   scope: 'PERSONAL' as const,
   targetAmount: 50000,
   currentAmount: null,
+  version: 1,
+  allowAnnualFee: false,
   priority: 'PRIMARY' as const,
   status: 'ACTIVE' as const,
   achievedAt: null,
@@ -57,5 +59,27 @@ describe('goal route authorization', () => {
       .set('x-test-role', 'CLIENT')
       .expect(200);
     expect(service.list).toHaveBeenCalledWith(record.clientId);
+  });
+
+  test('requires an idempotency key and derives mutation ownership from the session', async () => {
+    const app = appFor(service);
+    const body = {
+      goalType: 'TOTAL_AVAILABLE_CREDIT',
+      scope: 'PERSONAL',
+      targetAmount: 50_000,
+      priority: 'PRIMARY',
+    };
+    await request(app).post('/api/goals').set('x-test-role', 'CLIENT').send(body).expect(400);
+    await request(app)
+      .post('/api/goals?clientId=someone-else')
+      .set('x-test-role', 'CLIENT')
+      .set('Idempotency-Key', 'goal-route-test')
+      .send(body)
+      .expect(201);
+    expect(service.create).toHaveBeenLastCalledWith(
+      record.clientId,
+      expect.objectContaining(body),
+      expect.objectContaining({ actorId: 'user-1', idempotencyKey: 'goal-route-test' }),
+    );
   });
 });

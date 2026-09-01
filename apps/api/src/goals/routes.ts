@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../auth/middleware.js';
@@ -20,7 +21,10 @@ const schema = z.object({
 });
 const updateSchema = schema
   .partial()
-  .extend({ status: z.enum(['ACTIVE', 'ACHIEVED', 'PAUSED']).optional() })
+  .extend({
+    version: z.number().int().positive(),
+    status: z.enum(['ACTIVE', 'ACHIEVED', 'PAUSED']).optional(),
+  })
   .refine((value) => Object.keys(value).length > 0, 'At least one field is required');
 function parse<T>(validator: z.ZodType<T>, input: unknown): T {
   const result = validator.safeParse(input);
@@ -40,36 +44,57 @@ export function createGoalRouter(goals: GoalService) {
   });
   router.post('/', async (req, res, next) => {
     try {
-      res
-        .status(201)
-        .json({ goal: await goals.create(req.auth!.clientId!, parse(schema, req.body)) });
+      const input = parse(schema, req.body);
+      const idempotencyKey = req.get('Idempotency-Key');
+      if (!idempotencyKey)
+        throw new AppError('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key is required');
+      res.status(201).json({
+        goal: await goals.create(req.auth!.clientId!, input, {
+          actorId: req.auth!.userId,
+          idempotencyKey,
+          requestHash: createHash('sha256').update(JSON.stringify(input)).digest('hex'),
+        }),
+      });
     } catch (error) {
       next(error);
     }
   });
   router.patch('/:goalId', async (req, res, next) => {
     try {
+      const input = parse(updateSchema, req.body);
+      const idempotencyKey = req.get('Idempotency-Key');
+      if (!idempotencyKey)
+        throw new AppError('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key is required');
       res.json({
-        goal: await goals.update(
-          req.auth!.clientId!,
-          req.params.goalId as string,
-          parse(updateSchema, req.body),
-        ),
+        goal: await goals.update(req.auth!.clientId!, req.params.goalId as string, input, {
+          actorId: req.auth!.userId,
+          idempotencyKey,
+          requestHash: createHash('sha256').update(JSON.stringify(input)).digest('hex'),
+        }),
       });
     } catch (error) {
       next(error);
     }
   });
-  router.delete('/:goalId', async (req, res, next) => {
-    try {
-      res.json({ goal: await goals.archive(req.auth!.clientId!, req.params.goalId as string) });
-    } catch (error) {
-      next(error);
-    }
+  // Kept as an explicit method rejection so older clients cannot bypass the
+  // governed, idempotent archive command below.
+  router.delete('/:goalId', (_req, res) => {
+    res.status(405).json({ error: { code: 'METHOD_NOT_ALLOWED', message: 'Use POST /archive' } });
   });
   router.post('/:goalId/archive', async (req, res, next) => {
     try {
-      res.json({ goal: await goals.archive(req.auth!.clientId!, req.params.goalId as string) });
+      const idempotencyKey = req.get('Idempotency-Key');
+      if (!idempotencyKey)
+        throw new AppError('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key is required');
+      res.json({
+        goal: await goals.archive(req.auth!.clientId!, req.params.goalId as string, {
+          actorId: req.auth!.userId,
+          idempotencyKey,
+          requestHash: createHash('sha256')
+            .update(req.params.goalId as string)
+            .digest('hex'),
+        }),
+      });
     } catch (error) {
       next(error);
     }

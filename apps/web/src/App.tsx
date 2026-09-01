@@ -12,7 +12,7 @@ import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { GoalsPage } from './pages/GoalsPage';
-import { OnboardingPage } from './pages/OnboardingPage';
+import { GoalIntakePage } from './pages/GoalIntakePage';
 import { ServicesPage } from './pages/ServicesPage';
 import { SecurityPage } from './pages/SecurityPage';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
@@ -50,12 +50,13 @@ export const isDesignSystemShowcaseEnabled = import.meta.env.DEV || import.meta.
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/goal-intake" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/mfa" element={<StaffMfaPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/goal-intake" element={<GoalIntakePage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/lead-wizard" element={<OnboardingPage />} />
+      <Route path="/lead-wizard" element={<Navigate to="/goal-intake" replace />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       {isDesignSystemShowcaseEnabled && (
