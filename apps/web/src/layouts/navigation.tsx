@@ -214,6 +214,16 @@ const registry: NavigationItem[] = [
     status: 'available',
   },
   {
+    id: 'admin-stripe',
+    label: 'Stripe gateway',
+    path: '/admin/integrations/stripe',
+    icon: AdminPanelSettingsRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'payment.read',
+    status: 'available',
+  },
+  {
     id: 'admin-account',
     label: 'Account',
     path: '/admin/account',

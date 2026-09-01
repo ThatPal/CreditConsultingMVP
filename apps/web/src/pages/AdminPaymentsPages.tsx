@@ -105,9 +105,10 @@ export function AdminPaymentDetailPage() {
     </Stack>
   );
 }
-export function AdminPayPalPage() {
+function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' }) {
+  const displayName = provider === 'paypal' ? 'PayPal' : 'Stripe';
   const query = useQuery({
-    queryKey: ['paypal-health'],
+    queryKey: [provider, 'health'],
     queryFn: () =>
       apiRequest<{
         gateway: {
@@ -117,7 +118,7 @@ export function AdminPayPalPage() {
           healthy: boolean;
           message: string;
         };
-      }>('/api/v1/admin/integrations/paypal'),
+      }>(`/api/v1/admin/integrations/${provider}`),
   });
   if (query.isLoading) return <LinearProgress />;
   if (query.isError)
@@ -131,8 +132,8 @@ export function AdminPayPalPage() {
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Integration"
-        title="PayPal gateway"
-        description="Sandbox configuration health only. Credentials remain environment-managed and are never displayed."
+        title={`${displayName} gateway`}
+        description="Test configuration health only. Credentials remain environment-managed and are never displayed."
       />
       <SectionCard>
         <Stack spacing={2}>
@@ -146,4 +147,12 @@ export function AdminPayPalPage() {
       </SectionCard>
     </Stack>
   );
+}
+
+export function AdminPayPalPage() {
+  return <AdminGatewayPage provider="paypal" />;
+}
+
+export function AdminStripePage() {
+  return <AdminGatewayPage provider="stripe" />;
 }

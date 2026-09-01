@@ -20,6 +20,7 @@ import {
   AdminPaymentDetailPage,
   AdminPaymentsPage,
   AdminPayPalPage,
+  AdminStripePage,
 } from './pages/AdminPaymentsPages';
 import { SecurityPage } from './pages/SecurityPage';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
@@ -164,6 +165,7 @@ export function App() {
           <Route path="payments" element={<AdminPaymentsPage />} />
           <Route path="payments/:paymentId" element={<AdminPaymentDetailPage />} />
           <Route path="integrations/paypal" element={<AdminPayPalPage />} />
+          <Route path="integrations/stripe" element={<AdminStripePage />} />
           <Route path="account" element={<StaffAccountPage />} />
           <Route path="account/security" element={<SecurityPage />} />
           <Route

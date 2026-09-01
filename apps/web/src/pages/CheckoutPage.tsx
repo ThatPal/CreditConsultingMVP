@@ -42,11 +42,12 @@ export function CheckoutPage() {
       <PageHeader
         eyebrow="Secure checkout"
         title={data.purchase.terms?.name ?? 'Service purchase'}
-        description="Payment status comes from PayPal verification. Browser return URLs never grant access."
+        description="Payment status comes from verified provider evidence. Browser return URLs never grant access."
       />
       {params.has('returned') && !successful && (
         <Alert severity="info">
-          You returned from PayPal. We are verifying the payment directly with the provider.
+          You returned from {data.payment.provider}. We are verifying the payment directly with the
+          provider.
         </Alert>
       )}
       {params.has('cancelled') && (
@@ -76,7 +77,7 @@ export function CheckoutPage() {
           )}
           {data.payment.checkoutUrl && !successful && (
             <Button component="a" href={data.payment.checkoutUrl} variant="contained">
-              Continue securely with PayPal
+              Continue securely with {data.payment.provider}
             </Button>
           )}
           <Button component={Link} to="/app/support">

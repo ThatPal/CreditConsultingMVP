@@ -1,4 +1,5 @@
 import type { PaymentProvider, PaymentState } from '../generated/prisma/client.js';
+import Stripe from 'stripe';
 
 export type ProviderCheckoutRequest = {
   paymentId: string;
@@ -39,23 +40,48 @@ export interface PaymentGateway {
   health(): Promise<GatewayHealth>;
 }
 
+export class PaymentGatewayRegistry {
+  private readonly gateways: Map<PaymentProvider, PaymentGateway>;
+  constructor(
+    gateways: PaymentGateway[],
+    readonly defaultProvider: PaymentProvider,
+  ) {
+    this.gateways = new Map(gateways.map((gateway) => [gateway.provider, gateway]));
+    if (!this.gateways.has(defaultProvider)) throw new Error('DEFAULT_PAYMENT_PROVIDER_MISSING');
+  }
+  get(provider: PaymentProvider) {
+    const gateway = this.gateways.get(provider);
+    if (!gateway) throw new Error('PAYMENT_PROVIDER_NOT_AVAILABLE');
+    return gateway;
+  }
+  getDefault() {
+    return this.get(this.defaultProvider);
+  }
+  list() {
+    return [...this.gateways.values()];
+  }
+}
+
 export class DeterministicPaymentGateway implements PaymentGateway {
-  readonly provider = 'PAYPAL' as const;
+  readonly provider: PaymentProvider;
   readonly environment = 'TEST';
   constructor(
     public state: PaymentState = 'AWAITING_CUSTOMER',
     public healthy = true,
-  ) {}
+    provider: PaymentProvider = 'PAYPAL',
+  ) {
+    this.provider = provider;
+  }
   async createCheckout(request: ProviderCheckoutRequest) {
     if (!this.healthy) throw new Error('TEST_PROVIDER_UNAVAILABLE');
     return {
       providerOrderId: `TEST-${request.paymentId}`,
-      checkoutUrl: `https://paypal.test/checkout/${request.paymentId}`,
+      checkoutUrl: `https://${this.provider.toLowerCase()}.test/checkout/${request.paymentId}`,
     };
   }
   async retrieve(providerOrderId: string): Promise<VerifiedPaymentEvent> {
     return {
-      provider: 'PAYPAL',
+      provider: this.provider,
       providerEventId: `${providerOrderId}:${this.state}`,
       providerOrderId,
       eventType: 'TEST_RETRIEVAL',
@@ -79,6 +105,155 @@ export class DeterministicPaymentGateway implements PaymentGateway {
       healthy: this.healthy,
       message: this.healthy ? 'Test gateway healthy.' : 'Test gateway unavailable.',
     };
+  }
+}
+
+export type StripeOptions = {
+  secretKey?: string;
+  webhookSecret?: string;
+  environment?: string;
+};
+
+function stripeState(session: { status?: string | null; payment_status?: string | null }) {
+  if (session.payment_status === 'paid' || session.payment_status === 'no_payment_required')
+    return 'SUCCEEDED' as const;
+  if (session.status === 'expired') return 'CANCELLED' as const;
+  if (session.status === 'complete') return 'PROCESSING' as const;
+  return 'AWAITING_CUSTOMER' as const;
+}
+
+export class StripeGateway implements PaymentGateway {
+  readonly provider = 'STRIPE' as const;
+  readonly environment: string;
+  private readonly client: Stripe | undefined;
+  constructor(private readonly options: StripeOptions) {
+    this.environment = options.environment ?? 'TEST';
+    this.client = options.secretKey ? new Stripe(options.secretKey) : undefined;
+  }
+  private configuredClient() {
+    if (!this.client) throw new Error('STRIPE_NOT_CONFIGURED');
+    return this.client;
+  }
+  async createCheckout(request: ProviderCheckoutRequest) {
+    const session = await this.configuredClient().checkout.sessions.create(
+      {
+        mode: 'payment',
+        client_reference_id: request.paymentId,
+        metadata: { paymentId: request.paymentId, purchaseId: request.purchaseId },
+        payment_intent_data: {
+          metadata: { paymentId: request.paymentId, purchaseId: request.purchaseId },
+        },
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: request.currency.toLowerCase(),
+              unit_amount: Math.round(Number(request.amount) * 100),
+              product_data: { name: request.description },
+            },
+          },
+        ],
+        success_url: request.returnUrl,
+        cancel_url: request.cancelUrl,
+      },
+      { idempotencyKey: request.paymentId },
+    );
+    if (!session.url) throw new Error('STRIPE_INVALID_CHECKOUT_RESPONSE');
+    return { providerOrderId: session.id, checkoutUrl: session.url };
+  }
+  async retrieve(providerOrderId: string): Promise<VerifiedPaymentEvent> {
+    const session = await this.configuredClient().checkout.sessions.retrieve(providerOrderId);
+    const providerPaymentId =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+    return {
+      provider: 'STRIPE',
+      providerEventId: `stripe-session:${session.id}:${session.status}:${session.payment_status}`,
+      providerOrderId: session.id,
+      ...(providerPaymentId ? { providerPaymentId } : {}),
+      eventType: 'STRIPE_CHECKOUT_SESSION_RETRIEVED',
+      state: stripeState(session),
+      occurredAt: new Date(session.created * 1000),
+    };
+  }
+  async verifyWebhook(
+    headers: Record<string, string | string[] | undefined>,
+    body: unknown,
+  ): Promise<VerifiedPaymentEvent> {
+    if (!this.options.webhookSecret) throw new Error('STRIPE_NOT_CONFIGURED');
+    const signature = headers['stripe-signature'];
+    if (typeof signature !== 'string' || !Buffer.isBuffer(body))
+      throw new Error('STRIPE_WEBHOOK_MALFORMED');
+    const event = this.configuredClient().webhooks.constructEvent(
+      body,
+      signature,
+      this.options.webhookSecret,
+    );
+    const object = event.data.object;
+    let providerOrderId: string | undefined;
+    let providerPaymentId: string | undefined;
+    let state: PaymentState;
+    if (object.object === 'checkout.session') {
+      providerOrderId = object.id;
+      providerPaymentId =
+        typeof object.payment_intent === 'string'
+          ? object.payment_intent
+          : object.payment_intent?.id;
+      state =
+        event.type === 'checkout.session.async_payment_failed' ? 'FAILED' : stripeState(object);
+    } else if (object.object === 'payment_intent') {
+      providerPaymentId = object.id;
+      state =
+        object.status === 'succeeded'
+          ? 'SUCCEEDED'
+          : object.status === 'processing'
+            ? 'PROCESSING'
+            : object.status === 'canceled'
+              ? 'CANCELLED'
+              : object.status === 'requires_payment_method'
+                ? 'FAILED'
+                : 'PENDING';
+    } else {
+      throw new Error('STRIPE_WEBHOOK_UNSUPPORTED');
+    }
+    return {
+      provider: 'STRIPE',
+      providerEventId: event.id,
+      ...(providerOrderId ? { providerOrderId } : {}),
+      ...(providerPaymentId ? { providerPaymentId } : {}),
+      eventType: event.type,
+      state,
+      occurredAt: new Date(event.created * 1000),
+    };
+  }
+  async health(): Promise<GatewayHealth> {
+    if (!this.options.secretKey || !this.options.webhookSecret)
+      return {
+        provider: 'STRIPE',
+        environment: this.environment,
+        configured: false,
+        healthy: false,
+        message: 'Stripe test credentials are not configured.',
+      };
+    try {
+      await this.configuredClient().balance.retrieve();
+      return {
+        provider: 'STRIPE',
+        environment: this.environment,
+        configured: true,
+        healthy: true,
+        message: 'Stripe authentication succeeded.',
+      };
+    } catch {
+      return {
+        provider: 'STRIPE',
+        environment: this.environment,
+        configured: true,
+        healthy: false,
+        message: 'Stripe authentication failed.',
+      };
+    }
   }
 }
 
@@ -305,3 +480,16 @@ export const createPaymentGateway = (source: NodeJS.ProcessEnv = process.env): P
     ...(source.PAYPAL_BASE_URL ? { baseUrl: source.PAYPAL_BASE_URL } : {}),
     ...(source.PAYPAL_ENVIRONMENT ? { environment: source.PAYPAL_ENVIRONMENT } : {}),
   });
+
+export const createPaymentGatewayRegistry = (
+  source: NodeJS.ProcessEnv = process.env,
+): PaymentGatewayRegistry => {
+  const paypal = createPaymentGateway(source);
+  const stripe = new StripeGateway({
+    ...(source.STRIPE_SECRET_KEY ? { secretKey: source.STRIPE_SECRET_KEY } : {}),
+    ...(source.STRIPE_WEBHOOK_SECRET ? { webhookSecret: source.STRIPE_WEBHOOK_SECRET } : {}),
+    ...(source.STRIPE_ENVIRONMENT ? { environment: source.STRIPE_ENVIRONMENT } : {}),
+  });
+  const requested = source.PAYMENT_DEFAULT_PROVIDER === 'STRIPE' ? 'STRIPE' : 'PAYPAL';
+  return new PaymentGatewayRegistry([paypal, stripe], requested);
+};

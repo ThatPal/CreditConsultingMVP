@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Router } from 'express';
+import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
 import {
   requireCanonicalCapability,
@@ -11,7 +11,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
 import { frozenTerms } from './domain.js';
-import type { PaymentGateway } from './paymentGateway.js';
+import { PaymentGatewayRegistry, type PaymentGateway } from './paymentGateway.js';
 import { applyVerifiedPaymentEvent } from './paymentService.js';
 
 const safePayment = (payment: {
@@ -44,37 +44,55 @@ const keyFrom = (req: { get(name: string): string | undefined }) => {
   return key;
 };
 
-export function createPaymentWebhookRouter(prisma: PrismaClient, gateway: PaymentGateway) {
+const registryFor = (source: PaymentGateway | PaymentGatewayRegistry) =>
+  source instanceof PaymentGatewayRegistry
+    ? source
+    : new PaymentGatewayRegistry([source], source.provider);
+
+export function createPaymentWebhookRouter(
+  prisma: PrismaClient,
+  gatewaySource: PaymentGateway | PaymentGatewayRegistry,
+) {
+  const registry = registryFor(gatewaySource);
   const router = Router();
-  router.post('/paypal', async (req, res, next) => {
-    try {
-      const event = await gateway.verifyWebhook(req.headers, req.body);
-      const result = await applyVerifiedPaymentEvent(prisma, event);
-      res.status(202).json({ accepted: true, result });
-    } catch (error) {
-      await prisma.auditEvent
-        .create({
-          data: {
-            action: 'PAYMENT_WEBHOOK_REJECTED',
-            entityType: 'PaymentProvider',
-            source: 'PAYPAL_WEBHOOK',
-            metadata: { reason: error instanceof Error ? error.message : 'INVALID' },
-          },
-        })
-        .catch(() => undefined);
-      next(new AppError('WEBHOOK_UNVERIFIED', 401, 'Provider verification failed'));
-    }
-  });
+  const webhook =
+    (provider: 'PAYPAL' | 'STRIPE') => async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const gateway = registry.get(provider);
+        const event = await gateway.verifyWebhook(req.headers, req.body);
+        const result = await applyVerifiedPaymentEvent(prisma, event);
+        res.status(202).json({ accepted: true, result });
+      } catch (error) {
+        await prisma.auditEvent
+          .create({
+            data: {
+              action: 'PAYMENT_WEBHOOK_REJECTED',
+              entityType: 'PaymentProvider',
+              source: `${provider}_WEBHOOK`,
+              metadata: { reason: error instanceof Error ? error.message : 'INVALID' },
+            },
+          })
+          .catch(() => undefined);
+        next(new AppError('WEBHOOK_UNVERIFIED', 401, 'Provider verification failed'));
+      }
+    };
+  router.post('/paypal', express.json({ limit: '1mb' }), webhook('PAYPAL'));
+  router.post(
+    '/stripe',
+    express.raw({ type: 'application/json', limit: '1mb' }),
+    webhook('STRIPE'),
+  );
   return router;
 }
 
 export function createPaymentRouter(
   prisma: PrismaClient,
   authorization: AuthorizationService,
-  gateway: PaymentGateway,
+  gatewaySource: PaymentGateway | PaymentGatewayRegistry,
   webOrigin: string,
   denialRecorder?: AuthorizationDenialRecorder,
 ) {
+  const registry = registryFor(gatewaySource);
   const router = Router();
   router.post('/client/checkouts', requireRole('CLIENT'), async (req, res, next) => {
     try {
@@ -86,6 +104,7 @@ export function createPaymentRouter(
           'Only a canonical service product may be selected',
         );
       const { productId } = parsed.data;
+      const gateway = registry.getDefault();
       const idempotencyKey = keyFrom(req);
       const product = await prisma.serviceProduct.findFirst({
         where: { id: productId, active: true },
@@ -224,6 +243,7 @@ export function createPaymentRouter(
         !['SUCCEEDED', 'FAILED', 'CANCELLED', 'REFUNDED'].includes(payment.state)
       ) {
         try {
+          const gateway = registry.get(payment.provider);
           await applyVerifiedPaymentEvent(prisma, await gateway.retrieve(payment.providerOrderId));
           payment = await prisma.payment.findFirstOrThrow({
             where: { id: payment.id },
@@ -354,7 +374,7 @@ export function createPaymentRouter(
     }
   });
   router.get('/admin/integrations/paypal', ...adminGate, async (_req, res) =>
-    res.json({ gateway: await gateway.health() }),
+    res.json({ gateway: await registry.get('PAYPAL').health() }),
   );
   router.post(
     '/admin/integrations/paypal/test',
@@ -365,7 +385,23 @@ export function createPaymentRouter(
       { requireStepUp: true },
       denialRecorder,
     ),
-    async (req, res) => res.json({ gateway: await gateway.health(), testedBy: req.auth!.userId }),
+    async (req, res) =>
+      res.json({ gateway: await registry.get('PAYPAL').health(), testedBy: req.auth!.userId }),
+  );
+  router.get('/admin/integrations/stripe', ...adminGate, async (_req, res) =>
+    res.json({ gateway: await registry.get('STRIPE').health() }),
+  );
+  router.post(
+    '/admin/integrations/stripe/test',
+    requireRole('ADMIN'),
+    requireCanonicalCapability(
+      authorization,
+      'payment.manage',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+    async (req, res) =>
+      res.json({ gateway: await registry.get('STRIPE').health(), testedBy: req.auth!.userId }),
   );
   return router;
 }

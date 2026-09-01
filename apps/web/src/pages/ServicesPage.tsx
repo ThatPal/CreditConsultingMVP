@@ -98,7 +98,7 @@ function PurchaseButton({ service }: { service: Service }) {
         {mutation.isPending
           ? 'Starting secure checkout…'
           : service.checkoutAvailable
-            ? 'Purchase with PayPal'
+            ? 'Purchase securely'
             : 'Checkout temporarily unavailable'}
       </Button>
       {mutation.isError && (

@@ -8,7 +8,11 @@ import type { AuthorizationService } from '../authorization/authorizationService
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { errorHandler } from '../http/errors.js';
 import { createPrisma } from '../lib/prisma.js';
-import { DeterministicPaymentGateway } from './paymentGateway.js';
+import {
+  DeterministicPaymentGateway,
+  PaymentGatewayRegistry,
+  type PaymentGateway,
+} from './paymentGateway.js';
 import { createPaymentRouter } from './paymentRoutes.js';
 
 describe('payment route boundaries', () => {
@@ -24,7 +28,10 @@ describe('payment route boundaries', () => {
   let productId: string;
   let client: AuthPrincipal;
   let otherClient: AuthPrincipal;
-  const app = (principal?: AuthPrincipal) => {
+  const app = (
+    principal?: AuthPrincipal,
+    gatewaySource: PaymentGateway | PaymentGatewayRegistry = gateway,
+  ) => {
     const application = express();
     application.use(express.json());
     if (principal)
@@ -34,7 +41,7 @@ describe('payment route boundaries', () => {
       });
     application.use(
       '/api/v1',
-      createPaymentRouter(prisma, authorization, gateway, 'http://credit.test'),
+      createPaymentRouter(prisma, authorization, gatewaySource, 'http://credit.test'),
     );
     application.use(errorHandler(pino({ enabled: false })));
     return application;
@@ -151,5 +158,27 @@ describe('payment route boundaries', () => {
       stepUpVerified: true,
     };
     await request(app(admin)).get('/api/v1/admin/payments').expect(403);
+    await request(app(admin)).get('/api/v1/admin/integrations/stripe').expect(403);
+  });
+  test('server-governed Stripe selection reuses canonical checkout and idempotency', async () => {
+    const stripe = new DeterministicPaymentGateway('AWAITING_CUSTOMER', true, 'STRIPE');
+    const registry = new PaymentGatewayRegistry([gateway, stripe], 'STRIPE');
+    const key = `${marker}-stripe-checkout`;
+    const first = await request(app(client, registry))
+      .post('/api/v1/client/checkouts')
+      .set('Idempotency-Key', key)
+      .send({ productId })
+      .expect(201);
+    const replay = await request(app(client, registry))
+      .post('/api/v1/client/checkouts')
+      .set('Idempotency-Key', key)
+      .send({ productId })
+      .expect(200);
+    expect(first.body.payment).toMatchObject({ provider: 'STRIPE', environment: 'TEST' });
+    expect(first.body.payment.checkoutUrl).toContain('stripe.test');
+    expect(replay.body.purchaseId).toBe(first.body.purchaseId);
+    await expect(
+      prisma.payment.count({ where: { purchaseId: first.body.purchaseId, provider: 'STRIPE' } }),
+    ).resolves.toBe(1);
   });
 });

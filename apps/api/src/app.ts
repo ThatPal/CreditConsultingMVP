@@ -37,7 +37,7 @@ import { createClientContextRouter } from './clientContext/routes.js';
 import { createGoalIntakeBindingRouter, createGoalIntakePublicRouter } from './goals/goalIntake.js';
 import { createJourneyRouter } from './journey/routes.js';
 import { createCommerceRouter } from './commerce/routes.js';
-import { createPaymentGateway } from './commerce/paymentGateway.js';
+import { createPaymentGatewayRegistry } from './commerce/paymentGateway.js';
 import { createPaymentRouter, createPaymentWebhookRouter } from './commerce/paymentRoutes.js';
 
 export type ReadinessChecks = {
@@ -58,6 +58,7 @@ export function createApp(
   emailProvider?: EmailProvider,
 ) {
   const app = express();
+  const paymentGateways = createPaymentGatewayRegistry();
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(cors({ origin: env.WEB_ORIGIN, credentials: true }));
@@ -67,6 +68,7 @@ export function createApp(
       ...(prisma ? [createAuthFailureAuditMiddleware(prisma)] : []),
       toNodeHandler(betterAuth),
     );
+  if (prisma) app.use('/api/v1/webhooks', createPaymentWebhookRouter(prisma, paymentGateways));
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use(
@@ -81,8 +83,6 @@ export function createApp(
     }),
   );
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-  const paymentGateway = createPaymentGateway();
-  if (prisma) app.use('/api/v1/webhooks', createPaymentWebhookRouter(prisma, paymentGateway));
   if (prisma) app.use('/api/v1/goal-intakes', createGoalIntakePublicRouter(prisma));
   app.get('/ready', async (_req, res) => {
     if (!readiness)
@@ -139,11 +139,11 @@ export function createApp(
       app.use('/api/v1', createJourneyRouter(prisma, authorization, denialRecorder));
       app.use(
         '/api/v1',
-        createCommerceRouter(prisma, authorization, denialRecorder, paymentGateway),
+        createCommerceRouter(prisma, authorization, denialRecorder, paymentGateways.getDefault()),
       );
       app.use(
         '/api/v1',
-        createPaymentRouter(prisma, authorization, paymentGateway, env.WEB_ORIGIN, denialRecorder),
+        createPaymentRouter(prisma, authorization, paymentGateways, env.WEB_ORIGIN, denialRecorder),
       );
       if (emailProvider)
         app.use(

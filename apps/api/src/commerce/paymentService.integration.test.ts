@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import type { PrismaClient } from '../generated/prisma/client.js';
+import type { PaymentProvider, PrismaClient } from '../generated/prisma/client.js';
 import { createPrisma } from '../lib/prisma.js';
 import { applyVerifiedPaymentEvent } from './paymentService.js';
 
@@ -70,7 +70,7 @@ describe('verified payment transaction', () => {
     await prisma.user.delete({ where: { id: userId } });
     await prisma.$disconnect();
   });
-  async function pending(orderId: string) {
+  async function pending(orderId: string, provider: PaymentProvider = 'PAYPAL') {
     const purchase = await prisma.servicePurchase.create({
       data: {
         clientId,
@@ -79,7 +79,7 @@ describe('verified payment transaction', () => {
         termsSnapshot: { name: 'Frozen original', amount: '29.00', currency: 'USD' },
         amount: '29.00',
         currency: 'USD',
-        paymentProvider: 'PAYPAL',
+        paymentProvider: provider,
       },
     });
     purchaseIds.push(purchase.id);
@@ -87,7 +87,7 @@ describe('verified payment transaction', () => {
       data: {
         clientId,
         purchaseId: purchase.id,
-        provider: 'PAYPAL',
+        provider,
         providerOrderId: orderId,
         providerEnvironment: 'TEST',
         state: 'PROCESSING',
@@ -126,6 +126,47 @@ describe('verified payment transaction', () => {
       (await prisma.servicePurchase.findUniqueOrThrow({ where: { id: purchase.id } }))
         .termsSnapshot,
     ).toEqual({ name: 'Frozen original', amount: '29.00', currency: 'USD' });
+  });
+  test('verified Stripe success uses the same canonical exactly-once effects boundary', async () => {
+    const orderId = `${marker}-stripe-paid`;
+    const { purchase, payment } = await pending(orderId, 'STRIPE');
+    const event = {
+      provider: 'STRIPE' as const,
+      providerEventId: `${marker}-stripe-event`,
+      providerOrderId: orderId,
+      providerPaymentId: `${marker}-stripe-intent`,
+      eventType: 'checkout.session.completed',
+      state: 'SUCCEEDED' as const,
+      occurredAt: new Date(),
+    };
+    await expect(applyVerifiedPaymentEvent(prisma, event)).resolves.toMatchObject({
+      applied: true,
+      effectsGranted: true,
+    });
+    await expect(applyVerifiedPaymentEvent(prisma, event)).resolves.toEqual({
+      applied: false,
+      reason: 'DUPLICATE_EVENT',
+    });
+    await expect(
+      prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }),
+    ).resolves.toMatchObject({ state: 'SUCCEEDED', provider: 'STRIPE' });
+    await expect(
+      prisma.serviceEntitlement.count({ where: { purchaseId: purchase.id } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.reviewCreditTransaction.count({ where: { purchaseId: purchase.id } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.notification.count({ where: { semanticKey: `purchase-paid:${purchase.id}` } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.auditEvent.count({
+        where: { entityId: payment.id, action: 'PAYMENT_SUCCEEDED_AND_EFFECTS_GRANTED' },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.outboxEvent.count({ where: { eventKey: `purchase-paid:${purchase.id}` } }),
+    ).resolves.toBe(1);
   });
   test('forced paid-effects failure rolls back completely, then retry converges exactly once', async () => {
     const orderId = `${marker}-rollback-order`;
