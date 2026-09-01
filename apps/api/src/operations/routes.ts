@@ -393,11 +393,41 @@ export function createOperationsRouter(
           orderBy: { cycleNumber: 'desc' },
           select: { cycleNumber: true },
         });
+        const journey = await tx.creditJourney.upsert({
+          where: { clientId },
+          create: { clientId },
+          update: {},
+        });
+        const goal = await tx.clientGoal.findFirst({
+          where: { clientId, status: 'ACTIVE' },
+          orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+        });
+        if (!goal)
+          throw new AppError(
+            'PRIMARY_GOAL_REQUIRED',
+            409,
+            'Confirm a goal before starting an application cycle',
+          );
         const created = await tx.applicationCycle.create({
           data: {
             clientId,
+            journeyId: journey.id,
             cycleNumber: (latest?.cycleNumber ?? 0) + 1,
             currentStage: 'STARTED',
+            goalSnapshot: {
+              create: {
+                sourceGoalId: goal.id,
+                sourceGoalVersion: goal.version,
+                goalType: goal.goalType,
+                scope: goal.scope,
+                targetAmount: goal.targetAmount,
+                allowAnnualFee: goal.allowAnnualFee,
+                cardTypePreference: goal.cardTypePreference,
+                offerPreferences: goal.offerPreferences,
+                feePreference: goal.feePreference,
+                preferenceNote: goal.preferenceNote,
+              },
+            },
             steps: {
               create: applicationCycleSteps.map(([stage, title, description], sortOrder) => ({
                 stage,

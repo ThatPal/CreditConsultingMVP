@@ -130,6 +130,25 @@ enum ApplicationCycleStepStatus {
   BLOCKED
 }
 
+enum JourneyStatus {
+  ACTIVE
+  PAUSED
+  COMPLETE
+}
+
+enum NurturePeriodStatus {
+  ACTIVE
+  COMPLETE
+  CANCELLED
+}
+
+enum CreditProfileStateStatus {
+  NOT_AVAILABLE
+  REVIEW_IN_PROGRESS
+  CURRENT
+  STALE
+}
+
 enum ServiceType {
   CREDIT_PROFILE_REVIEW
   CREDIT_CARD_ROUND
@@ -542,6 +561,9 @@ model Client {
   notifications            Notification[]
   cards                    ClientCard[]
   applicationCycles        ApplicationCycle[]
+  creditJourney            CreditJourney?
+  nurturePeriods           NurturePeriod[]
+  creditProfileState       CreditProfileState?
   businesses               ClientBusiness[]
   financialRelationships   ClientFinancialRelationship[]
   serviceEntitlements      ServiceEntitlement[]
@@ -683,6 +705,7 @@ model ClientCard {
 model ApplicationCycle {
   id                   String                     @id @default(uuid()) @db.Uuid
   clientId             String                     @db.Uuid
+  journeyId            String                     @db.Uuid
   cycleNumber          Int
   season               String?
   year                 Int?
@@ -697,11 +720,80 @@ model ApplicationCycle {
   createdAt            DateTime                   @default(now())
   updatedAt            DateTime                   @updatedAt
   client               Client                     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  journey              CreditJourney              @relation(fields: [journeyId], references: [id], onDelete: Restrict)
+  goalSnapshot         CycleGoalSnapshot?
   steps                ApplicationCycleStep[]
   applications         CycleApplication[]
 
   @@unique([clientId, cycleNumber])
   @@index([clientId, status, startedAt])
+  @@index([journeyId, startedAt])
+}
+
+model CreditJourney {
+  id             String             @id @default(uuid()) @db.Uuid
+  clientId       String             @unique @db.Uuid
+  status         JourneyStatus      @default(ACTIVE)
+  startedAt      DateTime           @default(now()) @db.Timestamptz(3)
+  completedAt    DateTime?          @db.Timestamptz(3)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime           @updatedAt @db.Timestamptz(3)
+  client         Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  cycles         ApplicationCycle[]
+  nurturePeriods NurturePeriod[]
+
+  @@index([status, updatedAt])
+}
+
+model CycleGoalSnapshot {
+  id                 String                @id @default(uuid()) @db.Uuid
+  cycleId            String                @unique @db.Uuid
+  sourceGoalId       String                @db.Uuid
+  sourceGoalVersion  Int
+  goalType           GoalType
+  scope              GoalScope
+  targetAmount       Decimal?              @db.Decimal(14, 2)
+  allowAnnualFee     Boolean
+  cardTypePreference CardTypePreference
+  offerPreferences   GoalOfferPreference[] @default([])
+  feePreference      FeePreference
+  preferenceNote     String?               @db.VarChar(500)
+  capturedAt         DateTime              @default(now()) @db.Timestamptz(3)
+  cycle              ApplicationCycle      @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+
+  @@index([sourceGoalId, capturedAt])
+}
+
+model NurturePeriod {
+  id          String              @id @default(uuid()) @db.Uuid
+  clientId    String              @db.Uuid
+  journeyId   String              @db.Uuid
+  status      NurturePeriodStatus @default(ACTIVE)
+  reasonCode  String
+  startedAt   DateTime            @default(now()) @db.Timestamptz(3)
+  expectedEnd DateTime?           @db.Timestamptz(3)
+  endedAt     DateTime?           @db.Timestamptz(3)
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime            @updatedAt @db.Timestamptz(3)
+  client      Client              @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  journey     CreditJourney       @relation(fields: [journeyId], references: [id], onDelete: Restrict)
+
+  @@index([clientId, status, startedAt])
+  @@index([journeyId, startedAt])
+}
+
+model CreditProfileState {
+  id             String                   @id @default(uuid()) @db.Uuid
+  clientId       String                   @unique @db.Uuid
+  status         CreditProfileStateStatus @default(NOT_AVAILABLE)
+  sourceReviewId String?                  @db.Uuid
+  effectiveAt    DateTime?                @db.Timestamptz(3)
+  staleAt        DateTime?                @db.Timestamptz(3)
+  createdAt      DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                 @updatedAt @db.Timestamptz(3)
+  client         Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([status, updatedAt])
 }
 
 model ApplicationCycleStep {

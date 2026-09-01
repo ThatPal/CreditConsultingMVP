@@ -25,13 +25,9 @@ import {
   StaffMfaPage,
   VerifyEmailPage,
 } from './pages/AuthPages';
-import {
-  ClientOverviewPage,
-  ConsultantDashboardPage,
-  ReadinessPage,
-  WorkQueuePage,
-} from './pages/PlatformPages';
+import { ConsultantDashboardPage, ReadinessPage, WorkQueuePage } from './pages/PlatformPages';
 import { Client360Page, ClientsPage } from './pages/ClientContextPages';
+import { ClientHomePage, ClientJourneyPage } from './pages/JourneyPages';
 import {
   ClientReviewPage,
   ConsultantReviewsPage,
@@ -82,16 +78,8 @@ export function App() {
 
       <Route element={<ProtectedRoute roles={['CLIENT']} />}>
         <Route path="/app" element={<ClientAppShell />}>
-          <Route index element={<ClientOverviewPage />} />
-          <Route
-            path="journey"
-            element={
-              <FoundationPage
-                title="Journey"
-                description="Personalized journey projections will appear after their complete, verified workflow is accepted."
-              />
-            }
-          />
+          <Route index element={<ClientHomePage />} />
+          <Route path="journey" element={<ClientJourneyPage />} />
           <Route path="credit-center" element={<CreditProfilePage />} />
           <Route path="credit-center/review" element={<ClientReviewPage />} />
           <Route path="readiness" element={<ReadinessPage />} />

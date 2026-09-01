@@ -35,6 +35,7 @@ import { createIntegrationRouter, createNotificationRouter } from './notificatio
 import type { EmailProvider } from './notifications/emailProvider.js';
 import { createClientContextRouter } from './clientContext/routes.js';
 import { createGoalIntakeBindingRouter, createGoalIntakePublicRouter } from './goals/goalIntake.js';
+import { createJourneyRouter } from './journey/routes.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -130,6 +131,7 @@ export function createApp(
       app.use('/api/v1/notifications', createNotificationRouter(prisma));
       app.use('/api/v1/client/goal-intakes', createGoalIntakeBindingRouter(prisma));
       app.use('/api/v1', createClientContextRouter(prisma, authorization, denialRecorder));
+      app.use('/api/v1', createJourneyRouter(prisma, authorization, denialRecorder));
       if (emailProvider)
         app.use(
           '/api/v1/integrations',

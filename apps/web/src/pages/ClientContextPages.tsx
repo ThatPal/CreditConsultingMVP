@@ -19,6 +19,7 @@ import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { JourneySummary, type JourneyProjection } from './JourneyPages';
 
 type DirectoryClient = {
   id: string;
@@ -156,6 +157,12 @@ export function Client360Page() {
       apiRequest<{ client: ClientDetail }>(`/api/v1/consultant/client-context/${clientId}`),
     retry: false,
   });
+  const journeyQuery = useQuery({
+    queryKey: ['consultant-client-journey', clientId],
+    queryFn: () => apiRequest<JourneyProjection>(`/api/v1/consultant/clients/${clientId}/journey`),
+    enabled: Boolean(clientId),
+    retry: false,
+  });
   if (query.isLoading)
     return (
       <Stack sx={{ alignItems: 'center', py: 8 }}>
@@ -212,6 +219,11 @@ export function Client360Page() {
           </SectionCard>
         </Grid>
       </Grid>
+      {journeyQuery.isLoading && <CircularProgress aria-label="Loading client journey" />}
+      {journeyQuery.isError && (
+        <Alert severity="warning">Journey context is unavailable or access changed.</Alert>
+      )}
+      {journeyQuery.data?.journey && <JourneySummary data={journeyQuery.data} staff />}
       <SectionCard>
         <Stack spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
