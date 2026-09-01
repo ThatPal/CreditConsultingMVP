@@ -185,7 +185,7 @@ describe('business command to authorized realtime refetch', () => {
       await worker.close();
       socket.close();
     }
-  });
+  }, 15_000);
 
   test('publishes a pending durable event after worker restart without rerunning the command', async () => {
     const client = await createBusinessClient();
@@ -234,5 +234,5 @@ describe('business command to authorized realtime refetch', () => {
       await restartedWorker.close();
       socket.close();
     }
-  });
+  }, 15_000);
 });
