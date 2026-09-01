@@ -12,6 +12,7 @@ import { publishLiveUpdate } from '../liveUpdates.js';
 import { createOperationsRouter } from '../operations/routes.js';
 import { createReviewRouter } from '../reviews/routes.js';
 import type { DocumentStorage } from '../storage/documentStorage.js';
+import { reconcileSupportAttention } from '../attention/attentionService.js';
 
 const principals = new Map<string, AuthPrincipal>();
 const bytesByKey = new Map<string, Buffer>();
@@ -735,11 +736,12 @@ describe('Support, notification, and application-cycle characterization', () => 
     const assigned = await createStaff('CONSULTANT', 'pagination-support');
     const owner = await createClient('pagination-owner', assigned.user.id);
     const timestamp = new Date('2026-08-31T20:00:00.000Z');
+    const idPrefix = crypto.randomUUID().slice(0, -1);
     const records = [
-      { id: '10000000-0000-4000-8000-000000000001', status: 'OPEN' as const },
-      { id: '10000000-0000-4000-8000-000000000002', status: 'WAITING_ON_CLIENT' as const },
-      { id: '10000000-0000-4000-8000-000000000003', status: 'RESOLVED' as const },
-      { id: '10000000-0000-4000-8000-000000000004', status: 'CLOSED' as const },
+      { id: `${idPrefix}1`, status: 'OPEN' as const },
+      { id: `${idPrefix}2`, status: 'WAITING_ON_CLIENT' as const },
+      { id: `${idPrefix}3`, status: 'RESOLVED' as const },
+      { id: `${idPrefix}4`, status: 'CLOSED' as const },
     ];
     await prisma.supportCase.createMany({
       data: records.map((record) => ({
@@ -774,9 +776,7 @@ describe('Support, notification, and application-cycle characterization', () => 
     const consultantPages = await Promise.all(
       [1, 2].map((page) =>
         request(app)
-          .get(
-            `/api/v1/consultant/support-cases?search=Pagination%20proof&page=${page}&pageSize=2`,
-          )
+          .get(`/api/v1/consultant/support-cases?search=Pagination%20proof&page=${page}&pageSize=2`)
           .set('x-test-principal', assigned.header)
           .expect(200),
       ),
@@ -899,6 +899,90 @@ async function closeServer(server: Server) {
     server.close((error) => (error ? reject(error) : resolve())),
   );
 }
+
+describe('Attention Work Queue characterization', () => {
+  test('deduplicates domain attention, enforces authorization, and permits only one competing claim', async () => {
+    const assigned = await createStaff('CONSULTANT', 'queue-assigned');
+    const temporary = await createStaff('CONSULTANT', 'queue-temporary');
+    const admin = await createStaff('ADMIN', 'queue-admin');
+    const owner = await createClient('queue-owner', assigned.user.id);
+    await prisma.clientAccessGrant.create({
+      data: {
+        granteeId: temporary.user.id,
+        clientId: owner.client.id,
+        scope: 'SUPPORT_ONLY',
+        allowedCapabilities: ['support.manage'],
+        reason: 'Queue coverage',
+        startsAt: new Date(Date.now() - 60_000),
+        expiresAt: new Date(Date.now() + 3_600_000),
+        grantorId: admin.user.id,
+      },
+    });
+    const ticket = await prisma.supportCase.create({
+      data: {
+        clientId: owner.client.id,
+        createdByUserId: owner.user.id,
+        category: 'OTHER',
+        priority: 'URGENT',
+        status: 'WAITING_ON_SUPPORT',
+        subject: 'Queue concurrency proof',
+        lastMessageAt: new Date(),
+      },
+    });
+    await reconcileSupportAttention(prisma, ticket);
+    await reconcileSupportAttention(prisma, ticket);
+    expect(
+      await prisma.workItem.count({
+        where: {
+          dedupeKey: `SUPPORT_CASE:${ticket.id}:REPLY_NEEDED`,
+          status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+        },
+      }),
+    ).toBe(1);
+
+    const app = buildApp();
+    expect(
+      (
+        await request(app)
+          .get('/api/v1/consultant/work-queue')
+          .set('x-test-principal', admin.header)
+      ).status,
+    ).toBe(403);
+    const listed = await request(app)
+      .get('/api/v1/consultant/work-queue?pageSize=10')
+      .set('x-test-principal', assigned.header);
+    expect(listed.status).toBe(200);
+    const item = listed.body.items.find(
+      (candidate: { sourceId: string }) => candidate.sourceId === ticket.id,
+    );
+    expect(item.deepLink).toEqual({
+      type: 'SUPPORT_CASE',
+      route: '/crm/support',
+      params: { caseId: ticket.id },
+    });
+    const results = await Promise.all([
+      request(app)
+        .post(`/api/v1/consultant/work-queue/${item.id}/claim`)
+        .set('x-test-principal', assigned.header)
+        .send({ expectedVersion: item.version }),
+      request(app)
+        .post(`/api/v1/consultant/work-queue/${item.id}/claim`)
+        .set('x-test-principal', temporary.header)
+        .send({ expectedVersion: item.version }),
+    ]);
+    expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
+    expect(
+      await prisma.auditEvent.count({
+        where: { action: 'ATTENTION_ITEM_CLAIMED', entityId: item.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.outboxEvent.count({
+        where: { eventType: 'attention.item.claimed', aggregateId: item.id },
+      }),
+    ).toBe(1);
+  });
+});
 
 describe('authenticated SSE characterization', () => {
   test('delivers only client-owned and assigned-consultant domain events', async () => {

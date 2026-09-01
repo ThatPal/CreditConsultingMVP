@@ -956,6 +956,15 @@ model WorkItem {
   updatedAt           DateTime          @updatedAt
   authority           WorkItemAuthority @default(LEGACY_INDEPENDENT)
   planActionId        String?           @db.Uuid
+  sourceType          String?
+  sourceId            String?           @db.Uuid
+  reasonCode          String?
+  dedupeKey           String?
+  deepLink            Json?
+  neededSince         DateTime?
+  claimedAt           DateTime?
+  resolvedAt          DateTime?
+  version             Int               @default(0)
   client              Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
   assignee            User?             @relation("WorkItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   planAction          PlanAction?       @relation(fields: [planActionId], references: [id], onDelete: SetNull)
@@ -963,6 +972,9 @@ model WorkItem {
   @@index([assigneeId, status, priority, dueAt])
   @@index([clientId, status])
   @@index([planActionId, status])
+  @@index([sourceType, sourceId])
+  @@index([status, priority, neededSince, id])
+  @@index([dedupeKey, status])
 }
 
 model SupportCase {

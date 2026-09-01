@@ -30,6 +30,11 @@ import {
   supportAttachmentProjection,
   supportReplyTransition,
 } from '../support/supportDomain.js';
+import {
+  attentionClaimDecision,
+  reconcileSupportAttention,
+  workQueueOrderBy,
+} from '../attention/attentionService.js';
 
 const supportCaseSchema = z.object({
   category: z.enum([
@@ -59,7 +64,9 @@ const consultantSupportReplySchema = supportReplySchema.extend({
 });
 const supportListQuery = z.object({
   search: z.string().trim().max(120).optional(),
-  status: z.enum(['OPEN', 'WAITING_ON_SUPPORT', 'WAITING_ON_CLIENT', 'RESOLVED', 'CLOSED']).optional(),
+  status: z
+    .enum(['OPEN', 'WAITING_ON_SUPPORT', 'WAITING_ON_CLIENT', 'RESOLVED', 'CLOSED'])
+    .optional(),
   category: supportCaseSchema.shape.category.optional(),
   priority: z.enum(['NORMAL', 'HIGH', 'URGENT']).optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -803,7 +810,13 @@ export function createOperationsRouter(
           unread: !item.clientReadAt || item.lastMessageAt > item.clientReadAt,
         })),
       );
-      res.json({ cases: projected, page: query.page, pageSize: query.pageSize, total, hasMore: query.page * query.pageSize < total });
+      res.json({
+        cases: projected,
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+        hasMore: query.page * query.pageSize < total,
+      });
     } catch (error) {
       next(error);
     }
@@ -861,8 +874,6 @@ export function createOperationsRouter(
       });
       if (!client) throw new AppError('NOT_FOUND', 404, 'Client account was not found');
       const now = new Date();
-      const dueHours =
-        parsed.data.priority === 'URGENT' ? 4 : parsed.data.priority === 'HIGH' ? 24 : 48;
       const notificationRecipients = await getSupportNotificationRecipients(
         prisma,
         client.assignedConsultantId,
@@ -925,17 +936,7 @@ export function createOperationsRouter(
                 },
               },
             });
-            await tx.workItem.create({
-              data: {
-                clientId,
-                assigneeId: client.assignedConsultantId,
-                domain: 'SUPPORT',
-                title: `Support: ${parsed.data.subject}`,
-                priority: parsed.data.priority,
-                suggestedNextAction: 'Review and respond to client',
-                dueAt: new Date(now.getTime() + dueHours * 60 * 60 * 1000),
-              },
-            });
+            await reconcileSupportAttention(tx, supportCase);
             if (notificationRecipients.length)
               await tx.notification.createMany({
                 data: notificationRecipients.map((userId) => ({
@@ -1020,10 +1021,11 @@ export function createOperationsRouter(
               idempotencyKey,
             },
           });
-          await tx.supportCase.update({
+          const attentionCase = await tx.supportCase.update({
             where: { id: supportCase.id },
             data: { status: nextStatus, resolvedAt: null, lastMessageAt: now },
           });
+          await reconcileSupportAttention(tx, attentionCase);
           if (notificationRecipients.length)
             await tx.notification.createMany({
               data: notificationRecipients.map((userId) => ({
@@ -1115,6 +1117,7 @@ export function createOperationsRouter(
             },
             include: supportCaseInclude,
           });
+          await reconcileSupportAttention(tx, changed);
           await tx.auditEvent.create({
             data: {
               clientId: supportCase.clientId,
@@ -1154,35 +1157,39 @@ export function createOperationsRouter(
         ...(query.status ? { status: query.status } : {}),
         ...(query.category ? { category: query.category } : {}),
         ...(query.priority ? { priority: query.priority } : {}),
-        ...(query.search ? { OR: [
-          { subject: { contains: query.search, mode: 'insensitive' as const } },
-          { client: { firstName: { contains: query.search, mode: 'insensitive' as const } } },
-          { client: { lastName: { contains: query.search, mode: 'insensitive' as const } } },
-        ] } : {}),
+        ...(query.search
+          ? {
+              OR: [
+                { subject: { contains: query.search, mode: 'insensitive' as const } },
+                { client: { firstName: { contains: query.search, mode: 'insensitive' as const } } },
+                { client: { lastName: { contains: query.search, mode: 'insensitive' as const } } },
+              ],
+            }
+          : {}),
       };
       const [cases, total] = await prisma.$transaction([
         prisma.supportCase.findMany({
-        where,
-        include: {
-          client: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              user: { select: { email: true } },
+          where,
+          include: {
+            client: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                user: { select: { email: true } },
+              },
             },
+            messages: {
+              orderBy: { createdAt: 'asc' },
+              include: { author: { select: { id: true, role: true } } },
+            },
+            categoryDefinition: { select: { key: true, name: true } },
+            attachments: { select: supportAttachmentProjection },
           },
-          messages: {
-            orderBy: { createdAt: 'asc' },
-            include: { author: { select: { id: true, role: true } } },
-          },
-          categoryDefinition: { select: { key: true, name: true } },
-          attachments: { select: supportAttachmentProjection },
-        },
-        orderBy: [{ priority: 'desc' }, { lastMessageAt: 'desc' }, { id: 'desc' }],
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
-      }),
+          orderBy: [{ priority: 'desc' }, { lastMessageAt: 'desc' }, { id: 'desc' }],
+          skip: (query.page - 1) * query.pageSize,
+          take: query.pageSize,
+        }),
         prisma.supportCase.count({ where }),
       ]);
       const projected = await Promise.all(
@@ -1192,7 +1199,13 @@ export function createOperationsRouter(
           unread: !item.staffReadAt || item.lastMessageAt > item.staffReadAt,
         })),
       );
-      res.json({ cases: projected, page: query.page, pageSize: query.pageSize, total, hasMore: query.page * query.pageSize < total });
+      res.json({
+        cases: projected,
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+        hasMore: query.page * query.pageSize < total,
+      });
     } catch (error) {
       next(error);
     }
@@ -1279,7 +1292,7 @@ export function createOperationsRouter(
               idempotencyKey,
             },
           });
-          await tx.supportCase.update({
+          const attentionCase = await tx.supportCase.update({
             where: { id: supportCase.id },
             data: {
               assignedToUserId: supportCase.assignedToUserId ?? req.auth!.userId,
@@ -1288,6 +1301,7 @@ export function createOperationsRouter(
                 : { status: nextStatus!, lastMessageAt: now, resolvedAt: null }),
             },
           });
+          if (!parsed.data.internal) await reconcileSupportAttention(tx, attentionCase);
           if (!parsed.data.internal && supportCase.client.userId)
             await tx.notification.create({
               data: {
@@ -1398,6 +1412,7 @@ export function createOperationsRouter(
                   : {}),
             },
           });
+          await reconcileSupportAttention(tx, changed);
           await tx.auditEvent.create({
             data: {
               clientId: supportCase.clientId,
@@ -1504,6 +1519,181 @@ export function createOperationsRouter(
       }
     },
   );
+  router.get('/consultant/work-queue', requireRole('CONSULTANT'), async (req, res, next) => {
+    try {
+      const query = z
+        .object({
+          status: z.enum(['OPEN', 'IN_PROGRESS', 'WAITING', 'COMPLETED', 'CANCELLED']).optional(),
+          priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional(),
+          assignment: z.enum(['MINE', 'UNASSIGNED', 'ALL']).default('ALL'),
+          search: z.string().trim().max(100).optional(),
+          page: z.coerce.number().int().min(1).default(1),
+          pageSize: z.coerce.number().int().min(1).max(50).default(20),
+        })
+        .parse(req.query);
+      const candidates = await prisma.workItem.findMany({
+        where: { sourceType: 'SUPPORT_CASE' },
+        distinct: ['clientId'],
+        select: { clientId: true },
+      });
+      const allowed = (
+        await Promise.all(
+          candidates.map(async ({ clientId }) => ({
+            clientId,
+            allowed: await authorization.authorize(req.auth!, 'support.manage', {
+              type: 'client',
+              clientId,
+            }),
+          })),
+        )
+      )
+        .filter((item) => item.allowed)
+        .map((item) => item.clientId);
+      const where = {
+        clientId: { in: allowed },
+        sourceType: 'SUPPORT_CASE',
+        ...(query.status
+          ? { status: query.status }
+          : { status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] as WorkItemStatus[] } }),
+        ...(query.priority ? { priority: query.priority } : {}),
+        ...(query.assignment === 'MINE'
+          ? { assigneeId: req.auth!.userId }
+          : query.assignment === 'UNASSIGNED'
+            ? { assigneeId: null }
+            : {}),
+        ...(query.search
+          ? {
+              OR: [
+                { title: { contains: query.search, mode: 'insensitive' as const } },
+                { client: { firstName: { contains: query.search, mode: 'insensitive' as const } } },
+                { client: { lastName: { contains: query.search, mode: 'insensitive' as const } } },
+              ],
+            }
+          : {}),
+      };
+      const [items, total, open, urgent, mine, unassigned] = await prisma.$transaction([
+        prisma.workItem.findMany({
+          where,
+          include: {
+            client: { select: { firstName: true, lastName: true } },
+            assignee: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: workQueueOrderBy(),
+          skip: (query.page - 1) * query.pageSize,
+          take: query.pageSize,
+        }),
+        prisma.workItem.count({ where }),
+        prisma.workItem.count({
+          where: {
+            clientId: { in: allowed },
+            sourceType: 'SUPPORT_CASE',
+            status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+          },
+        }),
+        prisma.workItem.count({
+          where: {
+            clientId: { in: allowed },
+            sourceType: 'SUPPORT_CASE',
+            status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+            priority: 'URGENT',
+          },
+        }),
+        prisma.workItem.count({
+          where: {
+            clientId: { in: allowed },
+            sourceType: 'SUPPORT_CASE',
+            status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+            assigneeId: req.auth!.userId,
+          },
+        }),
+        prisma.workItem.count({
+          where: {
+            clientId: { in: allowed },
+            sourceType: 'SUPPORT_CASE',
+            status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+            assigneeId: null,
+          },
+        }),
+      ]);
+      res.json({
+        items,
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+        counts: { open, urgent, mine, unassigned },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post(
+    '/consultant/work-queue/:workItemId/claim',
+    requireRole('CONSULTANT'),
+    async (req, res, next) => {
+      try {
+        const input = z.object({ expectedVersion: z.number().int().min(0) }).parse(req.body);
+        const item = await prisma.workItem.findUnique({
+          where: { id: req.params.workItemId as string },
+        });
+        if (!item || item.sourceType !== 'SUPPORT_CASE')
+          throw new AppError('NOT_FOUND', 404, 'Attention item was not found');
+        if (
+          !(await authorization.authorize(req.auth!, 'support.manage', {
+            type: 'client',
+            clientId: item.clientId,
+          }))
+        )
+          throw new AppError('FORBIDDEN', 403, 'You do not have access to this attention item');
+        const claimDecision = attentionClaimDecision(item, req.auth!.userId, input.expectedVersion);
+        if (claimDecision === 'REPLAY') return res.json({ item, replayed: true });
+        if (claimDecision === 'STALE')
+          throw new AppError('STALE_ATTENTION_ITEM', 409, 'This item changed; refresh the queue');
+        const updated = await prisma.$transaction(async (tx) => {
+          const claimed = await tx.workItem.updateMany({
+            where: {
+              id: item.id,
+              assigneeId: null,
+              version: input.expectedVersion,
+              status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+            },
+            data: {
+              assigneeId: req.auth!.userId,
+              claimedAt: new Date(),
+              status: 'IN_PROGRESS',
+              version: { increment: 1 },
+            },
+          });
+          if (claimed.count !== 1)
+            throw new AppError('STALE_ATTENTION_ITEM', 409, 'This item changed; refresh the queue');
+          const result = await tx.workItem.findUniqueOrThrow({ where: { id: item.id } });
+          await tx.auditEvent.create({
+            data: {
+              clientId: item.clientId,
+              actorId: req.auth!.userId,
+              action: 'ATTENTION_ITEM_CLAIMED',
+              entityType: 'WorkItem',
+              entityId: item.id,
+              metadata: { version: result.version },
+            },
+          });
+          await tx.outboxEvent.create({
+            data: {
+              eventType: 'attention.item.claimed',
+              eventKey: `attention.item.claimed:${item.id}:${result.version}`,
+              aggregateType: 'WorkItem',
+              aggregateId: item.id,
+              payload: { clientId: item.clientId, domains: ['work-queue'], workItemId: item.id },
+            },
+          });
+          return result;
+        });
+        publishLiveUpdate(item.clientId, 'work-queue');
+        res.json({ item: updated, replayed: false });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.get(
     '/consultant/work-items',
     requireRole('CONSULTANT', 'ADMIN'),
@@ -1544,6 +1734,12 @@ export function createOperationsRouter(
           where: { id: req.params.workItemId as string },
         });
         if (!item) throw new AppError('NOT_FOUND', 404, 'Work item was not found');
+        if (item.sourceType)
+          throw new AppError(
+            'DOMAIN_STATE_REQUIRED',
+            409,
+            'Resolve this attention item in its linked workspace',
+          );
         if (req.auth!.role !== 'ADMIN' && item.assigneeId && item.assigneeId !== req.auth!.userId)
           throw new AppError('FORBIDDEN', 403, 'This work item belongs to another consultant');
         const updated = await prisma.workItem.update({

@@ -13,12 +13,14 @@ import {
   Divider,
   Grid,
   LinearProgress,
+  CircularProgress,
+  MenuItem,
+  Pagination,
   Stack,
-  Tab,
-  Tabs,
   Typography,
+  TextField,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
@@ -26,7 +28,6 @@ import { ChoiceCard } from '../components/common/ChoiceCard';
 import { MetricCard } from '../components/common/MetricCard';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
-import { StickyTabs } from '../components/common/StickyTabs';
 
 const demoNotice = (
   <Alert severity="info">Preview data — connect a client record to begin verified work.</Alert>
@@ -154,53 +155,227 @@ export function ConsultantDashboardPage() {
 }
 
 export function WorkQueuePage() {
-  const [tab, setTab] = useState(0);
+  const queryClient = useQueryClient();
+  const [assignment, setAssignment] = useState('ALL');
+  const [priority, setPriority] = useState('');
+  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  type QueueItem = {
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+    dueAt: string | null;
+    neededSince: string | null;
+    version: number;
+    assigneeId: string | null;
+    reasonCode: string | null;
+    deepLink: { route?: string; params?: { caseId?: string } } | null;
+    client: { firstName: string; lastName: string };
+    assignee: { name: string | null; email: string } | null;
+  };
+  type QueueResponse = {
+    items: QueueItem[];
+    total: number;
+    pageSize: number;
+    counts: { open: number; urgent: number; mine: number; unassigned: number };
+  };
+  const params = new URLSearchParams({
+    assignment,
+    page: String(page),
+    pageSize: '12',
+    ...(priority ? { priority } : {}),
+    ...(status ? { status } : {}),
+    ...(search ? { search } : {}),
+  });
+  const queue = useQuery({
+    queryKey: ['work-queue', assignment, priority, status, search, page],
+    queryFn: () => apiRequest<QueueResponse>(`/consultant/work-queue?${params}`),
+    placeholderData: (previous) => previous,
+  });
+  const claim = useMutation({
+    mutationFn: (item: QueueItem) =>
+      apiRequest(`/consultant/work-queue/${item.id}/claim`, {
+        method: 'POST',
+        body: JSON.stringify({ expectedVersion: item.version }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['work-queue'] }),
+  });
   return (
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Operations"
         title="Work queue"
         description="Prioritized work with the next safe action already prepared."
-        actions={<Button variant="contained">Start highest priority</Button>}
+        actions={
+          queue.data?.items[0] ? (
+            <Button
+              component={Link}
+              to={
+                queue.data.items[0].deepLink?.route
+                  ? `${queue.data.items[0].deepLink.route}?case=${queue.data.items[0].deepLink.params?.caseId ?? ''}`
+                  : '/crm/work-queue'
+              }
+              variant="contained"
+            >
+              Start highest priority
+            </Button>
+          ) : undefined
+        }
       />
-      {demoNotice}
       <SectionCard variant="operational">
-        <StickyTabs>
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} aria-label="Queue filters">
-            <Tab label="My work · 12" />
-            <Tab label="Due today · 4" />
-            <Tab label="Waiting · 3" />
-            <Tab label="Unassigned · 2" />
-          </Tabs>
-        </StickyTabs>
-        <Divider />
-        <Stack divider={<Divider />}>
-          <TaskRow
-            title="Credit readiness decision"
-            client="Jordan Blake · Profile current"
-            due="Due today"
-            action="Assess"
-            urgent
-          />
-          <TaskRow
-            title="Select recommendation bundle"
-            client="Taylor Morgan · Review complete"
-            due="Due today"
-            action="Choose actions"
-            urgent
-          />
-          <TaskRow
-            title="Client uploaded requested document"
-            client="Morgan Lee · Income verification"
-            due="35 min ago"
-            action="Review"
-          />
-          <TaskRow
-            title="Support reply received"
-            client="Case #1048 · Application timing"
-            due="1 hour ago"
-            action="Respond"
-          />
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField
+              label="Search work"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              sx={{ flex: 1 }}
+            />
+            <TextField
+              select
+              label="Assignment"
+              value={assignment}
+              onChange={(e) => {
+                setAssignment(e.target.value);
+                setPage(1);
+              }}
+              sx={{ minWidth: 170 }}
+            >
+              <MenuItem value="ALL">All accessible</MenuItem>
+              <MenuItem value="MINE">My work</MenuItem>
+              <MenuItem value="UNASSIGNED">Unassigned</MenuItem>
+            </TextField>
+            <TextField
+              select
+              label="Priority"
+              value={priority}
+              onChange={(e) => {
+                setPriority(e.target.value);
+                setPage(1);
+              }}
+              sx={{ minWidth: 150 }}
+            >
+              <MenuItem value="">All priorities</MenuItem>
+              {['URGENT', 'HIGH', 'NORMAL', 'LOW'].map((v) => (
+                <MenuItem key={v} value={v}>
+                  {v}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Lifecycle"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
+              sx={{ minWidth: 150 }}
+            >
+              <MenuItem value="">Active</MenuItem>
+              {['OPEN', 'IN_PROGRESS', 'WAITING', 'COMPLETED'].map((v) => (
+                <MenuItem key={v} value={v}>
+                  {v.replace('_', ' ')}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+          {queue.data && (
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+              <Chip label={`${queue.data.counts.open} active`} />
+              <Chip color="error" label={`${queue.data.counts.urgent} urgent`} />
+              <Chip label={`${queue.data.counts.mine} mine`} />
+              <Chip label={`${queue.data.counts.unassigned} unassigned`} />
+            </Stack>
+          )}
+          {queue.isLoading && (
+            <Stack sx={{ alignItems: 'center', py: 5 }}>
+              <CircularProgress aria-label="Loading work queue" />
+            </Stack>
+          )}
+          {queue.isError && (
+            <Alert severity="error" action={<Button onClick={() => queue.refetch()}>Retry</Button>}>
+              The work queue could not be loaded.
+            </Alert>
+          )}
+          {claim.isError && (
+            <Alert severity="warning">
+              This item changed or access was revoked. Refresh the queue before continuing.
+            </Alert>
+          )}
+          {queue.data?.items.length === 0 && (
+            <Alert severity="info">No attention items match these filters.</Alert>
+          )}
+          <Stack divider={<Divider />}>
+            {queue.data?.items.map((item) => {
+              const href = item.deepLink?.route
+                ? `${item.deepLink.route}?case=${item.deepLink.params?.caseId ?? ''}`
+                : '/crm/work-queue';
+              return (
+                <Stack
+                  key={item.id}
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  sx={{ alignItems: { sm: 'center' }, py: 2 }}
+                >
+                  <Stack sx={{ flex: 1 }} spacing={0.5}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Chip
+                        size="small"
+                        color={
+                          item.priority === 'URGENT'
+                            ? 'error'
+                            : item.priority === 'HIGH'
+                              ? 'warning'
+                              : 'default'
+                        }
+                        label={item.priority}
+                      />
+                      <Typography variant="h3">{item.title}</Typography>
+                    </Stack>
+                    <Typography color="text.secondary">
+                      {item.client.firstName} {item.client.lastName} ·{' '}
+                      {item.reasonCode?.replaceAll('_', ' ')}
+                    </Typography>
+                    <Typography variant="caption">
+                      Needed{' '}
+                      {item.neededSince ? new Date(item.neededSince).toLocaleString() : 'recently'}{' '}
+                      ·{' '}
+                      {item.assignee
+                        ? `Claimed by ${item.assignee.name ?? item.assignee.email}`
+                        : 'Unassigned'}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={1}>
+                    {!item.assigneeId && (
+                      <Button
+                        variant="outlined"
+                        disabled={claim.isPending}
+                        onClick={() => claim.mutate(item)}
+                      >
+                        Claim
+                      </Button>
+                    )}
+                    <Button component={Link} to={href} variant="contained">
+                      Open workspace
+                    </Button>
+                  </Stack>
+                </Stack>
+              );
+            })}
+          </Stack>
+          {queue.data && queue.data.total > queue.data.pageSize && (
+            <Pagination
+              page={page}
+              count={Math.ceil(queue.data.total / queue.data.pageSize)}
+              onChange={(_, value) => setPage(value)}
+            />
+          )}
         </Stack>
       </SectionCard>
     </Stack>
@@ -461,7 +636,12 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
     queryKey: ['goals'],
     queryFn: () =>
       apiRequest<{
-        goals: Array<{ goalType: string; targetAmount: number | null; priority: string; status: string }>;
+        goals: Array<{
+          goalType: string;
+          targetAmount: number | null;
+          priority: string;
+          status: string;
+        }>;
       }>('/api/v1/client/goals'),
     enabled: !consultant,
   });
@@ -474,9 +654,21 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
     enabled: !consultant,
   });
   const choices = [
-    { id: 'APPLY', title: 'Ready', desc: 'The current profile supports beginning a credit application round.' },
-    { id: 'PREPARE', title: 'Prepare — action needed', desc: 'Complete the consultant-selected actions, then reassess.' },
-    { id: 'WAIT', title: 'Not ready — negative items', desc: 'Negative credit items should be resolved or allowed to improve before applying.' },
+    {
+      id: 'APPLY',
+      title: 'Ready',
+      desc: 'The current profile supports beginning a credit application round.',
+    },
+    {
+      id: 'PREPARE',
+      title: 'Prepare — action needed',
+      desc: 'Complete the consultant-selected actions, then reassess.',
+    },
+    {
+      id: 'WAIT',
+      title: 'Not ready — negative items',
+      desc: 'Negative credit items should be resolved or allowed to improve before applying.',
+    },
   ];
   const profile = profileQuery.data?.profile;
   const readinessFreshness =
@@ -507,39 +699,55 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
       ? 'Negative credit items should be addressed before beginning a credit application round'
       : 'Complete the preparation actions before beginning a credit application round';
   const primaryGoal =
-    goalsQuery.data?.goals.find((goal) => goal.priority === 'PRIMARY' && goal.status === 'ACTIVE') ??
-    goalsQuery.data?.goals.find((goal) => goal.status === 'ACTIVE');
+    goalsQuery.data?.goals.find(
+      (goal) => goal.priority === 'PRIMARY' && goal.status === 'ACTIVE',
+    ) ?? goalsQuery.data?.goals.find((goal) => goal.status === 'ACTIVE');
   const goalNames: Record<string, string> = {
-    ZERO_APR_CREDIT: 'Build 0% APR credit', TOTAL_AVAILABLE_CREDIT: 'Increase total available credit',
-    BUSINESS_CREDIT: 'Build business credit', PERSONAL_CREDIT: 'Build personal credit',
+    ZERO_APR_CREDIT: 'Build 0% APR credit',
+    TOTAL_AVAILABLE_CREDIT: 'Increase total available credit',
+    BUSINESS_CREDIT: 'Build business credit',
+    PERSONAL_CREDIT: 'Build personal credit',
     BALANCE_TRANSFER_CAPACITY: 'Create balance-transfer capacity',
     EXISTING_LIMIT_INCREASES: 'Increase existing limits',
     REWARDS_POINTS_PORTFOLIO: 'Build a rewards portfolio',
   };
-  const connectedCycle = cyclesQuery.data?.cycles.find((cycle) => cycle.status === 'ACTIVE') ?? cyclesQuery.data?.cycles[0];
-  const readinessFindings =
-    profile?.review?.findings.length
-      ? profile.review.findings
-      : import.meta.env.DEV
-        ? [
-            { id: 'demo-readiness-1', label: 'Strong payment history', severity: 'POSITIVE' },
-            { id: 'demo-readiness-2', label: 'Utilization needs preparation', severity: 'CAUTION' },
-            { id: 'demo-readiness-3', label: 'Recent inquiry activity', severity: 'CAUTION' },
-          ]
-        : [];
-  const actions =
-    profile?.actions.length
-      ? profile.actions
-      : import.meta.env.DEV
-        ? [
-            { id: 'demo-action-1', title: 'Pay down revolving balances', description: 'Target aggregate utilization below 30%.', status: 'READY', dueAt: null },
-            { id: 'demo-action-2', title: 'Allow inquiries to age', description: 'Avoid new applications for 90 days.', status: 'READY', dueAt: null },
-          ]
-        : [];
+  const connectedCycle =
+    cyclesQuery.data?.cycles.find((cycle) => cycle.status === 'ACTIVE') ??
+    cyclesQuery.data?.cycles[0];
+  const readinessFindings = profile?.review?.findings.length
+    ? profile.review.findings
+    : import.meta.env.DEV
+      ? [
+          { id: 'demo-readiness-1', label: 'Strong payment history', severity: 'POSITIVE' },
+          { id: 'demo-readiness-2', label: 'Utilization needs preparation', severity: 'CAUTION' },
+          { id: 'demo-readiness-3', label: 'Recent inquiry activity', severity: 'CAUTION' },
+        ]
+      : [];
+  const actions = profile?.actions.length
+    ? profile.actions
+    : import.meta.env.DEV
+      ? [
+          {
+            id: 'demo-action-1',
+            title: 'Pay down revolving balances',
+            description: 'Target aggregate utilization below 30%.',
+            status: 'READY',
+            dueAt: null,
+          },
+          {
+            id: 'demo-action-2',
+            title: 'Allow inquiries to age',
+            description: 'Avoid new applications for 90 days.',
+            status: 'READY',
+            dueAt: null,
+          },
+        ]
+      : [];
   const nextAction = actions.find((action) => !['COMPLETED', 'CANCELLED'].includes(action.status));
   const actionCounts = {
     completed: actions.filter((action) => action.status === 'COMPLETED').length,
-    active: actions.filter((action) => ['READY', 'IN_PROGRESS', 'ACTIVE'].includes(action.status)).length,
+    active: actions.filter((action) => ['READY', 'IN_PROGRESS', 'ACTIVE'].includes(action.status))
+      .length,
     paused: actions.filter((action) => ['PAUSED', 'DEFERRED'].includes(action.status)).length,
     blocked: actions.filter((action) => action.status === 'BLOCKED').length,
   };
@@ -562,20 +770,34 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
         <Grid size={{ xs: 12, lg: 8 }}>
           <SectionCard
             variant="elevated"
-            sx={!consultant ? {
-              borderColor: `${consultantDecisionColor}70`,
-              background: `linear-gradient(135deg, ${consultantDecisionColor}1f 0%, rgba(16, 35, 66, .98) 58%, rgba(12, 25, 49, .98) 100%)`,
-              boxShadow: `0 18px 46px rgba(0, 0, 0, .24), 0 0 28px ${consultantDecisionColor}14`,
-            } : {}}
+            sx={
+              !consultant
+                ? {
+                    borderColor: `${consultantDecisionColor}70`,
+                    background: `linear-gradient(135deg, ${consultantDecisionColor}1f 0%, rgba(16, 35, 66, .98) 58%, rgba(12, 25, 49, .98) 100%)`,
+                    boxShadow: `0 18px 46px rgba(0, 0, 0, .24), 0 0 28px ${consultantDecisionColor}14`,
+                  }
+                : {}
+            }
           >
             {!consultant && (
               <>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  sx={{ alignItems: { sm: 'center' } }}
+                >
                   <Box
                     sx={{
-                      width: 54, height: 54, flex: '0 0 auto', display: 'grid', placeItems: 'center',
-                      borderRadius: 2.5, color: consultantDecisionColor,
-                      bgcolor: `${consultantDecisionColor}14`, border: `1px solid ${consultantDecisionColor}55`,
+                      width: 54,
+                      height: 54,
+                      flex: '0 0 auto',
+                      display: 'grid',
+                      placeItems: 'center',
+                      borderRadius: 2.5,
+                      color: consultantDecisionColor,
+                      bgcolor: `${consultantDecisionColor}14`,
+                      border: `1px solid ${consultantDecisionColor}55`,
                       boxShadow: `0 0 22px ${consultantDecisionColor}20`,
                       '& svg': { fontSize: 32 },
                     }}
@@ -592,14 +814,26 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
                     <Typography variant="overline" sx={{ color: consultantDecisionColor }}>
                       Consultant decision
                     </Typography>
-                    <Typography variant="h2" sx={{ mt: 0.25 }}>{consultantDecisionHeading}</Typography>
-                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>{consultantDecisionDetail}</Typography>
+                    <Typography variant="h2" sx={{ mt: 0.25 }}>
+                      {consultantDecisionHeading}
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                      {consultantDecisionDetail}
+                    </Typography>
                   </Box>
                   <Chip
-                    label={consultantDecisionReady ? 'READY' : clientOutcome === 'WAIT' ? 'NEGATIVE ITEMS' : 'ACTION NEEDED'}
+                    label={
+                      consultantDecisionReady
+                        ? 'READY'
+                        : clientOutcome === 'WAIT'
+                          ? 'NEGATIVE ITEMS'
+                          : 'ACTION NEEDED'
+                    }
                     sx={{
-                      alignSelf: { xs: 'flex-start', sm: 'center' }, color: consultantDecisionColor,
-                      bgcolor: `${consultantDecisionColor}12`, border: `1px solid ${consultantDecisionColor}55`,
+                      alignSelf: { xs: 'flex-start', sm: 'center' },
+                      color: consultantDecisionColor,
+                      bgcolor: `${consultantDecisionColor}12`,
+                      border: `1px solid ${consultantDecisionColor}55`,
                       fontWeight: 900,
                     }}
                   />
@@ -609,7 +843,9 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
             )}
             {consultant ? (
               <>
-                <Typography variant="overline" color="primary">Select outcome</Typography>
+                <Typography variant="overline" color="primary">
+                  Select outcome
+                </Typography>
                 <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
                   {choices.map((c) => (
                     <Grid key={c.id} size={{ xs: 12, md: 4 }}>
@@ -633,46 +869,79 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
                 </Grid>
               </>
             ) : (
-              <Box
-                role="img"
-                aria-label={`Readiness meter: ${consultantDecisionHeading} selected`}
-              >
-                <Typography variant="overline" color="primary">Readiness scale</Typography>
+              <Box role="img" aria-label={`Readiness meter: ${consultantDecisionHeading} selected`}>
+                <Typography variant="overline" color="primary">
+                  Readiness scale
+                </Typography>
                 <Box sx={{ position: 'relative', mt: 2.25, px: { xs: 0.5, sm: 2 } }}>
                   <Box
                     sx={{
-                      position: 'absolute', top: 17, left: { xs: '16.7%', sm: '18%' }, right: { xs: '16.7%', sm: '18%' },
-                      height: 6, borderRadius: 99,
+                      position: 'absolute',
+                      top: 17,
+                      left: { xs: '16.7%', sm: '18%' },
+                      right: { xs: '16.7%', sm: '18%' },
+                      height: 6,
+                      borderRadius: 99,
                       background: 'linear-gradient(90deg, #ff647c 0%, #ffb34d 50%, #42e6a4 100%)',
                       boxShadow: '0 0 18px rgba(69, 215, 240, .14)',
                     }}
                   />
-                  <Box sx={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
-                    {([
-                      { id: 'WAIT', label: 'Not Ready', detail: 'Wait', color: '#ff647c' },
-                      { id: 'PREPARE', label: 'Prepare', detail: 'Action needed', color: '#ffb34d' },
-                      { id: 'APPLY', label: 'Ready', detail: 'Proceed', color: '#42e6a4' },
-                    ] as const).map((point) => {
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                    }}
+                  >
+                    {(
+                      [
+                        { id: 'WAIT', label: 'Not Ready', detail: 'Wait', color: '#ff647c' },
+                        {
+                          id: 'PREPARE',
+                          label: 'Prepare',
+                          detail: 'Action needed',
+                          color: '#ffb34d',
+                        },
+                        { id: 'APPLY', label: 'Ready', detail: 'Proceed', color: '#42e6a4' },
+                      ] as const
+                    ).map((point) => {
                       const active = selectedOutcome === point.id;
                       return (
-                        <Stack key={point.id} sx={{ alignItems: 'center', textAlign: 'center', minWidth: 0 }}>
+                        <Stack
+                          key={point.id}
+                          sx={{ alignItems: 'center', textAlign: 'center', minWidth: 0 }}
+                        >
                           <Box
                             sx={{
-                              width: active ? 40 : 28, height: active ? 40 : 28, borderRadius: '50%',
-                              display: 'grid', placeItems: 'center', zIndex: 1,
+                              width: active ? 40 : 28,
+                              height: active ? 40 : 28,
+                              borderRadius: '50%',
+                              display: 'grid',
+                              placeItems: 'center',
+                              zIndex: 1,
                               color: active ? '#07111f' : point.color,
                               bgcolor: active ? point.color : 'background.paper',
                               border: `3px solid ${point.color}`,
-                              boxShadow: active ? `0 0 0 6px ${point.color}22, 0 0 24px ${point.color}80` : 'none',
+                              boxShadow: active
+                                ? `0 0 0 6px ${point.color}22, 0 0 24px ${point.color}80`
+                                : 'none',
                               transition: 'all 180ms ease',
                             }}
                           >
                             {active && <CheckCircleRounded sx={{ fontSize: 23 }} />}
                           </Box>
-                          <Typography sx={{ mt: 1.25, fontWeight: active ? 950 : 800, color: active ? point.color : 'text.primary' }}>
+                          <Typography
+                            sx={{
+                              mt: 1.25,
+                              fontWeight: active ? 950 : 800,
+                              color: active ? point.color : 'text.primary',
+                            }}
+                          >
                             {point.label}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">{point.detail}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {point.detail}
+                          </Typography>
                         </Stack>
                       );
                     })}
@@ -686,9 +955,15 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
           <SectionCard>
             <Typography variant="h4">Profile prerequisite</Typography>
             <Stack direction="row" spacing={1} sx={{ mt: 2, alignItems: 'center' }}>
-              {readinessFreshness?.isCurrent ? <CheckCircleRounded color="success" /> : <ErrorOutlineRounded color="warning" />}
+              {readinessFreshness?.isCurrent ? (
+                <CheckCircleRounded color="success" />
+              ) : (
+                <ErrorOutlineRounded color="warning" />
+              )}
               <Typography>
-                {readinessFreshness?.isCurrent ? 'Credit Profile current' : 'Credit Profile update required'}
+                {readinessFreshness?.isCurrent
+                  ? 'Credit Profile current'
+                  : 'Credit Profile update required'}
               </Typography>
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -710,24 +985,40 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
           </Typography>
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <ChoiceCard title="Reduce utilization" description="Bring aggregate revolving utilization below the selected threshold."
-                selected={reasons.includes('UTILIZATION')} onClick={() => toggleReason('UTILIZATION')} />
+              <ChoiceCard
+                title="Reduce utilization"
+                description="Bring aggregate revolving utilization below the selected threshold."
+                selected={reasons.includes('UTILIZATION')}
+                onClick={() => toggleReason('UTILIZATION')}
+              />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <ChoiceCard title="Complete documents" description="Upload income and identity verification."
-                selected={reasons.includes('DOCUMENTS')} onClick={() => toggleReason('DOCUMENTS')} />
+              <ChoiceCard
+                title="Complete documents"
+                description="Upload income and identity verification."
+                selected={reasons.includes('DOCUMENTS')}
+                onClick={() => toggleReason('DOCUMENTS')}
+              />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <ChoiceCard title="Allow inquiries to age" description="Use a prepared 30, 60, or 90-day timing band."
-                selected={reasons.includes('INQUIRIES')} onClick={() => toggleReason('INQUIRIES')} />
+              <ChoiceCard
+                title="Allow inquiries to age"
+                description="Use a prepared 30, 60, or 90-day timing band."
+                selected={reasons.includes('INQUIRIES')}
+                onClick={() => toggleReason('INQUIRIES')}
+              />
             </Grid>
           </Grid>
         </SectionCard>
       ) : (
         <>
           <SectionCard variant="elevated">
-            <Typography variant="overline" color="primary">Decision factors</Typography>
-            <Typography variant="h3" sx={{ mt: 0.5 }}>Why this decision</Typography>
+            <Typography variant="overline" color="primary">
+              Decision factors
+            </Typography>
+            <Typography variant="h3" sx={{ mt: 0.5 }}>
+              Why this decision
+            </Typography>
             <Typography sx={{ mt: 1, fontWeight: 750 }}>
               {selectedOutcome === 'APPLY'
                 ? 'Your current Credit Profile supports moving forward.'
@@ -735,12 +1026,30 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
                   ? 'Complete the selected preparation actions before applying.'
                   : 'Wait before applying while the selected credit factors are addressed.'}
             </Typography>
-            <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mt: 2 }}>Selected factors</Typography>
+            <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+              Selected factors
+            </Typography>
             <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap', mt: 1 }}>
-              {readinessFindings.length ? readinessFindings.map((finding) => (
-                <Chip key={finding.id} size="small" label={finding.label}
-                  color={finding.severity === 'POSITIVE' ? 'success' : finding.severity === 'CRITICAL' ? 'error' : 'warning'} />
-              )) : <Typography color="text.secondary">No rationale selections have been published.</Typography>}
+              {readinessFindings.length ? (
+                readinessFindings.map((finding) => (
+                  <Chip
+                    key={finding.id}
+                    size="small"
+                    label={finding.label}
+                    color={
+                      finding.severity === 'POSITIVE'
+                        ? 'success'
+                        : finding.severity === 'CRITICAL'
+                          ? 'error'
+                          : 'warning'
+                    }
+                  />
+                ))
+              ) : (
+                <Typography color="text.secondary">
+                  No rationale selections have been published.
+                </Typography>
+              )}
             </Stack>
           </SectionCard>
           <SectionCard variant="operational">
@@ -751,34 +1060,76 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
             {actions.length ? (
               <Stack spacing={1}>
                 {actions.map((action) => (
-                  <Stack key={action.id} direction={{ xs: 'column', sm: 'row' }}
-                    sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 2, gap: 1, alignItems: { sm: 'center' } }}>
-                    <CheckCircleRounded color={action.status === 'COMPLETED' ? 'success' : 'disabled'} />
+                  <Stack
+                    key={action.id}
+                    direction={{ xs: 'column', sm: 'row' }}
+                    sx={{
+                      p: 1.5,
+                      border: 1,
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      gap: 1,
+                      alignItems: { sm: 'center' },
+                    }}
+                  >
+                    <CheckCircleRounded
+                      color={action.status === 'COMPLETED' ? 'success' : 'disabled'}
+                    />
                     <Box sx={{ flex: 1 }}>
                       <Typography sx={{ fontWeight: 850 }}>{action.title}</Typography>
-                      {action.description && <Typography variant="body2" color="text.secondary">{action.description}</Typography>}
+                      {action.description && (
+                        <Typography variant="body2" color="text.secondary">
+                          {action.description}
+                        </Typography>
+                      )}
                     </Box>
                     <Chip size="small" label={action.status.replaceAll('_', ' ')} />
                   </Stack>
                 ))}
               </Stack>
-            ) : <Typography color="text.secondary">No readiness actions have been assigned.</Typography>}
+            ) : (
+              <Typography color="text.secondary">
+                No readiness actions have been assigned.
+              </Typography>
+            )}
           </SectionCard>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 7 }}>
               <SectionCard>
                 <Typography variant="h3">Action progress</Typography>
                 <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap', mt: 1.5 }}>
-                  <Chip label={`${actionCounts.completed} completed`} color="success" variant="outlined" />
+                  <Chip
+                    label={`${actionCounts.completed} completed`}
+                    color="success"
+                    variant="outlined"
+                  />
                   <Chip label={`${actionCounts.active} active`} color="info" variant="outlined" />
                   <Chip label={`${actionCounts.paused} paused`} variant="outlined" />
-                  <Chip label={`${actionCounts.blocked} blocked`} color="error" variant="outlined" />
+                  <Chip
+                    label={`${actionCounts.blocked} blocked`}
+                    color="error"
+                    variant="outlined"
+                  />
                 </Stack>
-                <Box sx={{ mt: 2, p: 1.75, borderRadius: 2, bgcolor: 'rgba(69, 215, 240, .07)', border: '1px solid rgba(69, 215, 240, .2)' }}>
-                  <Typography variant="overline" color="text.secondary">Next milestone</Typography>
-                  <Typography sx={{ fontWeight: 900, mt: 0.35 }}>{nextAction?.title ?? 'No next action assigned'}</Typography>
+                <Box
+                  sx={{
+                    mt: 2,
+                    p: 1.75,
+                    borderRadius: 2,
+                    bgcolor: 'rgba(69, 215, 240, .07)',
+                    border: '1px solid rgba(69, 215, 240, .2)',
+                  }}
+                >
+                  <Typography variant="overline" color="text.secondary">
+                    Next milestone
+                  </Typography>
+                  <Typography sx={{ fontWeight: 900, mt: 0.35 }}>
+                    {nextAction?.title ?? 'No next action assigned'}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
-                    {nextAction ? `${nextAction.description ?? 'Complete the next assigned action.'}${nextAction.dueAt ? ` · Due ${new Date(nextAction.dueAt).toLocaleDateString()}` : ''}` : 'Your consultant has not assigned another milestone.'}
+                    {nextAction
+                      ? `${nextAction.description ?? 'Complete the next assigned action.'}${nextAction.dueAt ? ` · Due ${new Date(nextAction.dueAt).toLocaleDateString()}` : ''}`
+                      : 'Your consultant has not assigned another milestone.'}
                   </Typography>
                 </Box>
               </SectionCard>
@@ -786,19 +1137,49 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
             <Grid size={{ xs: 12, md: 5 }}>
               <SectionCard>
                 <Typography variant="h3">Goal and application cycle</Typography>
-                <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>Primary goal</Typography>
-                <Typography sx={{ fontWeight: 900 }}>{primaryGoal ? (goalNames[primaryGoal.goalType] ?? primaryGoal.goalType) : 'No primary goal selected'}</Typography>
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  sx={{ display: 'block', mt: 1.5 }}
+                >
+                  Primary goal
+                </Typography>
+                <Typography sx={{ fontWeight: 900 }}>
+                  {primaryGoal
+                    ? (goalNames[primaryGoal.goalType] ?? primaryGoal.goalType)
+                    : 'No primary goal selected'}
+                </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  {selectedOutcome === 'APPLY' ? 'The current recommendation supports advancing this goal.' : selectedOutcome === 'PREPARE' ? 'Preparation actions should be completed before advancing this goal.' : 'Application activity should wait while the profile is strengthened.'}
+                  {selectedOutcome === 'APPLY'
+                    ? 'The current recommendation supports advancing this goal.'
+                    : selectedOutcome === 'PREPARE'
+                      ? 'Preparation actions should be completed before advancing this goal.'
+                      : 'Application activity should wait while the profile is strengthened.'}
                 </Typography>
                 <Divider sx={{ my: 2 }} />
                 {connectedCycle ? (
                   <>
-                    <Typography sx={{ fontWeight: 900 }}>Cycle {connectedCycle.cycleNumber}</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.4 }}>Current stage: {connectedCycle.currentStage.replaceAll('_', ' ').toLowerCase()}</Typography>
+                    <Typography sx={{ fontWeight: 900 }}>
+                      Cycle {connectedCycle.cycleNumber}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.4 }}>
+                      Current stage:{' '}
+                      {connectedCycle.currentStage.replaceAll('_', ' ').toLowerCase()}
+                    </Typography>
                   </>
-                ) : <Typography color="text.secondary">No application cycle is currently connected.</Typography>}
-                <Button component={Link} to="/client/application-rounds" variant="outlined" sx={{ mt: 1.5 }}>View Credit Applications</Button>
+                ) : (
+                  <Typography color="text.secondary">
+                    No application cycle is currently connected.
+                  </Typography>
+                )}
+                <Button
+                  component={Link}
+                  to="/client/application-rounds"
+                  variant="outlined"
+                  sx={{ mt: 1.5 }}
+                >
+                  View Credit Applications
+                </Button>
               </SectionCard>
             </Grid>
           </Grid>

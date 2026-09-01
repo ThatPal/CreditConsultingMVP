@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { hashPassword } from '../auth/security.js';
 import { createPrisma } from '../lib/prisma.js';
 import { createLocalDocumentStorage } from '../storage/documentStorage.js';
+import { reconcileSupportAttention } from '../attention/attentionService.js';
 
 config({ path: '../../.env' });
 const url = process.env.DATABASE_URL;
@@ -224,6 +225,49 @@ try {
         },
       },
     });
+  const queueScenarios = [
+    ['Urgent identity verification blocked', 'URGENT', null, 'WAITING_ON_SUPPORT'],
+    ['Document upload needs consultant review', 'HIGH', consultant.id, 'WAITING_ON_SUPPORT'],
+    ['Application deadline question', 'URGENT', consultant.id, 'OPEN'],
+    ['Billing clarification requested', 'NORMAL', null, 'WAITING_ON_SUPPORT'],
+    ['Credit report account mismatch', 'HIGH', null, 'OPEN'],
+    ['Business credit next-step question', 'NORMAL', consultant.id, 'WAITING_ON_SUPPORT'],
+    ['Address history correction', 'NORMAL', null, 'WAITING_ON_SUPPORT'],
+    ['Readiness review timing', 'NORMAL', consultant.id, 'OPEN'],
+    ['Secured card recommendation question', 'HIGH', null, 'WAITING_ON_SUPPORT'],
+    ['Loan application document question', 'HIGH', consultant.id, 'OPEN'],
+    ['Profile update assistance', 'NORMAL', null, 'WAITING_ON_SUPPORT'],
+    ['Dispute result follow-up', 'URGENT', null, 'OPEN'],
+    ['Resolved demo history', 'NORMAL', consultant.id, 'RESOLVED'],
+  ] as const;
+  for (const [subject, priority, assignedToUserId, targetStatus] of queueScenarios) {
+    let scenario = await prisma.supportCase.findFirst({ where: { clientId: client.id, subject } });
+    scenario ??= await prisma.supportCase.create({
+      data: {
+        clientId: client.id,
+        createdByUserId: clientUser.id,
+        assignedToUserId,
+        category: 'OTHER',
+        priority,
+        status: 'WAITING_ON_SUPPORT',
+        subject,
+        lastMessageAt: new Date(
+          Date.now() - queueScenarios.findIndex((entry) => entry[0] === subject) * 3600000,
+        ),
+        messages: {
+          create: { authorUserId: clientUser.id, body: `Seeded Work Queue scenario: ${subject}.` },
+        },
+      },
+    });
+    await reconcileSupportAttention(prisma, scenario);
+    if (targetStatus === 'RESOLVED') {
+      scenario = await prisma.supportCase.update({
+        where: { id: scenario.id },
+        data: { status: 'RESOLVED', resolvedAt: new Date() },
+      });
+      await reconcileSupportAttention(prisma, scenario);
+    }
+  }
   await prisma.notification.upsert({
     where: {
       userId_semanticKey: {
