@@ -142,5 +142,5 @@ A third application of the same event returns `DUPLICATE_EVENT`; all successful 
 - Focused provider/payment transaction and route gate: **PASS**, 9/9 across 3 files.
 - API typecheck: **PASS**.
 - Workspace lint: **PASS**.
-- Final payment-risk GitHub CI: **PENDING** at C1 report-commit time; final head, result, and link are supplied in the handoff after the exact-boundary run.
+- Final payment-risk GitHub CI: **PASS** — [run `33565191060`](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33565191060) completed the repository CI gate at exact C1 implementation head `83ad90bb5159b829718e0312198510c35ab35386`.
 - The rapid branch remains unmerged. Sprint 5.3 was not started.
