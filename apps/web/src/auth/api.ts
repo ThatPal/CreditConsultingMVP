@@ -1,4 +1,5 @@
 import { webEnv } from '../config/env';
+import { signalSessionLoss } from './sessionLoss';
 
 export type CurrentUser = {
   userId: string;
@@ -18,6 +19,12 @@ export type CurrentUser = {
 
 type ApiErrorBody = { error?: { message?: string }; message?: string };
 
+async function requestError(response: Response, fallback: string) {
+  const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+  if (response.status === 401) signalSessionLoss();
+  return new ApiRequestError(body.error?.message ?? body.message ?? fallback, response.status);
+}
+
 export class ApiRequestError extends Error {
   constructor(
     message: string,
@@ -34,11 +41,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-    throw new ApiRequestError(
-      body.error?.message ?? body.message ?? 'Something went wrong. Please try again.',
-      response.status,
-    );
+    throw await requestError(response, 'Something went wrong. Please try again.');
   }
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
 }
@@ -59,8 +62,7 @@ export async function apiFileRequest<T>(
     body: file,
   });
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-    throw new Error(body.error?.message ?? 'The file could not be uploaded. Please try again.');
+    throw await requestError(response, 'The file could not be uploaded. Please try again.');
   }
   return (await response.json()) as T;
 }
@@ -68,8 +70,7 @@ export async function apiFileRequest<T>(
 export async function apiBlobRequest(path: string): Promise<Blob> {
   const response = await fetch(`${webEnv.VITE_API_URL}${path}`, { credentials: 'include' });
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-    throw new Error(body.error?.message ?? 'The document could not be opened.');
+    throw await requestError(response, 'The document could not be opened.');
   }
   return response.blob();
 }

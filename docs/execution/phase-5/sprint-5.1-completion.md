@@ -66,7 +66,7 @@ No payment-provider checkout, fake payment success, refund/dispute workflow, sch
 - Changed-workspace lint: **PASS**.
 - API and Web production build: **PASS**. The established non-blocking Vite large-chunk advisory remains.
 - Initial risk-based GitHub CI: **BOUNDED FAILURE** — run `33555768251` proved install, clean migration, double seed execution, lint, and typecheck, then exposed one stale seed-result contract assertion after the intentional addition of `serviceProducts: 3`. The assertion was corrected and its focused seed/commerce gate passed 9/9.
-- Corrective risk-based GitHub CI: **PENDING** at correction-report commit time; final task handoff supplies the run result and URL.
+- Corrective risk-based GitHub CI: **PASS** — run `33556259901` completed the clean migration, double seed, lint, typecheck, full test, and build workflow successfully.
 
 ## Acceptance proofs
 
@@ -105,3 +105,34 @@ Staff routes retain the accepted QR-based MFA enrollment and step-up flow. The l
 ## Final handoff
 
 The exact final Sprint 5.1 SHA and successful risk-based CI evidence are supplied in the task handoff after the branch push. No merge into `ai-enabled` is performed.
+
+## Sprint 5.1-C1 — Expired Session Redirect & Return-Path Recovery
+
+### Root cause and correction
+
+The server correctly rejected expired or revoked sessions, but the SPA request helpers only threw page-level errors. `AuthProvider` retained the last successful `current-user` query, so `ProtectedRoute` continued treating the shell as authenticated until a full browser refresh re-ran `/api/me`.
+
+C1 adds one request-layer session-loss signal shared by JSON, file-upload, and blob/download helpers. An authoritative 401 is published to the mounted auth boundary; `AuthProvider` acts only when a current authenticated user exists, clears that identity, cancels/removes protected queries while retaining explicitly public cache, and causes realtime ownership to close through the existing user-dependent lifecycle. `ProtectedRoute` then performs the canonical Login transition with the exact current pathname, query, and hash in navigation state. Login and staff MFA reuse `safeReturnPath`; role-mismatched recovery falls back through the existing protected-route role home rather than exposing another shell.
+
+Expected unauthenticated/authentication 401 responses do not loop because no authenticated user is armed at Login, password recovery, public intake, or pre-session MFA challenge. A 403, network failure, or 5xx never emits session loss. Staff recovery still traverses the accepted MFA enrollment/challenge and downstream step-up gates; C1 bypasses none of them.
+
+### Focused proofs
+
+- Web request/auth/router/MFA gate: **PASS**, 30/30 across 5 files.
+- Existing API auth/session/MFA/authorization regression: **PASS**, 23/23 across 4 files.
+- Cached Client plus protected API 401: **PASS** — stale identity and protected cache clear, no page-level secure-workspace error remains, and `/app/services/active?view=credits#ledger` is preserved exactly.
+- Client home 401: **PASS** — Login receives `/app` and successful login can restore it.
+- Consultant/Admin recovery: **PASS** — saved staff routes compose through MFA; an incompatible role falls back to its own canonical home.
+- JSON/file/blob 401 convergence: **PASS** — all three helpers emit the same canonical signal and retain typed status errors.
+- 403 and 500 safety: **PASS** — authenticated state and protected cache remain intact.
+- Invalid Login 401 safety: **PASS** — Login remains authoritative without an expiry redirect loop.
+- Cache/realtime isolation: **PASS** — protected queries are removed; explicitly public cache is preserved; the user transition closes the existing realtime subscription effect.
+- Open redirect defense: **PASS** — the existing validated internal return-path tests remain in the focused gate, including query/hash preservation and external/double-slash/backslash rejection.
+
+### Boundary and CI
+
+- C1 base: `761bd63c592a2976f54d43d1cf1194f14fbea0c6`.
+- C1 final boundary: this C1 addendum commit.
+- Final risk-based GitHub CI: **PENDING** at addendum commit time; final task handoff supplies the completed run and URL.
+- Review environment remains the existing Credit-only block on Web `5184`, API `3007`, PostgreSQL `5433`, Redis `6380`, and database `credit_strategy_phase4_5_block`.
+- Commerce semantics were not changed. Sprint 5.2 was not started, and the rapid branch was not merged.

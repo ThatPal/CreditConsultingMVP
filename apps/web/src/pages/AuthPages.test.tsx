@@ -22,7 +22,9 @@ vi.mock('../auth/AuthProvider', () => ({ useAuth: () => authState }));
 
 function LocationProbe() {
   const location = useLocation();
-  return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
+  return (
+    <div data-testid="location">{`${location.pathname}${location.search}${location.hash}`}</div>
+  );
 }
 
 function renderPage(element: ReactNode, entry: string | { pathname: string; state?: unknown }) {
@@ -82,7 +84,9 @@ describe('client authentication pages', () => {
     fireEvent.change(screen.getByLabelText(/confirm password/i), {
       target: { value: 'DemoAccess2026!' },
     });
-    fireEvent.submit(screen.getByRole('button', { name: /set up authenticator/i }).closest('form')!);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /set up authenticator/i }).closest('form')!,
+    );
     expect(await screen.findByTitle(/authenticator setup qr code/i)).toBeInTheDocument();
     expect(screen.getByText('BACKUP-ONE')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /use a setup key/i }));
@@ -119,7 +123,9 @@ describe('client authentication pages', () => {
   });
 
   test('verification-required screen recovers from invalid links with bounded resend states', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(() => response({ status: true }));
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(() => response({ status: true }));
     renderPage(<VerifyEmailPage />, '/verify-email?status=expired');
     expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'client@example.com' } });
@@ -145,6 +151,68 @@ describe('client authentication pages', () => {
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent('/client/goals?tab=next'),
     );
+  });
+
+  test('login restores the exact saved Client route including query and hash', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockImplementationOnce(() => response({}))
+      .mockImplementationOnce(() =>
+        response({
+          user: {
+            role: 'CLIENT',
+            status: 'ACTIVE',
+            userId: 'u',
+            clientId: 'c',
+          },
+        }),
+      );
+    renderPage(<LoginPage />, {
+      pathname: '/login',
+      state: { from: '/app/services/active?view=credits#ledger' },
+    });
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'client@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'valid-password' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Sign in' }).closest('form')!);
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/app/services/active?view=credits#ledger',
+      ),
+    );
+  });
+
+  test('staff saved routes compose through challenge MFA before recovery', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
+      response({ twoFactorRedirect: true }),
+    );
+    renderPage(<LoginPage />, {
+      pathname: '/login',
+      state: { from: '/admin/services?active=true#catalog' },
+    });
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'admin@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'valid-password' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Sign in' }).closest('form')!);
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/mfa?mode=challenge&returnTo=%2Fadmin%2Fservices%3Factive%3Dtrue%23catalog',
+      ),
+    );
+  });
+
+  test('successful staff MFA restores the validated saved route', async () => {
+    authState.user = { role: 'ADMIN', userId: 'admin-one', status: 'ACTIVE' };
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() => response({ status: true }));
+    renderPage(
+      <StaffMfaPage />,
+      '/mfa?mode=challenge&returnTo=%2Fadmin%2Fservices%3Factive%3Dtrue%23catalog',
+    );
+    fireEvent.change(screen.getByLabelText(/six-digit code/i), { target: { value: '123456' } });
+    fireEvent.submit(screen.getByRole('button', { name: /verify and continue/i }).closest('form')!);
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/admin/services?active=true#catalog',
+      ),
+    );
+    expect(authState.refresh).toHaveBeenCalledOnce();
   });
 
   test('login exposes the verification recovery action', async () => {
