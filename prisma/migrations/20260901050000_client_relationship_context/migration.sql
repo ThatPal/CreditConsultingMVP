@@ -1,0 +1,10 @@
+ALTER TYPE "ClientBusinessStatus" ADD VALUE IF NOT EXISTS 'ARCHIVED';
+ALTER TYPE "FinancialRelationshipStatus" ADD VALUE IF NOT EXISTS 'CLOSED';
+
+ALTER TABLE "ClientBusiness"
+  ADD COLUMN "version" INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN "archivedAt" TIMESTAMP(3);
+
+ALTER TABLE "ClientFinancialRelationship"
+  ADD COLUMN "version" INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN "closedAt" TIMESTAMP(3);

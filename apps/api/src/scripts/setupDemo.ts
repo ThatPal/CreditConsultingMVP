@@ -124,6 +124,98 @@ try {
     },
     update: { assignedConsultantId: consultant.id, status: 'ACTIVE' },
   });
+  await prisma.staffClientAssignment.upsert({
+    where: { staffUserId_clientId: { staffUserId: consultant.id, clientId: client.id } },
+    create: { staffUserId: consultant.id, clientId: client.id },
+    update: { deactivatedAt: null },
+  });
+  const seedBusiness = async (legalName: string, displayName: string, entityType: string) => {
+    const existing = await prisma.clientBusiness.findFirst({
+      where: { clientId: client.id, legalName },
+    });
+    return existing
+      ? prisma.clientBusiness.update({
+          where: { id: existing.id },
+          data: { displayName, entityType, status: 'ACTIVE', archivedAt: null },
+        })
+      : prisma.clientBusiness.create({
+          data: { clientId: client.id, legalName, displayName, entityType, status: 'ACTIVE' },
+        });
+  };
+  const studio = await seedBusiness('Blake Strategy Studio LLC', 'Blake Strategy Studio', 'LLC');
+  await seedBusiness('Jordan Blake Holdings Inc', 'Blake Holdings', 'CORPORATION');
+  const seedRelationship = async (
+    institutionName: string,
+    relationshipType: 'CHECKING' | 'SAVINGS' | 'BUSINESS_BANKING',
+    clientBusinessId: string | null,
+    status: 'ACTIVE' | 'CLOSED',
+  ) => {
+    const existing = await prisma.clientFinancialRelationship.findFirst({
+      where: { clientId: client.id, institutionName, relationshipType },
+    });
+    const data = {
+      institutionName,
+      relationshipType,
+      clientBusinessId,
+      approximateTenure: status === 'ACTIVE' ? 'About 3 years' : 'About 1 year',
+      clientNote: 'High-level relationship context only.',
+      status,
+      closedAt: status === 'CLOSED' ? new Date(Date.now() - 31_536_000_000) : null,
+    } as const;
+    return existing
+      ? prisma.clientFinancialRelationship.update({ where: { id: existing.id }, data })
+      : prisma.clientFinancialRelationship.create({
+          data: { clientId: client.id, source: 'CLIENT', ...data },
+        });
+  };
+  await seedRelationship('Community Credit Union', 'CHECKING', null, 'ACTIVE');
+  await seedRelationship('Regional Business Bank', 'BUSINESS_BANKING', studio.id, 'ACTIVE');
+  await seedRelationship('Former Savings Institution', 'SAVINGS', null, 'CLOSED');
+  for (let index = 1; index <= 24; index += 1) {
+    const email = `client-directory-${String(index).padStart(2, '0')}@credit.local`;
+    const directoryUser = await prisma.user.upsert({
+      where: { email },
+      create: {
+        email,
+        name: `Synthetic Client ${index}`,
+        emailVerified: true,
+        passwordHash,
+        role: 'CLIENT',
+        status: 'ACTIVE',
+      },
+      update: { status: 'ACTIVE', role: 'CLIENT' },
+    });
+    const directoryClient = await prisma.client.upsert({
+      where: { userId: directoryUser.id },
+      create: {
+        userId: directoryUser.id,
+        firstName: 'Synthetic',
+        lastName: `Client ${String(index).padStart(2, '0')}`,
+        termsAcceptedAt: new Date(),
+        timezone: index % 2 ? 'America/New_York' : 'America/Chicago',
+      },
+      update: { status: 'ACTIVE' },
+    });
+    await prisma.staffClientAssignment.upsert({
+      where: { staffUserId_clientId: { staffUserId: consultant.id, clientId: directoryClient.id } },
+      create: { staffUserId: consultant.id, clientId: directoryClient.id },
+      update: { deactivatedAt: null },
+    });
+    if (index === 2) {
+      const existing = await prisma.clientBusiness.findFirst({
+        where: { clientId: directoryClient.id, legalName: 'Synthetic One Business LLC' },
+      });
+      if (!existing)
+        await prisma.clientBusiness.create({
+          data: {
+            clientId: directoryClient.id,
+            legalName: 'Synthetic One Business LLC',
+            displayName: 'One Business',
+            entityType: 'LLC',
+          },
+        });
+    }
+  }
   await prisma.clientGoal.upsert({
     where: {
       clientId_goalType_scope: { clientId: client.id, goalType: 'ZERO_APR_CREDIT', scope: 'BOTH' },
@@ -344,7 +436,8 @@ try {
   for (let index = 1; index <= 24; index += 1) {
     const displayFileName = `${documentNames[(index - 1) % documentNames.length]} ${String(index).padStart(2, '0')}.pdf`;
     const storageKey = `documents/${client.id}/pm1-volume-${String(index).padStart(2, '0')}.pdf`;
-    if (!(await documentStorage.read(storageKey))) await documentStorage.put(storageKey, documentContent);
+    if (!(await documentStorage.read(storageKey)))
+      await documentStorage.put(storageKey, documentContent);
     await prisma.document.upsert({
       where: {
         storageProvider_storageKey: { storageProvider: 'LOCAL_DISK', storageKey },
@@ -396,7 +489,18 @@ try {
         clientId: client.id,
         reviewId: review.id,
         accounts: ['client@credit.local', 'consultant@credit.local', 'admin@credit.local'],
-        reviewVolume: { documents: 25, supportCases: queueScenarios.length + 1, notifications: 31 },
+        reviewVolume: {
+          documents: 25,
+          supportCases: queueScenarios.length + 1,
+          notifications: 31,
+          clientDirectory: 25,
+        },
+        clientContextScenarios: [
+          'personal-only client',
+          'one-business client',
+          'multiple businesses',
+          'active and closed financial relationships',
+        ],
       },
       null,
       2,

@@ -27,11 +27,11 @@ import {
 } from './pages/AuthPages';
 import {
   ClientOverviewPage,
-  ClientsPage,
   ConsultantDashboardPage,
   ReadinessPage,
   WorkQueuePage,
 } from './pages/PlatformPages';
+import { Client360Page, ClientsPage } from './pages/ClientContextPages';
 import {
   ClientReviewPage,
   ConsultantReviewsPage,
@@ -120,6 +120,7 @@ export function App() {
           <Route index element={<ConsultantDashboardPage />} />
           <Route path="work-queue" element={<WorkQueuePage />} />
           <Route path="clients" element={<ClientsPage />} />
+          <Route path="clients/:clientId" element={<Client360Page />} />
           <Route path="reviews" element={<ConsultantReviewsPage />} />
           <Route path="reviews/:clientId/:reviewId" element={<ConsultantReviewWorkspacePage />} />
           <Route path="readiness" element={<ReadinessPage consultant />} />

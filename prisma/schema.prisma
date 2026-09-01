@@ -147,11 +147,13 @@ enum DocumentStatus {
 enum ClientBusinessStatus {
   ACTIVE
   INACTIVE
+  ARCHIVED
 }
 
 enum FinancialRelationshipStatus {
   ACTIVE
   INACTIVE
+  CLOSED
 }
 
 enum EntitlementStatus {
@@ -1253,6 +1255,8 @@ model ClientBusiness {
   formedAt               DateTime?
   ownershipPercent       Decimal?                      @db.Decimal(5, 2)
   status                 ClientBusinessStatus          @default(ACTIVE)
+  version                Int                           @default(1)
+  archivedAt             DateTime?
   createdAt              DateTime                      @default(now())
   updatedAt              DateTime                      @updatedAt
   client                 Client                        @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -1270,6 +1274,8 @@ model ClientFinancialRelationship {
   relationshipStartedAt DateTime?
   approximateTenure     String?
   status                FinancialRelationshipStatus @default(ACTIVE)
+  version               Int                         @default(1)
+  closedAt              DateTime?
   clientNote            String?
   source                String?
   lastConfirmedAt       DateTime?

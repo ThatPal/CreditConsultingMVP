@@ -5,6 +5,7 @@ import { apiRequest, type CurrentUser } from '../auth/api';
 import { useAuth } from '../auth/AuthProvider';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { ClientContextSections } from './ClientContextSections';
 
 export function AccountPage() {
   const { user, refresh } = useAuth();
@@ -13,8 +14,17 @@ export function AccountPage() {
   const [saving, setSaving] = useState(false);
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const timezoneOptions = (() => {
-    const supported = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'UTC'];
-    return Array.from(new Set([...supported, browserTimezone, user?.timezone].filter((value): value is string => Boolean(value)))).sort();
+    const supported =
+      typeof Intl.supportedValuesOf === 'function'
+        ? Intl.supportedValuesOf('timeZone')
+        : ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'UTC'];
+    return Array.from(
+      new Set(
+        [...supported, browserTimezone, user?.timezone].filter((value): value is string =>
+          Boolean(value),
+        ),
+      ),
+    ).sort();
   })();
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,7 +82,15 @@ export function AccountPage() {
               defaultValue={user?.timezone ?? browserTimezone}
               autoHighlight
               disableClearable
-              renderInput={(params) => <TextField {...params} name="timezone" label="Timezone" helperText={`Browser timezone: ${browserTimezone}`} required />}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  name="timezone"
+                  label="Timezone"
+                  helperText={`Browser timezone: ${browserTimezone}`}
+                  required
+                />
+              )}
             />
             <Button type="submit" variant="contained" disabled={saving}>
               {saving ? 'Saving…' : 'Save changes'}
@@ -80,6 +98,7 @@ export function AccountPage() {
           </Stack>
         </Stack>
       </SectionCard>
+      <ClientContextSections />
       <SectionCard>
         <Stack spacing={1.5}>
           <Typography variant="h3">Security</Typography>

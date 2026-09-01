@@ -33,6 +33,7 @@ import {
 } from './storage/documentStorage.js';
 import { createIntegrationRouter, createNotificationRouter } from './notifications/routes.js';
 import type { EmailProvider } from './notifications/emailProvider.js';
+import { createClientContextRouter } from './clientContext/routes.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -125,6 +126,7 @@ export function createApp(
       const authorization = createPrismaAuthorizationService(prisma);
       const denialRecorder = createPrismaAuthorizationDenialRecorder(prisma);
       app.use('/api/v1/notifications', createNotificationRouter(prisma));
+      app.use('/api/v1', createClientContextRouter(prisma, authorization, denialRecorder));
       if (emailProvider)
         app.use(
           '/api/v1/integrations',
