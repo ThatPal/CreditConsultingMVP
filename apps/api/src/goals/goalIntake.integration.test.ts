@@ -7,7 +7,9 @@ import { errorHandler } from '../http/errors.js';
 import { createPrisma } from '../lib/prisma.js';
 import {
   bindAnonymousGoalIntake,
+  bindClaimedGoalIntake,
   cleanupExpiredGoalIntakes,
+  prepareGoalIntakeRegistrationClaim,
   createGoalIntakePublicRouter,
 } from './goalIntake.js';
 import { createPrismaGoalStore } from './prismaGoalStore.js';
@@ -42,6 +44,14 @@ async function intake(rawToken: string, expiresAt = new Date(Date.now() + 3_600_
       scope: 'PERSONAL',
       targetAmount: 75_000,
       allowAnnualFee: false,
+      cardTypePreference: 'UNSECURED_PREFERRED',
+      offerPreferences: ['ZERO_APR', 'BALANCE_TRANSFER'],
+      feePreference: 'PREFER_NO_FEE_OPEN',
+      preferenceNote: 'Travel rewards are useful.',
+      firstName: 'Goal',
+      lastName: 'Prospect',
+      email: `prospect-${rawToken[0]?.toLowerCase()}@example.com`,
+      phone: '+12025550123',
       expiresAt,
     },
   });
@@ -52,6 +62,7 @@ describe('goal-first intake binding', () => {
     await prisma.outboxEvent.deleteMany({ where: { eventType: 'client.goal.changed' } });
     await prisma.auditEvent.deleteMany({ where: { entityType: 'ClientGoal' } });
     await prisma.clientGoalRevision.deleteMany();
+    await prisma.goalIntakeRegistrationClaim.deleteMany();
     await prisma.anonymousGoalIntake.deleteMany();
     await prisma.clientGoal.deleteMany();
     await prisma.client.deleteMany({ where: { user: { email: { startsWith: 'goal-' } } } });
@@ -70,14 +81,35 @@ describe('goal-first intake binding', () => {
       scope: 'PERSONAL',
       targetAmount: 60_000,
       allowAnnualFee: false,
+      cardTypePreference: 'OPEN_TO_SECURED',
+      offerPreferences: ['ZERO_APR', 'BALANCE_TRANSFER', 'REWARDS_POINTS'],
+      feePreference: 'PROMOTIONAL_NO_FEE_ACCEPTABLE',
+      preferenceNote: 'Prefer travel rewards.',
+      firstName: 'Public',
+      lastName: 'Prospect',
+      email: 'public.prospect@example.com',
+      phone: '+12025550124',
     };
     const first = await request(app).post('/goal-intakes').send(draft).expect(201);
     const second = await request(app)
       .post('/goal-intakes')
       .send({ ...draft, targetAmount: 90_000 })
       .expect(201);
+    const beforeMalformed = await prisma.anonymousGoalIntake.count();
+    await request(app)
+      .post('/goal-intakes')
+      .send({ ...draft, feePreference: 'NOT_A_REAL_PREFERENCE' })
+      .expect(400);
+    expect(await prisma.anonymousGoalIntake.count()).toBe(beforeMalformed);
     expect(first.body.token).not.toBe(second.body.token);
     await request(app).get(`/goal-intakes/${first.body.token}`).expect(200);
+    expect(first.body.intake).toMatchObject({
+      cardTypePreference: 'OPEN_TO_SECURED',
+      offerPreferences: ['ZERO_APR', 'BALANCE_TRANSFER', 'REWARDS_POINTS'],
+      feePreference: 'PROMOTIONAL_NO_FEE_ACCEPTABLE',
+      firstName: 'Public',
+      email: 'public.prospect@example.com',
+    });
     await request(app)
       .get(`/goal-intakes/${first.body.token.slice(0, -1)}X`)
       .expect(404);
@@ -175,6 +207,23 @@ describe('goal-first intake binding', () => {
     ).not.toBeNull();
   });
 
+  test('durable registration claims cannot bind stale intake state to an unrelated user', async () => {
+    const record = await intake(token('H'));
+    const intended = await client('claim-intended');
+    const unrelated = await client('claim-unrelated');
+    await prepareGoalIntakeRegistrationClaim(prisma, token('H'), record.email);
+    await prepareGoalIntakeRegistrationClaim(prisma, undefined, record.email);
+
+    await expect(
+      bindClaimedGoalIntake(prisma, record.email, unrelated.client.id, unrelated.user.id),
+    ).resolves.toBeNull();
+    expect(await prisma.clientGoal.count({ where: { clientId: unrelated.client.id } })).toBe(0);
+    await prepareGoalIntakeRegistrationClaim(prisma, token('H'), record.email);
+    await bindClaimedGoalIntake(prisma, record.email, intended.client.id, intended.user.id);
+    expect(await prisma.clientGoal.count({ where: { clientId: intended.client.id } })).toBe(1);
+    expect(await prisma.goalIntakeRegistrationClaim.count()).toBe(0);
+  });
+
   test('governed goal commands are idempotent and reject stale concurrent changes', async () => {
     const identity = await client('commands');
     const store = createPrismaGoalStore(prisma);
@@ -183,6 +232,10 @@ describe('goal-first intake binding', () => {
       scope: 'BOTH' as const,
       targetAmount: 100_000,
       allowAnnualFee: true,
+      cardTypePreference: 'SECURED_DESIRED' as const,
+      offerPreferences: ['ZERO_APR', 'REWARDS_POINTS'] as const,
+      feePreference: 'FEE_ACCEPTABLE' as const,
+      preferenceNote: 'Premium travel is acceptable.',
       priority: 'PRIMARY' as const,
     };
     const command = {
@@ -194,6 +247,12 @@ describe('goal-first intake binding', () => {
     const created = await store.create(identity.client.id, input, command);
     const replay = await store.create(identity.client.id, input, command);
     expect(replay.id).toBe(created.id);
+    expect(created).toMatchObject({
+      cardTypePreference: 'SECURED_DESIRED',
+      offerPreferences: ['ZERO_APR', 'REWARDS_POINTS'],
+      feePreference: 'FEE_ACCEPTABLE',
+      preferenceNote: 'Premium travel is acceptable.',
+    });
     expect(await prisma.clientGoal.count({ where: { clientId: identity.client.id } })).toBe(1);
     expect(
       await prisma.auditEvent.count({ where: { correlationId: command.idempotencyKey } }),
@@ -207,7 +266,12 @@ describe('goal-first intake binding', () => {
     const updated = await store.update(
       identity.client.id,
       created.id,
-      { targetAmount: 125_000, version: created.version },
+      {
+        targetAmount: 125_000,
+        offerPreferences: ['BALANCE_TRANSFER'],
+        feePreference: 'PROMOTIONAL_NO_FEE_ACCEPTABLE',
+        version: created.version,
+      },
       {
         actorId: identity.user.id,
         idempotencyKey: `update-${randomUUID()}`,
@@ -215,6 +279,11 @@ describe('goal-first intake binding', () => {
       },
     );
     expect(updated?.version).toBe(created.version + 1);
+    expect(updated).toMatchObject({
+      offerPreferences: ['BALANCE_TRANSFER'],
+      feePreference: 'PROMOTIONAL_NO_FEE_ACCEPTABLE',
+    });
+    expect(await prisma.clientGoal.count({ where: { clientId: identity.client.id } })).toBe(1);
     await expect(
       store.update(
         identity.client.id,

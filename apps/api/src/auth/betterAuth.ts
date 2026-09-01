@@ -10,11 +10,10 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import type { EmailProvider } from '../notifications/emailProvider.js';
 import { createAuthEmailNotifier } from '../notifications/emailProvider.js';
 import { recordAuthAudit } from './authAudit.js';
-import { bindAnonymousGoalIntake } from '../goals/goalIntake.js';
+import { bindClaimedGoalIntake, prepareGoalIntakeRegistrationClaim } from '../goals/goalIntake.js';
 
 export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: EmailProvider) {
   const email = createAuthEmailNotifier(provider);
-  const pendingGoalIntakes = new Map<string, string>();
   const isTrustedReturnTarget = (value: unknown) => {
     if (typeof value !== 'string') return true;
     if (value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')) return true;
@@ -101,12 +100,12 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
         }
         if (context.path === '/sign-up/email' && body?.authTermsAccepted !== true)
           throw APIError.fromStatus('BAD_REQUEST', { message: 'Terms acceptance is required' });
-        if (
-          context.path === '/sign-up/email' &&
-          typeof body?.email === 'string' &&
-          typeof body.authGoalIntakeToken === 'string'
-        ) {
-          pendingGoalIntakes.set(body.email, body.authGoalIntakeToken);
+        if (context.path === '/sign-up/email' && typeof body?.email === 'string') {
+          await prepareGoalIntakeRegistrationClaim(
+            prisma,
+            typeof body.authGoalIntakeToken === 'string' ? body.authGoalIntakeToken : undefined,
+            body.email,
+          );
           delete body.authGoalIntakeToken;
         }
       }),
@@ -152,11 +151,7 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
       user: {
         create: {
           before: async (user) => {
-            const { authGoalIntakeToken, ...persisted } = user as typeof user & {
-              authGoalIntakeToken?: string;
-            };
-            if (authGoalIntakeToken) pendingGoalIntakes.set(user.email, authGoalIntakeToken);
-            return { data: { ...persisted, name: user.name.trim() } };
+            return { data: { ...user, name: user.name.trim() } };
           },
           after: async (user) => {
             const values = user as typeof user & {
@@ -192,10 +187,7 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
                 metadata: { provider: 'credential' },
               },
             });
-            const goalIntakeToken = pendingGoalIntakes.get(user.email);
-            pendingGoalIntakes.delete(user.email);
-            if (goalIntakeToken)
-              await bindAnonymousGoalIntake(prisma, goalIntakeToken, client.id, user.id);
+            await bindClaimedGoalIntake(prisma, user.email, client.id, user.id);
           },
         },
         update: {

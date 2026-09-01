@@ -4,22 +4,34 @@ import { z } from 'zod';
 import { requireAuth, requireRole } from '../auth/middleware.js';
 import { AppError } from '../http/errors.js';
 import type { GoalService } from './service.js';
-const schema = z.object({
-  goalType: z.enum([
-    'ZERO_APR_CREDIT',
-    'TOTAL_AVAILABLE_CREDIT',
-    'BUSINESS_CREDIT',
-    'PERSONAL_CREDIT',
-    'BALANCE_TRANSFER_CAPACITY',
-    'EXISTING_LIMIT_INCREASES',
-    'REWARDS_POINTS_PORTFOLIO',
-  ]),
-  scope: z.enum(['PERSONAL', 'BUSINESS', 'BOTH']),
-  targetAmount: z.number().positive().max(100_000_000).nullable().optional(),
-  allowAnnualFee: z.boolean().optional(),
-  priority: z.enum(['PRIMARY', 'SECONDARY']),
-});
+const schema = z
+  .object({
+    goalType: z.literal('TOTAL_AVAILABLE_CREDIT'),
+    scope: z.enum(['PERSONAL', 'BUSINESS', 'BOTH']),
+    targetAmount: z.number().int().min(5_000).max(250_000),
+    allowAnnualFee: z.boolean().optional(),
+    cardTypePreference: z.enum([
+      'UNSECURED_PREFERRED',
+      'OPEN_TO_SECURED',
+      'SECURED_DESIRED',
+      'NO_PREFERENCE',
+    ]),
+    offerPreferences: z
+      .array(z.enum(['ZERO_APR', 'BALANCE_TRANSFER', 'REWARDS_POINTS']))
+      .max(3)
+      .transform((values) => [...new Set(values)]),
+    feePreference: z.enum([
+      'NO_ANNUAL_FEE_ONLY',
+      'PROMOTIONAL_NO_FEE_ACCEPTABLE',
+      'PREFER_NO_FEE_OPEN',
+      'FEE_ACCEPTABLE',
+    ]),
+    preferenceNote: z.string().trim().max(500).nullable().optional(),
+    priority: z.literal('PRIMARY'),
+  })
+  .strict();
 const updateSchema = schema
+  .omit({ goalType: true, priority: true })
   .partial()
   .extend({
     version: z.number().int().positive(),

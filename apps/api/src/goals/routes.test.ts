@@ -15,6 +15,10 @@ const record = {
   currentAmount: null,
   version: 1,
   allowAnnualFee: false,
+  cardTypePreference: 'NO_PREFERENCE' as const,
+  offerPreferences: [],
+  feePreference: 'NO_ANNUAL_FEE_ONLY' as const,
+  preferenceNote: null,
   priority: 'PRIMARY' as const,
   status: 'ACTIVE' as const,
   achievedAt: null,
@@ -68,6 +72,9 @@ describe('goal route authorization', () => {
       scope: 'PERSONAL',
       targetAmount: 50_000,
       priority: 'PRIMARY',
+      cardTypePreference: 'NO_PREFERENCE',
+      offerPreferences: [],
+      feePreference: 'NO_ANNUAL_FEE_ONLY',
     };
     await request(app).post('/api/goals').set('x-test-role', 'CLIENT').send(body).expect(400);
     await request(app)

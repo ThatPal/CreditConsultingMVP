@@ -198,6 +198,14 @@ describe.sequential('Better Auth client authentication', () => {
         scope: 'BOTH',
         targetAmount: 95_000,
         allowAnnualFee: true,
+        cardTypePreference: 'UNSECURED_PREFERRED',
+        offerPreferences: ['ZERO_APR', 'REWARDS_POINTS'],
+        feePreference: 'FEE_ACCEPTABLE',
+        preferenceNote: 'Travel rewards preferred.',
+        firstName: 'Sprint',
+        lastName: 'Client',
+        email: address,
+        phone: null,
         expiresAt: new Date(Date.now() + 3_600_000),
       },
     });
@@ -210,7 +218,13 @@ describe.sequential('Better Auth client authentication', () => {
     });
     expect(created.client?.goals).toHaveLength(1);
     expect(created.client?.goalRevisions).toHaveLength(1);
-    expect(created.client?.goals[0]).toMatchObject({ scope: 'BOTH', allowAnnualFee: true });
+    expect(created.client?.goals[0]).toMatchObject({
+      scope: 'BOTH',
+      cardTypePreference: 'UNSECURED_PREFERRED',
+      offerPreferences: ['ZERO_APR', 'REWARDS_POINTS'],
+      feePreference: 'FEE_ACCEPTABLE',
+    });
+    expect(await prisma.goalIntakeRegistrationClaim.count()).toBe(0);
     expect(
       await prisma.outboxEvent.count({ where: { eventKey: `goal-intake-bound:${intake.id}` } }),
     ).toBe(1);

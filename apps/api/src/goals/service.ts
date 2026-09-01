@@ -9,6 +9,12 @@ const monetary = new Set<GoalType>([
   'EXISTING_LIMIT_INCREASES',
 ]);
 function validate(input: GoalUpdate) {
+  if (input.priority !== undefined && input.priority !== 'PRIMARY')
+    throw new AppError(
+      'VALIDATION_ERROR',
+      400,
+      'Only one canonical primary planning goal is supported',
+    );
   if (
     input.priority === 'PRIMARY' &&
     input.goalType &&

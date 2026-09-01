@@ -9,6 +9,11 @@ export type GoalType =
 export type GoalScope = 'PERSONAL' | 'BUSINESS' | 'BOTH';
 export type GoalPriority = 'PRIMARY' | 'SECONDARY';
 export type GoalStatus = 'ACTIVE' | 'ACHIEVED' | 'PAUSED';
+export type CardTypePreference =
+  'UNSECURED_PREFERRED' | 'OPEN_TO_SECURED' | 'SECURED_DESIRED' | 'NO_PREFERENCE';
+export type GoalOfferPreference = 'ZERO_APR' | 'BALANCE_TRANSFER' | 'REWARDS_POINTS';
+export type FeePreference =
+  'NO_ANNUAL_FEE_ONLY' | 'PROMOTIONAL_NO_FEE_ACCEPTABLE' | 'PREFER_NO_FEE_OPEN' | 'FEE_ACCEPTABLE';
 export type GoalRecord = {
   id: string;
   clientId: string;
@@ -17,6 +22,10 @@ export type GoalRecord = {
   targetAmount: number | null;
   currentAmount: number | null;
   allowAnnualFee: boolean;
+  cardTypePreference: CardTypePreference;
+  offerPreferences: GoalOfferPreference[];
+  feePreference: FeePreference;
+  preferenceNote: string | null;
   priority: GoalPriority;
   status: GoalStatus;
   version: number;
@@ -29,6 +38,10 @@ export type GoalInput = {
   scope: GoalScope;
   targetAmount?: number | null | undefined;
   allowAnnualFee?: boolean | undefined;
+  cardTypePreference: CardTypePreference;
+  offerPreferences: GoalOfferPreference[];
+  feePreference: FeePreference;
+  preferenceNote?: string | null | undefined;
   priority: GoalPriority;
 };
 export type GoalUpdate = {
@@ -37,6 +50,10 @@ export type GoalUpdate = {
   scope?: GoalScope | undefined;
   targetAmount?: number | null | undefined;
   allowAnnualFee?: boolean | undefined;
+  cardTypePreference?: CardTypePreference | undefined;
+  offerPreferences?: GoalOfferPreference[] | undefined;
+  feePreference?: FeePreference | undefined;
+  preferenceNote?: string | null | undefined;
   priority?: GoalPriority | undefined;
   status?: GoalStatus | undefined;
 };

@@ -10,9 +10,9 @@ import {
   FormControlLabel,
   Grid,
   InputAdornment,
+  MenuItem,
   Slider,
   Stack,
-  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -43,29 +43,18 @@ type Goal = {
   targetAmount: number | null;
   currentAmount: number | null;
   allowAnnualFee: boolean;
+  cardTypePreference:
+    'UNSECURED_PREFERRED' | 'OPEN_TO_SECURED' | 'SECURED_DESIRED' | 'NO_PREFERENCE';
+  offerPreferences: ('ZERO_APR' | 'BALANCE_TRANSFER' | 'REWARDS_POINTS')[];
+  feePreference:
+    | 'NO_ANNUAL_FEE_ONLY'
+    | 'PROMOTIONAL_NO_FEE_ACCEPTABLE'
+    | 'PREFER_NO_FEE_OPEN'
+    | 'FEE_ACCEPTABLE';
+  preferenceNote: string | null;
   priority: 'PRIMARY' | 'SECONDARY';
   status: 'ACTIVE' | 'ACHIEVED' | 'PAUSED';
 };
-const additionalGoalOptions: [GoalType, string, string][] = [
-  ['TOTAL_AVAILABLE_CREDIT', 'Increase total available credit', 'Grow overall revolving capacity.'],
-  ['BUSINESS_CREDIT', 'Build business credit', 'Expand business credit capacity.'],
-  ['PERSONAL_CREDIT', 'Build personal credit', 'Expand personal credit capacity.'],
-  [
-    'BALANCE_TRANSFER_CAPACITY',
-    'Create balance-transfer capacity',
-    'Build room for strategic balance transfers.',
-  ],
-  [
-    'EXISTING_LIMIT_INCREASES',
-    'Increase existing limits',
-    'Focus on credit-limit growth with current issuers.',
-  ],
-  [
-    'REWARDS_POINTS_PORTFOLIO',
-    'Build a rewards portfolio',
-    'Develop travel, points, or cash-back value.',
-  ],
-];
 export function GoalsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -97,9 +86,11 @@ export function GoalsPage() {
   const primary = active.find((g) => g.priority === 'PRIMARY') ?? active[0];
   const [target, setTarget] = useState(50000);
   const [scope, setScope] = useState<Goal['scope']>('PERSONAL');
-  const [zeroApr, setZeroApr] = useState(false);
-  const [allowAnnualFee, setAllowAnnualFee] = useState(false);
-  const [selectedAdditional, setSelectedAdditional] = useState<GoalType[]>([]);
+  const [cardTypePreference, setCardTypePreference] =
+    useState<Goal['cardTypePreference']>('NO_PREFERENCE');
+  const [offerPreferences, setOfferPreferences] = useState<Goal['offerPreferences']>([]);
+  const [feePreference, setFeePreference] = useState<Goal['feePreference']>('NO_ANNUAL_FEE_ONLY');
+  const [preferenceNote, setPreferenceNote] = useState('');
   const [message, setMessage] = useState('');
   const review = reviewQuery.data?.review;
   const reviewComplete = review?.status === 'COMPLETE';
@@ -109,19 +100,12 @@ export function GoalsPage() {
     if (primary) {
       setTarget(primary.targetAmount ?? 50000);
       setScope(primary.scope);
-      setZeroApr(primary.goalType === 'ZERO_APR_CREDIT');
-      setAllowAnnualFee(primary.allowAnnualFee);
+      setCardTypePreference(primary.cardTypePreference);
+      setOfferPreferences(primary.offerPreferences);
+      setFeePreference(primary.feePreference);
+      setPreferenceNote(primary.preferenceNote ?? '');
     }
   }, [primary]);
-  useEffect(() => {
-    if (query.data)
-      setSelectedAdditional(
-        query.data.goals
-          .filter((goal) => goal.status === 'ACTIVE' && goal.priority === 'SECONDARY')
-          .map((goal) => goal.goalType)
-          .filter((type) => type !== 'ZERO_APR_CREDIT'),
-      );
-  }, [query.data]);
   const refresh = () => qc.invalidateQueries({ queryKey: ['goals'] });
   const savePrimary = useMutation({
     mutationFn: () =>
@@ -131,10 +115,13 @@ export function GoalsPage() {
             headers: { 'Idempotency-Key': crypto.randomUUID() },
             body: JSON.stringify({
               version: primary.version,
-              goalType: zeroApr ? 'ZERO_APR_CREDIT' : 'TOTAL_AVAILABLE_CREDIT',
               scope,
               targetAmount: target,
-              allowAnnualFee,
+              allowAnnualFee: feePreference !== 'NO_ANNUAL_FEE_ONLY',
+              cardTypePreference,
+              offerPreferences,
+              feePreference,
+              preferenceNote: preferenceNote || null,
               priority: 'PRIMARY',
             }),
           })
@@ -142,10 +129,14 @@ export function GoalsPage() {
             method: 'POST',
             headers: { 'Idempotency-Key': crypto.randomUUID() },
             body: JSON.stringify({
-              goalType: zeroApr ? 'ZERO_APR_CREDIT' : 'TOTAL_AVAILABLE_CREDIT',
+              goalType: 'TOTAL_AVAILABLE_CREDIT',
               scope,
               targetAmount: target,
-              allowAnnualFee,
+              allowAnnualFee: feePreference !== 'NO_ANNUAL_FEE_ONLY',
+              cardTypePreference,
+              offerPreferences,
+              feePreference,
+              preferenceNote: preferenceNote || null,
               priority: 'PRIMARY',
             }),
           }),
@@ -160,46 +151,6 @@ export function GoalsPage() {
         return;
       }
       setMessage('Primary goal updated.');
-    },
-  });
-  const saveAdditional = useMutation({
-    mutationFn: async () => {
-      for (const [goalType] of additionalGoalOptions) {
-        const existing = query.data!.goals.find(
-          (goal) => goal.goalType === goalType && goal.priority === 'SECONDARY',
-        );
-        const selected = selectedAdditional.includes(goalType);
-        if (selected && !existing)
-          await apiRequest('/api/v1/client/goals', {
-            method: 'POST',
-            headers: { 'Idempotency-Key': crypto.randomUUID() },
-            body: JSON.stringify({
-              goalType,
-              scope: 'BOTH',
-              targetAmount: null,
-              priority: 'SECONDARY',
-            }),
-          });
-        else if (selected && existing && existing.status !== 'ACTIVE')
-          await apiRequest(`/api/v1/client/goals/${existing.id}`, {
-            method: 'PATCH',
-            headers: { 'Idempotency-Key': crypto.randomUUID() },
-            body: JSON.stringify({
-              version: existing.version,
-              status: 'ACTIVE',
-              priority: 'SECONDARY',
-            }),
-          });
-        else if (!selected && existing?.status === 'ACTIVE')
-          await apiRequest(`/api/v1/client/goals/${existing.id}/archive`, {
-            method: 'POST',
-            headers: { 'Idempotency-Key': crypto.randomUUID() },
-          });
-      }
-    },
-    onSuccess: async () => {
-      await refresh();
-      setMessage('Additional goals updated.');
     },
   });
   if (query.isLoading) return <LoadingSkeleton />;
@@ -288,35 +239,66 @@ export function GoalsPage() {
             <ToggleButton value="BUSINESS">Business</ToggleButton>
             <ToggleButton value="BOTH">Both</ToggleButton>
           </ToggleButtonGroup>
-          <Stack direction="row" sx={{ alignItems: 'center' }}>
-            <Box>
-              <Typography sx={{ fontWeight: 850 }}>Prioritize 0% APR credit</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Make promotional purchase capacity the primary target.
-              </Typography>
-            </Box>
-            <Switch
-              sx={{ ml: 'auto' }}
-              checked={zeroApr}
-              onChange={(e) => setZeroApr(e.target.checked)}
-            />
-          </Stack>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={allowAnnualFee}
-                onChange={(event) => setAllowAnnualFee(event.target.checked)}
+          <TextField
+            select
+            label="Card type preference"
+            value={cardTypePreference}
+            onChange={(event) =>
+              setCardTypePreference(event.target.value as Goal['cardTypePreference'])
+            }
+          >
+            <MenuItem value="UNSECURED_PREFERRED">Unsecured preferred</MenuItem>
+            <MenuItem value="OPEN_TO_SECURED">Open to secured</MenuItem>
+            <MenuItem value="SECURED_DESIRED">Secured specifically desired</MenuItem>
+            <MenuItem value="NO_PREFERENCE">No preference</MenuItem>
+          </TextField>
+          <Box>
+            <Typography sx={{ fontWeight: 850 }}>Offer preferences</Typography>
+            {(
+              [
+                ['ZERO_APR', '0% APR'],
+                ['BALANCE_TRANSFER', 'Balance transfer'],
+                ['REWARDS_POINTS', 'Rewards / points'],
+              ] as const
+            ).map(([value, label]) => (
+              <FormControlLabel
+                key={value}
+                control={
+                  <Checkbox
+                    checked={offerPreferences.includes(value)}
+                    onChange={() =>
+                      setOfferPreferences((current) =>
+                        current.includes(value)
+                          ? current.filter((item) => item !== value)
+                          : [...current, value],
+                      )
+                    }
+                  />
+                }
+                label={label}
               />
-            }
-            label={
-              <Box>
-                <Typography sx={{ fontWeight: 850 }}>Allow cards with annual fees</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Leave unchecked to consider free cards only.
-                </Typography>
-              </Box>
-            }
-            sx={{ alignItems: 'flex-start', m: 0 }}
+            ))}
+          </Box>
+          <TextField
+            select
+            label="Fee preference"
+            value={feePreference}
+            onChange={(event) => setFeePreference(event.target.value as Goal['feePreference'])}
+          >
+            <MenuItem value="NO_ANNUAL_FEE_ONLY">No annual fee only</MenuItem>
+            <MenuItem value="PROMOTIONAL_NO_FEE_ACCEPTABLE">
+              Promotional / first-year no fee acceptable
+            </MenuItem>
+            <MenuItem value="PREFER_NO_FEE_OPEN">Prefer no fee, but open</MenuItem>
+            <MenuItem value="FEE_ACCEPTABLE">Annual fee acceptable</MenuItem>
+          </TextField>
+          <TextField
+            label="Additional card preference (optional)"
+            multiline
+            minRows={2}
+            value={preferenceNote}
+            slotProps={{ htmlInput: { maxLength: 500 } }}
+            onChange={(event) => setPreferenceNote(event.target.value)}
           />
           <Button
             variant="contained"
@@ -433,53 +415,6 @@ export function GoalsPage() {
               </Button>
             </Grid>
           </Grid>
-        )}
-      </SectionCard>
-      <SectionCard>
-        <Typography variant="h2">Additional goals</Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
-          Select all that apply. Unchecking an active goal pauses it.
-        </Typography>
-        <Stack>
-          {additionalGoalOptions.map(([id, label, description]) => (
-            <FormControlLabel
-              key={id}
-              sx={{ alignItems: 'flex-start', py: 0.75, mx: 0 }}
-              control={
-                <Checkbox
-                  checked={selectedAdditional.includes(id)}
-                  onChange={() =>
-                    setSelectedAdditional((current) =>
-                      current.includes(id)
-                        ? current.filter((type) => type !== id)
-                        : [...current, id],
-                    )
-                  }
-                />
-              }
-              label={
-                <Box sx={{ pt: 0.5 }}>
-                  <Typography sx={{ fontWeight: 800 }}>{label}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {description}
-                  </Typography>
-                </Box>
-              }
-            />
-          ))}
-        </Stack>
-        <Button
-          variant="contained"
-          sx={{ mt: 2 }}
-          onClick={() => saveAdditional.mutate()}
-          disabled={saveAdditional.isPending}
-        >
-          {saveAdditional.isPending ? 'Saving…' : 'Save additional goals'}
-        </Button>
-        {saveAdditional.isError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {saveAdditional.error.message}
-          </Alert>
         )}
       </SectionCard>
     </Stack>

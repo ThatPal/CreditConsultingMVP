@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Link as RouterLink,
@@ -424,6 +424,22 @@ export function RegisterPage() {
   const intakeToken = params.get('intake');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [intakeContact, setIntakeContact] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+  });
+  useEffect(() => {
+    if (!intakeToken) return;
+    apiRequest<{
+      intake: { firstName: string; lastName: string; email: string; phone: string | null };
+    }>(`/api/v1/goal-intakes/${intakeToken}`)
+      .then(({ intake }) => setIntakeContact({ ...intake, phone: intake.phone ?? '' }))
+      .catch(() =>
+        setError('This saved goal is unavailable. Start a new goal intake before registering.'),
+      );
+  }, [intakeToken]);
   if (user) return <Navigate to={homeFor(user)} replace />;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -462,11 +478,35 @@ export function RegisterPage() {
       <Stack component="form" spacing={2} onSubmit={submit}>
         {error && <Alert severity="error">{error}</Alert>}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <TextField name="firstName" label="First name" required />
-          <TextField name="lastName" label="Last name" required />
+          <TextField
+            key={`first-${intakeContact.firstName}`}
+            name="firstName"
+            label="First name"
+            defaultValue={intakeContact.firstName}
+            required
+          />
+          <TextField
+            key={`last-${intakeContact.lastName}`}
+            name="lastName"
+            label="Last name"
+            defaultValue={intakeContact.lastName}
+            required
+          />
         </Stack>
-        <TextField name="email" label="Email" type="email" required />
-        <TextField name="phone" label="Phone (optional)" />
+        <TextField
+          key={`email-${intakeContact.email}`}
+          name="email"
+          label="Email"
+          type="email"
+          defaultValue={intakeContact.email}
+          required
+        />
+        <TextField
+          key={`phone-${intakeContact.phone}`}
+          name="phone"
+          label="Phone (optional)"
+          defaultValue={intakeContact.phone}
+        />
         <TextField
           name="password"
           label="Password"
