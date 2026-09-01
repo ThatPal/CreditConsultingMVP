@@ -6,8 +6,8 @@
 - Accepted base: `7b662b9038b8a5625a029563b85ea96a0349b94b`
 - Execution mode: Continuous Rapid-Build Block, high-risk payment-provider boundary
 - Schema/migrations: unchanged; `BOFA_MERCHANT` and the existing canonical Payment/Purchase model were reused
-- Implementation/final SHAs: recorded after the sprint boundary commits
-- Final payment-risk GitHub CI: pending exact-boundary push
+- Implementation SHA: `ad41d7083a8c1829e11d3e598efe95b8dd40b78f`
+- Implementation payment-risk GitHub CI: **PASS** — [run `33570644821`](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33570644821)
 
 ## Official provider discovery and chosen path
 
@@ -71,7 +71,7 @@ The hosted profile does not provide an authenticated status/refund/reconciliatio
 - Web production build: **PASS**; the established non-blocking chunk-size advisory remains.
 - Migration proof: **NOT APPLICABLE** — no schema or migration changed.
 - Live BofA sandbox transaction: **NOT RUN / ENVIRONMENT-DEPENDENT** — no merchant sandbox account or secret/certificate material was supplied.
-- Mandatory final GitHub payment-risk CI: **PENDING** until the exact sprint boundary is pushed.
+- Mandatory final GitHub payment-risk CI: **PASS** — [run `33570644821`](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33570644821) completed installation, migration deployment, double system seed, lint, typecheck, all workspace tests, and production builds at exact implementation head `ad41d7083a8c1829e11d3e598efe95b8dd40b78f`.
 
 ## Requirement reconciliation
 
