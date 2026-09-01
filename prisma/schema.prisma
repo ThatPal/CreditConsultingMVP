@@ -189,6 +189,7 @@ enum PlanActionKind {
 
 enum WorkItemAuthority {
   PLAN_PROJECTION
+  ATTENTION_PROJECTION
   LEGACY_INDEPENDENT
 }
 

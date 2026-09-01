@@ -32,6 +32,7 @@ import {
 } from '../support/supportDomain.js';
 import {
   attentionClaimDecision,
+  recordAttentionClaimConflict,
   reconcileSupportAttention,
   workQueueOrderBy,
 } from '../attention/attentionService.js';
@@ -1646,8 +1647,28 @@ export function createOperationsRouter(
           throw new AppError('FORBIDDEN', 403, 'You do not have access to this attention item');
         const claimDecision = attentionClaimDecision(item, req.auth!.userId, input.expectedVersion);
         if (claimDecision === 'REPLAY') return res.json({ item, replayed: true });
-        if (claimDecision === 'STALE')
+        if (claimDecision === 'NON_ACTIONABLE') {
+          await recordAttentionClaimConflict(prisma, {
+            clientId: item.clientId,
+            actorId: req.auth!.userId,
+            workItemId: item.id,
+            category: 'NON_ACTIONABLE',
+          });
+          throw new AppError(
+            'ATTENTION_ITEM_NOT_ACTIONABLE',
+            409,
+            'This item is no longer actionable',
+          );
+        }
+        if (claimDecision === 'STALE') {
+          await recordAttentionClaimConflict(prisma, {
+            clientId: item.clientId,
+            actorId: req.auth!.userId,
+            workItemId: item.id,
+            category: item.version !== input.expectedVersion ? 'STALE_VERSION' : 'ALREADY_CLAIMED',
+          });
           throw new AppError('STALE_ATTENTION_ITEM', 409, 'This item changed; refresh the queue');
+        }
         const updated = await prisma.$transaction(async (tx) => {
           const claimed = await tx.workItem.updateMany({
             where: {
@@ -1663,8 +1684,7 @@ export function createOperationsRouter(
               version: { increment: 1 },
             },
           });
-          if (claimed.count !== 1)
-            throw new AppError('STALE_ATTENTION_ITEM', 409, 'This item changed; refresh the queue');
+          if (claimed.count !== 1) return null;
           const result = await tx.workItem.findUniqueOrThrow({ where: { id: item.id } });
           await tx.auditEvent.create({
             data: {
@@ -1687,6 +1707,15 @@ export function createOperationsRouter(
           });
           return result;
         });
+        if (!updated) {
+          await recordAttentionClaimConflict(prisma, {
+            clientId: item.clientId,
+            actorId: req.auth!.userId,
+            workItemId: item.id,
+            category: 'CONCURRENT_CLAIM',
+          });
+          throw new AppError('STALE_ATTENTION_ITEM', 409, 'This item changed; refresh the queue');
+        }
         publishLiveUpdate(item.clientId, 'work-queue');
         res.json({ item: updated, replayed: false });
       } catch (error) {

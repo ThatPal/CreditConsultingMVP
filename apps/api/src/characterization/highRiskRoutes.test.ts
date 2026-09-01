@@ -906,7 +906,7 @@ describe('Attention Work Queue characterization', () => {
     const temporary = await createStaff('CONSULTANT', 'queue-temporary');
     const admin = await createStaff('ADMIN', 'queue-admin');
     const owner = await createClient('queue-owner', assigned.user.id);
-    await prisma.clientAccessGrant.create({
+    const temporaryGrant = await prisma.clientAccessGrant.create({
       data: {
         granteeId: temporary.user.id,
         clientId: owner.client.id,
@@ -955,6 +955,7 @@ describe('Attention Work Queue characterization', () => {
     const item = listed.body.items.find(
       (candidate: { sourceId: string }) => candidate.sourceId === ticket.id,
     );
+    expect(item.authority).toBe('ATTENTION_PROJECTION');
     expect(item.deepLink).toEqual({
       type: 'SUPPORT_CASE',
       route: '/crm/support',
@@ -971,9 +972,17 @@ describe('Attention Work Queue characterization', () => {
         .send({ expectedVersion: item.version }),
     ]);
     expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
+    const winnerIndex = results.findIndex((result) => result.status === 200);
+    const winner = results[winnerIndex]!;
+    const winnerPrincipal = winnerIndex === 0 ? assigned : temporary;
     expect(
       await prisma.auditEvent.count({
         where: { action: 'ATTENTION_ITEM_CLAIMED', entityId: item.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.auditEvent.count({
+        where: { action: 'ATTENTION_ITEM_CLAIM_CONFLICT', entityId: item.id },
       }),
     ).toBe(1);
     expect(
@@ -981,6 +990,112 @@ describe('Attention Work Queue characterization', () => {
         where: { eventType: 'attention.item.claimed', aggregateId: item.id },
       }),
     ).toBe(1);
+
+    const replay = await request(app)
+      .post(`/api/v1/consultant/work-queue/${item.id}/claim`)
+      .set('x-test-principal', winnerPrincipal.header)
+      .send({ expectedVersion: winner.body.item.version });
+    expect(replay.status).toBe(200);
+    expect(replay.body.replayed).toBe(true);
+    expect(
+      await prisma.auditEvent.count({
+        where: { action: 'ATTENTION_ITEM_CLAIMED', entityId: item.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.auditEvent.count({
+        where: { action: 'ATTENTION_ITEM_CLAIM_CONFLICT', entityId: item.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.outboxEvent.count({
+        where: { eventType: 'attention.item.claimed', aggregateId: item.id },
+      }),
+    ).toBe(1);
+
+    await reconcileSupportAttention(prisma, { ...ticket, subject: 'Materially updated request' });
+    const stale = await request(app)
+      .post(`/api/v1/consultant/work-queue/${item.id}/claim`)
+      .set('x-test-principal', winnerPrincipal.header)
+      .send({ expectedVersion: winner.body.item.version });
+    expect(stale.status).toBe(409);
+    expect(
+      await prisma.auditEvent.count({
+        where: {
+          action: 'ATTENTION_ITEM_CLAIM_CONFLICT',
+          entityId: item.id,
+          metadata: { path: ['category'], equals: 'STALE_VERSION' },
+        },
+      }),
+    ).toBe(1);
+
+    const resolvedTicket = await prisma.supportCase.update({
+      where: { id: ticket.id },
+      data: { status: 'RESOLVED', resolvedAt: new Date() },
+    });
+    const completedItem = await reconcileSupportAttention(prisma, resolvedTicket);
+    expect(completedItem?.status).toBe('COMPLETED');
+    const resolvedReplay = await request(app)
+      .post(`/api/v1/consultant/work-queue/${item.id}/claim`)
+      .set('x-test-principal', winnerPrincipal.header)
+      .send({ expectedVersion: completedItem!.version });
+    expect(resolvedReplay.status).toBe(409);
+    expect(resolvedReplay.body.error.code).toBe('ATTENTION_ITEM_NOT_ACTIONABLE');
+    expect((await prisma.supportCase.findUniqueOrThrow({ where: { id: ticket.id } })).status).toBe(
+      'RESOLVED',
+    );
+    expect((await prisma.workItem.findUniqueOrThrow({ where: { id: item.id } })).status).toBe(
+      'COMPLETED',
+    );
+
+    const legacy = await prisma.workItem.create({
+      data: {
+        clientId: owner.client.id,
+        title: 'Independent legacy task',
+        domain: 'LEGACY',
+      },
+    });
+    await reconcileSupportAttention(prisma, resolvedTicket);
+    expect((await prisma.workItem.findUniqueOrThrow({ where: { id: legacy.id } })).authority).toBe(
+      'LEGACY_INDEPENDENT',
+    );
+
+    const projectedCompletion = await request(app)
+      .patch(`/api/v1/consultant/work-items/${item.id}`)
+      .set('x-test-principal', winnerPrincipal.header)
+      .send({ status: 'COMPLETED' });
+    expect(projectedCompletion.status).toBe(409);
+    expect(projectedCompletion.body.error.code).toBe('DOMAIN_STATE_REQUIRED');
+
+    const authorizationTicket = await prisma.supportCase.create({
+      data: {
+        clientId: owner.client.id,
+        createdByUserId: owner.user.id,
+        category: 'OTHER',
+        priority: 'NORMAL',
+        status: 'WAITING_ON_SUPPORT',
+        subject: 'Authorization recheck proof',
+        lastMessageAt: new Date(),
+      },
+    });
+    const authorizationItem = await reconcileSupportAttention(prisma, authorizationTicket);
+    await prisma.clientAccessGrant.update({
+      where: { id: temporaryGrant.id },
+      data: { revokedAt: new Date(), revokerId: admin.user.id },
+    });
+    const revokedClaim = await request(app)
+      .post(`/api/v1/consultant/work-queue/${authorizationItem!.id}/claim`)
+      .set('x-test-principal', temporary.header)
+      .send({ expectedVersion: authorizationItem!.version });
+    expect(revokedClaim.status).toBe(403);
+    expect(
+      await prisma.auditEvent.count({
+        where: {
+          action: 'ATTENTION_ITEM_CLAIM_CONFLICT',
+          entityId: authorizationItem!.id,
+        },
+      }),
+    ).toBe(0);
   });
 });
 

@@ -2,7 +2,13 @@ import { Prisma, type PrismaClient, type SupportCaseStatus } from '../generated/
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
-const activeStatuses = ['OPEN', 'IN_PROGRESS', 'WAITING'] as const;
+export const actionableAttentionStatuses = ['OPEN', 'IN_PROGRESS', 'WAITING'] as const;
+
+export function isActionableAttentionStatus(status: string) {
+  return actionableAttentionStatuses.includes(
+    status as (typeof actionableAttentionStatuses)[number],
+  );
+}
 
 export function supportNeedsAttention(status: SupportCaseStatus) {
   return status === 'OPEN' || status === 'WAITING_ON_SUPPORT';
@@ -26,7 +32,7 @@ export async function reconcileSupportAttention(
 ) {
   const dedupeKey = `SUPPORT_CASE:${input.id}:REPLY_NEEDED`;
   const existing = await db.workItem.findFirst({
-    where: { dedupeKey, status: { in: [...activeStatuses] } },
+    where: { dedupeKey, status: { in: [...actionableAttentionStatuses] } },
     orderBy: { id: 'asc' },
   });
   if (!supportNeedsAttention(input.status)) {
@@ -49,7 +55,7 @@ export async function reconcileSupportAttention(
     priority: input.priority,
     suggestedNextAction: 'Review the request and respond to the client',
     dueAt: new Date(input.lastMessageAt.getTime() + dueHours * 60 * 60 * 1000),
-    authority: 'LEGACY_INDEPENDENT' as const,
+    authority: 'ATTENTION_PROJECTION' as const,
     sourceType: 'SUPPORT_CASE',
     sourceId: input.id,
     reasonCode: 'CLIENT_REPLY_NEEDED',
@@ -75,11 +81,34 @@ export function workQueueOrderBy() {
 }
 
 export function attentionClaimDecision(
-  item: { assigneeId: string | null; version: number },
+  item: { assigneeId: string | null; version: number; status: string },
   actorId: string,
   expectedVersion: number,
 ) {
+  if (!isActionableAttentionStatus(item.status)) return 'NON_ACTIONABLE' as const;
+  if (item.version !== expectedVersion) return 'STALE' as const;
   if (item.assigneeId === actorId) return 'REPLAY' as const;
-  if (item.assigneeId || item.version !== expectedVersion) return 'STALE' as const;
+  if (item.assigneeId) return 'STALE' as const;
   return 'CLAIM' as const;
+}
+
+export async function recordAttentionClaimConflict(
+  db: Db,
+  input: {
+    clientId: string;
+    actorId: string;
+    workItemId: string;
+    category: 'NON_ACTIONABLE' | 'STALE_VERSION' | 'ALREADY_CLAIMED' | 'CONCURRENT_CLAIM';
+  },
+) {
+  return db.auditEvent.create({
+    data: {
+      clientId: input.clientId,
+      actorId: input.actorId,
+      action: 'ATTENTION_ITEM_CLAIM_CONFLICT',
+      entityType: 'WorkItem',
+      entityId: input.workItemId,
+      metadata: { category: input.category },
+    },
+  });
 }

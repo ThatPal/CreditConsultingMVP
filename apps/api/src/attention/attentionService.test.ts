@@ -48,6 +48,7 @@ describe('canonical Attention projection', () => {
     await reconcileSupportAttention(db, supportCase);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
+      authority: 'ATTENTION_PROJECTION',
       sourceType: 'SUPPORT_CASE',
       reasonCode: 'CLIENT_REPLY_NEEDED',
       dedupeKey: `SUPPORT_CASE:${supportCase.id}:REPLY_NEEDED`,
@@ -75,17 +76,39 @@ describe('canonical Attention projection', () => {
   });
 
   test('makes same-user retries harmless and rejects stale or competing claims', () => {
-    expect(attentionClaimDecision({ assigneeId: null, version: 3 }, 'consultant-a', 3)).toBe(
-      'CLAIM',
-    );
     expect(
-      attentionClaimDecision({ assigneeId: 'consultant-a', version: 4 }, 'consultant-a', 3),
+      attentionClaimDecision({ assigneeId: null, version: 3, status: 'OPEN' }, 'consultant-a', 3),
+    ).toBe('CLAIM');
+    expect(
+      attentionClaimDecision(
+        { assigneeId: 'consultant-a', version: 4, status: 'IN_PROGRESS' },
+        'consultant-a',
+        4,
+      ),
     ).toBe('REPLAY');
     expect(
-      attentionClaimDecision({ assigneeId: 'consultant-b', version: 4 }, 'consultant-a', 4),
+      attentionClaimDecision(
+        { assigneeId: 'consultant-b', version: 4, status: 'IN_PROGRESS' },
+        'consultant-a',
+        4,
+      ),
     ).toBe('STALE');
-    expect(attentionClaimDecision({ assigneeId: null, version: 4 }, 'consultant-a', 3)).toBe(
-      'STALE',
-    );
+    expect(
+      attentionClaimDecision({ assigneeId: null, version: 4, status: 'OPEN' }, 'consultant-a', 3),
+    ).toBe('STALE');
+    expect(
+      attentionClaimDecision(
+        { assigneeId: 'consultant-a', version: 5, status: 'IN_PROGRESS' },
+        'consultant-a',
+        4,
+      ),
+    ).toBe('STALE');
+    expect(
+      attentionClaimDecision(
+        { assigneeId: 'consultant-a', version: 5, status: 'COMPLETED' },
+        'consultant-a',
+        5,
+      ),
+    ).toBe('NON_ACTIONABLE');
   });
 });
