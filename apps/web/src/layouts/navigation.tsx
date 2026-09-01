@@ -7,7 +7,7 @@ import DashboardRounded from '@mui/icons-material/DashboardRounded';
 import DescriptionRounded from '@mui/icons-material/DescriptionRounded';
 import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import HelpRounded from '@mui/icons-material/HelpRounded';
-import LockRounded from '@mui/icons-material/LockRounded';
+import StorefrontRounded from '@mui/icons-material/StorefrontRounded';
 import NotificationsNoneRounded from '@mui/icons-material/NotificationsNoneRounded';
 import SupportAgentRounded from '@mui/icons-material/SupportAgentRounded';
 import TaskAltRounded from '@mui/icons-material/TaskAltRounded';
@@ -65,6 +65,24 @@ const registry: NavigationItem[] = [
     status: 'available',
   },
   {
+    id: 'portal-services',
+    label: 'Services',
+    path: '/app/services',
+    icon: StorefrontRounded,
+    shell: 'client',
+    section: 'primary',
+    status: 'available',
+  },
+  {
+    id: 'portal-support',
+    label: 'Support',
+    path: '/app/support',
+    icon: HelpRounded,
+    shell: 'client',
+    section: 'primary',
+    status: 'available',
+  },
+  {
     id: 'portal-documents',
     label: 'Documents',
     path: '/app/documents',
@@ -83,28 +101,10 @@ const registry: NavigationItem[] = [
     status: 'available',
   },
   {
-    id: 'portal-support',
-    label: 'Support',
-    path: '/app/support',
-    icon: HelpRounded,
-    shell: 'client',
-    section: 'utility',
-    status: 'available',
-  },
-  {
     id: 'portal-account',
     label: 'Account',
     path: '/app/account',
     icon: AccountCircleRounded,
-    shell: 'client',
-    section: 'utility',
-    status: 'available',
-  },
-  {
-    id: 'portal-security',
-    label: 'Security',
-    path: '/app/account/security',
-    icon: LockRounded,
     shell: 'client',
     section: 'utility',
     status: 'available',
@@ -175,15 +175,6 @@ const registry: NavigationItem[] = [
     status: 'available',
   },
   {
-    id: 'crm-security',
-    label: 'Security',
-    path: '/crm/account/security',
-    icon: LockRounded,
-    shell: 'consultant',
-    section: 'utility',
-    status: 'available',
-  },
-  {
     id: 'admin-home',
     label: 'Admin Home',
     path: '/admin',
@@ -197,15 +188,6 @@ const registry: NavigationItem[] = [
     label: 'Account',
     path: '/admin/account',
     icon: AccountCircleRounded,
-    shell: 'admin',
-    section: 'utility',
-    status: 'available',
-  },
-  {
-    id: 'admin-security',
-    label: 'Security',
-    path: '/admin/account/security',
-    icon: LockRounded,
     shell: 'admin',
     section: 'utility',
     status: 'available',

@@ -15,12 +15,12 @@ import {
   MenuItem,
   Select,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiRequest } from '../../auth/api';
+import { DataNavigationToolbar, DataPagination } from './DataNavigation';
 
 export type PickerDocument = {
   id: string;
@@ -72,25 +72,29 @@ export function DocumentPicker({
         <DialogTitle id="document-picker-title">Choose existing documents</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField
-              label="Search documents"
-              value={search}
-              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-              helperText="Search by filename or document type"
-              autoFocus
-            />
-            <FormControl fullWidth>
-              <InputLabel id="document-picker-type-label">Document type</InputLabel>
-              <Select
-                labelId="document-picker-type-label"
-                label="Document type"
-                value={type}
-                onChange={(event) => { setType(event.target.value); setPage(1); }}
-              >
-                <MenuItem value="">All types</MenuItem>
-                {documentTypes.map((item) => <MenuItem key={item.key} value={item.key}>{item.name}</MenuItem>)}
-              </Select>
-            </FormControl>
+            <DataNavigationToolbar
+              searchLabel="Search documents"
+              searchPlaceholder="Search by file name or document type"
+              searchValue={search}
+              onSearchChange={(value) => { setSearch(value); setPage(1); }}
+              activeFilters={type ? [`Type: ${documentTypes.find((item) => item.key === type)?.name ?? type}`] : []}
+              onClearFilters={() => { setType(''); setPage(1); }}
+              resultLabel={`${query.data?.total ?? 0} available documents`}
+              loading={query.isFetching}
+            >
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel id="document-picker-type-label">Document type</InputLabel>
+                <Select
+                  labelId="document-picker-type-label"
+                  label="Document type"
+                  value={type}
+                  onChange={(event) => { setType(event.target.value); setPage(1); }}
+                >
+                  <MenuItem value="">All types</MenuItem>
+                  {documentTypes.map((item) => <MenuItem key={item.key} value={item.key}>{item.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </DataNavigationToolbar>
             {query.isError && <Typography color="error">Unable to load documents.</Typography>}
             <List aria-label="Available existing documents" disablePadding>
               {(query.data?.documents ?? []).map((document) => (
@@ -105,11 +109,14 @@ export function DocumentPicker({
               ))}
             </List>
             {!query.isLoading && query.data?.documents.length === 0 && <Typography color="text.secondary">No documents match this search.</Typography>}
-            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <Button disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
-              <Typography variant="body2">Page {page}</Typography>
-              <Button disabled={!query.data?.hasMore} onClick={() => setPage((value) => value + 1)}>Next</Button>
-            </Stack>
+            <DataPagination
+              page={page}
+              pageSize={10}
+              total={query.data?.total ?? 0}
+              hasMore={Boolean(query.data?.hasMore)}
+              onPageChange={setPage}
+              loading={query.isFetching}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>

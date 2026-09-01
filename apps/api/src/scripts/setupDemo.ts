@@ -333,12 +333,70 @@ try {
       sha256: createHash('sha256').update(documentContent).digest('hex'),
     },
   });
+  const documentNames = [
+    'Identity Verification',
+    'Business Bank Statement',
+    'Personal Bank Statement',
+    'Credit Monitoring Export',
+    'Address History',
+    'Income Verification',
+  ];
+  for (let index = 1; index <= 24; index += 1) {
+    const displayFileName = `${documentNames[(index - 1) % documentNames.length]} ${String(index).padStart(2, '0')}.pdf`;
+    const storageKey = `documents/${client.id}/pm1-volume-${String(index).padStart(2, '0')}.pdf`;
+    if (!(await documentStorage.read(storageKey))) await documentStorage.put(storageKey, documentContent);
+    await prisma.document.upsert({
+      where: {
+        storageProvider_storageKey: { storageProvider: 'LOCAL_DISK', storageKey },
+      },
+      create: {
+        clientId: client.id,
+        documentTypeId: documentType.id,
+        originalFileName: displayFileName,
+        displayFileName,
+        mimeType: 'application/pdf',
+        sizeBytes: documentContent.length,
+        sha256: createHash('sha256').update(documentContent).digest('hex'),
+        storageProvider: 'LOCAL_DISK',
+        storageKey,
+        clientVisible: true,
+        uploadedByUserId: index % 3 === 0 ? consultant.id : clientUser.id,
+        retentionCategory: documentType.retentionCategory,
+        uploadedAt: new Date(Date.now() - index * 86_400_000),
+      },
+      update: { displayFileName, status: index % 7 === 0 ? 'SUPERSEDED' : 'AVAILABLE' },
+    });
+  }
+  for (let index = 1; index <= 30; index += 1) {
+    await prisma.notification.upsert({
+      where: {
+        userId_semanticKey: {
+          userId: clientUser.id,
+          semanticKey: `pm1-volume-notification-${index}`,
+        },
+      },
+      create: {
+        userId: clientUser.id,
+        clientId: client.id,
+        semanticKey: `pm1-volume-notification-${index}`,
+        type: index % 3 === 0 ? 'DOCUMENT' : 'SUPPORT_REPLY',
+        category: 'OPERATIONAL',
+        title: index % 3 === 0 ? `Document update ${index}` : `Support activity ${index}`,
+        body: 'Seeded realistic-volume scenario for PM-1 manual product review.',
+        link: index % 3 === 0 ? '/app/documents' : '/app/support',
+        createdAt: new Date(Date.now() - index * 3_600_000),
+        readAt: index % 4 === 0 ? new Date() : null,
+      },
+      update: {},
+    });
+  }
   console.info(
     JSON.stringify(
       {
         clientId: client.id,
         reviewId: review.id,
         accounts: ['client@credit.local', 'consultant@credit.local', 'admin@credit.local'],
+        reviewVolume: { documents: 25, supportCases: queueScenarios.length + 1, notifications: 31 },
       },
       null,
       2,

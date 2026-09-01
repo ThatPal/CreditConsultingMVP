@@ -27,6 +27,10 @@ import {
   type UploadDocumentType,
 } from '../components/common/DocumentUploadDropzone';
 import { LoadingSkeleton } from '../components/common/Feedback';
+import {
+  DataNavigationToolbar,
+  DataPagination,
+} from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { SecureReportViewer } from './ReviewPages';
@@ -118,8 +122,19 @@ export function DocumentsPage() {
         </SectionCard>
       ) : (
         <SectionCard>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-            <TextField label="Search documents" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} sx={{ flex: 1 }} />
+          <DataNavigationToolbar
+            searchLabel="Search documents"
+            searchPlaceholder="Search file names and document types"
+            searchValue={search}
+            onSearchChange={(value) => { setSearch(value); setPage(1); }}
+            activeFilters={[
+              ...(type ? [`Type: ${typesQuery.data?.documentTypes.find((item) => item.key === type)?.name ?? type}`] : []),
+              ...(status ? [`Status: ${status === 'AVAILABLE' ? 'Available' : 'Previous versions'}`] : []),
+            ]}
+            onClearFilters={() => { setType(''); setStatus(''); setPage(1); }}
+            resultLabel={`${query.data?.total ?? 0} documents`}
+            loading={query.isFetching}
+          >
             <TextField select label="Document type" value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} sx={{ minWidth: 180 }}>
               <MenuItem value="">All types</MenuItem>
               {(typesQuery.data?.documentTypes ?? []).map((item) => <MenuItem key={item.key} value={item.key}>{item.name}</MenuItem>)}
@@ -127,7 +142,7 @@ export function DocumentsPage() {
             <TextField select label="Status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} sx={{ minWidth: 170 }}>
               <MenuItem value="">All statuses</MenuItem><MenuItem value="AVAILABLE">Available</MenuItem><MenuItem value="SUPERSEDED">Previous versions</MenuItem>
             </TextField>
-          </Stack>
+          </DataNavigationToolbar>
           <Stack divider={<Divider flexItem />}>
             {documents.map((document) => (
               <Stack
@@ -163,11 +178,14 @@ export function DocumentsPage() {
               </Stack>
             ))}
           </Stack>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-            <Button disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
-            <Typography variant="body2">Page {page} · {query.data?.total ?? 0} documents</Typography>
-            <Button disabled={!query.data?.hasMore} onClick={() => setPage((value) => value + 1)}>Next</Button>
-          </Stack>
+          <DataPagination
+            page={page}
+            pageSize={20}
+            total={query.data?.total ?? 0}
+            hasMore={Boolean(query.data?.hasMore)}
+            onPageChange={setPage}
+            loading={query.isFetching}
+          />
         </SectionCard>
       )}
 

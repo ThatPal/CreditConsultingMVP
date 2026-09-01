@@ -15,7 +15,6 @@ import {
   LinearProgress,
   CircularProgress,
   MenuItem,
-  Pagination,
   Stack,
   Typography,
   TextField,
@@ -28,6 +27,7 @@ import { ChoiceCard } from '../components/common/ChoiceCard';
 import { MetricCard } from '../components/common/MetricCard';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 
 const demoNotice = (
   <Alert severity="info">Preview data — connect a client record to begin verified work.</Alert>
@@ -226,16 +226,20 @@ export function WorkQueuePage() {
       />
       <SectionCard variant="operational">
         <Stack spacing={2}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField
-              label="Search work"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              sx={{ flex: 1 }}
-            />
+          <DataNavigationToolbar
+            searchLabel="Search work"
+            searchPlaceholder="Search client, reason, or next action"
+            searchValue={search}
+            onSearchChange={(value) => { setSearch(value); setPage(1); }}
+            activeFilters={[
+              ...(assignment !== 'ALL' ? [`Assignment: ${assignment.replace('_', ' ')}`] : []),
+              ...(priority ? [`Priority: ${priority}`] : []),
+              ...(status ? [`Lifecycle: ${status.replace('_', ' ')}`] : []),
+            ]}
+            onClearFilters={() => { setAssignment('ALL'); setPriority(''); setStatus(''); setPage(1); }}
+            resultLabel={`${queue.data?.total ?? 0} attention items`}
+            loading={queue.isFetching}
+          >
             <TextField
               select
               label="Assignment"
@@ -284,7 +288,7 @@ export function WorkQueuePage() {
                 </MenuItem>
               ))}
             </TextField>
-          </Stack>
+          </DataNavigationToolbar>
           {queue.data && (
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
               <Chip label={`${queue.data.counts.open} active`} />
@@ -369,12 +373,8 @@ export function WorkQueuePage() {
               );
             })}
           </Stack>
-          {queue.data && queue.data.total > queue.data.pageSize && (
-            <Pagination
-              page={page}
-              count={Math.ceil(queue.data.total / queue.data.pageSize)}
-              onChange={(_, value) => setPage(value)}
-            />
+          {queue.data && (
+            <DataPagination page={page} pageSize={queue.data.pageSize} total={queue.data.total} hasMore={page * queue.data.pageSize < queue.data.total} onPageChange={setPage} loading={queue.isFetching} />
           )}
         </Stack>
       </SectionCard>

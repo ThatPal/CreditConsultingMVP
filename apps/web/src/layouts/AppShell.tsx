@@ -88,6 +88,54 @@ function Sidebar({
   role: ShellKind;
   onNavigate?: () => void;
 }) {
+  const primaryItems = items.filter((item) => item.section === 'primary');
+  const utilityItems = items.filter((item) => item.section === 'utility');
+  const renderItems = (navigationItems: NavigationItem[]) =>
+    navigationItems.map(({ label, path, icon: Icon }) => (
+      <ListItemButton
+        key={path}
+        component={NavLink}
+        to={path}
+        end={path === '/app' || path === '/crm' || path === '/admin'}
+        onClick={onNavigate}
+        sx={{
+          mb: 0.5,
+          minHeight: dense ? 42 : 48,
+          borderRadius: `${designTokens.radius.sm}px`,
+          color: 'text.secondary',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            width: 3,
+            height: 22,
+            borderRadius: 4,
+            background: designTokens.gradient.brand,
+            position: 'absolute',
+            left: 0,
+            opacity: 0,
+          },
+          '&.active': {
+            color: 'text.primary',
+            bgcolor: 'rgba(66, 211, 242, 0.08)',
+            backgroundImage: designTokens.gradient.active,
+            '&::before': { opacity: 1 },
+            '& .MuiListItemIcon-root': { color: 'primary.main' },
+          },
+        }}
+      >
+        <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>
+          <Icon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText
+          primary={
+            <Typography sx={{ fontSize: dense ? 13.5 : 14.5, fontWeight: 700 }}>
+              {label}
+            </Typography>
+          }
+        />
+      </ListItemButton>
+    ));
   return (
     <Box
       sx={{
@@ -106,50 +154,19 @@ function Sidebar({
         aria-label={`${role === 'client' ? 'Client' : role === 'consultant' ? 'Consultant' : 'Admin'} navigation`}
         sx={{ px: 1.5, py: 1, flex: 1, minHeight: 0, overflowY: 'auto' }}
       >
-        {items.map(({ label, path, icon: Icon }) => (
-          <ListItemButton
-            key={path}
-            component={NavLink}
-            to={path}
-            onClick={onNavigate}
-            sx={{
-              mb: 0.5,
-              minHeight: dense ? 42 : 48,
-              borderRadius: `${designTokens.radius.sm}px`,
-              color: 'text.secondary',
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                width: 3,
-                height: 22,
-                borderRadius: 4,
-                background: designTokens.gradient.brand,
-                position: 'absolute',
-                left: 0,
-                opacity: 0,
-              },
-              '&.active': {
-                color: 'text.primary',
-                bgcolor: 'rgba(66, 211, 242, 0.08)',
-                backgroundImage: designTokens.gradient.active,
-                '&::before': { opacity: 1 },
-                '& .MuiListItemIcon-root': { color: 'primary.main' },
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>
-              <Icon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText
-              primary={
-                <Typography sx={{ fontSize: dense ? 13.5 : 14.5, fontWeight: 700 }}>
-                  {label}
-                </Typography>
-              }
-            />
-          </ListItemButton>
-        ))}
+        <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
+          {role === 'client' ? 'Plan' : role === 'consultant' ? 'Workspace' : 'Administration'}
+        </Typography>
+        {renderItems(primaryItems)}
+        {utilityItems.length > 0 && (
+          <>
+            <Divider sx={{ my: 1.5 }} />
+            <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
+              Utilities
+            </Typography>
+            {renderItems(utilityItems)}
+          </>
+        )}
       </List>
       <Box
         sx={{
@@ -372,14 +389,16 @@ export function AppShell({
                 Mark all read
               </Button>
             )}
-            <Button
-              component={Link}
-              to="/app/notifications"
-              size="small"
-              onClick={() => setNotificationAnchor(null)}
-            >
-              View all
-            </Button>
+            {role === 'client' && (
+              <Button
+                component={Link}
+                to="/app/notifications"
+                size="small"
+                onClick={() => setNotificationAnchor(null)}
+              >
+                View all
+              </Button>
+            )}
           </Stack>
           <Divider />
           <Box sx={{ maxHeight: 440, overflowY: 'auto' }}>

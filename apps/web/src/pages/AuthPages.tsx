@@ -1,4 +1,6 @@
 import LockRounded from '@mui/icons-material/LockRounded';
+import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded';
+import LogoutRounded from '@mui/icons-material/LogoutRounded';
 import {
   Alert,
   Box,
@@ -12,6 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useState, type FormEvent, type ReactNode } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Link as RouterLink,
   Navigate,
@@ -163,7 +166,7 @@ export function LoginPage() {
 }
 
 export function StaffMfaPage() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, logout } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const mode = params.get('mode') === 'enroll' ? 'enroll' : 'challenge';
@@ -172,6 +175,34 @@ export function StaffMfaPage() {
   const [busy, setBusy] = useState(false);
   const [totpURI, setTotpURI] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [copied, setCopied] = useState('');
+  const setupKey = (() => {
+    if (!totpURI) return '';
+    try {
+      return new URL(totpURI).searchParams.get('secret') ?? '';
+    } catch {
+      return '';
+    }
+  })();
+
+  async function copyValue(label: string, value: string) {
+    await navigator.clipboard.writeText(value);
+    setCopied(label);
+    window.setTimeout(() => setCopied(''), 1800);
+  }
+
+  async function cancelSetup() {
+    setBusy(true);
+    setError('');
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to sign out');
+      setBusy(false);
+    }
+  }
 
   async function beginEnrollment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -247,17 +278,61 @@ export function StaffMfaPage() {
       ) : (
         <Stack spacing={2}>
           {totpURI && (
-            <>
-              <Alert severity="info">
-                Add this setup key to your authenticator app, then verify a code below.
-              </Alert>
-              <TextField
-                label="Authenticator setup URI"
-                value={totpURI}
-                multiline
-                slotProps={{ htmlInput: { readOnly: true } }}
-              />
-            </>
+            <Stack spacing={2.25}>
+              <Box>
+                <Typography variant="h3">Scan with your authenticator app</Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+                  In Google Authenticator, Microsoft Authenticator, 1Password, or another TOTP app,
+                  choose Add account and scan this code.
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  alignSelf: 'center',
+                  bgcolor: '#fff',
+                  p: 2,
+                  borderRadius: 2,
+                  boxShadow: '0 18px 50px rgba(0,0,0,.28)',
+                }}
+              >
+                <QRCodeSVG
+                  value={totpURI}
+                  size={220}
+                  level="M"
+                  marginSize={1}
+                  title="Authenticator setup QR code"
+                />
+              </Box>
+              <Button variant="text" onClick={() => setManualOpen((value) => !value)}>
+                {manualOpen ? 'Hide manual setup' : 'Can’t scan? Use a setup key'}
+              </Button>
+              {manualOpen && (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Typography sx={{ fontWeight: 850 }}>Manual authenticator setup</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Choose “Enter a setup key,” use account type Time based, and enter this key.
+                    </Typography>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <TextField
+                        label="Setup key"
+                        value={setupKey}
+                        fullWidth
+                        slotProps={{ htmlInput: { readOnly: true, 'aria-label': 'Manual setup key' } }}
+                      />
+                      <Button
+                        variant="outlined"
+                        startIcon={<ContentCopyRounded />}
+                        onClick={() => void copyValue('Setup key', setupKey)}
+                      >
+                        Copy key
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              )}
+              {copied && <Alert severity="success">{copied} copied.</Alert>}
+            </Stack>
           )}
           {backupCodes.length > 0 && (
             <Paper variant="outlined" sx={{ p: 2 }}>
@@ -272,6 +347,14 @@ export function StaffMfaPage() {
                   </li>
                 ))}
               </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ContentCopyRounded />}
+                onClick={() => void copyValue('Recovery codes', backupCodes.join('\n'))}
+              >
+                Copy recovery codes
+              </Button>
             </Paper>
           )}
           <Stack component="form" spacing={2} onSubmit={verify}>
@@ -293,6 +376,15 @@ export function StaffMfaPage() {
           </Typography>
         </Stack>
       )}
+      <Button
+        variant="text"
+        color="inherit"
+        startIcon={<LogoutRounded />}
+        disabled={busy}
+        onClick={() => void cancelSetup()}
+      >
+        {mode === 'enroll' ? 'Cancel setup and sign out' : 'Sign out'}
+      </Button>
     </AuthFrame>
   );
 }

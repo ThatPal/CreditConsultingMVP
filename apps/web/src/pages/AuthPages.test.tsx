@@ -12,7 +12,11 @@ import {
   StaffMfaPage,
 } from './AuthPages';
 
-const authState = vi.hoisted(() => ({ user: null, refresh: vi.fn(async () => undefined) }));
+const authState = vi.hoisted(() => ({
+  user: null as null | { role: 'CLIENT' | 'CONSULTANT' | 'ADMIN'; userId: string; status: string },
+  refresh: vi.fn(async () => undefined),
+  logout: vi.fn(async () => undefined),
+}));
 vi.mock('../auth/AuthProvider', () => ({ useAuth: () => authState }));
 
 function LocationProbe() {
@@ -44,7 +48,9 @@ function response(body: unknown = {}, status = 200) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  authState.user = null;
   authState.refresh.mockClear();
+  authState.logout.mockClear();
 });
 
 describe('client authentication pages', () => {
@@ -58,6 +64,33 @@ describe('client authentication pages', () => {
     fireEvent.change(screen.getByLabelText(/six-digit code/i), { target: { value: '123456' } });
     fireEvent.submit(screen.getByRole('button', { name: /verify and continue/i }).closest('form')!);
     expect(await screen.findByRole('alert')).toHaveTextContent(/retry or contact support/i);
+  });
+
+  test('staff enrollment presents QR-first setup, a copyable manual key, recovery codes, and logout', async () => {
+    authState.user = { role: 'CONSULTANT', userId: 'staff-one', status: 'ACTIVE' };
+    const clipboard = { writeText: vi.fn(async () => undefined) };
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboard });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      response({
+        totpURI:
+          'otpauth://totp/Credit%20Consulting:consultant%40credit.local?secret=JBSWY3DPEHPK3PXP&issuer=Credit%20Consulting',
+        backupCodes: ['BACKUP-ONE', 'BACKUP-TWO'],
+      }),
+    );
+    renderPage(<StaffMfaPage />, '/mfa?mode=enroll&returnTo=%2Fcrm');
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: 'DemoAccess2026!' },
+    });
+    fireEvent.submit(screen.getByRole('button', { name: /set up authenticator/i }).closest('form')!);
+    expect(await screen.findByTitle(/authenticator setup qr code/i)).toBeInTheDocument();
+    expect(screen.getByText('BACKUP-ONE')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /use a setup key/i }));
+    expect(screen.getByLabelText(/manual setup key/i)).toHaveValue('JBSWY3DPEHPK3PXP');
+    fireEvent.click(screen.getByRole('button', { name: /copy key/i }));
+    await waitFor(() => expect(clipboard.writeText).toHaveBeenCalledWith('JBSWY3DPEHPK3PXP'));
+    fireEvent.click(screen.getByRole('button', { name: /cancel setup and sign out/i }));
+    await waitFor(() => expect(authState.logout).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/login'));
   });
 
   test('registration submits required profile and terms fields then shows verification handoff', async () => {

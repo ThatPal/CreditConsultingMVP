@@ -65,12 +65,28 @@ describe('application shells', () => {
     renderAt('/app');
     const navigation = screen.getByRole('navigation', { name: /client navigation/i });
     expect(within(navigation).getByRole('link', { name: 'Support' })).toBeInTheDocument();
+    expect(within(navigation).getByRole('link', { name: 'Services' })).toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Credit Center' })).toBeInTheDocument();
+    expect(within(navigation).getByText('Plan')).toBeInTheDocument();
+    expect(within(navigation).getByText('Utilities')).toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: 'Security' })).not.toBeInTheDocument();
     expect(within(navigation).queryByText('Credit Plan')).not.toBeInTheDocument();
     expect(within(navigation).queryByText('Reviews')).not.toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Home' })).toHaveAttribute(
       'aria-current',
       'page',
+    );
+  });
+
+  test('root and nested navigation expose exactly one correct active owner', () => {
+    renderAt('/app/journey');
+    const navigation = screen.getByRole('navigation', { name: /client navigation/i });
+    expect(within(navigation).getByRole('link', { name: 'Journey' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(navigation).getByRole('link', { name: 'Home' })).not.toHaveAttribute(
+      'aria-current',
     );
   });
 

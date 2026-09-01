@@ -37,6 +37,7 @@ import {
   type UploadDocumentType,
 } from '../components/common/DocumentUploadDropzone';
 import { DocumentPicker } from '../components/common/DocumentPicker';
+import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 
 type SupportCategory =
   | 'ACCOUNT'
@@ -249,13 +250,21 @@ export function SupportPage() {
               <Typography variant="h3" sx={{ mb: 1 }}>
                 Your requests
               </Typography>
-              <Stack spacing={1.25} sx={{ mb: 1.5 }}>
-                <TextField size="small" label="Search requests" value={caseSearch} onChange={(event) => { setCaseSearch(event.target.value); setCasePage(1); }} />
+              <DataNavigationToolbar
+                searchLabel="Search requests"
+                searchPlaceholder="Search by subject or category"
+                searchValue={caseSearch}
+                onSearchChange={(value) => { setCaseSearch(value); setCasePage(1); }}
+                activeFilters={caseStatus ? [`Status: ${statusLabels[caseStatus as SupportStatus]}`] : []}
+                onClearFilters={() => { setCaseStatus(''); setCasePage(1); }}
+                resultLabel={`${query.data?.total ?? 0} requests`}
+                loading={query.isFetching}
+              >
                 <TextField select size="small" label="Status" value={caseStatus} onChange={(event) => { setCaseStatus(event.target.value); setCasePage(1); }}>
                   <MenuItem value="">All statuses</MenuItem>
                   {Object.entries(statusLabels).map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}
                 </TextField>
-              </Stack>
+              </DataNavigationToolbar>
               <Stack divider={<Divider flexItem />}>
                 {cases.map((supportCase) => (
                   <Box
@@ -292,11 +301,7 @@ export function SupportPage() {
                   </Box>
                 ))}
               </Stack>
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
-                <Button size="small" disabled={casePage === 1} onClick={() => setCasePage((value) => value - 1)}>Previous</Button>
-                <Typography variant="caption">Page {casePage} · {query.data?.total ?? 0}</Typography>
-                <Button size="small" disabled={!query.data?.hasMore} onClick={() => setCasePage((value) => value + 1)}>Next</Button>
-              </Stack>
+              <DataPagination page={casePage} pageSize={20} total={query.data?.total ?? 0} hasMore={Boolean(query.data?.hasMore)} onPageChange={setCasePage} loading={query.isFetching} />
             </SectionCard>
           </Grid>
           <Grid

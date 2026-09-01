@@ -29,6 +29,7 @@ import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { StickyTabs } from '../components/common/StickyTabs';
+import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 
 type Priority = 'NORMAL' | 'HIGH' | 'URGENT';
 type CaseStatus = 'OPEN' | 'WAITING_ON_SUPPORT' | 'WAITING_ON_CLIENT' | 'RESOLVED' | 'CLOSED';
@@ -211,13 +212,14 @@ export function ConsultantSupportPage() {
                 <Tab value="RESOLVED" label="Resolved" />
               </Tabs>
             </StickyTabs>
-            <TextField
-              fullWidth
-              size="small"
-              label="Search support queue"
-              value={caseSearch}
-              onChange={(event) => { setCaseSearch(event.target.value); setPage(1); }}
-              sx={{ mb: 1.5 }}
+            <DataNavigationToolbar
+              searchLabel="Search support queue"
+              searchPlaceholder="Search client names and request subjects"
+              searchValue={caseSearch}
+              onSearchChange={(value) => { setCaseSearch(value); setPage(1); }}
+              activeFilters={filter !== 'ACTIVE' ? [`View: ${filter.replace('_', ' ')}`] : []}
+              resultLabel={`${query.data?.total ?? 0} requests`}
+              loading={query.isFetching}
             />
             <Stack spacing={1}>
               {cases.length === 0 && (
@@ -271,11 +273,7 @@ export function ConsultantSupportPage() {
                 </Box>
               ))}
             </Stack>
-            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
-              <Button size="small" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
-              <Typography variant="caption">Page {page} · {query.data?.total ?? 0}</Typography>
-              <Button size="small" disabled={!query.data?.hasMore} onClick={() => setPage((value) => value + 1)}>Next</Button>
-            </Stack>
+            <DataPagination page={page} pageSize={20} total={query.data?.total ?? 0} hasMore={Boolean(query.data?.hasMore)} onPageChange={setPage} loading={query.isFetching} />
           </SectionCard>
         </Grid>
 
