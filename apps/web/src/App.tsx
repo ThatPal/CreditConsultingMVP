@@ -19,6 +19,7 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import {
   AdminPaymentDetailPage,
   AdminPaymentsPage,
+  AdminBofaPage,
   AdminPayPalPage,
   AdminStripePage,
 } from './pages/AdminPaymentsPages';
@@ -166,6 +167,7 @@ export function App() {
           <Route path="payments/:paymentId" element={<AdminPaymentDetailPage />} />
           <Route path="integrations/paypal" element={<AdminPayPalPage />} />
           <Route path="integrations/stripe" element={<AdminStripePage />} />
+          <Route path="integrations/bofa" element={<AdminBofaPage />} />
           <Route path="account" element={<StaffAccountPage />} />
           <Route path="account/security" element={<SecurityPage />} />
           <Route

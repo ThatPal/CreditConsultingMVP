@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import Stripe from 'stripe';
 import {
   DeterministicPaymentGateway,
+  BankOfAmericaGateway,
   PaymentGatewayRegistry,
   StripeGateway,
 } from './paymentGateway.js';
@@ -92,4 +93,70 @@ describe('provider-neutral payment contract', () => {
     expect(registry.getDefault()).toBe(stripe);
     expect(registry.get('PAYPAL')).toBe(paypal);
   });
+  test('deterministic health reports its instantiated provider', async () => {
+    await expect(
+      new DeterministicPaymentGateway('AWAITING_CUSTOMER', true, 'STRIPE').health(),
+    ).resolves.toMatchObject({ provider: 'STRIPE' });
+    await expect(
+      new DeterministicPaymentGateway('AWAITING_CUSTOMER', true, 'BOFA_MERCHANT').health(),
+    ).resolves.toMatchObject({ provider: 'BOFA_MERCHANT' });
+  });
+  test('BofA hosted checkout signs canonical fields and verifies merchant notifications', async () => {
+    const secretKey = 'sprint54-test-secret';
+    const gateway = new BankOfAmericaGateway({
+      accessKey: 'sprint54-access',
+      profileId: 'sprint54-profile',
+      secretKey,
+    });
+    const checkout = await gateway.createCheckout({
+      paymentId: 'payment-bofa',
+      purchaseId: 'purchase-bofa',
+      amount: '51.00',
+      currency: 'USD',
+      description: 'Canonical service',
+      returnUrl: 'https://credit.test/return',
+      cancelUrl: 'https://credit.test/cancel',
+    });
+    expect(checkout).toMatchObject({
+      providerOrderId: 'payment-bofa',
+      method: 'POST',
+      checkoutUrl: 'https://testsecureacceptance.cybersource.com/pay',
+    });
+    expect(checkout.formFields).toMatchObject({
+      amount: '51.00',
+      currency: 'USD',
+      reference_number: 'payment-bofa',
+      merchant_defined_data1: 'purchase-bofa',
+    });
+    expect(JSON.stringify(checkout)).not.toContain(secretKey);
+
+    const notification: Record<string, string> = {
+      transaction_uuid: 'payment-bofa',
+      decision: 'ACCEPT',
+      request_id: 'bofa-event-1',
+      reason_code: '100',
+      signed_field_names: 'transaction_uuid,decision,request_id,reason_code,signed_field_names',
+    };
+    const data = notification.signed_field_names
+      .split(',')
+      .map((name) => `${name}=${notification[name]}`)
+      .join(',');
+    notification.signature = createHmac('sha256', secretKey).update(data).digest('base64');
+    await expect(gateway.verifyWebhook({}, notification)).resolves.toMatchObject({
+      provider: 'BOFA_MERCHANT',
+      providerOrderId: 'payment-bofa',
+      providerEventId: 'bofa-event-1',
+      state: 'SUCCEEDED',
+    });
+    await expect(
+      gateway.verifyWebhook({}, { ...notification, signature: `${notification.signature}forged` }),
+    ).rejects.toThrow('BOFA_NOTIFICATION_UNVERIFIED');
+    await expect(new BankOfAmericaGateway({}).health()).resolves.toMatchObject({
+      provider: 'BOFA_MERCHANT',
+      configured: false,
+      healthy: false,
+      capabilities: { statusRetrieval: false, refund: 'UNSUPPORTED' },
+    });
+  });
 });
+import { createHmac } from 'node:crypto';

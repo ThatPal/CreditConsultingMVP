@@ -105,8 +105,13 @@ export function AdminPaymentDetailPage() {
     </Stack>
   );
 }
-function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' }) {
-  const displayName = provider === 'paypal' ? 'PayPal' : 'Stripe';
+function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa' }) {
+  const displayName =
+    provider === 'paypal'
+      ? 'PayPal'
+      : provider === 'stripe'
+        ? 'Stripe'
+        : 'Bank of America Merchant Services';
   const query = useQuery({
     queryKey: [provider, 'health'],
     queryFn: () =>
@@ -116,7 +121,15 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' }) {
           environment: string;
           configured: boolean;
           healthy: boolean;
+          connectionVerified?: boolean;
           message: string;
+          capabilities?: {
+            checkout: string;
+            webhooks: boolean;
+            statusRetrieval: boolean;
+            refund: string;
+            reconciliation: string;
+          };
         };
       }>(`/api/v1/admin/integrations/${provider}`),
   });
@@ -139,10 +152,26 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' }) {
         <Stack spacing={2}>
           <Chip
             color={gateway.healthy ? 'success' : 'warning'}
-            label={gateway.healthy ? 'Healthy' : 'Unavailable'}
+            label={
+              gateway.healthy
+                ? gateway.connectionVerified === false
+                  ? 'Configured'
+                  : 'Healthy'
+                : 'Unavailable'
+            }
           />
           <Typography>{gateway.environment}</Typography>
           <Alert severity={gateway.configured ? 'info' : 'warning'}>{gateway.message}</Alert>
+          {gateway.capabilities && (
+            <Typography color="text.secondary">
+              Checkout: {gateway.capabilities.checkout.toLowerCase().replaceAll('_', ' ')} ·
+              notifications: {gateway.capabilities.webhooks ? 'verified merchant POST' : 'none'} ·
+              status retrieval: {gateway.capabilities.statusRetrieval ? 'available' : 'unsupported'}
+              {' · '}refund: {gateway.capabilities.refund.toLowerCase().replaceAll('_', ' ')} ·
+              reconciliation:{' '}
+              {gateway.capabilities.reconciliation.toLowerCase().replaceAll('_', ' ')}
+            </Typography>
+          )}
         </Stack>
       </SectionCard>
     </Stack>
@@ -155,4 +184,8 @@ export function AdminPayPalPage() {
 
 export function AdminStripePage() {
   return <AdminGatewayPage provider="stripe" />;
+}
+
+export function AdminBofaPage() {
+  return <AdminGatewayPage provider="bofa" />;
 }

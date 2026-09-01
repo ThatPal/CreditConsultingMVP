@@ -168,6 +168,55 @@ describe('verified payment transaction', () => {
       prisma.outboxEvent.count({ where: { eventKey: `purchase-paid:${purchase.id}` } }),
     ).resolves.toBe(1);
   });
+  test('verified BofA success uses the same canonical exactly-once effects boundary', async () => {
+    const orderId = `${marker}-bofa-paid`;
+    const { purchase, payment } = await pending(orderId, 'BOFA_MERCHANT');
+    const event = {
+      provider: 'BOFA_MERCHANT' as const,
+      providerEventId: `${marker}-bofa-event`,
+      providerOrderId: orderId,
+      providerPaymentId: `${marker}-bofa-request`,
+      eventType: 'BOFA_HOSTED_ACCEPT',
+      state: 'SUCCEEDED' as const,
+      occurredAt: new Date(),
+    };
+    await expect(applyVerifiedPaymentEvent(prisma, event)).resolves.toMatchObject({
+      applied: true,
+      effectsGranted: true,
+    });
+    await expect(applyVerifiedPaymentEvent(prisma, event)).resolves.toEqual({
+      applied: false,
+      reason: 'DUPLICATE_EVENT',
+    });
+    await expect(
+      applyVerifiedPaymentEvent(prisma, {
+        ...event,
+        providerEventId: `${marker}-bofa-late-decline`,
+        eventType: 'BOFA_HOSTED_DECLINE',
+        state: 'FAILED',
+      }),
+    ).resolves.toMatchObject({ applied: false, reason: 'NON_MONOTONIC_OR_NO_CHANGE' });
+    await expect(
+      prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }),
+    ).resolves.toMatchObject({ state: 'SUCCEEDED', provider: 'BOFA_MERCHANT' });
+    await expect(
+      prisma.serviceEntitlement.count({ where: { purchaseId: purchase.id } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.reviewCreditTransaction.count({ where: { purchaseId: purchase.id } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.notification.count({ where: { semanticKey: `purchase-paid:${purchase.id}` } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.auditEvent.count({
+        where: { entityId: payment.id, action: 'PAYMENT_SUCCEEDED_AND_EFFECTS_GRANTED' },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.outboxEvent.count({ where: { eventKey: `purchase-paid:${purchase.id}` } }),
+    ).resolves.toBe(1);
+  });
   test('forced paid-effects failure rolls back completely, then retry converges exactly once', async () => {
     const orderId = `${marker}-rollback-order`;
     const { purchase, payment } = await pending(orderId);

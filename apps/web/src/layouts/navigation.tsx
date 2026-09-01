@@ -224,6 +224,16 @@ const registry: NavigationItem[] = [
     status: 'available',
   },
   {
+    id: 'admin-bofa',
+    label: 'BofA Merchant Services',
+    path: '/admin/integrations/bofa',
+    icon: AdminPanelSettingsRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'payment.read',
+    status: 'available',
+  },
+  {
     id: 'admin-account',
     label: 'Account',
     path: '/admin/account',

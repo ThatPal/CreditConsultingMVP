@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { PaymentProvider, PaymentState } from '../generated/prisma/client.js';
 import Stripe from 'stripe';
 
@@ -24,14 +25,27 @@ export type GatewayHealth = {
   environment: string;
   configured: boolean;
   healthy: boolean;
+  connectionVerified?: boolean;
   message: string;
+  capabilities?: GatewayCapabilities;
+};
+export type GatewayCapabilities = {
+  checkout: 'REDIRECT' | 'HOSTED_FORM';
+  webhooks: boolean;
+  statusRetrieval: boolean;
+  refund: 'AVAILABLE' | 'NOT_IMPLEMENTED' | 'UNSUPPORTED';
+  reconciliation: 'AVAILABLE' | 'NOT_IMPLEMENTED' | 'UNSUPPORTED';
+};
+export type ProviderCheckout = {
+  providerOrderId: string;
+  checkoutUrl: string;
+  method?: 'GET' | 'POST';
+  formFields?: Record<string, string>;
 };
 export interface PaymentGateway {
   readonly provider: PaymentProvider;
   readonly environment: string;
-  createCheckout(
-    request: ProviderCheckoutRequest,
-  ): Promise<{ providerOrderId: string; checkoutUrl: string }>;
+  createCheckout(request: ProviderCheckoutRequest): Promise<ProviderCheckout>;
   retrieve(providerOrderId: string): Promise<VerifiedPaymentEvent>;
   verifyWebhook(
     headers: Record<string, string | string[] | undefined>,
@@ -99,11 +113,137 @@ export class DeterministicPaymentGateway implements PaymentGateway {
   }
   async health(): Promise<GatewayHealth> {
     return {
-      provider: 'PAYPAL',
+      provider: this.provider,
       environment: this.environment,
       configured: true,
       healthy: this.healthy,
       message: this.healthy ? 'Test gateway healthy.' : 'Test gateway unavailable.',
+    };
+  }
+}
+
+export type BankOfAmericaOptions = {
+  accessKey?: string;
+  profileId?: string;
+  secretKey?: string;
+  hostedUrl?: string;
+  environment?: string;
+};
+
+const bofaDecisionState = (decision: string): PaymentState => {
+  if (decision === 'ACCEPT') return 'SUCCEEDED';
+  if (decision === 'REVIEW') return 'PROCESSING';
+  if (decision === 'CANCEL') return 'CANCELLED';
+  if (decision === 'DECLINE' || decision === 'ERROR') return 'FAILED';
+  return 'PENDING';
+};
+
+const signHostedFields = (fields: Record<string, string>, secret: string) => {
+  const names = fields.signed_field_names?.split(',') ?? [];
+  const data = names.map((name) => `${name}=${fields[name] ?? ''}`).join(',');
+  return createHmac('sha256', secret).update(data).digest('base64');
+};
+
+export class BankOfAmericaGateway implements PaymentGateway {
+  readonly provider = 'BOFA_MERCHANT' as const;
+  readonly environment: string;
+  private readonly hostedUrl: string;
+  constructor(private readonly options: BankOfAmericaOptions) {
+    this.environment = options.environment ?? 'SANDBOX';
+    this.hostedUrl = options.hostedUrl ?? 'https://testsecureacceptance.cybersource.com/pay';
+  }
+  private configuration() {
+    if (!this.options.accessKey || !this.options.profileId || !this.options.secretKey)
+      throw new Error('BOFA_NOT_CONFIGURED');
+    return {
+      accessKey: this.options.accessKey,
+      profileId: this.options.profileId,
+      secretKey: this.options.secretKey,
+    };
+  }
+  async createCheckout(request: ProviderCheckoutRequest): Promise<ProviderCheckout> {
+    const configuration = this.configuration();
+    const fields: Record<string, string> = {
+      access_key: configuration.accessKey,
+      profile_id: configuration.profileId,
+      transaction_uuid: request.paymentId,
+      signed_field_names:
+        'access_key,profile_id,transaction_uuid,signed_field_names,unsigned_field_names,signed_date_time,locale,transaction_type,reference_number,amount,currency,merchant_defined_data1',
+      unsigned_field_names: '',
+      signed_date_time: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      locale: 'en-us',
+      transaction_type: 'sale',
+      reference_number: request.paymentId,
+      amount: request.amount,
+      currency: request.currency,
+      merchant_defined_data1: request.purchaseId,
+    };
+    fields.signature = signHostedFields(fields, configuration.secretKey);
+    return {
+      providerOrderId: request.paymentId,
+      checkoutUrl: this.hostedUrl,
+      method: 'POST',
+      formFields: fields,
+    };
+  }
+  async retrieve(): Promise<VerifiedPaymentEvent> {
+    throw new Error('BOFA_STATUS_RETRIEVAL_UNSUPPORTED_WITH_HOSTED_PROFILE');
+  }
+  async verifyWebhook(
+    _headers: Record<string, string | string[] | undefined>,
+    body: unknown,
+  ): Promise<VerifiedPaymentEvent> {
+    const configuration = this.configuration();
+    if (!body || typeof body !== 'object' || Array.isArray(body))
+      throw new Error('BOFA_NOTIFICATION_MALFORMED');
+    const fields = Object.fromEntries(
+      Object.entries(body).map(([key, value]) => [key, typeof value === 'string' ? value : '']),
+    );
+    const signature = fields.signature;
+    if (!signature || !fields.signed_field_names) throw new Error('BOFA_NOTIFICATION_MALFORMED');
+    const expected = signHostedFields(fields, configuration.secretKey);
+    const suppliedBytes = Buffer.from(signature);
+    const expectedBytes = Buffer.from(expected);
+    if (
+      suppliedBytes.length !== expectedBytes.length ||
+      !timingSafeEqual(suppliedBytes, expectedBytes)
+    )
+      throw new Error('BOFA_NOTIFICATION_UNVERIFIED');
+    const providerOrderId = fields.transaction_uuid ?? fields.req_transaction_uuid;
+    const providerPaymentId = fields.request_id ?? fields.transaction_id;
+    const decision = fields.decision ?? '';
+    if (!providerOrderId || !decision) throw new Error('BOFA_NOTIFICATION_MALFORMED');
+    return {
+      provider: 'BOFA_MERCHANT',
+      providerEventId:
+        fields.request_id ?? `${providerOrderId}:${decision}:${fields.reason_code ?? 'unknown'}`,
+      providerOrderId,
+      ...(providerPaymentId ? { providerPaymentId } : {}),
+      eventType: `BOFA_HOSTED_${decision}`,
+      state: bofaDecisionState(decision),
+      occurredAt: new Date(),
+    };
+  }
+  async health(): Promise<GatewayHealth> {
+    const configured = Boolean(
+      this.options.accessKey && this.options.profileId && this.options.secretKey,
+    );
+    return {
+      provider: 'BOFA_MERCHANT',
+      environment: this.environment,
+      configured,
+      healthy: configured,
+      connectionVerified: false,
+      message: configured
+        ? 'Hosted payment profile configuration is present; live connectivity is not asserted.'
+        : 'Bank of America hosted payment profile is not configured.',
+      capabilities: {
+        checkout: 'HOSTED_FORM',
+        webhooks: true,
+        statusRetrieval: false,
+        refund: 'UNSUPPORTED',
+        reconciliation: 'UNSUPPORTED',
+      },
     };
   }
 }
@@ -490,6 +630,17 @@ export const createPaymentGatewayRegistry = (
     ...(source.STRIPE_WEBHOOK_SECRET ? { webhookSecret: source.STRIPE_WEBHOOK_SECRET } : {}),
     ...(source.STRIPE_ENVIRONMENT ? { environment: source.STRIPE_ENVIRONMENT } : {}),
   });
-  const requested = source.PAYMENT_DEFAULT_PROVIDER === 'STRIPE' ? 'STRIPE' : 'PAYPAL';
-  return new PaymentGatewayRegistry([paypal, stripe], requested);
+  const bofa = new BankOfAmericaGateway({
+    ...(source.BOFA_ACCESS_KEY ? { accessKey: source.BOFA_ACCESS_KEY } : {}),
+    ...(source.BOFA_PROFILE_ID ? { profileId: source.BOFA_PROFILE_ID } : {}),
+    ...(source.BOFA_SECRET_KEY ? { secretKey: source.BOFA_SECRET_KEY } : {}),
+    ...(source.BOFA_HOSTED_URL ? { hostedUrl: source.BOFA_HOSTED_URL } : {}),
+    ...(source.BOFA_ENVIRONMENT ? { environment: source.BOFA_ENVIRONMENT } : {}),
+  });
+  const requested: PaymentProvider = ['PAYPAL', 'STRIPE', 'BOFA_MERCHANT'].includes(
+    source.PAYMENT_DEFAULT_PROVIDER ?? '',
+  )
+    ? (source.PAYMENT_DEFAULT_PROVIDER as PaymentProvider)
+    : 'PAYPAL';
+  return new PaymentGatewayRegistry([paypal, stripe, bofa], requested);
 };

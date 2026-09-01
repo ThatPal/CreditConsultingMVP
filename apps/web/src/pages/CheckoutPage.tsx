@@ -1,5 +1,5 @@
 import { Alert, Button, Chip, LinearProgress, Stack, Typography } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
@@ -27,6 +27,28 @@ export function CheckoutPage() {
     queryKey: ['checkout', purchaseIntentId],
     queryFn: () => apiRequest<Checkout>(`/api/v1/client/checkouts/${purchaseIntentId}`),
     refetchInterval: ({ state }) => (state.data?.payment.state === 'SUCCEEDED' ? false : 5000),
+  });
+  const launchHostedCheckout = useMutation({
+    mutationFn: () =>
+      apiRequest<{ action: string; method: 'POST'; fields: Record<string, string> }>(
+        `/api/v1/client/checkouts/${purchaseIntentId}/launch`,
+        { method: 'POST' },
+      ),
+    onSuccess: ({ action, fields }) => {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = action;
+      for (const [name, value] of Object.entries(fields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.append(input);
+      }
+      document.body.append(form);
+      form.submit();
+      form.remove();
+    },
   });
   if (query.isLoading) return <LinearProgress />;
   if (query.isError)
@@ -75,10 +97,26 @@ export function CheckoutPage() {
               No entitlement is granted until the provider confirms a completed payment.
             </Alert>
           )}
-          {data.payment.checkoutUrl && !successful && (
+          {data.payment.checkoutUrl && !successful && data.payment.provider !== 'BOFA_MERCHANT' && (
             <Button component="a" href={data.payment.checkoutUrl} variant="contained">
               Continue securely with {data.payment.provider}
             </Button>
+          )}
+          {data.payment.checkoutUrl && !successful && data.payment.provider === 'BOFA_MERCHANT' && (
+            <Button
+              disabled={launchHostedCheckout.isPending}
+              onClick={() => launchHostedCheckout.mutate()}
+              variant="contained"
+            >
+              {launchHostedCheckout.isPending
+                ? 'Preparing hosted checkout…'
+                : 'Continue with Bank of America Merchant Services'}
+            </Button>
+          )}
+          {launchHostedCheckout.isError && (
+            <Alert severity="error">
+              Bank of America hosted checkout is unavailable. No payment or entitlement was created.
+            </Alert>
           )}
           <Button component={Link} to="/app/support">
             Get payment support

@@ -56,7 +56,8 @@ export function createPaymentWebhookRouter(
   const registry = registryFor(gatewaySource);
   const router = Router();
   const webhook =
-    (provider: 'PAYPAL' | 'STRIPE') => async (req: Request, res: Response, next: NextFunction) => {
+    (provider: 'PAYPAL' | 'STRIPE' | 'BOFA_MERCHANT') =>
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
         const gateway = registry.get(provider);
         const event = await gateway.verifyWebhook(req.headers, req.body);
@@ -81,6 +82,11 @@ export function createPaymentWebhookRouter(
     '/stripe',
     express.raw({ type: 'application/json', limit: '1mb' }),
     webhook('STRIPE'),
+  );
+  router.post(
+    '/bofa',
+    express.urlencoded({ extended: false, limit: '256kb' }),
+    webhook('BOFA_MERCHANT'),
   );
   return router;
 }
@@ -270,6 +276,47 @@ export function createPaymentRouter(
       next(error);
     }
   });
+  router.post(
+    '/client/checkouts/:purchaseId/launch',
+    requireRole('CLIENT'),
+    async (req, res, next) => {
+      try {
+        const payment = await prisma.payment.findFirst({
+          where: { purchaseId: req.params.purchaseId as string, clientId: req.auth!.clientId! },
+          include: { purchase: { include: { productVersion: true } } },
+        });
+        if (!payment) throw new AppError('NOT_FOUND', 404, 'Checkout was not found');
+        if (payment.provider !== 'BOFA_MERCHANT')
+          throw new AppError('INVALID_CHECKOUT_PROVIDER', 409, 'Hosted form is not required');
+        const gateway = registry.get(payment.provider);
+        const health = await gateway.health();
+        if (!health.healthy)
+          throw new AppError(
+            'PAYMENT_PROVIDER_UNAVAILABLE',
+            503,
+            'Checkout is temporarily unavailable',
+          );
+        const checkout = await gateway.createCheckout({
+          paymentId: payment.id,
+          purchaseId: payment.purchaseId,
+          amount: payment.amount.toFixed(2),
+          currency: payment.currency,
+          description: payment.purchase.productVersion?.name ?? 'Credit Consulting service',
+          returnUrl: `${webOrigin}/app/checkout/${payment.purchaseId}?returned=1`,
+          cancelUrl: `${webOrigin}/app/checkout/${payment.purchaseId}?cancelled=1`,
+        });
+        if (checkout.method !== 'POST' || !checkout.formFields)
+          throw new AppError('INVALID_CHECKOUT_PROVIDER', 409, 'Hosted form is not available');
+        res.json({
+          action: checkout.checkoutUrl,
+          method: checkout.method,
+          fields: checkout.formFields,
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   const adminGate = [
     requireRole('ADMIN'),
     requireCanonicalCapability(
@@ -387,6 +434,24 @@ export function createPaymentRouter(
     ),
     async (req, res) =>
       res.json({ gateway: await registry.get('PAYPAL').health(), testedBy: req.auth!.userId }),
+  );
+  router.get('/admin/integrations/bofa', ...adminGate, async (_req, res) =>
+    res.json({ gateway: await registry.get('BOFA_MERCHANT').health() }),
+  );
+  router.post(
+    '/admin/integrations/bofa/test',
+    requireRole('ADMIN'),
+    requireCanonicalCapability(
+      authorization,
+      'payment.manage',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+    async (req, res) =>
+      res.json({
+        gateway: await registry.get('BOFA_MERCHANT').health(),
+        testedBy: req.auth!.userId,
+      }),
   );
   router.get('/admin/integrations/stripe', ...adminGate, async (_req, res) =>
     res.json({ gateway: await registry.get('STRIPE').health() }),

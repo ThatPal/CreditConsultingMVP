@@ -9,6 +9,7 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import { errorHandler } from '../http/errors.js';
 import { createPrisma } from '../lib/prisma.js';
 import {
+  BankOfAmericaGateway,
   DeterministicPaymentGateway,
   PaymentGatewayRegistry,
   type PaymentGateway,
@@ -141,7 +142,13 @@ describe('payment route boundaries', () => {
     await request(app(client))
       .post('/api/v1/client/checkouts')
       .set('Idempotency-Key', `${key}-tamper`)
-      .send({ productId, amount: '0.01', currency: 'XXX', clientId: otherClient.clientId })
+      .send({
+        productId,
+        amount: '0.01',
+        currency: 'XXX',
+        clientId: otherClient.clientId,
+        provider: 'BOFA_MERCHANT',
+      })
       .expect(400);
   });
   test('client IDOR, missing session, and admin capability denial fail closed', async () => {
@@ -159,6 +166,7 @@ describe('payment route boundaries', () => {
     };
     await request(app(admin)).get('/api/v1/admin/payments').expect(403);
     await request(app(admin)).get('/api/v1/admin/integrations/stripe').expect(403);
+    await request(app(admin)).get('/api/v1/admin/integrations/bofa').expect(403);
   });
   test('server-governed Stripe selection reuses canonical checkout and idempotency', async () => {
     const stripe = new DeterministicPaymentGateway('AWAITING_CUSTOMER', true, 'STRIPE');
@@ -179,6 +187,55 @@ describe('payment route boundaries', () => {
     expect(replay.body.purchaseId).toBe(first.body.purchaseId);
     await expect(
       prisma.payment.count({ where: { purchaseId: first.body.purchaseId, provider: 'STRIPE' } }),
+    ).resolves.toBe(1);
+  });
+  test('unconfigured BofA fails before records; configured hosted checkout is resumable and idempotent', async () => {
+    const before = await prisma.payment.count({ where: { clientId: client.clientId! } });
+    const unavailable = new BankOfAmericaGateway({});
+    await request(app(client, new PaymentGatewayRegistry([gateway, unavailable], 'BOFA_MERCHANT')))
+      .post('/api/v1/client/checkouts')
+      .set('Idempotency-Key', `${marker}-bofa-unavailable`)
+      .send({ productId })
+      .expect(503);
+    await expect(prisma.payment.count({ where: { clientId: client.clientId! } })).resolves.toBe(
+      before,
+    );
+
+    const bofa = new BankOfAmericaGateway({
+      accessKey: 'sprint54-access',
+      profileId: 'sprint54-profile',
+      secretKey: 'sprint54-secret',
+    });
+    const registry = new PaymentGatewayRegistry([gateway, bofa], 'BOFA_MERCHANT');
+    const key = `${marker}-bofa-checkout`;
+    const first = await request(app(client, registry))
+      .post('/api/v1/client/checkouts')
+      .set('Idempotency-Key', key)
+      .send({ productId })
+      .expect(201);
+    const replay = await request(app(client, registry))
+      .post('/api/v1/client/checkouts')
+      .set('Idempotency-Key', key)
+      .send({ productId })
+      .expect(200);
+    expect(first.body.payment).toMatchObject({
+      provider: 'BOFA_MERCHANT',
+      environment: 'SANDBOX',
+    });
+    expect(replay.body.purchaseId).toBe(first.body.purchaseId);
+    const launch = await request(app(client, registry))
+      .post(`/api/v1/client/checkouts/${first.body.purchaseId}/launch`)
+      .expect(200);
+    expect(launch.body).toMatchObject({
+      action: 'https://testsecureacceptance.cybersource.com/pay',
+      method: 'POST',
+      fields: { amount: '41.00', currency: 'USD' },
+    });
+    expect(JSON.stringify(launch.body)).not.toContain('sprint54-secret');
+    await expect(
+      prisma.payment.count({
+        where: { purchaseId: first.body.purchaseId, provider: 'BOFA_MERCHANT' },
+      }),
     ).resolves.toBe(1);
   });
 });
