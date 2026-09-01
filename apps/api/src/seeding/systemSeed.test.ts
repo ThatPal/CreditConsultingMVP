@@ -32,6 +32,7 @@ describe('canonical system seed', () => {
       notificationTemplates: systemNotificationTemplates.length,
       supportCategories: systemSupportCategories.length,
       integrations: 1,
+      serviceProducts: 3,
     });
     expect(second).toEqual(first);
     expect(count).toBe(systemOptionTemplates.length);

@@ -65,7 +65,8 @@ No payment-provider checkout, fake payment success, refund/dispute workflow, sch
 - API and Web typecheck: **PASS**.
 - Changed-workspace lint: **PASS**.
 - API and Web production build: **PASS**. The established non-blocking Vite large-chunk advisory remains.
-- Risk-based GitHub CI: **PENDING** at report commit time; final task handoff supplies the run result and URL.
+- Initial risk-based GitHub CI: **BOUNDED FAILURE** — run `33555768251` proved install, clean migration, double seed execution, lint, and typecheck, then exposed one stale seed-result contract assertion after the intentional addition of `serviceProducts: 3`. The assertion was corrected and its focused seed/commerce gate passed 9/9.
+- Corrective risk-based GitHub CI: **PENDING** at correction-report commit time; final task handoff supplies the run result and URL.
 
 ## Acceptance proofs
 
