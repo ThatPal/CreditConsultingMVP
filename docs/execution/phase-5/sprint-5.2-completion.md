@@ -65,9 +65,10 @@ No production credentials, raw card data, Stripe/BofA behavior, refund/dispute o
 - Workspace typecheck: **PASS**.
 - Workspace lint: **PASS**.
 - Workspace production build: **PASS**. The established non-blocking Vite chunk-size advisory remains.
-- System seed on this Windows host: role-capability writes completed idempotently, but the `tsx` wrapper then encountered host `uv_os_get_passwd` `ENOMEM`; clean migration was independently proven and CI owns the required clean double-seed proof.
+- Idempotent system/reference seed: **PASS** — the clean CI reproduction completed the seed twice after routing `tsx` temporary files to the workspace; GitHub independently completed both seed passes.
 - Initial payment-risk GitHub CI: **BOUNDED FAILURE** — run `33562387292` passed clean migration, double seed, lint, and typecheck, then failed in the full test gate. An identical clean local CI reproduction isolated the failure to the accepted realtime business-command test's duplicate-delivery assertion, not the payment runtime.
 - CI correction: the realtime proof now verifies that replay reaches at least one canonical Redis subscriber and then asserts the database still contains exactly one goal, audit, and outbox event. It no longer depends on a second Socket.IO delivery, whose timing is non-authoritative and competed with the persistent review runtime on the shared local Redis channel. The initial authorized delivery and authoritative refetch assertions remain unchanged. The focused realtime proof and final GitHub rerun are recorded at handoff.
+- Corrective payment-risk GitHub CI: **PASS** — run `33563751645` completed install, all 34 migrations, double system seed, lint, typecheck, the full 118-test API gate plus all other workspace tests, and production builds at implementation head `66057399b72910d3ed488c23ed02e8ff6762829a`.
 
 ## Requirement self-review
 
