@@ -195,8 +195,18 @@ export async function applyVerifiedPaymentEvent(prisma: PrismaClient, event: Ver
       return { applied: true, paymentId: payment.id, state: event.state, effectsGranted: true };
     });
   } catch (error) {
-    if ((error as { code?: string }).code === 'P2002')
-      return { applied: false, reason: 'DUPLICATE_EVENT' };
+    if ((error as { code?: string }).code === 'P2002') {
+      const replay = await prisma.paymentProviderEvent.findUnique({
+        where: {
+          provider_providerEventId: {
+            provider: event.provider,
+            providerEventId: event.providerEventId,
+          },
+        },
+        select: { id: true },
+      });
+      if (replay) return { applied: false, reason: 'DUPLICATE_EVENT' };
+    }
     throw error;
   }
 }

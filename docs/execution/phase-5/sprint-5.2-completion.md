@@ -102,3 +102,45 @@ Staff routes retain QR-based MFA enrollment and step-up. The review environment 
 ## Final handoff
 
 The exact final Sprint 5.2 SHA and successful payment-risk CI evidence are supplied after the branch push. No merge into `ai-enabled` is performed, and Sprint 5.3 is not started.
+
+## Sprint 5.2-C1 — Paid-Effects Rollback & Retry Acceptance Proof
+
+### Correction scope and defect
+
+C1 adds the missing real-transaction acceptance proof without changing the payment architecture. The proof inserts a deterministic conflicting outbox key, then applies an authoritative PayPal `SUCCEEDED` event through the real `applyVerifiedPaymentEvent` Prisma/PostgreSQL transaction. The collision occurs at the final paid-success outbox write, after Payment, Purchase, entitlement, Review Credit, notification, and audit writes have been attempted.
+
+The transaction correctly rolled all writes back. The proof did expose one narrow error-classification defect: the outer handler treated every Prisma `P2002` uniqueness failure as `DUPLICATE_EVENT`, including a collision from a later paid-effect write. The correction now queries the canonical `(provider, providerEventId)` record after rollback and returns `DUPLICATE_EVENT` only when that provider event actually exists. Other uniqueness failures remain failures and are safely retryable.
+
+### Real-transaction acceptance proof
+
+After the forced first-attempt failure:
+
+- Payment remains `PROCESSING`, with no verified provider event ID.
+- Purchase remains `PENDING`, with no purchase timestamp.
+- Provider event applications: exactly 0.
+- Purchased entitlements: exactly 0.
+- Review Credit `PURCHASE` ledger rows: exactly 0.
+- Paid-success semantic notifications: exactly 0.
+- `PAYMENT_SUCCEEDED_AND_EFFECTS_GRANTED` audits: exactly 0.
+- `commerce.purchase.paid` outbox events: exactly 0.
+
+After removing the deterministic fault and retrying the same authoritative provider event:
+
+- Payment is `SUCCEEDED` and Purchase is `PAID`.
+- Applied provider events: exactly 1.
+- Entitlements: exactly 1, with the purchased quantity of 1.
+- Review Credit `PURCHASE` rows: exactly 1, with the purchased delta of 2.
+- Paid-success semantic notifications: exactly 1.
+- Paid-success audits: exactly 1.
+- Paid-success outbox events: exactly 1.
+
+A third application of the same event returns `DUPLICATE_EVENT`; all successful counts remain exactly one.
+
+### C1 verification and boundary
+
+- C1 base: `3c9beac48543b5372acac1538c3c3e60dcd4a1bf`.
+- Focused provider/payment transaction and route gate: **PASS**, 9/9 across 3 files.
+- API typecheck: **PASS**.
+- Workspace lint: **PASS**.
+- Final payment-risk GitHub CI: **PENDING** at C1 report-commit time; final head, result, and link are supplied in the handoff after the exact-boundary run.
+- The rapid branch remains unmerged. Sprint 5.3 was not started.

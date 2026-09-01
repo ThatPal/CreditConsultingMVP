@@ -127,6 +127,125 @@ describe('verified payment transaction', () => {
         .termsSnapshot,
     ).toEqual({ name: 'Frozen original', amount: '29.00', currency: 'USD' });
   });
+  test('forced paid-effects failure rolls back completely, then retry converges exactly once', async () => {
+    const orderId = `${marker}-rollback-order`;
+    const { purchase, payment } = await pending(orderId);
+    const event = {
+      provider: 'PAYPAL' as const,
+      providerEventId: `${marker}-rollback-event`,
+      providerOrderId: orderId,
+      providerPaymentId: `${marker}-rollback-capture`,
+      eventType: 'PAYMENT.CAPTURE.COMPLETED',
+      state: 'SUCCEEDED' as const,
+      occurredAt: new Date(),
+    };
+    const paidEventKey = `purchase-paid:${purchase.id}`;
+    const fault = await prisma.outboxEvent.create({
+      data: {
+        eventType: 'test.payment.paid_fault',
+        eventKey: paidEventKey,
+        aggregateType: 'ServicePurchase',
+        aggregateId: purchase.id,
+        payload: { purpose: 'force-paid-effects-rollback' },
+      },
+    });
+
+    await expect(applyVerifiedPaymentEvent(prisma, event)).rejects.toMatchObject({ code: 'P2002' });
+    await expect(
+      prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }),
+    ).resolves.toMatchObject({
+      state: 'PROCESSING',
+      verifiedProviderEventId: null,
+    });
+    await expect(
+      prisma.servicePurchase.findUniqueOrThrow({ where: { id: purchase.id } }),
+    ).resolves.toMatchObject({ status: 'PENDING', purchasedAt: null });
+    await expect(
+      prisma.paymentProviderEvent.count({
+        where: { provider: event.provider, providerEventId: event.providerEventId },
+      }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.serviceEntitlement.count({ where: { purchaseId: purchase.id } }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.reviewCreditTransaction.count({
+        where: { purchaseId: purchase.id, transactionType: 'PURCHASE' },
+      }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.notification.count({ where: { semanticKey: `purchase-paid:${purchase.id}` } }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.auditEvent.count({
+        where: {
+          entityId: payment.id,
+          action: 'PAYMENT_SUCCEEDED_AND_EFFECTS_GRANTED',
+        },
+      }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.outboxEvent.count({
+        where: { eventKey: paidEventKey, eventType: 'commerce.purchase.paid' },
+      }),
+    ).resolves.toBe(0);
+
+    await prisma.outboxEvent.delete({ where: { id: fault.id } });
+    await expect(applyVerifiedPaymentEvent(prisma, event)).resolves.toMatchObject({
+      applied: true,
+      state: 'SUCCEEDED',
+      effectsGranted: true,
+    });
+    await expect(applyVerifiedPaymentEvent(prisma, event)).resolves.toEqual({
+      applied: false,
+      reason: 'DUPLICATE_EVENT',
+    });
+
+    await expect(
+      prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }),
+    ).resolves.toMatchObject({
+      state: 'SUCCEEDED',
+      verifiedProviderEventId: event.providerEventId,
+    });
+    await expect(
+      prisma.servicePurchase.findUniqueOrThrow({ where: { id: purchase.id } }),
+    ).resolves.toMatchObject({ status: 'PAID' });
+    await expect(
+      prisma.paymentProviderEvent.count({
+        where: {
+          provider: event.provider,
+          providerEventId: event.providerEventId,
+          disposition: 'APPLIED',
+        },
+      }),
+    ).resolves.toBe(1);
+    const entitlement = await prisma.serviceEntitlement.findMany({
+      where: { purchaseId: purchase.id },
+    });
+    expect(entitlement).toHaveLength(1);
+    expect(entitlement[0]!.quantityGranted).toBe(1);
+    const credits = await prisma.reviewCreditTransaction.findMany({
+      where: { purchaseId: purchase.id, transactionType: 'PURCHASE' },
+    });
+    expect(credits).toHaveLength(1);
+    expect(credits[0]!.availableDelta).toBe(2);
+    await expect(
+      prisma.notification.count({ where: { semanticKey: `purchase-paid:${purchase.id}` } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.auditEvent.count({
+        where: {
+          entityId: payment.id,
+          action: 'PAYMENT_SUCCEEDED_AND_EFFECTS_GRANTED',
+        },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.outboxEvent.count({
+        where: { eventKey: paidEventKey, eventType: 'commerce.purchase.paid' },
+      }),
+    ).resolves.toBe(1);
+  });
   test('pending or failed events create no success effects and late failure cannot regress paid', async () => {
     const { purchase } = await pending(`${marker}-ordered`);
     await applyVerifiedPaymentEvent(prisma, {
