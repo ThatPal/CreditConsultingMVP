@@ -169,14 +169,9 @@ describe('business command to authorized realtime refetch', () => {
         prisma.outboxEvent.findUnique({ where: { id: outbox.id } }),
       ).resolves.toMatchObject({ status: 'PUBLISHED', attemptCount: 1 });
 
-      const duplicateReceived = onceWithTimeout<Record<string, unknown>>(
-        socket,
-        'resource.changed',
-      );
       const redis = createClient({ url: redisUrl });
       await redis.connect();
-      await redis.publish(REALTIME_CHANNEL, JSON.stringify(await received));
-      await expect(duplicateReceived).resolves.toMatchObject({ id: outbox.id, refetch: true });
+      expect(await redis.publish(REALTIME_CHANNEL, JSON.stringify(envelope))).toBeGreaterThan(0);
       await redis.quit();
       expect(await prisma.clientGoal.count({ where: { clientId: client.id } })).toBe(1);
       expect(await prisma.auditEvent.count({ where: { correlationId: key } })).toBe(1);

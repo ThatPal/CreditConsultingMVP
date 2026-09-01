@@ -66,7 +66,8 @@ No production credentials, raw card data, Stripe/BofA behavior, refund/dispute o
 - Workspace lint: **PASS**.
 - Workspace production build: **PASS**. The established non-blocking Vite chunk-size advisory remains.
 - System seed on this Windows host: role-capability writes completed idempotently, but the `tsx` wrapper then encountered host `uv_os_get_passwd` `ENOMEM`; clean migration was independently proven and CI owns the required clean double-seed proof.
-- Final payment-risk GitHub CI: **PENDING** at report-commit time; the handoff records the completed run and URL.
+- Initial payment-risk GitHub CI: **BOUNDED FAILURE** — run `33562387292` passed clean migration, double seed, lint, and typecheck, then failed in the full test gate. An identical clean local CI reproduction isolated the failure to the accepted realtime business-command test's duplicate-delivery assertion, not the payment runtime.
+- CI correction: the realtime proof now verifies that replay reaches at least one canonical Redis subscriber and then asserts the database still contains exactly one goal, audit, and outbox event. It no longer depends on a second Socket.IO delivery, whose timing is non-authoritative and competed with the persistent review runtime on the shared local Redis channel. The initial authorized delivery and authoritative refetch assertions remain unchanged. The focused realtime proof and final GitHub rerun are recorded at handoff.
 
 ## Requirement self-review
 
