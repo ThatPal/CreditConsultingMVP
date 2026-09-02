@@ -119,7 +119,9 @@ The web process could start on `5184` while using the application’s default AP
 
 ### Repository CI
 
-The branch CI result and final commit are recorded after the checkpoint commit is pushed.
+- Checkpoint implementation commit: `620f481f5c42a8cb41825930c7a2b53f4cc8dcfd`
+- GitHub Actions workflow `CI`: **SUCCESS**
+- Run: `https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33579522547`
 
 ## Review access
 
