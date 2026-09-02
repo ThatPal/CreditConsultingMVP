@@ -154,12 +154,9 @@ type CreditAccountReview = {
 };
 
 function ScoreTrendChart({ reviews }: { reviews: Review[] }) {
-  const [activeBureau, setActiveBureau] = useState<(typeof bureauSeries)[number]['key']>(
-    'experianScore',
-  );
-  const points = [...reviews]
-    .filter((review) => review.snapshot && review.completedAt)
-    .reverse();
+  const [activeBureau, setActiveBureau] =
+    useState<(typeof bureauSeries)[number]['key']>('experianScore');
+  const points = [...reviews].filter((review) => review.snapshot && review.completedAt).reverse();
   if (points.length === 0) return null;
   const width = 760;
   const height = 230;
@@ -259,8 +256,21 @@ function ScoreTrendChart({ reviews }: { reviews: Review[] }) {
           )}
           {available.map((item) => (
             <g key={item.index}>
-              <circle cx={x(item.index)} cy={y(item.score)} r="7" fill={bureau.color} opacity=".22" />
-              <circle cx={x(item.index)} cy={y(item.score)} r="4" fill="#fff" stroke={bureau.color} strokeWidth="3" />
+              <circle
+                cx={x(item.index)}
+                cy={y(item.score)}
+                r="7"
+                fill={bureau.color}
+                opacity=".22"
+              />
+              <circle
+                cx={x(item.index)}
+                cy={y(item.score)}
+                r="4"
+                fill="#fff"
+                stroke={bureau.color}
+                strokeWidth="3"
+              />
               <text
                 x={x(item.index)}
                 y={y(item.score) - 13}
@@ -294,7 +304,15 @@ function ScoreTrendChart({ reviews }: { reviews: Review[] }) {
   );
 }
 
-function ScoreMeter({ label, score, color }: { label: string; score: number | null; color: string }) {
+function ScoreMeter({
+  label,
+  score,
+  color,
+}: {
+  label: string;
+  score: number | null;
+  color: string;
+}) {
   const position = score == null ? 0 : Math.max(0, Math.min(100, ((score - 300) / 550) * 100));
   return (
     <SectionCard>
@@ -327,14 +345,19 @@ function ScoreMeter({ label, score, color }: { label: string; score: number | nu
             sx={{
               height: 12,
               borderRadius: 99,
-              background: 'linear-gradient(90deg, #ff5f78 0%, #ffb34d 34%, #46d8ef 68%, #42e6a4 100%)',
+              background:
+                'linear-gradient(90deg, #ff5f78 0%, #ffb34d 34%, #46d8ef 68%, #42e6a4 100%)',
               boxShadow: 'inset 0 1px 2px rgba(255,255,255,.35), 0 0 20px rgba(69,215,240,.16)',
             }}
           />
         </Box>
         <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-          <Typography variant="caption" color="text.secondary">300 · Lowest</Typography>
-          <Typography variant="caption" color="text.secondary">850 · Highest</Typography>
+          <Typography variant="caption" color="text.secondary">
+            300 · Lowest
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            850 · Highest
+          </Typography>
         </Stack>
         <Typography variant="caption" color="text.secondary">
           {score == null ? 'Not recorded for this Review' : 'Score recorded for this Review'}
@@ -413,7 +436,11 @@ function calculateProfileChanges(
     previous.revolvingLimit == null || previous.revolvingBalance == null
       ? null
       : previous.revolvingLimit - previous.revolvingBalance;
-  if (currentAvailable != null && previousAvailable != null && currentAvailable !== previousAvailable) {
+  if (
+    currentAvailable != null &&
+    previousAvailable != null &&
+    currentAvailable !== previousAvailable
+  ) {
     const delta = currentAvailable - previousAvailable;
     changes.push({
       title: `Available revolving credit ${delta > 0 ? 'increased' : 'decreased'} by $${Math.abs(delta).toLocaleString()}`,
@@ -734,7 +761,8 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
     history.findIndex((item) => item.id === review?.id),
   );
   const isCurrentReview = review?.id === currentReview?.id;
-  const generalReadiness = !isCurrentReview && review
+  const generalReadiness =
+    !isCurrentReview && review
     ? review.generalReadiness
     : storedReview
     ? storedReadiness
@@ -756,8 +784,7 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
           : generalReadiness.replaceAll('_', ' ');
   const displayedActions = !isCurrentReview
     ? []
-    :
-    !storedReview
+    : !storedReview
       ? [
           {
             id: 'preview-action-1',
@@ -788,7 +815,7 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
           finish processing it.
         </Alert>
         {activeReviewQuery.data?.review && (
-          <Button component={Link} to="/client/credit-profile/review" variant="contained">
+          <Button component={Link} to="/app/credit-center/review" variant="contained">
             Open Review
           </Button>
         )}
@@ -832,11 +859,7 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
     snapshot.revolvingLimit == null || snapshot.revolvingBalance == null
       ? null
       : snapshot.revolvingLimit - snapshot.revolvingBalance;
-  const negativeItemCounts = [
-    snapshot.collections,
-    snapshot.chargeOffs,
-    snapshot.bankruptcies,
-  ];
+  const negativeItemCounts = [snapshot.collections, snapshot.chargeOffs, snapshot.bankruptcies];
   const negativeItemsReported = negativeItemCounts.some((value) => value != null);
   const totalNegativeItems = negativeItemsReported
     ? negativeItemCounts.reduce<number>((sum, value) => sum + (value ?? 0), 0)
@@ -1015,11 +1038,21 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
         <Grid container spacing={2} sx={{ alignItems: 'center' }}>
           <Grid size={{ xs: 12, md: 5 }}>
             <Stack direction="row" sx={{ gap: 1, alignItems: 'center', mb: 1 }}>
-              <Typography variant="overline" color="text.secondary">Profile freshness</Typography>
+              <Typography variant="overline" color="text.secondary">
+                Profile freshness
+              </Typography>
               <Chip
                 size="small"
-                color={profileUpdateUnderReview ? 'warning' : freshness.isCurrent ? 'success' : 'warning'}
-                label={profileUpdateUnderReview ? 'Update under review' : freshness.isCurrent ? 'Current' : 'Expired'}
+                color={
+                  profileUpdateUnderReview ? 'warning' : freshness.isCurrent ? 'success' : 'warning'
+                }
+                label={
+                  profileUpdateUnderReview
+                    ? 'Update under review'
+                    : freshness.isCurrent
+                      ? 'Current'
+                      : 'Expired'
+                }
               />
             </Stack>
             <Typography variant="h3">
@@ -1038,13 +1071,17 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
             </Typography>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 2 }}>
-            <Typography variant="overline" color="text.secondary">Profile as of</Typography>
+            <Typography variant="overline" color="text.secondary">
+              Profile as of
+            </Typography>
             <Typography sx={{ fontWeight: 850, mt: 0.35 }}>
               {freshness.asOf ? new Date(freshness.asOf).toLocaleDateString() : '—'}
             </Typography>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 2 }}>
-            <Typography variant="overline" color="text.secondary">Current through</Typography>
+            <Typography variant="overline" color="text.secondary">
+              Current through
+            </Typography>
             <Typography sx={{ fontWeight: 850, mt: 0.35 }}>
               {freshness.expiresAt ? new Date(freshness.expiresAt).toLocaleDateString() : '—'}
             </Typography>
@@ -1052,7 +1089,7 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
           <Grid size={{ xs: 12, md: 3 }}>
             <Button
               component={Link}
-              to="/client/credit-profile/review"
+              to="/app/credit-center/review"
               variant="contained"
               fullWidth
               disabled={freshness.isCurrent || profileUpdateUnderReview}
@@ -1060,15 +1097,23 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
               Update Credit Profile
             </Button>
             {(freshness.isCurrent || profileUpdateUnderReview) && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, textAlign: 'center' }}>
-                {profileUpdateUnderReview ? 'Awaiting consultant review' : 'Available after expiration'}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mt: 0.75, textAlign: 'center' }}
+              >
+                {profileUpdateUnderReview
+                  ? 'Awaiting consultant review'
+                  : 'Available after expiration'}
               </Typography>
             )}
           </Grid>
         </Grid>
       </SectionCard>
       <Box>
-        <Typography variant="overline" color="primary">Credit profile</Typography>
+        <Typography variant="overline" color="primary">
+          Credit profile
+        </Typography>
         <Typography variant="h2">Score information</Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5 }}>
           Bureau scores for the selected Review and how they have changed over time.
@@ -1089,31 +1134,69 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
               sx={{
                 display: 'grid',
                 gridTemplateColumns: { xs: '48px 1fr 48px', sm: '140px 1fr 140px' },
-                alignItems: 'stretch', border: 1, borderColor: 'divider', borderRadius: 3,
-                overflow: 'hidden', bgcolor: 'rgba(5, 13, 29, .34)',
+                alignItems: 'stretch',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 3,
+                overflow: 'hidden',
+                bgcolor: 'rgba(5, 13, 29, .34)',
               }}
             >
-              <Button variant="text" disabled={selectedReviewIndex >= history.length - 1}
+              <Button
+                variant="text"
+                disabled={selectedReviewIndex >= history.length - 1}
                 startIcon={<ChevronLeftRounded />}
                 onClick={() => setSelectedReviewId(history[selectedReviewIndex + 1]!.id)}
                 aria-label="View older Review"
-                sx={{ minWidth: 0, borderRadius: 0, '& .MuiButton-startIcon': { m: { xs: 0, sm: 0.5 } } }}>
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Older</Box>
+                sx={{
+                  minWidth: 0,
+                  borderRadius: 0,
+                  '& .MuiButton-startIcon': { m: { xs: 0, sm: 0.5 } },
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Older
+                </Box>
               </Button>
-              <Stack sx={{ px: 2, py: 1.5, textAlign: 'center', justifyContent: 'center', borderInline: 1, borderColor: 'divider' }}>
+              <Stack
+                sx={{
+                  px: 2,
+                  py: 1.5,
+                  textAlign: 'center',
+                  justifyContent: 'center',
+                  borderInline: 1,
+                  borderColor: 'divider',
+                }}
+              >
                 <Typography variant="caption" color="text.secondary">
-                  {selectedReviewIndex === 0 ? 'CURRENT REVIEW' : 'HISTORICAL REVIEW'} · {selectedReviewIndex + 1} OF {history.length}
+                  {selectedReviewIndex === 0 ? 'CURRENT REVIEW' : 'HISTORICAL REVIEW'} ·{' '}
+                  {selectedReviewIndex + 1} OF {history.length}
                 </Typography>
                 <Typography sx={{ fontWeight: 900 }}>
-                  {review?.completedAt ? new Date(review.completedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : 'Completed Review'}
+                  {review?.completedAt
+                    ? new Date(review.completedAt).toLocaleDateString(undefined, {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'Completed Review'}
                 </Typography>
               </Stack>
-              <Button variant="text" disabled={selectedReviewIndex === 0}
+              <Button
+                variant="text"
+                disabled={selectedReviewIndex === 0}
                 endIcon={<ChevronRightRounded />}
                 onClick={() => setSelectedReviewId(history[selectedReviewIndex - 1]!.id)}
                 aria-label="View newer Review"
-                sx={{ minWidth: 0, borderRadius: 0, '& .MuiButton-endIcon': { m: { xs: 0, sm: 0.5 } } }}>
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Newer</Box>
+                sx={{
+                  minWidth: 0,
+                  borderRadius: 0,
+                  '& .MuiButton-endIcon': { m: { xs: 0, sm: 0.5 } },
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Newer
+                </Box>
               </Button>
             </Box>
           </Stack>
@@ -1122,11 +1205,7 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
       <Grid container spacing={2}>
         {bureauSeries.map((bureau) => (
           <Grid key={bureau.key} size={{ xs: 12, sm: 4 }}>
-            <ScoreMeter
-              label={bureau.label}
-              score={snapshot[bureau.key]}
-              color={bureau.color}
-            />
+            <ScoreMeter label={bureau.label} score={snapshot[bureau.key]} color={bureau.color} />
           </Grid>
         ))}
       </Grid>
@@ -1134,7 +1213,8 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
         <SectionCard
           variant="elevated"
           sx={{
-            background: 'linear-gradient(125deg, rgba(24, 49, 84, .96) 0%, rgba(17, 34, 64, .98) 100%)',
+            background:
+              'linear-gradient(125deg, rgba(24, 49, 84, .96) 0%, rgba(17, 34, 64, .98) 100%)',
             borderColor: 'rgba(69, 215, 240, .38)',
             boxShadow: '0 12px 32px rgba(0, 0, 0, .22)',
           }}
@@ -1143,8 +1223,13 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
             <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
               <Box
                 sx={{
-                  width: 42, height: 42, display: 'grid', placeItems: 'center', borderRadius: 2,
-                  color: '#07111f', background: 'linear-gradient(135deg, #45d7f0, #8d7cff)',
+                  width: 42,
+                  height: 42,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: 2,
+                  color: '#07111f',
+                  background: 'linear-gradient(135deg, #45d7f0, #8d7cff)',
                   border: '1px solid rgba(255, 255, 255, .32)',
                   boxShadow: '0 0 20px rgba(69, 215, 240, .3)',
                 }}
@@ -1179,21 +1264,44 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
                     <Grid key={change.title} size={{ xs: 12, md: 6 }}>
                       <Box
                         sx={{
-                          height: '100%', p: 1.65, borderRadius: 1.75,
-                          border: '1px solid', borderColor: `${color}70`,
+                          height: '100%',
+                          p: 1.65,
+                          borderRadius: 1.75,
+                          border: '1px solid',
+                          borderColor: `${color}70`,
                           background: `linear-gradient(110deg, ${color}12 0%, rgba(7, 20, 40, .48) 100%)`,
                           boxShadow: `inset 3px 0 0 ${color}`,
                         }}
                       >
-                        <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
-                          <Typography sx={{ fontWeight: 900, color: 'common.white' }}>{change.title}</Typography>
+                        <Stack
+                          direction={{ xs: 'column', sm: 'row' }}
+                          sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}
+                        >
+                          <Typography sx={{ fontWeight: 900, color: 'common.white' }}>
+                            {change.title}
+                          </Typography>
                           <Chip
                             size="small"
-                            label={change.tone === 'positive' ? 'Improved' : change.tone === 'negative' ? 'Declined' : 'Changed'}
-                            sx={{ flexShrink: 0, color, bgcolor: `${color}18`, border: `1px solid ${color}70`, fontWeight: 850 }}
+                            label={
+                              change.tone === 'positive'
+                                ? 'Improved'
+                                : change.tone === 'negative'
+                                  ? 'Declined'
+                                  : 'Changed'
+                            }
+                            sx={{
+                              flexShrink: 0,
+                              color,
+                              bgcolor: `${color}18`,
+                              border: `1px solid ${color}70`,
+                              fontWeight: 850,
+                            }}
                           />
                         </Stack>
-                        <Typography variant="body2" sx={{ mt: 0.65, color: 'rgba(232, 241, 255, .82)' }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ mt: 0.65, color: 'rgba(232, 241, 255, .82)' }}
+                        >
                           {change.detail}
                         </Typography>
                       </Box>
@@ -1236,7 +1344,9 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
         </Grid>
       )}
       <Box>
-        <Typography variant="overline" color="primary">Credit profile</Typography>
+        <Typography variant="overline" color="primary">
+          Credit profile
+        </Typography>
         <Typography variant="h2">Report information</Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5 }}>
           Neutral facts recorded from the credit report used for this Review.
@@ -1245,20 +1355,38 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
       {!v2 && (
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-            <MetricCard label="Utilization" value={snapshot.aggregateUtilization == null ? '—' : `${snapshot.aggregateUtilization}%`}
-              supportingText="Reported revolving utilization" accent="gradient" />
+            <MetricCard
+              label="Utilization"
+              value={
+                snapshot.aggregateUtilization == null ? '—' : `${snapshot.aggregateUtilization}%`
+              }
+              supportingText="Reported revolving utilization"
+              accent="gradient"
+            />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-            <MetricCard label="Revolving balance" value={formatMoney(snapshot.revolvingBalance)}
-              supportingText={`Across ${formatMoney(snapshot.revolvingLimit)} in limits`} accent="info" />
+            <MetricCard
+              label="Revolving balance"
+              value={formatMoney(snapshot.revolvingBalance)}
+              supportingText={`Across ${formatMoney(snapshot.revolvingLimit)} in limits`}
+              accent="info"
+            />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-            <MetricCard label="Open accounts" value={snapshot.openAccounts?.toString() ?? '—'}
-              supportingText="Reported open accounts" accent="positive" />
+            <MetricCard
+              label="Open accounts"
+              value={snapshot.openAccounts?.toString() ?? '—'}
+              supportingText="Reported open accounts"
+              accent="positive"
+            />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-            <MetricCard label="Recent inquiries" value={snapshot.recentInquiries?.toString() ?? '—'}
-              supportingText="Recorded in this Review" accent="info" />
+            <MetricCard
+              label="Recent inquiries"
+              value={snapshot.recentInquiries?.toString() ?? '—'}
+              supportingText="Recorded in this Review"
+              accent="info"
+            />
           </Grid>
         </Grid>
       )}
@@ -1268,25 +1396,40 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
             <Grid key={category.title} size={{ xs: 12, sm: 6, lg: 4 }}>
               <Box
                 sx={{
-                  height: '100%', p: 2, border: 1, borderColor: `${category.color}48`, borderRadius: 2.5,
+                  height: '100%',
+                  p: 2,
+                  border: 1,
+                  borderColor: `${category.color}48`,
+                  borderRadius: 2.5,
                   background: `linear-gradient(145deg, ${category.color}10 0%, rgba(5, 13, 29, .94) 72%)`,
-                  position: 'relative', overflow: 'hidden',
+                  position: 'relative',
+                  overflow: 'hidden',
                   boxShadow: `0 8px 20px rgba(0, 0, 0, .12), inset 3px 0 0 ${category.color}`,
                 }}
               >
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Box
                     sx={{
-                      width: 34, height: 34, display: 'grid', placeItems: 'center', borderRadius: 1.5,
-                      color: category.color, bgcolor: `${category.color}12`, border: `1px solid ${category.color}45`,
+                      width: 34,
+                      height: 34,
+                      display: 'grid',
+                      placeItems: 'center',
+                      borderRadius: 1.5,
+                      color: category.color,
+                      bgcolor: `${category.color}12`,
+                      border: `1px solid ${category.color}45`,
                       '& svg': { fontSize: 20 },
                     }}
                   >
                     {category.icon}
                   </Box>
-                  <Typography variant="overline" sx={{ color: category.color }}>{category.title}</Typography>
+                  <Typography variant="overline" sx={{ color: category.color }}>
+                    {category.title}
+                  </Typography>
                 </Stack>
-                <Typography variant="h4" sx={{ fontWeight: 950, mt: 1.35, color: 'common.white' }}>{category.value}</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 950, mt: 1.35, color: 'common.white' }}>
+                  {category.value}
+                </Typography>
                 <Typography
                   variant="body2"
                   sx={{
@@ -1310,8 +1453,14 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
           <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', mb: 2 }}>
             <Box
               sx={{
-                width: 42, height: 42, flex: '0 0 auto', display: 'grid', placeItems: 'center',
-                borderRadius: 2, color: 'primary.main', bgcolor: 'rgba(69, 215, 240, .1)',
+                width: 42,
+                height: 42,
+                flex: '0 0 auto',
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: 2,
+                color: 'primary.main',
+                bgcolor: 'rgba(69, 215, 240, .1)',
                 border: '1px solid rgba(69, 215, 240, .28)',
               }}
             >
@@ -1328,11 +1477,18 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
             {[
               {
                 label: 'Highest utilization',
-                value: highestUtilizationAccount ? `${highestUtilizationAccount.utilization}%` : 'Not reported',
+                value: highestUtilizationAccount
+                  ? `${highestUtilizationAccount.utilization}%`
+                  : 'Not reported',
                 detail: highestUtilizationAccount?.name ?? 'No eligible revolving account',
                 color: '#ffb34d',
               },
-              { label: 'Oldest account', value: oldestAccountLabel, detail: 'Reported account age', color: '#8d7cff' },
+              {
+                label: 'Oldest account',
+                value: oldestAccountLabel,
+                detail: 'Reported account age',
+                color: '#8d7cff',
+              },
               {
                 label: 'Bureau coverage',
                 value: `${bureauCoverage.length} of ${bureauSeries.length}`,
@@ -1342,19 +1498,33 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
                     : 'No bureau scores reported',
                 color: '#42e6a4',
               },
-              { label: 'Score model', value: snapshot.scoreModel ?? 'Not reported', detail: 'Model recorded for this Review', color: '#45d7f0' },
+              {
+                label: 'Score model',
+                value: snapshot.scoreModel ?? 'Not reported',
+                detail: 'Model recorded for this Review',
+                color: '#45d7f0',
+              },
             ].map((highlight) => (
               <Grid key={highlight.label} size={{ xs: 12, sm: 6, lg: 3 }}>
                 <Box
                   sx={{
-                    height: '100%', p: 1.6, borderRadius: 1.75, border: `1px solid ${highlight.color}42`,
+                    height: '100%',
+                    p: 1.6,
+                    borderRadius: 1.75,
+                    border: `1px solid ${highlight.color}42`,
                     background: `linear-gradient(120deg, ${highlight.color}0d, rgba(5, 14, 30, .62))`,
                     boxShadow: `inset 3px 0 0 ${highlight.color}`,
                   }}
                 >
-                  <Typography variant="overline" sx={{ color: highlight.color }}>{highlight.label}</Typography>
-                  <Typography variant="h3" sx={{ mt: 0.45 }}>{highlight.value}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.55 }}>{highlight.detail}</Typography>
+                  <Typography variant="overline" sx={{ color: highlight.color }}>
+                    {highlight.label}
+                  </Typography>
+                  <Typography variant="h3" sx={{ mt: 0.45 }}>
+                    {highlight.value}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.55 }}>
+                    {highlight.detail}
+                  </Typography>
                 </Box>
               </Grid>
             ))}
@@ -1363,7 +1533,11 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
       )}
       {v2 && (
         <SectionCard>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'center' } }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ alignItems: { md: 'center' } }}
+          >
             <Box sx={{ flex: 1 }}>
               <Typography variant="h3">Data limitations</Typography>
               {dataLimitations.length === 0 ? (
@@ -1386,7 +1560,11 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
             </Button>
           </Stack>
           {reportChangeSubmitted && (
-            <Alert severity="success" sx={{ mt: 2 }} onClose={() => setReportChangeSubmitted(false)}>
+            <Alert
+              severity="success"
+              sx={{ mt: 2 }}
+              onClose={() => setReportChangeSubmitted(false)}
+            >
               Your change was sent to the consultant for review.
             </Alert>
           )}
@@ -1416,17 +1594,31 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
               role="status"
               aria-label="Current report"
               sx={{
-                display: 'inline-flex', alignItems: 'center', gap: 0.9, alignSelf: 'flex-start',
-                px: 1.25, py: 0.65, borderRadius: 99, color: '#42e6a4',
-                bgcolor: 'rgba(66, 230, 164, .1)', border: '1px solid rgba(66, 230, 164, .4)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.9,
+                alignSelf: 'flex-start',
+                px: 1.25,
+                py: 0.65,
+                borderRadius: 99,
+                color: '#42e6a4',
+                bgcolor: 'rgba(66, 230, 164, .1)',
+                border: '1px solid rgba(66, 230, 164, .4)',
               }}
             >
               <Box
                 sx={{
-                  position: 'relative', width: 8, height: 8, borderRadius: '50%', bgcolor: '#42e6a4',
+                  position: 'relative',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  bgcolor: '#42e6a4',
                   boxShadow: '0 0 10px rgba(66, 230, 164, .8)',
                   '&::after': {
-                    content: '""', position: 'absolute', inset: -4, borderRadius: '50%',
+                    content: '""',
+                    position: 'absolute',
+                    inset: -4,
+                    borderRadius: '50%',
                     border: '1px solid rgba(66, 230, 164, .55)',
                     animation: 'currentReportPulse 2s ease-out infinite',
                   },
@@ -1436,7 +1628,10 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
                   },
                 }}
               />
-              <Typography variant="caption" sx={{ color: 'inherit', fontWeight: 900, letterSpacing: '.04em' }}>
+              <Typography
+                variant="caption"
+                sx={{ color: 'inherit', fontWeight: 900, letterSpacing: '.04em' }}
+              >
                 CURRENT REPORT
               </Typography>
             </Box>
@@ -1446,21 +1641,47 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
         </Stack>
         <Grid container spacing={1.25} sx={{ mb: 2 }}>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Box sx={{ p: 1.5, borderRadius: 2.5, bgcolor: 'rgba(69, 215, 240, .06)', border: '1px solid rgba(69, 215, 240, .18)', boxShadow: 'inset 3px 0 0 rgba(69, 215, 240, .72)' }}>
-              <Typography variant="overline" color="text.secondary">Report date</Typography>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 2.5,
+                bgcolor: 'rgba(69, 215, 240, .06)',
+                border: '1px solid rgba(69, 215, 240, .18)',
+                boxShadow: 'inset 3px 0 0 rgba(69, 215, 240, .72)',
+              }}
+            >
+              <Typography variant="overline" color="text.secondary">
+                Report date
+              </Typography>
               <Typography sx={{ fontWeight: 900, mt: 0.35 }}>
                 {reportDate ? new Date(reportDate).toLocaleDateString() : 'Not reported'}
               </Typography>
-              <Typography variant="caption" color="text.secondary">Date of the credit-report data</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Date of the credit-report data
+              </Typography>
             </Box>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Box sx={{ p: 1.5, borderRadius: 2.5, bgcolor: 'rgba(141, 124, 255, .06)', border: '1px solid rgba(141, 124, 255, .18)', boxShadow: 'inset 3px 0 0 rgba(141, 124, 255, .72)' }}>
-              <Typography variant="overline" color="text.secondary">Review completed</Typography>
-              <Typography sx={{ fontWeight: 900, mt: 0.35 }}>
-                {review.completedAt ? new Date(review.completedAt).toLocaleDateString() : 'Not completed'}
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 2.5,
+                bgcolor: 'rgba(141, 124, 255, .06)',
+                border: '1px solid rgba(141, 124, 255, .18)',
+                boxShadow: 'inset 3px 0 0 rgba(141, 124, 255, .72)',
+              }}
+            >
+              <Typography variant="overline" color="text.secondary">
+                Review completed
               </Typography>
-              <Typography variant="caption" color="text.secondary">Date the consultant completed the Review</Typography>
+              <Typography sx={{ fontWeight: 900, mt: 0.35 }}>
+                {review.completedAt
+                  ? new Date(review.completedAt).toLocaleDateString()
+                  : 'Not completed'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Date the consultant completed the Review
+              </Typography>
             </Box>
           </Grid>
         </Grid>
@@ -1552,10 +1773,17 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
         )}
       </Dialog>
       {v2 && (
-        <Dialog open={reportChangeOpen} onClose={() => setReportChangeOpen(false)} fullWidth maxWidth="sm">
+        <Dialog
+          open={reportChangeOpen}
+          onClose={() => setReportChangeOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
           <DialogTitle>
             <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
-              <Typography variant="h3" sx={{ flex: 1 }}>Report a Credit Profile change</Typography>
+              <Typography variant="h3" sx={{ flex: 1 }}>
+                Report a Credit Profile change
+              </Typography>
               <IconButton aria-label="Close change form" onClick={() => setReportChangeOpen(false)}>
                 <CloseRounded />
               </IconButton>
@@ -1591,13 +1819,15 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
                   },
                 }}
               >
-                {([
+                {(
+                  [
                   ['BALANCE_OR_LIMIT', 'Balance or limit'],
                   ['NEW_APPLICATION', 'New application'],
                   ['NEW_ACCOUNT', 'New account'],
                   ['INACCURATE_INFORMATION', 'Incorrect information'],
                   ['OTHER', 'Other change'],
-                ] as const).map(([value, label]) => (
+                  ] as const
+                ).map(([value, label]) => (
                   <ToggleButton key={value} value={value}>
                     {label}
                   </ToggleButton>
@@ -1614,8 +1844,14 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
               {reportChangeMutation.isError && (
                 <Alert severity="error">{reportChangeMutation.error.message}</Alert>
               )}
-              <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1} sx={{ justifyContent: 'flex-end' }}>
-                <Button variant="text" onClick={() => setReportChangeOpen(false)}>Cancel</Button>
+              <Stack
+                direction={{ xs: 'column-reverse', sm: 'row' }}
+                spacing={1}
+                sx={{ justifyContent: 'flex-end' }}
+              >
+                <Button variant="text" onClick={() => setReportChangeOpen(false)}>
+                  Cancel
+                </Button>
                 <Button
                   variant="contained"
                   disabled={reportChangeDetails.trim().length < 5 || reportChangeMutation.isPending}
@@ -1631,7 +1867,9 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
       {!v2 ? (
         <>
       <Box>
-        <Typography variant="overline" color="primary">Consultant guidance</Typography>
+            <Typography variant="overline" color="primary">
+              Consultant guidance
+            </Typography>
         <Typography variant="h2">Review results</Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5 }}>
           Your consultant’s decision, explanation, and recommended next actions.
@@ -1640,14 +1878,20 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
       <SectionCard variant="elevated">
         <Grid container spacing={2} sx={{ alignItems: 'center' }}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <Typography variant="overline" color="text.secondary">Consultant decision</Typography>
-            <Typography variant="h2" color="primary" sx={{ mt: 0.5 }}>{decisionLabel}</Typography>
+                <Typography variant="overline" color="text.secondary">
+                  Consultant decision
+                </Typography>
+                <Typography variant="h2" color="primary" sx={{ mt: 0.5 }}>
+                  {decisionLabel}
+                </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Based on the uploaded report and your current goals.
             </Typography>
           </Grid>
           <Grid size={{ xs: 12, md: 8 }}>
-            <Typography variant="overline" color="text.secondary">Consultant explanation</Typography>
+                <Typography variant="overline" color="text.secondary">
+                  Consultant explanation
+                </Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }}>
               {review.clientSummary ?? 'No client summary was recorded.'}
             </Typography>
@@ -1666,12 +1910,28 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
         ) : (
           <Stack spacing={1}>
             {displayedActions.map((action) => (
-              <Stack key={action.id} direction={{ xs: 'column', sm: 'row' }}
-                sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 2, gap: 1, alignItems: { sm: 'center' } }}>
-                <CheckCircleRounded color={action.status === 'COMPLETED' ? 'success' : 'disabled'} />
+                  <Stack
+                    key={action.id}
+                    direction={{ xs: 'column', sm: 'row' }}
+                    sx={{
+                      p: 1.5,
+                      border: 1,
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      gap: 1,
+                      alignItems: { sm: 'center' },
+                    }}
+                  >
+                    <CheckCircleRounded
+                      color={action.status === 'COMPLETED' ? 'success' : 'disabled'}
+                    />
                 <Box sx={{ flex: 1 }}>
                   <Typography sx={{ fontWeight: 850 }}>{action.title}</Typography>
-                  {action.description && <Typography variant="body2" color="text.secondary">{action.description}</Typography>}
+                      {action.description && (
+                        <Typography variant="body2" color="text.secondary">
+                          {action.description}
+                        </Typography>
+                      )}
                 </Box>
                 <Chip size="small" label={action.status.replaceAll('_', ' ')} />
               </Stack>
@@ -1684,8 +1944,12 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
         <SectionCard variant="elevated">
           <Grid container spacing={2.5} sx={{ alignItems: 'center' }}>
             <Grid size={{ xs: 12, md: 8 }}>
-              <Typography variant="overline" color="primary">Consultant guidance</Typography>
-              <Typography variant="h2" sx={{ mt: 0.5 }}>Continue to Credit Readiness</Typography>
+              <Typography variant="overline" color="primary">
+                Consultant guidance
+              </Typography>
+              <Typography variant="h2" sx={{ mt: 0.5 }}>
+                Continue to Credit Readiness
+              </Typography>
               <Typography color="text.secondary" sx={{ mt: 1 }}>
                 Credit Profile contains verified report facts only. Your consultant’s readiness
                 decision, rationale, recommendations, action plan, timing, and goal guidance are
@@ -1693,7 +1957,7 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
               </Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Button component={Link} to="/client/readiness" variant="contained" fullWidth>
+              <Button component={Link} to="/app/readiness" variant="contained" fullWidth>
                 View Credit Readiness
               </Button>
             </Grid>
@@ -1862,7 +2126,9 @@ function CreditProfilePageContent({ v2 = false }: { v2?: boolean }) {
       )}
       {history.length > 1 && (
         <Box>
-          <Typography variant="overline" color="primary">Point-in-time records</Typography>
+          <Typography variant="overline" color="primary">
+            Point-in-time records
+          </Typography>
           <Typography variant="h2">Review history</Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             Return to any previous Review and see the profile facts and source report recorded then.
@@ -1994,7 +2260,18 @@ export function ClientReviewPage({
   const [wizardStep, setWizardStep] = useState(0);
   const cardsQuery = useQuery({
     queryKey: ['client-cards', 'review-intake'],
-    queryFn: () => apiRequest<{ cards: Array<{ id: string; cardName: string; issuer: string; scope: 'PERSONAL' | 'BUSINESS'; accountStatus: string | null; balance: number | null; creditLimit: number | null }> }>('/api/v1/client/cards'),
+    queryFn: () =>
+      apiRequest<{
+        cards: Array<{
+          id: string;
+          cardName: string;
+          issuer: string;
+          scope: 'PERSONAL' | 'BUSINESS';
+          accountStatus: string | null;
+          balance: number | null;
+          creditLimit: number | null;
+        }>;
+      }>('/api/v1/client/cards'),
     retry: false,
   });
   useEffect(() => {
@@ -2009,7 +2286,8 @@ export function ClientReviewPage({
     if (intake.recentApplications) setApplications(intake.recentApplications);
     if (intake.accountUpdates) setAccountUpdates(intake.accountUpdates);
     if (intake.creditAccountReviews) setCreditAccountReviews(intake.creditAccountReviews);
-    const resumeStep = intake.creditAccountsConfirmed != null
+    const resumeStep =
+      intake.creditAccountsConfirmed != null
       ? 3
       : intake.materialChanges?.length
         ? 2
@@ -2041,8 +2319,7 @@ export function ClientReviewPage({
         recentApplications: applications,
         accountUpdates,
         creditAccountReviews,
-        creditAccountsConfirmed:
-          allExistingCardsReviewed ? !hasCreditAccountChanges : undefined,
+        creditAccountsConfirmed: allExistingCardsReviewed ? !hasCreditAccountChanges : undefined,
       }),
     });
   };
@@ -2122,14 +2399,13 @@ export function ClientReviewPage({
           <Typography color="text.secondary" sx={{ my: 1 }}>
             Services handles the purchase; Credit Profile handles the Review and its results.
           </Typography>
-          <Button component={Link} to="/client/services" variant="contained">
+          <Button component={Link} to="/app/services" variant="contained">
             Choose Review option
           </Button>
         </SectionCard>
       </Stack>
     );
-  if (!['INTAKE_REQUIRED', 'INFORMATION_REQUESTED'].includes(review.status))
-    {
+  if (!['INTAKE_REQUIRED', 'INFORMATION_REQUESTED'].includes(review.status)) {
       const consultantWorking = review.status === 'CONSULTANT_REVIEW';
       const reviewComplete = review.status === 'COMPLETE';
       return (
@@ -2138,17 +2414,62 @@ export function ClientReviewPage({
           <PageHeader
             eyebrow="Credit Profile Review"
             title={reviewComplete ? 'Your Review is complete' : 'Your Review was submitted'}
-            description={reviewComplete ? 'Your updated Credit Profile is ready.' : 'Your consultant has received your information.'}
+            description={
+              reviewComplete
+                ? 'Your updated Credit Profile is ready.'
+                : 'Your consultant has received your information.'
+            }
           />
         )}
-        <Box sx={{ p: { xs: 1.75, sm: 2.25 }, borderRadius: 1.75, border: 1, borderColor: reviewComplete ? 'rgba(66, 230, 164, .4)' : 'rgba(69, 215, 240, .34)', bgcolor: 'rgba(6, 18, 37, .52)', position: 'relative', overflow: 'hidden', '&::before': { content: '""', position: 'absolute', inset: '0 0 auto', height: 3, background: reviewComplete ? 'linear-gradient(90deg, #42e6a4, #45d7f0)' : 'linear-gradient(90deg, #45d7f0, #8d7cff)' } }}>
+        <Box
+          sx={{
+            p: { xs: 1.75, sm: 2.25 },
+            borderRadius: 1.75,
+            border: 1,
+            borderColor: reviewComplete ? 'rgba(66, 230, 164, .4)' : 'rgba(69, 215, 240, .34)',
+            bgcolor: 'rgba(6, 18, 37, .52)',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: '0 0 auto',
+              height: 3,
+              background: reviewComplete
+                ? 'linear-gradient(90deg, #42e6a4, #45d7f0)'
+                : 'linear-gradient(90deg, #45d7f0, #8d7cff)',
+            },
+          }}
+        >
           <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-            <Box sx={{ width: 44, height: 44, borderRadius: 1.4, display: 'grid', placeItems: 'center', flexShrink: 0, color: '#061321', background: reviewComplete ? 'linear-gradient(135deg, #42e6a4, #45d7f0)' : 'linear-gradient(135deg, #45d7f0, #8d7cff)' }}>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 1.4,
+                display: 'grid',
+                placeItems: 'center',
+                flexShrink: 0,
+                color: '#061321',
+                background: reviewComplete
+                  ? 'linear-gradient(135deg, #42e6a4, #45d7f0)'
+                  : 'linear-gradient(135deg, #45d7f0, #8d7cff)',
+              }}
+            >
               <CheckRounded />
             </Box>
             <Box>
-              <Typography variant="overline" color={reviewComplete ? 'success.main' : 'primary.main'}>{reviewComplete ? 'Review complete' : 'Successfully submitted'}</Typography>
-              <Typography variant="h3">{reviewComplete ? 'Your Credit Profile is ready' : 'Your information is with your consultant'}</Typography>
+              <Typography
+                variant="overline"
+                color={reviewComplete ? 'success.main' : 'primary.main'}
+              >
+                {reviewComplete ? 'Review complete' : 'Successfully submitted'}
+              </Typography>
+              <Typography variant="h3">
+                {reviewComplete
+                  ? 'Your Credit Profile is ready'
+                  : 'Your information is with your consultant'}
+              </Typography>
             </Box>
           </Stack>
           <Typography color="text.secondary" sx={{ mt: 1.25 }}>
@@ -2160,32 +2481,135 @@ export function ClientReviewPage({
           </Typography>
         </Box>
 
-        <Box sx={{ p: 1.5, borderRadius: 1.5, border: 1, borderColor: 'divider', bgcolor: 'rgba(5, 13, 29, .28)' }}>
-          <Typography variant="overline" color="text.secondary">Review progress</Typography>
+        <Box
+          sx={{
+            p: 1.5,
+            borderRadius: 1.5,
+            border: 1,
+            borderColor: 'divider',
+            bgcolor: 'rgba(5, 13, 29, .28)',
+          }}
+        >
+          <Typography variant="overline" color="text.secondary">
+            Review progress
+          </Typography>
           <Stack spacing={0} sx={{ mt: 1 }}>
             {[
-              { label: 'Information submitted', detail: 'Your report and account details were received.', complete: true, active: false },
-              { label: 'Consultant Review started', detail: consultantWorking || reviewComplete ? 'Your consultant is verifying the uploaded report, confirmed credit accounts, and recent information you provided.' : 'Your Review is queued for your consultant to begin reviewing the submitted information.', complete: consultantWorking || reviewComplete, active: !consultantWorking && !reviewComplete },
-              { label: 'Credit Profile updated', detail: reviewComplete ? 'Your verified Credit Profile is available. Continue to the next cycle stage for the readiness decision.' : consultantWorking ? 'Your consultant is preparing the verified Credit Profile used for the next readiness stage.' : 'Your Credit Profile will update after the consultant completes the Review.', complete: reviewComplete, active: consultantWorking },
+              {
+                label: 'Information submitted',
+                detail: 'Your report and account details were received.',
+                complete: true,
+                active: false,
+              },
+              {
+                label: 'Consultant Review started',
+                detail:
+                  consultantWorking || reviewComplete
+                    ? 'Your consultant is verifying the uploaded report, confirmed credit accounts, and recent information you provided.'
+                    : 'Your Review is queued for your consultant to begin reviewing the submitted information.',
+                complete: consultantWorking || reviewComplete,
+                active: !consultantWorking && !reviewComplete,
+              },
+              {
+                label: 'Credit Profile updated',
+                detail: reviewComplete
+                  ? 'Your verified Credit Profile is available. Continue to the next cycle stage for the readiness decision.'
+                  : consultantWorking
+                    ? 'Your consultant is preparing the verified Credit Profile used for the next readiness stage.'
+                    : 'Your Credit Profile will update after the consultant completes the Review.',
+                complete: reviewComplete,
+                active: consultantWorking,
+              },
             ].map((stage, index) => (
-              <Stack key={stage.label} direction="row" spacing={1.15} sx={{ minHeight: 58, position: 'relative' }}>
-                <Box sx={{ width: 28, display: 'flex', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
-                  {index < 2 && <Box sx={{ position: 'absolute', top: 27, bottom: -1, width: 2, bgcolor: stage.complete ? 'success.main' : 'divider' }} />}
-                  <Box sx={{ width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center', zIndex: 1, border: 1, borderColor: stage.complete ? 'success.main' : stage.active ? 'primary.main' : 'divider', bgcolor: stage.complete ? 'success.main' : stage.active ? 'rgba(69, 215, 240, .12)' : 'background.paper', color: stage.complete ? '#061321' : stage.active ? 'primary.main' : 'text.disabled' }}>
-                    {stage.complete ? <CheckRounded sx={{ fontSize: 17 }} /> : <Typography variant="caption" sx={{ fontWeight: 900 }}>{index + 1}</Typography>}
+              <Stack
+                key={stage.label}
+                direction="row"
+                spacing={1.15}
+                sx={{ minHeight: 58, position: 'relative' }}
+              >
+                <Box
+                  sx={{
+                    width: 28,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    flexShrink: 0,
+                  }}
+                >
+                  {index < 2 && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 27,
+                        bottom: -1,
+                        width: 2,
+                        bgcolor: stage.complete ? 'success.main' : 'divider',
+                      }}
+                    />
+                  )}
+                  <Box
+                    sx={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: '50%',
+                      display: 'grid',
+                      placeItems: 'center',
+                      zIndex: 1,
+                      border: 1,
+                      borderColor: stage.complete
+                        ? 'success.main'
+                        : stage.active
+                          ? 'primary.main'
+                          : 'divider',
+                      bgcolor: stage.complete
+                        ? 'success.main'
+                        : stage.active
+                          ? 'rgba(69, 215, 240, .12)'
+                          : 'background.paper',
+                      color: stage.complete
+                        ? '#061321'
+                        : stage.active
+                          ? 'primary.main'
+                          : 'text.disabled',
+                    }}
+                  >
+                    {stage.complete ? (
+                      <CheckRounded sx={{ fontSize: 17 }} />
+                    ) : (
+                      <Typography variant="caption" sx={{ fontWeight: 900 }}>
+                        {index + 1}
+                      </Typography>
+                    )}
                   </Box>
                 </Box>
                 <Box sx={{ pb: 1.25 }}>
-                  <Typography sx={{ fontWeight: 850, color: stage.active ? 'primary.main' : 'text.primary' }}>{stage.label}</Typography>
-                  <Typography variant="body2" color="text.secondary">{stage.detail}</Typography>
+                  <Typography
+                    sx={{ fontWeight: 850, color: stage.active ? 'primary.main' : 'text.primary' }}
+                  >
+                    {stage.label}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {stage.detail}
+                  </Typography>
                 </Box>
               </Stack>
             ))}
           </Stack>
           {reviewComplete ? (
-            <Button fullWidth component={Link} to="/client/credit-profile" variant="contained" startIcon={<VisibilityRounded />} sx={{ mt: 0.5 }}>View Credit Profile</Button>
+            <Button
+              fullWidth
+              component={Link}
+              to="/app/credit-center"
+              variant="contained"
+              startIcon={<VisibilityRounded />}
+              sx={{ mt: 0.5 }}
+            >
+              View Credit Profile
+            </Button>
           ) : embedded && onExit ? (
-            <Button fullWidth variant="outlined" onClick={onExit} sx={{ mt: 0.5 }}>Return to application cycle</Button>
+            <Button fullWidth variant="outlined" onClick={onExit} sx={{ mt: 0.5 }}>
+              Return to application cycle
+            </Button>
           ) : null}
         </Box>
 
@@ -2197,12 +2621,11 @@ export function ClientReviewPage({
           </Box>
         )}
       </Stack>
-      );
+    );
     }
   const toggle = (v: string) =>
     setChanges((current) => {
-      if (v === 'No material changes')
-        return current.includes(v) ? [] : ['No material changes'];
+      if (v === 'No material changes') return current.includes(v) ? [] : ['No material changes'];
       const withoutNoChanges = current.filter((item) => item !== 'No material changes');
       return withoutNoChanges.includes(v)
         ? withoutNoChanges.filter((item) => item !== v)
@@ -2232,13 +2655,30 @@ export function ClientReviewPage({
       )}
       <Box>
         <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.75 }}>
-          <Typography variant="overline" color="primary">Review intake</Typography>
-          <Typography variant="caption" color="text.secondary">Step {wizardStep + 1} of 4</Typography>
+          <Typography variant="overline" color="primary">
+            Review intake
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Step {wizardStep + 1} of 4
+          </Typography>
         </Stack>
         <LinearProgress variant="determinate" value={((wizardStep + 1) / 4) * 100} />
       </Box>
       {wizardStep === 0 && (
-      <SectionCard variant="elevated" sx={embedded ? { p: 0, border: 0, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' } : {}}>
+        <SectionCard
+          variant="elevated"
+          sx={
+            embedded
+              ? {
+                  p: 0,
+                  border: 0,
+                  bgcolor: 'transparent',
+                  backgroundImage: 'none',
+                  boxShadow: 'none',
+                }
+              : {}
+          }
+        >
         <Stack spacing={3}>
           <Box>
             <Typography variant="h3">1. Get your 3-bureau credit report</Typography>
@@ -2247,14 +2687,37 @@ export function ClientReviewPage({
               then save and upload the complete report as a PDF.
             </Typography>
           </Box>
-          <Box sx={{ p: 1.5, borderRadius: 1.5, border: 1, borderColor: 'rgba(69, 215, 240, .28)', bgcolor: 'rgba(69, 215, 240, .055)' }}>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 1.5,
+                border: 1,
+                borderColor: 'rgba(69, 215, 240, .28)',
+                bgcolor: 'rgba(69, 215, 240, .055)',
+              }}
+            >
             <Stack direction="row" spacing={1.1} sx={{ alignItems: 'center' }}>
-              <Box sx={{ width: 38, height: 38, borderRadius: 1.25, bgcolor: 'rgba(69, 215, 240, .13)', color: 'primary.main', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Box
+                  sx={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 1.25,
+                    bgcolor: 'rgba(69, 215, 240, .13)',
+                    color: 'primary.main',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
                 <DescriptionRounded />
               </Box>
               <Box>
-                <Typography variant="overline" color="primary">Recommended source</Typography>
-                <Typography variant="h4" sx={{ mt: 0.05 }}>Experian 3-bureau report</Typography>
+                  <Typography variant="overline" color="primary">
+                    Recommended source
+                  </Typography>
+                  <Typography variant="h4" sx={{ mt: 0.05 }}>
+                    Experian 3-bureau report
+                  </Typography>
               </Box>
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -2274,7 +2737,14 @@ export function ClientReviewPage({
               </Button>
               <Button
                 onClick={() => setReportInstructionsOpen((open) => !open)}
-                endIcon={<ChevronRightRounded sx={{ transform: reportInstructionsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 180ms ease' }} />}
+                  endIcon={
+                    <ChevronRightRounded
+                      sx={{
+                        transform: reportInstructionsOpen ? 'rotate(90deg)' : 'none',
+                        transition: 'transform 180ms ease',
+                      }}
+                    />
+                  }
               >
                 {reportInstructionsOpen ? 'Hide instructions' : 'How to get the report'}
               </Button>
@@ -2283,28 +2753,84 @@ export function ClientReviewPage({
               <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
                 <Stack spacing={1.15}>
                   {[
-                    ['1', 'Open the Experian 3-bureau report page and choose the option to get the report.'],
-                    ['2', 'Sign in to Experian or create an account, then complete its identity-verification steps.'],
-                    ['3', 'Select the report that includes Experian, Equifax, and TransUnion, and review Experian’s current price and terms before purchasing.'],
-                    ['4', 'Open the complete 3-bureau report. Use its download option, or your browser’s Print command and choose “Save as PDF.”'],
-                    ['5', 'Save every page as one PDF. Make sure the report date and all three bureaus are visible, and remove password protection before uploading.'],
+                      [
+                        '1',
+                        'Open the Experian 3-bureau report page and choose the option to get the report.',
+                      ],
+                      [
+                        '2',
+                        'Sign in to Experian or create an account, then complete its identity-verification steps.',
+                      ],
+                      [
+                        '3',
+                        'Select the report that includes Experian, Equifax, and TransUnion, and review Experian’s current price and terms before purchasing.',
+                      ],
+                      [
+                        '4',
+                        'Open the complete 3-bureau report. Use its download option, or your browser’s Print command and choose “Save as PDF.”',
+                      ],
+                      [
+                        '5',
+                        'Save every page as one PDF. Make sure the report date and all three bureaus are visible, and remove password protection before uploading.',
+                      ],
                   ].map(([number, instruction]) => (
-                    <Stack key={number} direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-                      <Box sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: 'rgba(69, 215, 240, .14)', color: 'primary.main', display: 'grid', placeItems: 'center', flexShrink: 0, fontWeight: 900, fontSize: 12 }}>
+                      <Stack
+                        key={number}
+                        direction="row"
+                        spacing={1}
+                        sx={{ alignItems: 'flex-start' }}
+                      >
+                        <Box
+                          sx={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            bgcolor: 'rgba(69, 215, 240, .14)',
+                            color: 'primary.main',
+                            display: 'grid',
+                            placeItems: 'center',
+                            flexShrink: 0,
+                            fontWeight: 900,
+                            fontSize: 12,
+                          }}
+                        >
                         {number}
                       </Box>
-                      <Typography variant="body2" sx={{ pt: 0.15 }}>{instruction}</Typography>
+                        <Typography variant="body2" sx={{ pt: 0.15 }}>
+                          {instruction}
+                        </Typography>
                     </Stack>
                   ))}
                 </Stack>
               </Box>
             </Collapse>
           </Box>
-          <Box sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 1.75, border: '1px dashed rgba(130, 207, 232, .5)', bgcolor: 'rgba(5, 13, 29, .24)', textAlign: 'center' }}>
-            <Box sx={{ width: 46, height: 46, mx: 'auto', borderRadius: '50%', bgcolor: 'rgba(69, 215, 240, .12)', color: 'primary.main', display: 'grid', placeItems: 'center' }}>
+            <Box
+              sx={{
+                p: { xs: 2, sm: 2.5 },
+                borderRadius: 1.75,
+                border: '1px dashed rgba(130, 207, 232, .5)',
+                bgcolor: 'rgba(5, 13, 29, .24)',
+                textAlign: 'center',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 46,
+                  height: 46,
+                  mx: 'auto',
+                  borderRadius: '50%',
+                  bgcolor: 'rgba(69, 215, 240, .12)',
+                  color: 'primary.main',
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+              >
               <UploadFileRounded />
             </Box>
-            <Typography variant="h4" sx={{ mt: 1.1 }}>Upload the complete PDF</Typography>
+              <Typography variant="h4" sx={{ mt: 1.1 }}>
+                Upload the complete PDF
+              </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
               One PDF containing every page · Maximum 15 MB
             </Typography>
@@ -2365,7 +2891,11 @@ export function ClientReviewPage({
           />
           {review.intake?.reportDocument && (
             <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
-              <Button variant="contained" disabled={!reportDate || continueIntake.isPending} onClick={() => continueIntake.mutate(1)}>
+                <Button
+                  variant="contained"
+                  disabled={!reportDate || continueIntake.isPending}
+                  onClick={() => continueIntake.mutate(1)}
+                >
                 {continueIntake.isPending ? 'Saving…' : 'Continue'}
               </Button>
             </Stack>
@@ -2374,20 +2904,46 @@ export function ClientReviewPage({
       </SectionCard>
       )}
       {wizardStep === 1 && (
-      <SectionCard sx={embedded ? { p: 0, border: 0, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' } : {}}>
+        <SectionCard
+          sx={
+            embedded
+              ? {
+                  p: 0,
+                  border: 0,
+                  bgcolor: 'transparent',
+                  backgroundImage: 'none',
+                  boxShadow: 'none',
+                }
+              : {}
+          }
+        >
         <Typography variant="h3">2. Additional information</Typography>
         <Typography color="text.secondary" sx={{ mb: 2 }}>
           Select anything that happened after the report date or may not appear on the report.
         </Typography>
         <Grid container spacing={1.5}>
-          {([
+            {(
+              [
             ['New application', 'Tell us the lender or issuer, approximate date, and result.'],
-            ['New account', 'Tell us the creditor, account type, opening date, and current status.'],
-            ['Balance changed', 'Tell us which account changed and its approximate current balance.'],
-            ['Credit limit changed', 'Tell us which account changed and its approximate new limit.'],
-            ['Late payment', 'Tell us the account, payment month, and whether it has been resolved.'],
+                [
+                  'New account',
+                  'Tell us the creditor, account type, opening date, and current status.',
+                ],
+                [
+                  'Balance changed',
+                  'Tell us which account changed and its approximate current balance.',
+                ],
+                [
+                  'Credit limit changed',
+                  'Tell us which account changed and its approximate new limit.',
+                ],
+                [
+                  'Late payment',
+                  'Tell us the account, payment month, and whether it has been resolved.',
+                ],
             ['No material changes', ''],
-          ] as const).map(([type, prompt]) => (
+              ] as const
+            ).map(([type, prompt]) => (
             <Grid key={type} size={{ xs: 12 }}>
               <Box
                 sx={{
@@ -2411,7 +2967,14 @@ export function ClientReviewPage({
                 <ButtonBase
                   onClick={() => toggle(type)}
                   aria-pressed={changes.includes(type)}
-                  sx={{ width: '100%', px: 1.5, py: 1.15, gap: 1, justifyContent: 'flex-start', textAlign: 'left' }}
+                    sx={{
+                      width: '100%',
+                      px: 1.5,
+                      py: 1.15,
+                      gap: 1,
+                      justifyContent: 'flex-start',
+                      textAlign: 'left',
+                    }}
                 >
                   <Box
                     sx={{
@@ -2423,10 +2986,14 @@ export function ClientReviewPage({
                       flexShrink: 0,
                       border: '1px solid',
                       borderColor: changes.includes(type)
-                        ? type === 'No material changes' ? 'success.main' : 'primary.main'
+                          ? type === 'No material changes'
+                            ? 'success.main'
+                            : 'primary.main'
                         : 'text.secondary',
                       bgcolor: changes.includes(type)
-                        ? type === 'No material changes' ? 'success.main' : 'primary.main'
+                          ? type === 'No material changes'
+                            ? 'success.main'
+                            : 'primary.main'
                         : 'transparent',
                       color: changes.includes(type) ? 'background.default' : 'transparent',
                     }}
@@ -2446,9 +3013,24 @@ export function ClientReviewPage({
                 </ButtonBase>
                 {type !== 'No material changes' && (
                   <Collapse in={changes.includes(type)}>
-                    <Box sx={{ px: 1.5, pt: 1.1, pb: 1.35, borderTop: 1, borderColor: 'rgba(130, 207, 232, .16)' }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.35 }}>
-                        Additional details <Box component="span" sx={{ opacity: 0.7 }}>(optional)</Box>
+                      <Box
+                        sx={{
+                          px: 1.5,
+                          pt: 1.1,
+                          pb: 1.35,
+                          borderTop: 1,
+                          borderColor: 'rgba(130, 207, 232, .16)',
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: 'block', mb: 0.35 }}
+                        >
+                          Additional details{' '}
+                          <Box component="span" sx={{ opacity: 0.7 }}>
+                            (optional)
+                          </Box>
                       </Typography>
                       <TextField
                         fullWidth
@@ -2476,9 +3058,17 @@ export function ClientReviewPage({
             </Grid>
           ))}
         </Grid>
-        <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1} sx={{ mt: 2, justifyContent: 'flex-end' }}>
+          <Stack
+            direction={{ xs: 'column-reverse', sm: 'row' }}
+            spacing={1}
+            sx={{ mt: 2, justifyContent: 'flex-end' }}
+          >
           <Button onClick={() => setWizardStep(0)}>Back</Button>
-          <Button variant="contained" disabled={changes.length === 0 || continueIntake.isPending} onClick={() => continueIntake.mutate(2)}>
+            <Button
+              variant="contained"
+              disabled={changes.length === 0 || continueIntake.isPending}
+              onClick={() => continueIntake.mutate(2)}
+            >
             {continueIntake.isPending ? 'Saving…' : 'Continue to credit accounts'}
           </Button>
         </Stack>
@@ -2735,25 +3325,76 @@ export function ClientReviewPage({
         </SectionCard>
       )}
       {wizardStep === 2 && (
-        <SectionCard variant="elevated" sx={embedded ? { p: 0, border: 0, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' } : {}}>
+        <SectionCard
+          variant="elevated"
+          sx={
+            embedded
+              ? {
+                  p: 0,
+                  border: 0,
+                  bgcolor: 'transparent',
+                  backgroundImage: 'none',
+                  boxShadow: 'none',
+                }
+              : {}
+          }
+        >
           <Typography variant="h3">3. Verify credit-card accounts</Typography>
           <Typography color="text.secondary" sx={{ mt: 0.75, mb: 2 }}>
-            Review the credit-card accounts recorded in your Credit Profile. Confirm the details or report an account that needs to be added or corrected. This is not payment-card information.
+            Review the credit-card accounts recorded in your Credit Profile. Confirm the details or
+            report an account that needs to be added or corrected. This is not payment-card
+            information.
           </Typography>
           {!cardsQuery.isLoading && existingCards.length > 0 && (
-            <Box sx={{ mb: 2, p: 1.5, borderRadius: 1.5, background: 'linear-gradient(110deg, rgba(69, 215, 240, .1), rgba(141, 124, 255, .07))', border: 1, borderColor: 'rgba(130, 207, 232, .24)' }}>
-              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                borderRadius: 1.5,
+                background:
+                  'linear-gradient(110deg, rgba(69, 215, 240, .1), rgba(141, 124, 255, .07))',
+                border: 1,
+                borderColor: 'rgba(130, 207, 232, .24)',
+              }}
+            >
+              <Stack
+                direction="row"
+                sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+              >
                 <Box>
-                  <Typography variant="overline" color="primary">Account review</Typography>
+                  <Typography variant="overline" color="primary">
+                    Account review
+                  </Typography>
                   <Typography sx={{ fontWeight: 850 }}>
-                    {creditAccountReviews.filter((item) => item.cardId).length} of {existingCards.length} cards reviewed
+                    {creditAccountReviews.filter((item) => item.cardId).length} of{' '}
+                    {existingCards.length} cards reviewed
                   </Typography>
                 </Box>
-                <Typography sx={{ fontSize: 24, fontWeight: 950, color: allExistingCardsReviewed ? 'success.main' : 'primary.main' }}>
-                  {Math.round((creditAccountReviews.filter((item) => item.cardId).length / existingCards.length) * 100)}%
+                <Typography
+                  sx={{
+                    fontSize: 24,
+                    fontWeight: 950,
+                    color: allExistingCardsReviewed ? 'success.main' : 'primary.main',
+                  }}
+                >
+                  {Math.round(
+                    (creditAccountReviews.filter((item) => item.cardId).length /
+                      existingCards.length) *
+                      100,
+                  )}
+                  %
                 </Typography>
               </Stack>
-              <LinearProgress variant="determinate" value={(creditAccountReviews.filter((item) => item.cardId).length / existingCards.length) * 100} color={allExistingCardsReviewed ? 'success' : 'primary'} sx={{ mt: 1 }} />
+              <LinearProgress
+                variant="determinate"
+                value={
+                  (creditAccountReviews.filter((item) => item.cardId).length /
+                    existingCards.length) *
+                  100
+                }
+                color={allExistingCardsReviewed ? 'success' : 'primary'}
+                sx={{ mt: 1 }}
+              />
             </Box>
           )}
           {cardsQuery.isLoading ? (
@@ -2779,48 +3420,164 @@ export function ClientReviewPage({
                     next,
                   ]);
                 return (
-                  <Box key={card.id} sx={{ overflow: 'hidden', position: 'relative', border: '1px solid', borderColor: cardReview ? editing ? 'rgba(255, 183, 77, .42)' : 'rgba(66, 230, 164, .38)' : 'divider', borderRadius: 1.5, bgcolor: cardReview ? editing ? 'rgba(255, 183, 77, .035)' : 'rgba(66, 230, 164, .035)' : 'rgba(5, 13, 29, .22)', '&::before': { content: '""', position: 'absolute', inset: '0 0 auto', height: 3, background: cardReview ? editing ? 'linear-gradient(90deg, #ffb74d, #8d7cff)' : 'linear-gradient(90deg, #42e6a4, #45d7f0)' : cardIndex % 2 ? 'linear-gradient(90deg, #8d7cff, #45d7f0)' : 'linear-gradient(90deg, #45d7f0, #38dfa7)' } }}>
+                  <Box
+                    key={card.id}
+                    sx={{
+                      overflow: 'hidden',
+                      position: 'relative',
+                      border: '1px solid',
+                      borderColor: cardReview
+                        ? editing
+                          ? 'rgba(255, 183, 77, .42)'
+                          : 'rgba(66, 230, 164, .38)'
+                        : 'divider',
+                      borderRadius: 1.5,
+                      bgcolor: cardReview
+                        ? editing
+                          ? 'rgba(255, 183, 77, .035)'
+                          : 'rgba(66, 230, 164, .035)'
+                        : 'rgba(5, 13, 29, .22)',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        inset: '0 0 auto',
+                        height: 3,
+                        background: cardReview
+                          ? editing
+                            ? 'linear-gradient(90deg, #ffb74d, #8d7cff)'
+                            : 'linear-gradient(90deg, #42e6a4, #45d7f0)'
+                          : cardIndex % 2
+                            ? 'linear-gradient(90deg, #8d7cff, #45d7f0)'
+                            : 'linear-gradient(90deg, #45d7f0, #38dfa7)',
+                      },
+                    }}
+                  >
                     <Box sx={{ p: 1.5, pt: 1.75 }}>
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-                        <Box sx={{ width: 36, height: 36, borderRadius: 1.1, bgcolor: 'rgba(69, 215, 240, .1)', color: 'primary.main', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                        <Box
+                          sx={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 1.1,
+                            bgcolor: 'rgba(69, 215, 240, .1)',
+                            color: 'primary.main',
+                            display: 'grid',
+                            placeItems: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
                           <CreditCardRounded sx={{ fontSize: 20 }} />
                         </Box>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 900 }}>{card.cardName}</Typography>
-                          <Typography variant="body2" color="text.secondary">{card.issuer} · {card.scope.toLowerCase()}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {card.issuer} · {card.scope.toLowerCase()}
+                          </Typography>
                         </Box>
                         {cardReview && (
                           <Chip
                             size="small"
                             color={cardReview.status === 'CONFIRMED' ? 'success' : 'warning'}
-                            label={cardReview.status === 'CONFIRMED' ? 'Confirmed' : cardReview.status === 'NEW' ? 'Added' : 'Updated'}
+                            label={
+                              cardReview.status === 'CONFIRMED'
+                                ? 'Confirmed'
+                                : cardReview.status === 'NEW'
+                                  ? 'Added'
+                                  : 'Updated'
+                            }
                           />
                         )}
                       </Stack>
-                      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1, mt: 1.25 }}>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                          gap: 1,
+                          mt: 1.25,
+                        }}
+                      >
                         {[
                           ['Status', (card.accountStatus ?? 'Not recorded').toLowerCase()],
-                          ['Limit', card.creditLimit == null ? '—' : `$${card.creditLimit.toLocaleString()}`],
-                          ['Balance', card.balance == null ? '—' : `$${card.balance.toLocaleString()}`],
+                          [
+                            'Limit',
+                            card.creditLimit == null
+                              ? '—'
+                              : `$${card.creditLimit.toLocaleString()}`,
+                          ],
+                          [
+                            'Balance',
+                            card.balance == null ? '—' : `$${card.balance.toLocaleString()}`,
+                          ],
                         ].map(([label, value]) => (
                           <Box key={label}>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textTransform: 'uppercase', fontSize: 9, letterSpacing: '.08em' }}>{label}</Typography>
-                            <Typography variant="body2" sx={{ mt: 0.15, fontWeight: 800 }}>{value}</Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                display: 'block',
+                                textTransform: 'uppercase',
+                                fontSize: 9,
+                                letterSpacing: '.08em',
+                              }}
+                            >
+                              {label}
+                            </Typography>
+                            <Typography variant="body2" sx={{ mt: 0.15, fontWeight: 800 }}>
+                              {value}
+                            </Typography>
                           </Box>
                         ))}
                       </Box>
                     </Box>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: 1, borderColor: 'divider', bgcolor: 'rgba(5, 13, 29, .16)' }}>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        borderTop: 1,
+                        borderColor: 'divider',
+                        bgcolor: 'rgba(5, 13, 29, .16)',
+                      }}
+                    >
                       <ButtonBase
                         disabled={saveCardReview.isPending}
-                        onClick={() => saveCardReview.mutate({ ...currentReview, status: 'CONFIRMED', cardName: card.cardName, issuer: card.issuer, scope: card.scope, accountStatus: card.accountStatus === 'CLOSED' ? 'CLOSED' : 'OPEN' })}
-                        sx={{ minHeight: 44, px: 1, gap: 0.6, color: cardReview?.status === 'CONFIRMED' ? 'success.main' : 'primary.main', fontSize: 13, fontWeight: 850, whiteSpace: 'nowrap' }}
+                        onClick={() =>
+                          saveCardReview.mutate({
+                            ...currentReview,
+                            status: 'CONFIRMED',
+                            cardName: card.cardName,
+                            issuer: card.issuer,
+                            scope: card.scope,
+                            accountStatus: card.accountStatus === 'CLOSED' ? 'CLOSED' : 'OPEN',
+                          })
+                        }
+                        sx={{
+                          minHeight: 44,
+                          px: 1,
+                          gap: 0.6,
+                          color:
+                            cardReview?.status === 'CONFIRMED' ? 'success.main' : 'primary.main',
+                          fontSize: 13,
+                          fontWeight: 850,
+                          whiteSpace: 'nowrap',
+                        }}
                       >
                         <CheckRounded sx={{ fontSize: 17 }} /> Looks correct
                       </ButtonBase>
                       <ButtonBase
-                        onClick={() => { saveExistingReview({ ...currentReview, status: 'UPDATED' }); setEditingCardId(card.id); }}
-                        sx={{ minHeight: 44, px: 1, borderLeft: 1, borderColor: 'divider', color: editing ? 'warning.main' : 'primary.main', fontSize: 13, fontWeight: 850, whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          saveExistingReview({ ...currentReview, status: 'UPDATED' });
+                          setEditingCardId(card.id);
+                        }}
+                        sx={{
+                          minHeight: 44,
+                          px: 1,
+                          borderLeft: 1,
+                          borderColor: 'divider',
+                          color: editing ? 'warning.main' : 'primary.main',
+                          fontSize: 13,
+                          fontWeight: 850,
+                          whiteSpace: 'nowrap',
+                        }}
                       >
                         Update details
                       </ButtonBase>
@@ -2828,18 +3585,114 @@ export function ClientReviewPage({
                     <Collapse in={editing}>
                       <Box sx={{ px: 1.5, py: 1.5, borderTop: 1, borderColor: 'divider' }}>
                         <Grid container spacing={1.25}>
-                          <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Card name" value={currentReview.cardName} onChange={(event) => saveExistingReview({ ...currentReview, status: 'UPDATED', cardName: event.target.value })} /></Grid>
-                          <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Issuer" value={currentReview.issuer} onChange={(event) => saveExistingReview({ ...currentReview, status: 'UPDATED', issuer: event.target.value })} /></Grid>
-                          <Grid size={{ xs: 6 }}><TextField fullWidth type="number" label="Current limit" value={currentReview.creditLimit ?? ''} onChange={(event) => saveExistingReview({ ...currentReview, status: 'UPDATED', creditLimit: event.target.value ? Number(event.target.value) : undefined })} /></Grid>
-                          <Grid size={{ xs: 6 }}><TextField fullWidth type="number" label="Current balance" value={currentReview.balance ?? ''} onChange={(event) => saveExistingReview({ ...currentReview, status: 'UPDATED', balance: event.target.value ? Number(event.target.value) : undefined })} /></Grid>
-                          <Grid size={{ xs: 12, sm: 6 }}><ToggleButtonGroup exclusive fullWidth value={currentReview.scope} onChange={(_, value: 'PERSONAL' | 'BUSINESS' | null) => value && saveExistingReview({ ...currentReview, status: 'UPDATED', scope: value })}><ToggleButton value="PERSONAL">Personal</ToggleButton><ToggleButton value="BUSINESS">Business</ToggleButton></ToggleButtonGroup></Grid>
-                          <Grid size={{ xs: 12, sm: 6 }}><ToggleButtonGroup exclusive fullWidth value={currentReview.accountStatus} onChange={(_, value: 'OPEN' | 'CLOSED' | null) => value && saveExistingReview({ ...currentReview, status: 'UPDATED', accountStatus: value })}><ToggleButton value="OPEN">Open</ToggleButton><ToggleButton value="CLOSED">Closed</ToggleButton></ToggleButtonGroup></Grid>
+                          <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField
+                              fullWidth
+                              label="Card name"
+                              value={currentReview.cardName}
+                              onChange={(event) =>
+                                saveExistingReview({
+                                  ...currentReview,
+                                  status: 'UPDATED',
+                                  cardName: event.target.value,
+                                })
+                              }
+                            />
+                          </Grid>
+                          <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField
+                              fullWidth
+                              label="Issuer"
+                              value={currentReview.issuer}
+                              onChange={(event) =>
+                                saveExistingReview({
+                                  ...currentReview,
+                                  status: 'UPDATED',
+                                  issuer: event.target.value,
+                                })
+                              }
+                            />
+                          </Grid>
+                          <Grid size={{ xs: 6 }}>
+                            <TextField
+                              fullWidth
+                              type="number"
+                              label="Current limit"
+                              value={currentReview.creditLimit ?? ''}
+                              onChange={(event) =>
+                                saveExistingReview({
+                                  ...currentReview,
+                                  status: 'UPDATED',
+                                  creditLimit: event.target.value
+                                    ? Number(event.target.value)
+                                    : undefined,
+                                })
+                              }
+                            />
+                          </Grid>
+                          <Grid size={{ xs: 6 }}>
+                            <TextField
+                              fullWidth
+                              type="number"
+                              label="Current balance"
+                              value={currentReview.balance ?? ''}
+                              onChange={(event) =>
+                                saveExistingReview({
+                                  ...currentReview,
+                                  status: 'UPDATED',
+                                  balance: event.target.value
+                                    ? Number(event.target.value)
+                                    : undefined,
+                                })
+                              }
+                            />
+                          </Grid>
+                          <Grid size={{ xs: 12, sm: 6 }}>
+                            <ToggleButtonGroup
+                              exclusive
+                              fullWidth
+                              value={currentReview.scope}
+                              onChange={(_, value: 'PERSONAL' | 'BUSINESS' | null) =>
+                                value &&
+                                saveExistingReview({
+                                  ...currentReview,
+                                  status: 'UPDATED',
+                                  scope: value,
+                                })
+                              }
+                            >
+                              <ToggleButton value="PERSONAL">Personal</ToggleButton>
+                              <ToggleButton value="BUSINESS">Business</ToggleButton>
+                            </ToggleButtonGroup>
+                          </Grid>
+                          <Grid size={{ xs: 12, sm: 6 }}>
+                            <ToggleButtonGroup
+                              exclusive
+                              fullWidth
+                              value={currentReview.accountStatus}
+                              onChange={(_, value: 'OPEN' | 'CLOSED' | null) =>
+                                value &&
+                                saveExistingReview({
+                                  ...currentReview,
+                                  status: 'UPDATED',
+                                  accountStatus: value,
+                                })
+                              }
+                            >
+                              <ToggleButton value="OPEN">Open</ToggleButton>
+                              <ToggleButton value="CLOSED">Closed</ToggleButton>
+                            </ToggleButtonGroup>
+                          </Grid>
                           <Grid size={{ xs: 12 }}>
                             <Button
                               fullWidth
                               variant="contained"
                               startIcon={<CheckRounded />}
-                              disabled={saveCardReview.isPending || !currentReview.cardName.trim() || !currentReview.issuer.trim()}
+                              disabled={
+                                saveCardReview.isPending ||
+                                !currentReview.cardName.trim() ||
+                                !currentReview.issuer.trim()
+                              }
                                 onClick={() => saveCardReview.mutate(currentReview)}
                             >
                               {saveCardReview.isPending ? 'Saving…' : 'Save card updates'}
@@ -2853,53 +3706,230 @@ export function ClientReviewPage({
               })}
             </Stack>
           ) : (
-            <Alert severity="info">No credit cards are currently recorded. Add any cards that should be included in this Review.</Alert>
+            <Alert severity="info">
+              No credit cards are currently recorded. Add any cards that should be included in this
+              Review.
+            </Alert>
           )}
           <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.25}
+              sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
+            >
               <Box>
                 <Typography variant="h4">Missing a card?</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>Add an account that is not listed above.</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                  Add an account that is not listed above.
+                </Typography>
               </Box>
-              <Button variant="outlined" startIcon={newCardOpen ? <CloseRounded /> : <AddRounded />} onClick={() => setNewCardOpen((open) => !open)}>
+              <Button
+                variant="outlined"
+                startIcon={newCardOpen ? <CloseRounded /> : <AddRounded />}
+                onClick={() => setNewCardOpen((open) => !open)}
+              >
                 {newCardOpen ? 'Cancel' : 'Add card'}
               </Button>
             </Stack>
             <Collapse in={newCardOpen}>
               <Grid container spacing={1.25} sx={{ mt: 1 }}>
-                <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Card name" value={newCardDraft.cardName} onChange={(event) => setNewCardDraft({ ...newCardDraft, cardName: event.target.value })} /></Grid>
-                <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Issuer" value={newCardDraft.issuer} onChange={(event) => setNewCardDraft({ ...newCardDraft, issuer: event.target.value })} /></Grid>
-                <Grid size={{ xs: 6 }}><TextField fullWidth type="number" label="Current limit" value={newCardDraft.creditLimit ?? ''} onChange={(event) => setNewCardDraft({ ...newCardDraft, creditLimit: event.target.value ? Number(event.target.value) : undefined })} /></Grid>
-                <Grid size={{ xs: 6 }}><TextField fullWidth type="number" label="Current balance" value={newCardDraft.balance ?? ''} onChange={(event) => setNewCardDraft({ ...newCardDraft, balance: event.target.value ? Number(event.target.value) : undefined })} /></Grid>
-                <Grid size={{ xs: 12, sm: 6 }}><ToggleButtonGroup exclusive fullWidth value={newCardDraft.scope} onChange={(_, value: 'PERSONAL' | 'BUSINESS' | null) => value && setNewCardDraft({ ...newCardDraft, scope: value })}><ToggleButton value="PERSONAL">Personal</ToggleButton><ToggleButton value="BUSINESS">Business</ToggleButton></ToggleButtonGroup></Grid>
-                <Grid size={{ xs: 12, sm: 6 }}><ToggleButtonGroup exclusive fullWidth value={newCardDraft.accountStatus} onChange={(_, value: 'OPEN' | 'CLOSED' | null) => value && setNewCardDraft({ ...newCardDraft, accountStatus: value })}><ToggleButton value="OPEN">Open</ToggleButton><ToggleButton value="CLOSED">Closed</ToggleButton></ToggleButtonGroup></Grid>
-                <Grid size={{ xs: 12 }}><Button variant="contained" disabled={saveCardReview.isPending || !newCardDraft.cardName.trim() || !newCardDraft.issuer.trim()} onClick={() => saveCardReview.mutate({ ...newCardDraft, cardName: newCardDraft.cardName.trim(), issuer: newCardDraft.issuer.trim() }, { onSuccess: () => { setNewCardDraft({ status: 'NEW', cardName: '', issuer: '', scope: 'PERSONAL', accountStatus: 'OPEN' }); setNewCardOpen(false); } })}>{saveCardReview.isPending ? 'Adding…' : 'Add card'}</Button></Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Card name"
+                    value={newCardDraft.cardName}
+                    onChange={(event) =>
+                      setNewCardDraft({ ...newCardDraft, cardName: event.target.value })
+                    }
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Issuer"
+                    value={newCardDraft.issuer}
+                    onChange={(event) =>
+                      setNewCardDraft({ ...newCardDraft, issuer: event.target.value })
+                    }
+                  />
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Current limit"
+                    value={newCardDraft.creditLimit ?? ''}
+                    onChange={(event) =>
+                      setNewCardDraft({
+                        ...newCardDraft,
+                        creditLimit: event.target.value ? Number(event.target.value) : undefined,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Current balance"
+                    value={newCardDraft.balance ?? ''}
+                    onChange={(event) =>
+                      setNewCardDraft({
+                        ...newCardDraft,
+                        balance: event.target.value ? Number(event.target.value) : undefined,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    value={newCardDraft.scope}
+                    onChange={(_, value: 'PERSONAL' | 'BUSINESS' | null) =>
+                      value && setNewCardDraft({ ...newCardDraft, scope: value })
+                    }
+                  >
+                    <ToggleButton value="PERSONAL">Personal</ToggleButton>
+                    <ToggleButton value="BUSINESS">Business</ToggleButton>
+                  </ToggleButtonGroup>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    value={newCardDraft.accountStatus}
+                    onChange={(_, value: 'OPEN' | 'CLOSED' | null) =>
+                      value && setNewCardDraft({ ...newCardDraft, accountStatus: value })
+                    }
+                  >
+                    <ToggleButton value="OPEN">Open</ToggleButton>
+                    <ToggleButton value="CLOSED">Closed</ToggleButton>
+                  </ToggleButtonGroup>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Button
+                    variant="contained"
+                    disabled={
+                      saveCardReview.isPending ||
+                      !newCardDraft.cardName.trim() ||
+                      !newCardDraft.issuer.trim()
+                    }
+                    onClick={() =>
+                      saveCardReview.mutate(
+                        {
+                          ...newCardDraft,
+                          cardName: newCardDraft.cardName.trim(),
+                          issuer: newCardDraft.issuer.trim(),
+                        },
+                        {
+                          onSuccess: () => {
+                            setNewCardDraft({
+                              status: 'NEW',
+                              cardName: '',
+                              issuer: '',
+                              scope: 'PERSONAL',
+                              accountStatus: 'OPEN',
+                            });
+                            setNewCardOpen(false);
+                          },
+                        },
+                      )
+                    }
+                  >
+                    {saveCardReview.isPending ? 'Adding…' : 'Add card'}
+                  </Button>
+                </Grid>
               </Grid>
             </Collapse>
-            {creditAccountReviews.filter((item) => item.status === 'NEW').map((item, index) => (
-              <Stack key={`${item.issuer}-${item.cardName}-${index}`} direction="row" spacing={1} sx={{ mt: 1.25, p: 1.25, alignItems: 'center', border: 1, borderColor: 'divider', borderRadius: 1.25 }}>
-                <Box sx={{ flex: 1 }}><Typography sx={{ fontWeight: 850 }}>{item.cardName}</Typography><Typography variant="body2" color="text.secondary">{item.issuer} · new card</Typography></Box>
-                <Button size="small" color="warning" onClick={() => setCreditAccountReviews((items) => items.filter((candidate) => candidate !== item))}>Remove</Button>
+            {creditAccountReviews
+              .filter((item) => item.status === 'NEW')
+              .map((item, index) => (
+                <Stack
+                  key={`${item.issuer}-${item.cardName}-${index}`}
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    mt: 1.25,
+                    p: 1.25,
+                    alignItems: 'center',
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1.25,
+                  }}
+                >
+                  <Box sx={{ flex: 1 }}>
+                    <Typography sx={{ fontWeight: 850 }}>{item.cardName}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.issuer} · new card
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    color="warning"
+                    onClick={() =>
+                      setCreditAccountReviews((items) =>
+                        items.filter((candidate) => candidate !== item),
+                      )
+                    }
+                  >
+                    Remove
+                  </Button>
               </Stack>
             ))}
           </Box>
-          <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1} sx={{ mt: 2, justifyContent: 'flex-end' }}>
+          <Stack
+            direction={{ xs: 'column-reverse', sm: 'row' }}
+            spacing={1}
+            sx={{ mt: 2, justifyContent: 'flex-end' }}
+          >
             <Button onClick={() => setWizardStep(1)}>Back</Button>
-            <Button variant="contained" disabled={continueIntake.isPending || !allExistingCardsReviewed} onClick={() => continueIntake.mutate(3)}>
+            <Button
+              variant="contained"
+              disabled={continueIntake.isPending || !allExistingCardsReviewed}
+              onClick={() => continueIntake.mutate(3)}
+            >
               {continueIntake.isPending ? 'Saving…' : 'Confirm and continue'}
             </Button>
           </Stack>
         </SectionCard>
       )}
       {wizardStep === 3 && (
-      <SectionCard variant="elevated" sx={embedded ? { p: 0, border: 0, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' } : {}}>
+        <SectionCard
+          variant="elevated"
+          sx={
+            embedded
+              ? {
+                  p: 0,
+                  border: 0,
+                  bgcolor: 'transparent',
+                  backgroundImage: 'none',
+                  boxShadow: 'none',
+                }
+              : {}
+          }
+        >
         <Box sx={{ pb: 1.5, borderBottom: 1, borderColor: 'rgba(130, 207, 232, .16)' }}>
           <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-            <Box sx={{ width: 38, height: 38, borderRadius: 1.25, display: 'grid', placeItems: 'center', color: '#061321', background: 'linear-gradient(135deg, #45d7f0, #42e6a4)', boxShadow: '0 8px 22px rgba(69, 215, 240, .14)', flexShrink: 0 }}>
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 1.25,
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: '#061321',
+                  background: 'linear-gradient(135deg, #45d7f0, #42e6a4)',
+                  boxShadow: '0 8px 22px rgba(69, 215, 240, .14)',
+                  flexShrink: 0,
+                }}
+              >
               <CheckRounded sx={{ fontSize: 21 }} />
             </Box>
             <Box>
-              <Typography variant="overline" color="primary">Final check</Typography>
+                <Typography variant="overline" color="primary">
+                  Final check
+                </Typography>
               <Typography variant="h3">Review your information</Typography>
             </Box>
           </Stack>
@@ -2909,74 +3939,259 @@ export function ClientReviewPage({
         </Box>
 
         <Stack spacing={1.1} sx={{ mt: 1.5 }}>
-          <Box sx={{ p: 1.4, position: 'relative', overflow: 'hidden', borderRadius: 1.35, border: 1, borderColor: 'rgba(69, 215, 240, .28)', bgcolor: 'rgba(6, 18, 37, .42)', '&::before': { content: '""', position: 'absolute', inset: '0 auto 0 0', width: 3, bgcolor: 'primary.main' } }}>
+            <Box
+              sx={{
+                p: 1.4,
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 1.35,
+                border: 1,
+                borderColor: 'rgba(69, 215, 240, .28)',
+                bgcolor: 'rgba(6, 18, 37, .42)',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: '0 auto 0 0',
+                  width: 3,
+                  bgcolor: 'primary.main',
+                },
+              }}
+            >
             <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-              <Box sx={{ width: 34, height: 34, borderRadius: 1.1, bgcolor: 'rgba(69, 215, 240, .12)', color: 'primary.main', display: 'grid', placeItems: 'center', flexShrink: 0 }}><DescriptionRounded sx={{ fontSize: 19 }} /></Box>
+                <Box
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 1.1,
+                    bgcolor: 'rgba(69, 215, 240, .12)',
+                    color: 'primary.main',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <DescriptionRounded sx={{ fontSize: 19 }} />
+                </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                  <Stack
+                    direction="row"
+                    sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}
+                  >
                   <Box>
                     <Typography sx={{ fontWeight: 900 }}>Credit report</Typography>
-                    <Stack direction="row" spacing={0.35} sx={{ alignItems: 'center', color: 'success.main' }}><CheckRounded sx={{ fontSize: 14 }} /><Typography variant="caption" sx={{ fontWeight: 850 }}>Ready</Typography></Stack>
+                      <Stack
+                        direction="row"
+                        spacing={0.35}
+                        sx={{ alignItems: 'center', color: 'success.main' }}
+                      >
+                        <CheckRounded sx={{ fontSize: 14 }} />
+                        <Typography variant="caption" sx={{ fontWeight: 850 }}>
+                          Ready
+                        </Typography>
+                      </Stack>
                   </Box>
-                  <Button size="small" variant="outlined" onClick={() => setWizardStep(0)} sx={{ minWidth: 56, minHeight: 30, px: 1 }}>Edit</Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setWizardStep(0)}
+                      sx={{ minWidth: 56, minHeight: 30, px: 1 }}
+                    >
+                      Edit
+                    </Button>
                 </Stack>
-                <Typography sx={{ mt: 1, fontWeight: 800, overflowWrap: 'anywhere' }}>{review.intake?.reportDocument?.originalFileName ?? 'Not uploaded'}</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{source} · Report dated {new Date(`${reportDate}T12:00:00`).toLocaleDateString()}</Typography>
+                  <Typography sx={{ mt: 1, fontWeight: 800, overflowWrap: 'anywhere' }}>
+                    {review.intake?.reportDocument?.originalFileName ?? 'Not uploaded'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    {source} · Report dated{' '}
+                    {new Date(`${reportDate}T12:00:00`).toLocaleDateString()}
+                  </Typography>
               </Box>
             </Stack>
           </Box>
 
-          <Box sx={{ p: 1.4, position: 'relative', overflow: 'hidden', borderRadius: 1.35, border: 1, borderColor: 'rgba(66, 230, 164, .28)', bgcolor: 'rgba(6, 18, 37, .42)', '&::before': { content: '""', position: 'absolute', inset: '0 auto 0 0', width: 3, bgcolor: 'success.main' } }}>
+            <Box
+              sx={{
+                p: 1.4,
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 1.35,
+                border: 1,
+                borderColor: 'rgba(66, 230, 164, .28)',
+                bgcolor: 'rgba(6, 18, 37, .42)',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: '0 auto 0 0',
+                  width: 3,
+                  bgcolor: 'success.main',
+                },
+              }}
+            >
             <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-              <Box sx={{ width: 34, height: 34, borderRadius: 1.1, bgcolor: 'rgba(66, 230, 164, .12)', color: 'success.main', display: 'grid', placeItems: 'center', flexShrink: 0 }}><CreditCardRounded sx={{ fontSize: 19 }} /></Box>
+                <Box
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 1.1,
+                    bgcolor: 'rgba(66, 230, 164, .12)',
+                    color: 'success.main',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <CreditCardRounded sx={{ fontSize: 19 }} />
+                </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                  <Stack
+                    direction="row"
+                    sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}
+                  >
                   <Box>
                     <Typography sx={{ fontWeight: 900 }}>Credit accounts</Typography>
-                    <Stack direction="row" spacing={0.35} sx={{ alignItems: 'center', color: 'success.main' }}><CheckRounded sx={{ fontSize: 14 }} /><Typography variant="caption" sx={{ fontWeight: 850 }}>All accounts reviewed</Typography></Stack>
+                      <Stack
+                        direction="row"
+                        spacing={0.35}
+                        sx={{ alignItems: 'center', color: 'success.main' }}
+                      >
+                        <CheckRounded sx={{ fontSize: 14 }} />
+                        <Typography variant="caption" sx={{ fontWeight: 850 }}>
+                          All accounts reviewed
+                        </Typography>
+                      </Stack>
                   </Box>
-                  <Button size="small" variant="outlined" onClick={() => setWizardStep(2)} sx={{ minWidth: 56, minHeight: 30, px: 1 }}>Edit</Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setWizardStep(2)}
+                      sx={{ minWidth: 56, minHeight: 30, px: 1 }}
+                    >
+                      Edit
+                    </Button>
                 </Stack>
                 <Stack direction="row" useFlexGap spacing={0.75} sx={{ mt: 1, flexWrap: 'wrap' }}>
-                  <Chip size="small" color="success" label={`${creditAccountReviews.filter((item) => item.status === 'CONFIRMED').length} confirmed`} />
-                  {creditAccountReviews.filter((item) => item.status === 'UPDATED').length > 0 && <Chip size="small" color="warning" label={`${creditAccountReviews.filter((item) => item.status === 'UPDATED').length} updated`} />}
-                  {creditAccountReviews.filter((item) => item.status === 'NEW').length > 0 && <Chip size="small" color="primary" label={`${creditAccountReviews.filter((item) => item.status === 'NEW').length} added`} />}
+                    <Chip
+                      size="small"
+                      color="success"
+                      label={`${creditAccountReviews.filter((item) => item.status === 'CONFIRMED').length} confirmed`}
+                    />
+                    {creditAccountReviews.filter((item) => item.status === 'UPDATED').length >
+                      0 && (
+                      <Chip
+                        size="small"
+                        color="warning"
+                        label={`${creditAccountReviews.filter((item) => item.status === 'UPDATED').length} updated`}
+                      />
+                    )}
+                    {creditAccountReviews.filter((item) => item.status === 'NEW').length > 0 && (
+                      <Chip
+                        size="small"
+                        color="primary"
+                        label={`${creditAccountReviews.filter((item) => item.status === 'NEW').length} added`}
+                      />
+                    )}
                 </Stack>
               </Box>
             </Stack>
           </Box>
 
-          <Box sx={{ p: 1.4, position: 'relative', overflow: 'hidden', borderRadius: 1.35, border: 1, borderColor: 'rgba(141, 124, 255, .28)', bgcolor: 'rgba(6, 18, 37, .42)', '&::before': { content: '""', position: 'absolute', inset: '0 auto 0 0', width: 3, bgcolor: 'secondary.main' } }}>
+            <Box
+              sx={{
+                p: 1.4,
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 1.35,
+                border: 1,
+                borderColor: 'rgba(141, 124, 255, .28)',
+                bgcolor: 'rgba(6, 18, 37, .42)',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: '0 auto 0 0',
+                  width: 3,
+                  bgcolor: 'secondary.main',
+                },
+              }}
+            >
             <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-              <Box sx={{ width: 34, height: 34, borderRadius: 1.1, bgcolor: 'rgba(141, 124, 255, .12)', color: 'secondary.main', display: 'grid', placeItems: 'center', flexShrink: 0 }}><HistoryRounded sx={{ fontSize: 19 }} /></Box>
+                <Box
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 1.1,
+                    bgcolor: 'rgba(141, 124, 255, .12)',
+                    color: 'secondary.main',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <HistoryRounded sx={{ fontSize: 19 }} />
+                </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                  <Stack
+                    direction="row"
+                    sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}
+                  >
                   <Box>
                     <Typography sx={{ fontWeight: 900 }}>Recent information</Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 750 }}>{changes.length ? `${changes.length} change${changes.length === 1 ? '' : 's'} reported` : 'No recent changes reported'}</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 750 }}>
+                        {changes.length
+                          ? `${changes.length} change${changes.length === 1 ? '' : 's'} reported`
+                          : 'No recent changes reported'}
+                      </Typography>
                   </Box>
-                  <Button size="small" variant="outlined" onClick={() => setWizardStep(1)} sx={{ minWidth: 56, minHeight: 30, px: 1 }}>Edit</Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setWizardStep(1)}
+                      sx={{ minWidth: 56, minHeight: 30, px: 1 }}
+                    >
+                      Edit
+                    </Button>
                 </Stack>
-                {changes.length > 0 && <Stack spacing={0.75} sx={{ mt: 1 }}>
+                  {changes.length > 0 && (
+                    <Stack spacing={0.75} sx={{ mt: 1 }}>
                   {changes.map((change) => (
-                    <Box key={change} sx={{ py: 0.7, borderTop: 1, borderColor: 'rgba(141, 124, 255, .16)' }}>
-                      <Typography variant="body2" sx={{ fontWeight: 850 }}>{change}</Typography>
-                      {changeDetails[change]?.trim() && <Typography variant="caption" color="text.secondary">{changeDetails[change]}</Typography>}
+                        <Box
+                          key={change}
+                          sx={{ py: 0.7, borderTop: 1, borderColor: 'rgba(141, 124, 255, .16)' }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                            {change}
+                          </Typography>
+                          {changeDetails[change]?.trim() && (
+                            <Typography variant="caption" color="text.secondary">
+                              {changeDetails[change]}
+                            </Typography>
+                          )}
                     </Box>
                   ))}
-                </Stack>}
+                    </Stack>
+                  )}
               </Box>
             </Stack>
           </Box>
         </Stack>
 
-        <Box sx={{ mt: 1.75, p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(5, 13, 29, .48)', border: 1, borderColor: 'divider' }}>
+          <Box
+            sx={{
+              mt: 1.75,
+              p: 1.5,
+              borderRadius: 1.5,
+              bgcolor: 'rgba(5, 13, 29, .48)',
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
           <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
             <CheckCircleRounded color="primary" sx={{ mt: 0.1 }} />
             <Box>
               <Typography sx={{ fontWeight: 900 }}>Ready to send</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                Your consultant will review these facts and provide the readiness decision. No decision is generated automatically.
+                  Your consultant will review these facts and provide the readiness decision. No
+                  decision is generated automatically.
               </Typography>
             </Box>
           </Stack>
@@ -2996,15 +4211,26 @@ export function ClientReviewPage({
         </Button>
         <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between' }}>
           <Button onClick={() => setWizardStep(2)}>Back</Button>
-          <Button onClick={() => saveDraft.mutate()} disabled={saveDraft.isPending || submit.isPending}>
+            <Button
+              onClick={() => saveDraft.mutate()}
+              disabled={saveDraft.isPending || submit.isPending}
+            >
             {saveDraft.isPending ? 'Saving…' : 'Save and finish later'}
           </Button>
         </Stack>
       </Stack>
       )}
       {saveDraft.isSuccess && <Alert severity="success">Your Review intake was saved.</Alert>}
-      {(saveDraft.isError || saveCardReview.isError || continueIntake.isError || submit.isError) && (
-        <Alert severity="error">{saveDraft.error?.message ?? saveCardReview.error?.message ?? continueIntake.error?.message ?? submit.error?.message}</Alert>
+      {(saveDraft.isError ||
+        saveCardReview.isError ||
+        continueIntake.isError ||
+        submit.isError) && (
+        <Alert severity="error">
+          {saveDraft.error?.message ??
+            saveCardReview.error?.message ??
+            continueIntake.error?.message ??
+            submit.error?.message}
+        </Alert>
       )}
     </Stack>
   );
@@ -3060,7 +4286,7 @@ export function ConsultantReviewsPage() {
               </Box>
               <Button
                 component={Link}
-                to={`/consultant/reviews/${r.clientId}/${r.id}`}
+                to={`/crm/reviews/${r.clientId}/${r.id}`}
                 endIcon={<ArrowForwardRounded />}
               >
                 Open guided Review
@@ -3138,10 +4364,7 @@ export function ConsultantReviewWorkspacePage() {
         method: 'POST',
       }),
     onSuccess: async () => {
-      await Promise.all([
-        query.refetch(),
-        options.refetch(),
-      ]);
+      await Promise.all([query.refetch(), options.refetch()]);
     },
   });
   const complete = useMutation({
@@ -3206,14 +4429,24 @@ export function ConsultantReviewWorkspacePage() {
         description="Enter verified facts, select conclusions, preview the client result, then confirm."
         actions={
           query.data?.review.status === 'INFORMATION_RECEIVED' ? (
-            <Button variant="contained" onClick={() => startReview.mutate()} disabled={startReview.isPending} startIcon={<PlayArrowRounded />}>
+            <Button
+              variant="contained"
+              onClick={() => startReview.mutate()}
+              disabled={startReview.isPending}
+              startIcon={<PlayArrowRounded />}
+            >
               {startReview.isPending ? 'Starting…' : 'Start Review'}
             </Button>
           ) : (
             <Button
               variant="contained"
               onClick={() => complete.mutate()}
-              disabled={complete.isPending || selected.length === 0 || actionRequired || query.data?.review.status !== 'CONSULTANT_REVIEW'}
+              disabled={
+                complete.isPending ||
+                selected.length === 0 ||
+                actionRequired ||
+                query.data?.review.status !== 'CONSULTANT_REVIEW'
+              }
             >
               {complete.isPending ? 'Completing…' : 'Confirm decision and complete'}
             </Button>
@@ -3222,17 +4455,24 @@ export function ConsultantReviewWorkspacePage() {
       />
       {query.data?.review.status === 'INFORMATION_RECEIVED' ? (
         <Alert severity="info">
-          Start the Review when you begin consultant work. The client’s application cycle will update to show that the Review is in progress.
+          Start the Review when you begin consultant work. The client’s application cycle will
+          update to show that the Review is in progress.
         </Alert>
       ) : query.data?.review.status === 'CONSULTANT_REVIEW' ? (
         <Alert severity="success">
-          Review started. Verify the report, select the readiness decision, and confirm the completed Review when ready.
+          Review started. Verify the report, select the readiness decision, and confirm the
+          completed Review when ready.
         </Alert>
       ) : null}
       {startReview.isError && <Alert severity="error">{startReview.error.message}</Alert>}
-      {complete.isError && <Alert severity="error">Review could not be completed: {complete.error.message}</Alert>}
+      {complete.isError && (
+        <Alert severity="error">Review could not be completed: {complete.error.message}</Alert>
+      )}
       {actionRequired && query.data?.review.status === 'CONSULTANT_REVIEW' && (
-        <Alert severity="warning">Select at least one recommended plan action before completing an Action Needed or Not Ready decision.</Alert>
+        <Alert severity="warning">
+          Select at least one recommended plan action before completing an Action Needed or Not
+          Ready decision.
+        </Alert>
       )}
       <SectionCard variant="elevated">
         <Typography variant="h3">Client intake and previous profile</Typography>
@@ -3382,8 +4622,7 @@ export function ConsultantReviewWorkspacePage() {
           confirmed.
         </Typography>
         <Grid container spacing={1.5}>
-          {availableActionOptions
-            .map((option) => (
+          {availableActionOptions.map((option) => (
               <Grid key={option.id} size={{ xs: 12, md: 6 }}>
                 <ChoiceCard
                   title={option.label}

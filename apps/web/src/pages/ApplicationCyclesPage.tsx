@@ -5,7 +5,6 @@ import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import FlagRounded from '@mui/icons-material/FlagRounded';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded';
-import RestartAltRounded from '@mui/icons-material/RestartAltRounded';
 import {
   Alert,
   Box,
@@ -48,9 +47,14 @@ type PrimaryGoal = {
   scope: 'PERSONAL' | 'BUSINESS' | 'BOTH';
   targetAmount: number | null;
   allowAnnualFee: boolean;
-  cardTypePreference: 'UNSECURED_PREFERRED' | 'OPEN_TO_SECURED' | 'SECURED_DESIRED' | 'NO_PREFERENCE';
+  cardTypePreference:
+    'UNSECURED_PREFERRED' | 'OPEN_TO_SECURED' | 'SECURED_DESIRED' | 'NO_PREFERENCE';
   offerPreferences: ('ZERO_APR' | 'BALANCE_TRANSFER' | 'REWARDS_POINTS')[];
-  feePreference: 'NO_ANNUAL_FEE_ONLY' | 'PROMOTIONAL_NO_FEE_ACCEPTABLE' | 'PREFER_NO_FEE_OPEN' | 'FEE_ACCEPTABLE';
+  feePreference:
+    | 'NO_ANNUAL_FEE_ONLY'
+    | 'PROMOTIONAL_NO_FEE_ACCEPTABLE'
+    | 'PREFER_NO_FEE_OPEN'
+    | 'FEE_ACCEPTABLE';
   preferenceNote: string | null;
   priority: 'PRIMARY' | 'SECONDARY';
   status: 'ACTIVE' | 'ACHIEVED' | 'PAUSED';
@@ -96,11 +100,19 @@ const readinessLabels = {
 
 const stageGuidance: Record<
   string,
-  { title?: string; description?: string; instructions: string[]; completion: string; actionLabel?: string; actionPath?: string }
+  {
+    title?: string;
+    description?: string;
+    instructions: string[];
+    completion: string;
+    actionLabel?: string;
+    actionPath?: string;
+  }
 > = {
   STARTED: {
     title: 'Credit goal confirmation',
-    description: 'Confirm or update the primary goal that this application cycle is intended to support.',
+    description:
+      'Confirm or update the primary goal that this application cycle is intended to support.',
     instructions: [
       'Review your primary credit goal and target amount.',
       'Update the goal if your desired outcome, amount, or personal/business scope changed.',
@@ -109,7 +121,8 @@ const stageGuidance: Record<
     completion: 'The primary credit goal was confirmed for this application cycle.',
   },
   REVIEW_PURCHASE: {
-    description: 'Complete a guided Credit Profile Review so your consultant can evaluate your current credit information.',
+    description:
+      'Complete a guided Credit Profile Review so your consultant can evaluate your current credit information.',
     instructions: [
       'Start the guided Review process.',
       'Provide your current credit report, recent information, and any corrections to the credit accounts shown in your profile.',
@@ -117,7 +130,7 @@ const stageGuidance: Record<
     ],
     completion: 'The Credit Profile Review service was purchased for this cycle.',
     actionLabel: 'View Review service',
-    actionPath: '/client/services',
+    actionPath: '/app/services',
   },
   CREDIT_REVIEW: {
     description: 'Complete the Review intake here without leaving your application cycle.',
@@ -128,49 +141,76 @@ const stageGuidance: Record<
     ],
     completion: 'The Credit Profile Review intake was submitted and reviewed.',
     actionLabel: 'Continue Credit Profile Review',
-    actionPath: '/client/credit-profile/review',
+    actionPath: '/app/credit-center/review',
   },
   CONSULTANT_DECISION: {
     description: 'Receive the consultant’s Ready, Prepare, or Not Ready decision.',
-    instructions: ['Wait for the consultant to complete the readiness decision.', 'Review the decision and selected factors when they are published.'],
+    instructions: [
+      'Wait for the consultant to complete the readiness decision.',
+      'Review the decision and selected factors when they are published.',
+    ],
     completion: 'The consultant published a readiness decision for this cycle.',
     actionLabel: 'View Credit Readiness',
-    actionPath: '/client/readiness',
+    actionPath: '/app/readiness',
   },
   POST_REVIEW_ACTIONS: {
-    instructions: ['Complete each active preparation action.', 'Return to Credit Readiness to monitor progress and the next milestone.'],
+    instructions: [
+      'Complete each active preparation action.',
+      'Return to Credit Readiness to monitor progress and the next milestone.',
+    ],
     completion: 'The required post-Review preparation actions were completed or cleared.',
     actionLabel: 'View action plan',
-    actionPath: '/client/readiness',
+    actionPath: '/app/readiness',
   },
   ROUND_PURCHASE: {
-    instructions: ['Open Services and select Optimized Credit Applications.', 'Complete the purchase to begin strategy preparation.'],
+    instructions: [
+      'Open Services and select Optimized Credit Applications.',
+      'Complete the purchase to begin strategy preparation.',
+    ],
     completion: 'The optimized application service was purchased for this cycle.',
     actionLabel: 'View application service',
-    actionPath: '/client/services',
+    actionPath: '/app/services',
   },
   STRATEGY: {
-    instructions: ['Your consultant researches suitable cards and prepares the strategy.', 'Monitor this cycle for the next released step.'],
+    instructions: [
+      'Your consultant researches suitable cards and prepares the strategy.',
+      'Monitor this cycle for the next released step.',
+    ],
     completion: 'The consultant completed the application strategy.',
   },
   APPLICATION_SEQUENCE: {
-    instructions: ['Review any client-visible preparation requirements.', 'The consultant will confirm the application order and alternatives.'],
+    instructions: [
+      'Review any client-visible preparation requirements.',
+      'The consultant will confirm the application order and alternatives.',
+    ],
     completion: 'The consultant finalized the application sequence.',
   },
   APPLICATION_ROUND: {
-    instructions: ['Join the scheduled application session.', 'Complete only the application currently released by the consultant.'],
+    instructions: [
+      'Join the scheduled application session.',
+      'Complete only the application currently released by the consultant.',
+    ],
     completion: 'The live application session was completed.',
   },
   RESULTS: {
-    instructions: ['Confirm each application result.', 'Provide approved limits or pending details where requested.'],
+    instructions: [
+      'Confirm each application result.',
+      'Provide approved limits or pending details where requested.',
+    ],
     completion: 'Application outcomes and approved limits were recorded.',
   },
   POST_APPLICATION_ACTIONS: {
-    instructions: ['Complete pending follow-ups, reconsideration, and card setup actions.', 'Follow the consultant’s utilization and timing guidance.'],
+    instructions: [
+      'Complete pending follow-ups, reconsideration, and card setup actions.',
+      'Follow the consultant’s utilization and timing guidance.',
+    ],
     completion: 'Required post-application follow-up was completed.',
   },
   FINAL_RESULTS: {
-    instructions: ['Review the final cycle results and goal impact.', 'Confirm that all remaining follow-ups are understood.'],
+    instructions: [
+      'Review the final cycle results and goal impact.',
+      'Confirm that all remaining follow-ups are understood.',
+    ],
     completion: 'Final results were recorded and the application cycle was closed.',
   },
 };
@@ -182,7 +222,16 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
   const [reviewIntakeActive, setReviewIntakeActive] = useState(false);
   const servicesQuery = useQuery({
     queryKey: ['services'],
-    queryFn: () => apiRequest<{ catalog: Array<{ serviceType: string; price: number | null; currency: string; active: boolean; checkoutAvailable: boolean }> }>('/api/services'),
+    queryFn: () =>
+      apiRequest<{
+        catalog: Array<{
+          serviceType: string;
+          price: number | null;
+          currency: string;
+          active: boolean;
+          checkoutAvailable: boolean;
+        }>;
+      }>('/api/services'),
   });
   const goalsQuery = useQuery({
     queryKey: ['goals'],
@@ -190,13 +239,17 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
   });
   const reviewQuery = useQuery({
     queryKey: ['review'],
-    queryFn: () => apiRequest<{ review: { id: string; status: string } | null }>('/api/v1/reviews/client'),
+    queryFn: () =>
+      apiRequest<{ review: { id: string; status: string } | null }>('/api/v1/reviews/client'),
     retry: false,
   });
   const primaryGoal =
-    goalsQuery.data?.goals.find((goal) => goal.priority === 'PRIMARY' && goal.status === 'ACTIVE') ??
-    null;
-  const reviewService = servicesQuery.data?.catalog.find((service) => service.serviceType === 'CREDIT_PROFILE_REVIEW');
+    goalsQuery.data?.goals.find(
+      (goal) => goal.priority === 'PRIMARY' && goal.status === 'ACTIVE',
+    ) ?? null;
+  const reviewService = servicesQuery.data?.catalog.find(
+    (service) => service.serviceType === 'CREDIT_PROFILE_REVIEW',
+  );
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   const [goalTarget, setGoalTarget] = useState(50000);
   const [goalScope, setGoalScope] = useState<PrimaryGoal['scope']>('PERSONAL');
@@ -262,7 +315,10 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
     },
   });
   const mockReviewPayment = useMutation({
-    mutationFn: () => apiRequest(`/api/v1/client/application-cycles/${cycle.id}/mock-review-payment`, { method: 'POST' }),
+    mutationFn: () =>
+      apiRequest(`/api/v1/client/application-cycles/${cycle.id}/mock-review-payment`, {
+        method: 'POST',
+      }),
     onSuccess: async () => {
       setMockPaymentComplete(true);
       await Promise.all([
@@ -285,12 +341,9 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
   const currentStep = cycle.steps.find((step) =>
     ['AVAILABLE', 'IN_PROGRESS'].includes(step.status),
   );
-  const currentRoadmapStep = currentStep?.stage === 'CREDIT_REVIEW'
-    ? reviewPurchaseStep
-    : currentStep;
-  const latestCompletedStep = [...roadmapSteps]
-    .reverse()
-    .find(isRoadmapStepDone);
+  const currentRoadmapStep =
+    currentStep?.stage === 'CREDIT_REVIEW' ? reviewPurchaseStep : currentStep;
+  const latestCompletedStep = [...roadmapSteps].reverse().find(isRoadmapStepDone);
   const [selectedStepId, setSelectedStepId] = useState(
     currentRoadmapStep?.id ?? latestCompletedStep?.id ?? roadmapSteps[0]?.id,
   );
@@ -298,13 +351,17 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
     setSelectedStepId(currentRoadmapStep?.id ?? latestCompletedStep?.id ?? roadmapSteps[0]?.id);
   }, [cycle.id, currentRoadmapStep?.id, latestCompletedStep?.id]);
   const selectedStep =
-    roadmapSteps.find((step) => step.id === selectedStepId) ?? currentRoadmapStep ?? roadmapSteps[0];
+    roadmapSteps.find((step) => step.id === selectedStepId) ??
+    currentRoadmapStep ??
+    roadmapSteps[0];
   return (
     <Stack spacing={2.25}>
       <Box>
         <Stack direction="row" sx={{ alignItems: 'center' }}>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="overline" color="primary">Active application cycle</Typography>
+            <Typography variant="overline" color="primary">
+              Active application cycle
+            </Typography>
             <Typography variant="h3">Cycle {cycle.cycleNumber}</Typography>
           </Box>
           <Chip label={`${complete} of ${roadmapSteps.length} complete`} color="info" />
@@ -316,20 +373,26 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
         />
       </Box>
       <Box>
-        <Typography variant="overline" color="text.secondary">Full roadmap</Typography>
+        <Typography variant="overline" color="text.secondary">
+          Application journey
+        </Typography>
         <Box
           sx={{
-            display: 'grid', gridTemplateColumns: '1fr',
-            gap: 1, mt: 1,
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: 1,
+            mt: 1,
           }}
         >
         {roadmapSteps.map((step, index) => {
           const isReviewGroup = step.stage === 'REVIEW_PURCHASE' && Boolean(reviewIntakeStep);
           const reviewPhases = isReviewGroup ? [step, reviewIntakeStep!] : [];
           const detailStep = isReviewGroup
-            ? reviewPhases.find((phase) => ['AVAILABLE', 'IN_PROGRESS'].includes(phase.status))
-              ?? [...reviewPhases].reverse().find(isStepDone)
-              ?? step
+              ? (reviewPhases.find((phase) =>
+                  ['AVAILABLE', 'IN_PROGRESS'].includes(phase.status),
+                ) ??
+                [...reviewPhases].reverse().find(isStepDone) ??
+                step)
             : step;
           const done = isRoadmapStepDone(step);
           const active = isReviewGroup
@@ -337,18 +400,24 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
             : ['AVAILABLE', 'IN_PROGRESS'].includes(step.status);
           const guidance = stageGuidance[detailStep.stage];
           const currentReviewStatus = reviewQuery.data?.review?.status;
-          const reviewSubmitted = isReviewGroup && ['INFORMATION_RECEIVED', 'CONSULTANT_REVIEW'].includes(currentReviewStatus ?? '');
+            const reviewSubmitted =
+              isReviewGroup &&
+              ['INFORMATION_RECEIVED', 'CONSULTANT_REVIEW'].includes(currentReviewStatus ?? '');
           const reviewFinished = isReviewGroup && currentReviewStatus === 'COMPLETE';
-          const displayTitle = isReviewGroup ? 'Credit Profile Review' : (guidance?.title ?? step.title);
+            const displayTitle = isReviewGroup
+              ? 'Credit Profile Review'
+              : (guidance?.title ?? step.title);
           const selected = step.id === selectedStep?.id;
-          const confirmedGoal = step.stage === 'STARTED'
-            ? goalsQuery.data?.goals.find((goal) => goal.id === step.sourceId) ?? primaryGoal
+            const confirmedGoal =
+              step.stage === 'STARTED'
+                ? (goalsQuery.data?.goals.find((goal) => goal.id === step.sourceId) ?? primaryGoal)
             : null;
           return (
             <Box
               key={step.id}
               sx={{
-                borderRadius: 1.75, border: '1px solid',
+                  borderRadius: 1.75,
+                  border: '1px solid',
                 borderColor: selected
                   ? done
                     ? 'rgba(66, 230, 164, .72)'
@@ -371,20 +440,28 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                       : '0 0 0 1px rgba(139, 124, 246, .1), 0 12px 30px rgba(0, 0, 0, .24)'
                   : 'none',
                 overflow: 'hidden',
-                transition: 'border-color 180ms ease, box-shadow 180ms ease, background 180ms ease',
+                  transition:
+                    'border-color 180ms ease, box-shadow 180ms ease, background 180ms ease',
               }}
             >
               <ButtonBase
                 onClick={() => setSelectedStepId(selected ? undefined : step.id)}
                 aria-expanded={selected}
                 sx={{
-                  width: '100%', minHeight: 58, px: 1.25, py: 1, gap: 1.1,
-                  justifyContent: 'flex-start', textAlign: 'left',
+                    width: '100%',
+                    minHeight: 58,
+                    px: 1.25,
+                    py: 1,
+                    gap: 1.1,
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
                 }}
               >
                 <Box
                   sx={{
-                    width: 30, height: 30, flex: '0 0 auto',
+                      width: 30,
+                      height: 30,
+                      flex: '0 0 auto',
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
@@ -395,7 +472,11 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                         : 'action.disabledBackground',
                     color: done || active || selected ? 'background.default' : 'text.disabled',
                     border: '1px solid',
-                    borderColor: done ? 'success.main' : active || selected ? 'primary.main' : 'divider',
+                      borderColor: done
+                        ? 'success.main'
+                        : active || selected
+                          ? 'primary.main'
+                          : 'divider',
                   }}
                 >
                   {done ? (
@@ -405,15 +486,34 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                   ) : active ? (
                     <PlayArrowRounded sx={{ fontSize: 18 }} />
                   ) : (
-                    <Typography variant="caption" sx={{ fontWeight: 900 }}>{index + 1}</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 900 }}>
+                        {index + 1}
+                      </Typography>
                   )}
                 </Box>
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography sx={{ fontWeight: active || selected ? 900 : 750, lineHeight: 1.25 }}>
+                    <Typography
+                      sx={{ fontWeight: active || selected ? 900 : 750, lineHeight: 1.25 }}
+                    >
                   {displayTitle}
                 </Typography>
-                <Typography variant="caption" color={done ? 'success.main' : active ? 'primary.main' : 'text.secondary'}>
-                  {done || reviewFinished ? 'Completed' : reviewSubmitted ? (currentReviewStatus === 'CONSULTANT_REVIEW' ? 'Consultant reviewing' : 'Submitted') : active ? (detailStep.status === 'IN_PROGRESS' ? 'In progress' : 'Current step') : detailStep.status === 'BLOCKED' ? 'Blocked' : 'Upcoming'}
+                    <Typography
+                      variant="caption"
+                      color={done ? 'success.main' : active ? 'primary.main' : 'text.secondary'}
+                    >
+                      {done || reviewFinished
+                        ? 'Completed'
+                        : reviewSubmitted
+                          ? currentReviewStatus === 'CONSULTANT_REVIEW'
+                            ? 'Consultant reviewing'
+                            : 'Submitted'
+                          : active
+                            ? detailStep.status === 'IN_PROGRESS'
+                              ? 'In progress'
+                              : 'Current step'
+                            : detailStep.status === 'BLOCKED'
+                              ? 'Blocked'
+                              : 'Upcoming'}
                 </Typography>
               </Box>
                 <Box
@@ -439,7 +539,15 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                 </Box>
               </ButtonBase>
               <Collapse in={selected} timeout={220} unmountOnExit>
-                <Box sx={{ px: { xs: 1.5, sm: 2 }, pb: 2, pt: 0.5, borderTop: 1, borderColor: 'rgba(130, 207, 232, .24)' }}>
+                  <Box
+                    sx={{
+                      px: { xs: 1.5, sm: 2 },
+                      pb: 2,
+                      pt: 0.5,
+                      borderTop: 1,
+                      borderColor: 'rgba(130, 207, 232, .24)',
+                    }}
+                  >
                   <Typography color="text.primary" sx={{ mt: 1.25 }}>
                     {reviewSubmitted
                       ? currentReviewStatus === 'CONSULTANT_REVIEW'
@@ -447,7 +555,7 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                         : 'Your Review intake was submitted successfully and is waiting for your consultant.'
                       : reviewFinished
                         ? 'Your consultant completed the Review and updated your Credit Profile.'
-                        : guidance?.description ?? step.description}
+                          : (guidance?.description ?? step.description)}
                   </Typography>
                   {!done && !reviewSubmitted && !reviewFinished && guidance && (
                     <Box sx={{ mt: 1.5 }}>
@@ -456,7 +564,12 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                       </Typography>
                       <Stack spacing={0.7} sx={{ mt: 0.75 }}>
                         {guidance.instructions.map((instruction) => (
-                          <Stack key={instruction} direction="row" spacing={0.85} sx={{ alignItems: 'flex-start' }}>
+                            <Stack
+                              key={instruction}
+                              direction="row"
+                              spacing={0.85}
+                              sx={{ alignItems: 'flex-start' }}
+                            >
                             <CheckRounded color="primary" sx={{ fontSize: 18, mt: 0.15 }} />
                             <Typography variant="body2" color="text.primary">
                               {instruction}
@@ -468,12 +581,38 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                   )}
                   {(reviewSubmitted || reviewFinished) && (
                     <Box sx={{ mt: 1.5 }}>
-                      <Typography variant="overline" color="primary">Review progress</Typography>
+                        <Typography variant="overline" color="primary">
+                          Review progress
+                        </Typography>
                       <Stack spacing={0.85} sx={{ mt: 0.75 }}>
                         {[
-                          { title: 'Information submitted', detail: 'No action is needed right now. You’ll be notified when your consultant starts or requests more information.', complete: true, active: false },
-                          { title: 'Consultant Review started', detail: currentReviewStatus === 'INFORMATION_RECEIVED' ? 'Waiting for your consultant to begin reviewing the report and information you submitted.' : 'Your consultant is verifying the uploaded report, confirmed credit accounts, and recent information you provided.', complete: currentReviewStatus === 'CONSULTANT_REVIEW' || reviewFinished, active: currentReviewStatus === 'INFORMATION_RECEIVED' },
-                          { title: 'Credit Profile updated', detail: reviewFinished ? 'Your verified Credit Profile is now available. Continue to the next stage to view the consultant readiness decision.' : currentReviewStatus === 'CONSULTANT_REVIEW' ? 'Your consultant is preparing the verified Credit Profile that will be used for the readiness decision in the next stage.' : 'Your Credit Profile will update after the consultant verifies the submitted information and completes the Review.', complete: reviewFinished, active: currentReviewStatus === 'CONSULTANT_REVIEW' },
+                            {
+                              title: 'Information submitted',
+                              detail:
+                                'No action is needed right now. You’ll be notified when your consultant starts or requests more information.',
+                              complete: true,
+                              active: false,
+                            },
+                            {
+                              title: 'Consultant Review started',
+                              detail:
+                                currentReviewStatus === 'INFORMATION_RECEIVED'
+                                  ? 'Waiting for your consultant to begin reviewing the report and information you submitted.'
+                                  : 'Your consultant is verifying the uploaded report, confirmed credit accounts, and recent information you provided.',
+                              complete:
+                                currentReviewStatus === 'CONSULTANT_REVIEW' || reviewFinished,
+                              active: currentReviewStatus === 'INFORMATION_RECEIVED',
+                            },
+                            {
+                              title: 'Credit Profile updated',
+                              detail: reviewFinished
+                                ? 'Your verified Credit Profile is now available. Continue to the next stage to view the consultant readiness decision.'
+                                : currentReviewStatus === 'CONSULTANT_REVIEW'
+                                  ? 'Your consultant is preparing the verified Credit Profile that will be used for the readiness decision in the next stage.'
+                                  : 'Your Credit Profile will update after the consultant verifies the submitted information and completes the Review.',
+                              complete: reviewFinished,
+                              active: currentReviewStatus === 'CONSULTANT_REVIEW',
+                            },
                         ].map((reviewStage, reviewStageIndex) => (
                           <Stack
                             key={reviewStage.title}
@@ -496,17 +635,77 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                                   : 'rgba(5, 13, 29, .2)',
                             }}
                           >
-                            <Box sx={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center', border: 1, borderColor: reviewStage.complete ? 'success.main' : reviewStage.active ? 'primary.main' : 'divider', bgcolor: reviewStage.complete ? 'success.main' : reviewStage.active ? 'rgba(69, 215, 240, .12)' : 'rgba(255,255,255,.025)', color: reviewStage.complete ? 'background.default' : reviewStage.active ? 'primary.main' : 'text.disabled' }}>
-                              {reviewStage.complete ? <CheckRounded sx={{ fontSize: 17 }} /> : <Typography variant="caption" sx={{ fontWeight: 900 }}>{reviewStageIndex + 1}</Typography>}
+                              <Box
+                                sx={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: '50%',
+                                  flexShrink: 0,
+                                  display: 'grid',
+                                  placeItems: 'center',
+                                  border: 1,
+                                  borderColor: reviewStage.complete
+                                    ? 'success.main'
+                                    : reviewStage.active
+                                      ? 'primary.main'
+                                      : 'divider',
+                                  bgcolor: reviewStage.complete
+                                    ? 'success.main'
+                                    : reviewStage.active
+                                      ? 'rgba(69, 215, 240, .12)'
+                                      : 'rgba(255,255,255,.025)',
+                                  color: reviewStage.complete
+                                    ? 'background.default'
+                                    : reviewStage.active
+                                      ? 'primary.main'
+                                      : 'text.disabled',
+                                }}
+                              >
+                                {reviewStage.complete ? (
+                                  <CheckRounded sx={{ fontSize: 17 }} />
+                                ) : (
+                                  <Typography variant="caption" sx={{ fontWeight: 900 }}>
+                                    {reviewStageIndex + 1}
+                                  </Typography>
+                                )}
                             </Box>
                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                                <Typography variant="body2" sx={{ fontWeight: 900, color: reviewStage.active ? 'primary.main' : 'text.primary' }}>{reviewStage.title}</Typography>
-                                <Typography variant="caption" sx={{ flexShrink: 0, fontWeight: 850, color: reviewStage.complete ? 'success.main' : reviewStage.active ? 'primary.main' : 'text.disabled' }}>
-                                  {reviewStage.complete ? 'Done' : reviewStage.active ? 'Current' : 'Upcoming'}
+                                <Stack
+                                  direction="row"
+                                  spacing={0.75}
+                                  sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+                                >
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontWeight: 900,
+                                      color: reviewStage.active ? 'primary.main' : 'text.primary',
+                                    }}
+                                  >
+                                    {reviewStage.title}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      flexShrink: 0,
+                                      fontWeight: 850,
+                                      color: reviewStage.complete
+                                        ? 'success.main'
+                                        : reviewStage.active
+                                          ? 'primary.main'
+                                          : 'text.disabled',
+                                    }}
+                                  >
+                                    {reviewStage.complete
+                                      ? 'Done'
+                                      : reviewStage.active
+                                        ? 'Current'
+                                        : 'Upcoming'}
                                 </Typography>
                               </Stack>
-                              <Typography variant="caption" color="text.secondary">{reviewStage.detail}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {reviewStage.detail}
+                                </Typography>
                             </Box>
                           </Stack>
                         ))}
@@ -521,10 +720,23 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                         <Stack spacing={1.5}>
                           <Box>
                             <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                              <Box sx={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid', borderColor: 'primary.main', color: 'primary.main', display: 'grid', placeItems: 'center' }}>
+                                <Box
+                                  sx={{
+                                    width: 22,
+                                    height: 22,
+                                    borderRadius: '50%',
+                                    border: '1px solid',
+                                    borderColor: 'primary.main',
+                                    color: 'primary.main',
+                                    display: 'grid',
+                                    placeItems: 'center',
+                                  }}
+                                >
                                 <FlagRounded sx={{ fontSize: 14 }} />
                               </Box>
-                              <Typography variant="overline" color="primary">Goal to confirm</Typography>
+                                <Typography variant="overline" color="primary">
+                                  Goal to confirm
+                                </Typography>
                             </Stack>
                             <Box
                               sx={{
@@ -535,24 +747,77 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                                 background: 'linear-gradient(115deg, #102c3e, #14394a)',
                               }}
                             >
-                              <Typography sx={{ fontWeight: 900, fontSize: { xs: 18, sm: 21 }, lineHeight: 1.2 }}>
+                                <Typography
+                                  sx={{
+                                    fontWeight: 900,
+                                    fontSize: { xs: 18, sm: 21 },
+                                    lineHeight: 1.2,
+                                  }}
+                                >
                                 {goalZeroApr ? 'Build 0% APR credit' : 'Build available credit'}
                               </Typography>
-                              <Typography sx={{ mt: 0.75, fontWeight: 950, fontSize: { xs: 36, sm: 42 }, lineHeight: 1, color: 'primary.main', letterSpacing: '-.045em' }}>
+                                <Typography
+                                  sx={{
+                                    mt: 0.75,
+                                    fontWeight: 950,
+                                    fontSize: { xs: 36, sm: 42 },
+                                    lineHeight: 1,
+                                    color: 'primary.main',
+                                    letterSpacing: '-.045em',
+                                  }}
+                                >
                                 ${goalTarget.toLocaleString()}
                               </Typography>
                             </Box>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', mt: 1.25 }}>
+                              <Box
+                                sx={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                                  mt: 1.25,
+                                }}
+                              >
                               {[
-                                ['Scope', goalScope === 'BOTH' ? 'Personal + business' : goalScope === 'BUSINESS' ? 'Business' : 'Personal'],
+                                  [
+                                    'Scope',
+                                    goalScope === 'BOTH'
+                                      ? 'Personal + business'
+                                      : goalScope === 'BUSINESS'
+                                        ? 'Business'
+                                        : 'Personal',
+                                  ],
                                 ['Card focus', goalZeroApr ? '0% APR' : 'Available credit'],
                                 ['Card fees', goalAllowAnnualFee ? 'Allowed' : 'Free only'],
                               ].map(([label, value], detailIndex) => (
-                                <Box key={label} sx={{ px: detailIndex === 0 ? 0 : 1, borderLeft: detailIndex === 0 ? 0 : '1px solid rgba(255,255,255,.12)', minWidth: 0 }}>
-                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                                  <Box
+                                    key={label}
+                                    sx={{
+                                      px: detailIndex === 0 ? 0 : 1,
+                                      borderLeft:
+                                        detailIndex === 0 ? 0 : '1px solid rgba(255,255,255,.12)',
+                                      minWidth: 0,
+                                    }}
+                                  >
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{
+                                        display: 'block',
+                                        fontSize: 10,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '.08em',
+                                      }}
+                                    >
                                     {label}
                                   </Typography>
-                                  <Typography variant="caption" sx={{ display: 'block', mt: 0.2, fontWeight: 800, lineHeight: 1.25 }}>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        display: 'block',
+                                        mt: 0.2,
+                                        fontWeight: 800,
+                                        lineHeight: 1.25,
+                                      }}
+                                    >
                                     {value}
                                   </Typography>
                                 </Box>
@@ -560,24 +825,38 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                             </Box>
                           </Box>
                           <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1}>
-                            <Button variant="outlined" onClick={() => { resetGoalDraft(); setGoalEditorOpen(true); }}>
+                              <Button
+                                variant="outlined"
+                                onClick={() => {
+                                  resetGoalDraft();
+                                  setGoalEditorOpen(true);
+                                }}
+                              >
                               Update goal
                             </Button>
                             <Button
                               variant="contained"
                               onClick={() => confirmGoal.mutate()}
-                              disabled={confirmGoal.isPending || goalTarget < 5000 || goalTarget > 250000}
+                                disabled={
+                                  confirmGoal.isPending || goalTarget < 5000 || goalTarget > 250000
+                                }
                             >
-                              {confirmGoal.isPending ? 'Confirming…' : 'Confirm goal and continue'}
+                                {confirmGoal.isPending
+                                  ? 'Confirming…'
+                                  : 'Confirm goal and continue'}
                             </Button>
                           </Stack>
-                          {confirmGoal.isError && <Alert severity="error">{confirmGoal.error.message}</Alert>}
+                            {confirmGoal.isError && (
+                              <Alert severity="error">{confirmGoal.error.message}</Alert>
+                            )}
                         </Stack>
                       )}
                     </Box>
                   )}
-                  {done && guidance && !isReviewGroup && (
-                    step.stage === 'STARTED' && confirmedGoal ? (
+                    {done &&
+                      guidance &&
+                      !isReviewGroup &&
+                      (step.stage === 'STARTED' && confirmedGoal ? (
                       <Box
                         sx={{
                           mt: 1.5,
@@ -586,10 +865,22 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                         }}
                       >
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                          <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: 'success.main', color: 'background.default', display: 'grid', placeItems: 'center' }}>
+                            <Box
+                              sx={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: '50%',
+                                bgcolor: 'success.main',
+                                color: 'background.default',
+                                display: 'grid',
+                                placeItems: 'center',
+                              }}
+                            >
                             <CheckRounded sx={{ fontSize: 15 }} />
                           </Box>
-                          <Typography variant="overline" color="success.main">Confirmed goal</Typography>
+                            <Typography variant="overline" color="success.main">
+                              Confirmed goal
+                            </Typography>
                         </Stack>
                         <Box
                           sx={{
@@ -600,24 +891,84 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                             background: 'linear-gradient(115deg, #102c3e, #14394a)',
                           }}
                         >
-                          <Typography sx={{ fontWeight: 900, fontSize: { xs: 18, sm: 21 }, lineHeight: 1.2 }}>
-                            {confirmedGoal.goalType === 'ZERO_APR_CREDIT' ? 'Build 0% APR credit' : 'Build available credit'}
+                            <Typography
+                              sx={{
+                                fontWeight: 900,
+                                fontSize: { xs: 18, sm: 21 },
+                                lineHeight: 1.2,
+                              }}
+                            >
+                              {confirmedGoal.goalType === 'ZERO_APR_CREDIT'
+                                ? 'Build 0% APR credit'
+                                : 'Build available credit'}
                           </Typography>
-                          <Typography sx={{ mt: 0.75, fontWeight: 950, fontSize: { xs: 36, sm: 42 }, lineHeight: 1, color: 'primary.main', letterSpacing: '-.045em' }}>
+                            <Typography
+                              sx={{
+                                mt: 0.75,
+                                fontWeight: 950,
+                                fontSize: { xs: 36, sm: 42 },
+                                lineHeight: 1,
+                                color: 'primary.main',
+                                letterSpacing: '-.045em',
+                              }}
+                            >
                             ${(confirmedGoal.targetAmount ?? 0).toLocaleString()}
                           </Typography>
                         </Box>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', mt: 1.25 }}>
+                          <Box
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                              mt: 1.25,
+                            }}
+                          >
                           {[
-                            ['Scope', confirmedGoal.scope === 'BOTH' ? 'Personal + business' : confirmedGoal.scope === 'BUSINESS' ? 'Business' : 'Personal'],
-                            ['Card focus', confirmedGoal.goalType === 'ZERO_APR_CREDIT' ? '0% APR' : 'Available credit'],
+                              [
+                                'Scope',
+                                confirmedGoal.scope === 'BOTH'
+                                  ? 'Personal + business'
+                                  : confirmedGoal.scope === 'BUSINESS'
+                                    ? 'Business'
+                                    : 'Personal',
+                              ],
+                              [
+                                'Card focus',
+                                confirmedGoal.goalType === 'ZERO_APR_CREDIT'
+                                  ? '0% APR'
+                                  : 'Available credit',
+                              ],
                             ['Card fees', confirmedGoal.allowAnnualFee ? 'Allowed' : 'Free only'],
                           ].map(([label, value], detailIndex) => (
-                            <Box key={label} sx={{ px: detailIndex === 0 ? 0 : 1, borderLeft: detailIndex === 0 ? 0 : '1px solid rgba(255,255,255,.12)', minWidth: 0 }}>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                              <Box
+                                key={label}
+                                sx={{
+                                  px: detailIndex === 0 ? 0 : 1,
+                                  borderLeft:
+                                    detailIndex === 0 ? 0 : '1px solid rgba(255,255,255,.12)',
+                                  minWidth: 0,
+                                }}
+                              >
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{
+                                    display: 'block',
+                                    fontSize: 10,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '.08em',
+                                  }}
+                                >
                                 {label}
                               </Typography>
-                              <Typography variant="caption" sx={{ display: 'block', mt: 0.2, fontWeight: 800, lineHeight: 1.25 }}>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    display: 'block',
+                                    mt: 0.2,
+                                    fontWeight: 800,
+                                    lineHeight: 1.25,
+                                  }}
+                                >
                                 {value}
                               </Typography>
                             </Box>
@@ -638,23 +989,41 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                             }}
                           >
                             <CheckRounded sx={{ fontSize: 17 }} />
-                            <Typography variant="body2" sx={{ fontWeight: 850, color: 'text.primary' }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 850, color: 'text.primary' }}
+                              >
                               Goal confirmed · {new Date(step.completedAt).toLocaleDateString()}
                             </Typography>
                           </Stack>
                         )}
                       </Box>
                     ) : (
-                      <Box sx={{ mt: 1.5, p: 1.25, borderRadius: 1.5, bgcolor: 'rgba(66, 230, 164, .06)', borderLeft: '3px solid', borderColor: 'success.main' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 750 }}>{guidance.completion}</Typography>
+                        <Box
+                          sx={{
+                            mt: 1.5,
+                            p: 1.25,
+                            borderRadius: 1.5,
+                            bgcolor: 'rgba(66, 230, 164, .06)',
+                            borderLeft: '3px solid',
+                            borderColor: 'success.main',
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 750 }}>
+                            {guidance.completion}
+                          </Typography>
                         {step.completedAt && (
-                          <Typography variant="caption" color="text.secondary">Completed {new Date(step.completedAt).toLocaleDateString()}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Completed {new Date(step.completedAt).toLocaleDateString()}
+                            </Typography>
                         )}
                       </Box>
-                    )
-                  )}
-                  {active && step.stage !== 'STARTED' && guidance?.actionPath && guidance.actionLabel && (
-                    isReviewGroup ? (
+                      ))}
+                    {active &&
+                      step.stage !== 'STARTED' &&
+                      guidance?.actionPath &&
+                      guidance.actionLabel &&
+                      (isReviewGroup ? (
                       <Button
                         variant={reviewSubmitted ? 'outlined' : 'contained'}
                         sx={{ mt: 1.75 }}
@@ -664,14 +1033,22 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                           setReviewPurchaseOpen(true);
                         }}
                       >
-                        {reviewSubmitted ? 'View Review status' : detailStep.stage === 'CREDIT_REVIEW' ? 'Continue Credit Profile Review' : 'Start Credit Profile Review'}
+                          {reviewSubmitted
+                            ? 'View Review status'
+                            : detailStep.stage === 'CREDIT_REVIEW'
+                              ? 'Continue Credit Profile Review'
+                              : 'Start Credit Profile Review'}
                       </Button>
                     ) : (
-                      <Button component={Link} to={guidance.actionPath} variant="contained" sx={{ mt: 1.75 }}>
+                        <Button
+                          component={Link}
+                          to={guidance.actionPath}
+                          variant="contained"
+                          sx={{ mt: 1.75 }}
+                        >
                         {guidance.actionLabel}
                       </Button>
-                    )
-                  )}
+                      ))}
                 </Box>
               </Collapse>
             </Box>
@@ -684,27 +1061,66 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
         <DialogContent dividers>
           <Stack spacing={2.25}>
             <Box>
-              <Typography variant="overline" color="primary">Primary goal</Typography>
+              <Typography variant="overline" color="primary">
+                Primary goal
+              </Typography>
               <Typography variant="h3">Application target</Typography>
               <Typography color="text.secondary" sx={{ mt: 0.5 }}>
                 Adjust the goal this application cycle is intended to support.
               </Typography>
             </Box>
             <Box>
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', mb: 0.5 }}>
-                <Typography variant="overline" color="text.secondary">Target amount</Typography>
-                <Typography sx={{ fontWeight: 950, fontSize: 24, color: 'primary.main' }}>${goalTarget.toLocaleString()}</Typography>
+              <Stack
+                direction="row"
+                sx={{ justifyContent: 'space-between', alignItems: 'baseline', mb: 0.5 }}
+              >
+                <Typography variant="overline" color="text.secondary">
+                  Target amount
+                </Typography>
+                <Typography sx={{ fontWeight: 950, fontSize: 24, color: 'primary.main' }}>
+                  ${goalTarget.toLocaleString()}
+                </Typography>
               </Stack>
-              <Slider min={5000} max={250000} step={5000} value={Math.min(Math.max(goalTarget, 5000), 250000)} onChange={(_, value) => setGoalTarget(value as number)} aria-label="Application cycle goal target" valueLabelDisplay="auto" valueLabelFormat={(value) => `$${Number(value).toLocaleString()}`} />
+              <Slider
+                min={5000}
+                max={250000}
+                step={5000}
+                value={Math.min(Math.max(goalTarget, 5000), 250000)}
+                onChange={(_, value) => setGoalTarget(value as number)}
+                aria-label="Application cycle goal target"
+                valueLabelDisplay="auto"
+                valueLabelFormat={(value) => `$${Number(value).toLocaleString()}`}
+              />
               <Stack direction="row" sx={{ justifyContent: 'space-between', mt: -0.5 }}>
-                <Typography variant="caption" color="text.secondary">$5K</Typography>
-                <Typography variant="caption" color="text.secondary">$250K</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  $5K
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  $250K
+                </Typography>
               </Stack>
             </Box>
-            <TextField label="Exact target" type="number" value={goalTarget} onChange={(event) => setGoalTarget(Number(event.target.value))} slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> }, htmlInput: { min: 5000, max: 250000, step: 5000 } }} />
+            <TextField
+              label="Exact target"
+              type="number"
+              value={goalTarget}
+              onChange={(event) => setGoalTarget(Number(event.target.value))}
+              slotProps={{
+                input: { startAdornment: <InputAdornment position="start">$</InputAdornment> },
+                htmlInput: { min: 5000, max: 250000, step: 5000 },
+              }}
+            />
             <Box>
-              <Typography variant="overline" color="text.secondary">Credit type</Typography>
-              <ToggleButtonGroup exclusive fullWidth value={goalScope} onChange={(_, value: PrimaryGoal['scope'] | null) => value && setGoalScope(value)} sx={{ mt: 0.75 }}>
+              <Typography variant="overline" color="text.secondary">
+                Credit type
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                value={goalScope}
+                onChange={(_, value: PrimaryGoal['scope'] | null) => value && setGoalScope(value)}
+                sx={{ mt: 0.75 }}
+              >
                 <ToggleButton value="PERSONAL">Personal</ToggleButton>
                 <ToggleButton value="BUSINESS">Business</ToggleButton>
                 <ToggleButton value="BOTH">Both</ToggleButton>
@@ -713,41 +1129,100 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
               <Box sx={{ flex: 1 }}>
                 <Typography sx={{ fontWeight: 850 }}>Prioritize 0% APR credit</Typography>
-                <Typography variant="body2" color="text.secondary">Use promotional credit as the primary target.</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Use promotional credit as the primary target.
+                </Typography>
               </Box>
-              <Switch checked={goalZeroApr} onChange={(event) => setGoalZeroApr(event.target.checked)} />
+              <Switch
+                checked={goalZeroApr}
+                onChange={(event) => setGoalZeroApr(event.target.checked)}
+              />
             </Stack>
-            <FormControlLabel control={<Checkbox checked={goalAllowAnnualFee} onChange={(event) => setGoalAllowAnnualFee(event.target.checked)} />} label={<Box><Typography sx={{ fontWeight: 850 }}>Allow cards with annual fees</Typography><Typography variant="body2" color="text.secondary">Leave unchecked to consider free cards only.</Typography></Box>} sx={{ alignItems: 'flex-start', m: 0 }} />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={goalAllowAnnualFee}
+                  onChange={(event) => setGoalAllowAnnualFee(event.target.checked)}
+                />
+              }
+              label={
+                <Box>
+                  <Typography sx={{ fontWeight: 850 }}>Allow cards with annual fees</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Leave unchecked to consider free cards only.
+                  </Typography>
+                </Box>
+              }
+              sx={{ alignItems: 'flex-start', m: 0 }}
+            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={closeGoalEditor}>Cancel</Button>
-          <Button variant="contained" onClick={() => setGoalEditorOpen(false)} disabled={goalTarget < 5000 || goalTarget > 250000}>Apply changes</Button>
+          <Button
+            variant="contained"
+            onClick={() => setGoalEditorOpen(false)}
+            disabled={goalTarget < 5000 || goalTarget > 250000}
+          >
+            Apply changes
+          </Button>
         </DialogActions>
       </Dialog>
       <Dialog
         open={reviewPurchaseOpen}
-        onClose={() => { setReviewPurchaseOpen(false); setMockPaymentComplete(false); setReviewIntakeActive(false); }}
+        onClose={() => {
+          setReviewPurchaseOpen(false);
+          setMockPaymentComplete(false);
+          setReviewIntakeActive(false);
+        }}
         fullWidth
         maxWidth="sm"
       >
         <DialogTitle>
-          {reviewIntakeActive ? 'Credit Profile Review' : mockPaymentComplete ? 'Payment complete' : 'Start Credit Profile Review'}
+          {reviewIntakeActive
+            ? 'Credit Profile Review'
+            : mockPaymentComplete
+              ? 'Payment complete'
+              : 'Start Credit Profile Review'}
         </DialogTitle>
-        <DialogContent dividers sx={reviewIntakeActive ? { px: { xs: 2, sm: 3 }, py: { xs: 2.25, sm: 3 }, bgcolor: 'rgba(5, 13, 29, .34)' } : undefined}>
+        <DialogContent
+          dividers
+          sx={
+            reviewIntakeActive
+              ? { px: { xs: 2, sm: 3 }, py: { xs: 2.25, sm: 3 }, bgcolor: 'rgba(5, 13, 29, .34)' }
+              : undefined
+          }
+        >
           {reviewIntakeActive ? (
             <ClientReviewPage
               embedded
-              onExit={() => { setReviewPurchaseOpen(false); setMockPaymentComplete(false); setReviewIntakeActive(false); }}
+              onExit={() => {
+                setReviewPurchaseOpen(false);
+                setMockPaymentComplete(false);
+                setReviewIntakeActive(false);
+              }}
             />
           ) : mockPaymentComplete ? (
             <Stack spacing={2.5}>
               <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                <Box sx={{ width: 44, height: 44, borderRadius: '50%', bgcolor: 'success.main', color: 'background.default', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    bgcolor: 'success.main',
+                    color: 'background.default',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
                   <CheckRounded />
                 </Box>
                 <Box>
-                  <Typography variant="overline" color="success.main">Payment confirmed</Typography>
+                  <Typography variant="overline" color="success.main">
+                    Payment confirmed
+                  </Typography>
                   <Typography variant="h3">Your Review is ready</Typography>
                 </Box>
               </Stack>
@@ -755,10 +1230,15 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                 Your one-time Credit Profile Review has been added to this application cycle.
               </Typography>
               <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                <Typography variant="overline" color="primary">Next step</Typography>
-                <Typography variant="h4" sx={{ mt: 0.25 }}>Provide your Review details</Typography>
+                <Typography variant="overline" color="primary">
+                  Next step
+                </Typography>
+                <Typography variant="h4" sx={{ mt: 0.25 }}>
+                  Provide your Review details
+                </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.65 }}>
-                  Upload report&nbsp;&nbsp;•&nbsp;&nbsp;Add recent changes&nbsp;&nbsp;•&nbsp;&nbsp;Verify accounts
+                  Upload report&nbsp;&nbsp;•&nbsp;&nbsp;Add recent
+                  changes&nbsp;&nbsp;•&nbsp;&nbsp;Verify accounts
                 </Typography>
               </Box>
               <Alert severity="info">You can save your progress and return at any time.</Alert>
@@ -766,34 +1246,70 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
           ) : (
           <Stack spacing={2}>
             <Box>
-              <Typography variant="overline" color="primary">Foundational review</Typography>
+                <Typography variant="overline" color="primary">
+                  Foundational review
+                </Typography>
               <Typography variant="h3">Credit Profile Review</Typography>
               <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-                Purchase the Review, upload your current credit report, confirm information not shown on the report, and verify the credit-card accounts included in your Credit Profile before submitting everything to your consultant.
+                  Purchase the Review, upload your current credit report, confirm information not
+                  shown on the report, and verify the credit-card accounts included in your Credit
+                  Profile before submitting everything to your consultant.
               </Typography>
             </Box>
             <Stack spacing={1}>
-              {['Credit-report PDF upload', 'Additional information check', 'Credit Profile account verification', 'Consultant review and readiness result'].map((item) => (
+                {[
+                  'Credit-report PDF upload',
+                  'Additional information check',
+                  'Credit Profile account verification',
+                  'Consultant review and readiness result',
+                ].map((item) => (
                 <Stack key={item} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <CheckRounded color="primary" sx={{ fontSize: 18 }} />
-                  <Typography variant="body2" sx={{ fontWeight: 750 }}>{item}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 750 }}>
+                      {item}
+                    </Typography>
                 </Stack>
               ))}
             </Stack>
-            <Box sx={{ p: 1.75, borderRadius: 1.5, border: 1, borderColor: 'divider', bgcolor: 'rgba(5, 13, 29, .34)' }}>
-              <Typography variant="overline" color="primary">Checkout summary</Typography>
+              <Box
+                sx={{
+                  p: 1.75,
+                  borderRadius: 1.5,
+                  border: 1,
+                  borderColor: 'divider',
+                  bgcolor: 'rgba(5, 13, 29, .34)',
+                }}
+              >
+                <Typography variant="overline" color="primary">
+                  Checkout summary
+                </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 0.75, alignItems: 'center' }}>
-                <Typography sx={{ fontSize: 32, lineHeight: 1, fontWeight: 950, color: 'primary.main', letterSpacing: '-.035em' }}>
+                  <Typography
+                    sx={{
+                      fontSize: 32,
+                      lineHeight: 1,
+                      fontWeight: 950,
+                      color: 'primary.main',
+                      letterSpacing: '-.035em',
+                    }}
+                  >
                   {reviewService?.price == null
                     ? 'Pending'
-                    : new Intl.NumberFormat(undefined, { style: 'currency', currency: reviewService.currency }).format(reviewService.price)}
+                      : new Intl.NumberFormat(undefined, {
+                          style: 'currency',
+                          currency: reviewService.currency,
+                        }).format(reviewService.price)}
                 </Typography>
                 <Chip size="small" label="One time" variant="outlined" />
               </Stack>
               <Typography sx={{ mt: 1.25, fontWeight: 900, fontSize: 18 }}>
                 Credit Profile Review
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35, lineHeight: 1.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.35, lineHeight: 1.5 }}
+                >
                 Includes consultant analysis, a readiness decision, and recommended next steps.
               </Typography>
               <Box sx={{ mt: 1.25, pt: 1, borderTop: 1, borderColor: 'divider' }}>
@@ -812,34 +1328,77 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
         </DialogContent>
         {reviewIntakeActive ? (
           <DialogActions sx={{ px: 3, py: 2 }}>
-            <Button onClick={() => { setReviewPurchaseOpen(false); setMockPaymentComplete(false); setReviewIntakeActive(false); }}>
+            <Button
+              onClick={() => {
+                setReviewPurchaseOpen(false);
+                setMockPaymentComplete(false);
+                setReviewIntakeActive(false);
+              }}
+            >
               Close
             </Button>
           </DialogActions>
-        ) : <DialogActions sx={{ px: 3, py: 2 }}>
+        ) : (
+          <DialogActions sx={{ px: 3, py: 2 }}>
           {mockPaymentComplete ? (
             <>
-              <Button onClick={() => { setReviewPurchaseOpen(false); setMockPaymentComplete(false); }}>
+                <Button
+                  onClick={() => {
+                    setReviewPurchaseOpen(false);
+                    setMockPaymentComplete(false);
+                  }}
+                >
                 Not now
               </Button>
               <Button variant="contained" onClick={() => setReviewIntakeActive(true)}>
                 Start Credit Profile Review
               </Button>
             </>
-          ) : <>
-          <Button onClick={() => { setReviewPurchaseOpen(false); setMockPaymentComplete(false); }}>Not now</Button>
+            ) : (
+              <>
+                <Button
+                  onClick={() => {
+                    setReviewPurchaseOpen(false);
+                    setMockPaymentComplete(false);
+                  }}
+                >
+                  Not now
+                </Button>
           {import.meta.env.DEV ? (
-            <Button variant="contained" onClick={() => mockReviewPayment.mutate()} disabled={mockReviewPayment.isPending || !reviewService?.active || reviewService.price == null}>
+                  <Button
+                    variant="contained"
+                    onClick={() => mockReviewPayment.mutate()}
+                    disabled={
+                      mockReviewPayment.isPending ||
+                      !reviewService?.active ||
+                      reviewService.price == null
+                    }
+                  >
               {mockReviewPayment.isPending ? 'Processing…' : 'Complete mock payment'}
             </Button>
           ) : (
-            <Button variant="contained" disabled={!reviewService?.active || reviewService.price == null || !reviewService.checkoutAvailable}>
-              {reviewService?.checkoutAvailable ? 'Continue to secure checkout' : 'Checkout coming soon'}
+                  <Button
+                    variant="contained"
+                    disabled={
+                      !reviewService?.active ||
+                      reviewService.price == null ||
+                      !reviewService.checkoutAvailable
+                    }
+                  >
+                    {reviewService?.checkoutAvailable
+                      ? 'Continue to secure checkout'
+                      : 'Checkout coming soon'}
             </Button>
           )}
-          </>}
-        </DialogActions>}
-        {!reviewIntakeActive && !mockPaymentComplete && mockReviewPayment.isError && <Alert severity="error" sx={{ mx: 3, mb: 2 }}>{mockReviewPayment.error.message}</Alert>}
+              </>
+            )}
+          </DialogActions>
+        )}
+        {!reviewIntakeActive && !mockPaymentComplete && mockReviewPayment.isError && (
+          <Alert severity="error" sx={{ mx: 3, mb: 2 }}>
+            {mockReviewPayment.error.message}
+          </Alert>
+        )}
       </Dialog>
     </Stack>
   );
@@ -862,11 +1421,6 @@ export function ApplicationCyclesPage() {
   const cycles = query.data?.cycles ?? [];
   const active = cycles.find((cycle) => cycle.status === 'ACTIVE') ?? null;
   const past = cycles.filter((cycle) => cycle.status !== 'ACTIVE');
-  const resetCycle = useMutation({
-    mutationFn: () =>
-      apiRequest(`/api/v1/client/application-cycles/${active!.id}/reset`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['application-cycles'] }),
-  });
   useEffect(() => {
     if (!active && past.length) setTab('PAST');
   }, [active, past.length]);
@@ -880,17 +1434,7 @@ export function ApplicationCyclesPage() {
         title="Application cycles"
         description="Follow every application journey from the foundational Review through strategy, applications, results, and final follow-up."
         actions={
-          active && import.meta.env.DEV ? (
-            <Button
-              variant="outlined"
-              color="warning"
-              startIcon={<RestartAltRounded />}
-              onClick={() => resetCycle.mutate()}
-              disabled={resetCycle.isPending}
-            >
-              {resetCycle.isPending ? 'Resetting…' : 'Reset cycle (dev)'}
-            </Button>
-          ) : !active ? (
+          !active ? (
             <Button
               variant="contained"
               startIcon={<AddRounded />}
@@ -903,7 +1447,6 @@ export function ApplicationCyclesPage() {
         }
       />
       {start.isError && <Alert severity="error">{start.error.message}</Alert>}
-      {resetCycle.isError && <Alert severity="error">{resetCycle.error.message}</Alert>}
       <Tabs value={tab} onChange={(_, value) => setTab(value)}>
         <Tab value="ACTIVE" label={active ? 'Active cycle' : 'No active cycle'} />
         <Tab value="PAST" label={`Past cycles (${past.length})`} />

@@ -147,7 +147,7 @@ export function GoalsPage() {
           method: 'POST',
         });
         await qc.invalidateQueries({ queryKey: ['application-cycles'] });
-        navigate('/client/application-rounds');
+        navigate('/app/application-rounds');
         return;
       }
       setMessage('Primary goal updated.');
@@ -401,7 +401,7 @@ export function GoalsPage() {
             <Grid size={{ xs: 12, md: 4 }}>
               <Button
                 component={Link}
-                to={profileCurrent ? '/client/credit-profile' : '/client/credit-profile/review'}
+                to={profileCurrent ? '/app/credit-center' : '/app/credit-center/review'}
                 variant="contained"
                 fullWidth
               >

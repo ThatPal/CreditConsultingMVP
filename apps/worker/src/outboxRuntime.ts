@@ -28,12 +28,14 @@ type ClaimedEvent = {
   attemptCount: number;
 };
 
-function bullConnection(redisUrl: string) {
+export function bullConnection(redisUrl: string) {
   const url = new URL(redisUrl);
+  const database = url.pathname.slice(1);
   return {
     host: url.hostname,
     port: Number(url.port || 6379),
     ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
+    ...(database ? { db: Number(database) } : {}),
   };
 }
 
@@ -94,6 +96,7 @@ export async function startOutboxRuntime(options: {
   worker.on('failed', (job, error) =>
     options.logger.error({ jobId: job?.id, err: error }, 'Outbox dispatch job failed'),
   );
+  await worker.waitUntilReady();
 
   let active = true;
   const publishBatch = async () => {

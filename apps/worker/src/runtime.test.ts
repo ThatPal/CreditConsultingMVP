@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import pino from 'pino';
 import { describe, expect, test, vi } from 'vitest';
 import { startWorkerRuntime, type WorkerDependency } from './runtime.js';
+import { bullConnection } from './outboxRuntime.js';
 
 function dependency(name: WorkerDependency['name']): WorkerDependency {
   return {
@@ -12,6 +13,13 @@ function dependency(name: WorkerDependency['name']): WorkerDependency {
   };
 }
 describe('worker runtime', () => {
+  test('preserves the configured Redis database for BullMQ isolation', () => {
+    expect(bullConnection('redis://localhost:6380/13')).toMatchObject({
+      host: 'localhost',
+      port: 6380,
+      db: 13,
+    });
+  });
   test('checks dependencies and shuts them down once on a signal', async () => {
     const signals = new EventEmitter();
     const postgresql = dependency('postgresql');

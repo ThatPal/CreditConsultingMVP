@@ -72,9 +72,11 @@ const readable = (value: string) => value.replaceAll('_', ' ').toLowerCase();
 export function JourneySummary({
   data,
   staff = false,
+  showHistory = true,
 }: {
   data: JourneyProjection;
   staff?: boolean;
+  showHistory?: boolean;
 }) {
   const current = data.journey.cycles.filter((cycle) => cycle.timelineGroup === 'CURRENT');
   const history = data.journey.cycles.filter((cycle) => cycle.timelineGroup === 'HISTORY');
@@ -133,7 +135,7 @@ export function JourneySummary({
           </SectionCard>
         </Grid>
       </Grid>
-      <SectionCard>
+      {showHistory && <SectionCard>
         <Stack spacing={2} divider={<Divider />}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <RouteRounded color="primary" />
@@ -171,8 +173,8 @@ export function JourneySummary({
             ))
           )}
         </Stack>
-      </SectionCard>
-      <SectionCard>
+      </SectionCard>}
+      {showHistory && <SectionCard>
         <Stack spacing={2} divider={<Divider />}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <HistoryRounded color="primary" />
@@ -203,11 +205,11 @@ export function JourneySummary({
             </Stack>
           ))}
         </Stack>
-      </SectionCard>
-      <Alert severity="info">
+      </SectionCard>}
+      {showHistory && <Alert severity="info">
         Future journey stages appear only after their canonical workflow creates them. No approval,
         score, or outcome is guaranteed.
-      </Alert>
+      </Alert>}
     </Stack>
   );
 }
@@ -228,7 +230,22 @@ export function ClientHomePage() {
       {query.isError && (
         <Alert severity="error">Your current journey context could not be loaded.</Alert>
       )}
-      {query.data && <JourneySummary data={query.data} />}
+      {query.data && <JourneySummary data={query.data} showHistory={false} />}
+      {query.data && (
+        <SectionCard>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
+            <Stack sx={{ flex: 1 }}>
+              <Typography variant="h3">Journey timeline</Typography>
+              <Typography color="text.secondary">
+                Review your active cycle, completed cycles, and preparation history.
+              </Typography>
+            </Stack>
+            <Button component={Link} to="/app/journey" variant="outlined" endIcon={<HistoryRounded />}>
+              View journey
+            </Button>
+          </Stack>
+        </SectionCard>
+      )}
       {!query.data && (
         <Grid container spacing={2}>
           {[

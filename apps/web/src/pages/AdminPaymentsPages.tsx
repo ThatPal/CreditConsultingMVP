@@ -27,6 +27,8 @@ type Payment = {
   createdAt: string;
   client?: { firstName: string; lastName: string };
 };
+const providerLabel = (provider: string) =>
+  provider === 'BOFA_MERCHANT' ? 'Bank of America Merchant Services' : humanizeCode(provider);
 export function AdminPaymentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
@@ -93,7 +95,7 @@ export function AdminPaymentsPage() {
         searchValue={search}
         onSearchChange={(value) => updateFilter('search', value)}
         activeFilters={[
-          ...(provider ? [`Provider: ${provider}`] : []),
+          ...(provider ? [`Provider: ${providerLabel(provider)}`] : []),
           ...(state ? [`State: ${humanizeCode(state)}`] : []),
         ]}
         onClearFilters={() => setSearchParams({ page: '1' })}
@@ -153,7 +155,7 @@ export function AdminPaymentsPage() {
                   : 'Client payment'}
               </Typography>
               <Typography color="text.secondary">
-                {payment.provider} · {payment.environment} ·{' '}
+                {providerLabel(payment.provider)} · {humanizeCode(payment.environment)} ·{' '}
                 {new Date(payment.createdAt).toLocaleString()}
               </Typography>
             </Stack>
@@ -189,7 +191,7 @@ export function AdminPaymentsPage() {
           <Typography variant="h3">Recent refunds</Typography>
           {refunds.data?.refunds.map((item) => (
             <Typography key={item.id}>
-              {item.provider} · {item.amount} {item.currency} · {item.status}
+              {providerLabel(item.provider)} · {item.amount} {item.currency} · {humanizeCode(item.status)}
             </Typography>
           )) ?? <Typography color="text.secondary">No refund records.</Typography>}
         </Stack>
@@ -199,7 +201,7 @@ export function AdminPaymentsPage() {
           <Typography variant="h3">Open dispute activity</Typography>
           {disputes.data?.disputes.map((item) => (
             <Typography key={item.id}>
-              {item.provider} · {item.providerDisputeId} · {item.status}
+              {providerLabel(item.provider)} · {item.providerDisputeId} · {humanizeCode(item.status)}
             </Typography>
           )) ?? <Typography color="text.secondary">No dispute records.</Typography>}
         </Stack>
@@ -251,8 +253,9 @@ export function AdminPaymentDetailPage() {
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Payment review"
-        title={`${query.data!.payment.provider} payment`}
+        title={`${providerLabel(query.data!.payment.provider)} payment`}
         description="Verified provider events and canonical transitions. Sensitive provider credentials are never exposed."
+        actions={<Button component={Link} to="/admin/payments" variant="outlined">Back to payments</Button>}
       />
       <SectionCard>
         <Stack spacing={1}>
@@ -399,7 +402,7 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa'
                 : 'Unavailable'
             }
           />
-          <Typography>{gateway.environment}</Typography>
+          <Typography>{humanizeCode(gateway.environment)} environment</Typography>
           <Alert severity={gateway.configured ? 'info' : 'warning'}>{gateway.message}</Alert>
           {gateway.capabilities && (
             <Typography color="text.secondary">
@@ -440,13 +443,13 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa'
             </Button>
             <Button
               disabled={!config || config.defaultForCheckout || update.isPending}
-              onClick={() =>
-                config &&
-                update.mutate({
-                  action: 'enabled',
-                  body: { enabled: !config.enabledForNewPayments },
-                })
+              onClick={() => {
+                if (!config) return;
+                const action = config.enabledForNewPayments ? 'Disable' : 'Enable';
+                if (window.confirm(`${action} ${displayName} for future payments? Historical payments will continue using their original provider.`)) {
+                  update.mutate({ action: 'enabled', body: { enabled: !config.enabledForNewPayments } });
               }
+              }}
             >
               {config?.enabledForNewPayments
                 ? 'Disable for new payments'

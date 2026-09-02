@@ -137,6 +137,7 @@ export function AdminServicesPage() {
   const [page, setPage] = useState(1);
   const [newKey, setNewKey] = useState('');
   const [newTerms, setNewTerms] = useState(emptyTerms);
+  const [showCreate, setShowCreate] = useState(false);
   const queryClient = useQueryClient();
   const params = new URLSearchParams({
     search,
@@ -162,6 +163,7 @@ export function AdminServicesPage() {
     onSuccess: () => {
       setNewKey('');
       setNewTerms(emptyTerms);
+      setShowCreate(false);
       return queryClient.invalidateQueries({ queryKey: ['admin-products'] });
     },
   });
@@ -175,8 +177,13 @@ export function AdminServicesPage() {
         eyebrow="Administration"
         title="Services & products"
         description="Govern immutable commercial versions, availability, pricing, and entitlement mappings."
+        actions={
+          <Button variant={showCreate ? 'outlined' : 'contained'} onClick={() => setShowCreate((value) => !value)}>
+            {showCreate ? 'Close draft form' : 'Create product'}
+          </Button>
+        }
       />
-      <SectionCard>
+      {showCreate && <SectionCard>
         <Box component="form" onSubmit={submitNewProduct}>
           <Stack spacing={2}>
             <Typography variant="h3">Create draft product</Typography>
@@ -202,7 +209,7 @@ export function AdminServicesPage() {
             </Button>
           </Stack>
         </Box>
-      </SectionCard>
+      </SectionCard>}
       <SectionCard variant="operational">
         <Stack spacing={2}>
           <DataNavigationToolbar

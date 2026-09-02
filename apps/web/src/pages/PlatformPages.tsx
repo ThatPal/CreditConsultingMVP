@@ -907,7 +907,7 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
                 ? `Current through ${new Date(readinessFreshness.expiresAt).toLocaleDateString()}.`
                 : 'Complete a Credit Profile Review before advancing.'}
             </Typography>
-            <Button component={Link} to="/client/credit-profile" variant="text" sx={{ mt: 1 }}>
+            <Button component={Link} to={consultant ? "/crm/reviews" : "/app/credit-center"} variant="text" sx={{ mt: 1 }}>
               View Credit Profile
             </Button>
           </SectionCard>
@@ -1110,7 +1110,7 @@ export function ReadinessPage({ consultant = false }: { consultant?: boolean }) 
                 )}
                 <Button
                   component={Link}
-                  to="/client/application-rounds"
+                  to="/app/application-rounds"
                   variant="outlined"
                   sx={{ mt: 1.5 }}
                 >
