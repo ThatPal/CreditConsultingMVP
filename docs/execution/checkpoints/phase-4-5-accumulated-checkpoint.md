@@ -132,6 +132,7 @@ Regression proofs cover ADMIN existing-session verification, CONSULTANT enrollme
 - Post-replay result: authorization grant **13 PUBLISHED**, authorization revoke **13 PUBLISHED**, staff-assignment deactivate **13 PUBLISHED**, and gateway-default change **13 PUBLISHED**; no affected event remains failed.
 - Worker dependency readiness: PostgreSQL **ready**, Redis **ready**, worker **ready**.
 - Web `5184` and API `3007` respond from the Credit-only review environment. C03 integration regression proves complete ADMIN and CONSULTANT enrollment/challenge session assurance and route recovery; both seeded staff accounts are reset to QR enrollment state for product-owner review.
+- C03 live-runtime acceptance: **2/2 staff roles PASS**. ADMIN completed enrollment → valid TOTP → verified `/api/me` → `/admin`, then enrolled-login challenge → verified session; CONSULTANT completed the equivalent `/crm` sequence. Both accounts were reset to clean QR enrollment state afterward.
 
 ### Repository CI
 
