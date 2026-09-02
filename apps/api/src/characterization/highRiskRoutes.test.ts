@@ -339,6 +339,56 @@ describe('Review entitlement and report authorization characterization', () => {
       .send(validPdf)
       .expect(404);
   });
+
+  test('persists complete card categories, unresolved identity, and non-blocking duplicate warnings', async () => {
+    const owner = await createClient('portfolio-owner');
+    const review = await prisma.creditReview.create({
+      data: { clientId: owner.client.id, status: 'INTAKE_REQUIRED', intake: { create: {} } },
+    });
+    const secured = await request(buildApp())
+      .post(`/reviews/client/${review.id}/card-review`)
+      .set('x-test-principal', owner.header)
+      .send({
+        status: 'NEW',
+        cardName: 'Unclear secured account',
+        issuer: 'Example Bank',
+        scope: 'PERSONAL',
+        portfolioType: 'SECURED',
+        identityStatus: 'UNRESOLVED',
+        reportsToBureaus: true,
+        accountStatus: 'OPEN',
+      })
+      .expect(200);
+    expect(secured.body.cardReview).toMatchObject({
+      portfolioType: 'SECURED',
+      identityStatus: 'UNRESOLVED',
+      duplicateWarnings: [],
+    });
+    const duplicate = await request(buildApp())
+      .post(`/reviews/client/${review.id}/card-review`)
+      .set('x-test-principal', owner.header)
+      .send({
+        status: 'NEW',
+        cardName: 'Business rewards',
+        issuer: 'Example Bank',
+        scope: 'BUSINESS',
+        portfolioType: 'NON_REPORTING',
+        identityStatus: 'CONFIRMED',
+        reportsToBureaus: false,
+        accountStatus: 'OPEN',
+      })
+      .expect(200);
+    expect(duplicate.body.cardReview.duplicateWarnings).toHaveLength(1);
+    await expect(
+      prisma.clientCard.findMany({
+        where: { clientId: owner.client.id },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({ portfolioType: 'SECURED', identityStatus: 'UNRESOLVED' }),
+      expect.objectContaining({ portfolioType: 'NON_REPORTING', reportsToBureaus: false }),
+    ]);
+  });
 });
 
 describe('Support, notification, and application-cycle characterization', () => {

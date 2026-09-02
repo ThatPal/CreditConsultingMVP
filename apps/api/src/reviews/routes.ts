@@ -32,6 +32,17 @@ const creditAccountReviewSchema = z.object({
   cardName: z.string().trim().min(1).max(160),
   issuer: z.string().trim().min(1).max(160),
   scope: z.enum(['PERSONAL', 'BUSINESS']),
+  portfolioType: z
+    .enum(['PERSONAL_CREDIT', 'BUSINESS_CREDIT', 'SECURED', 'NON_REPORTING'])
+    .optional(),
+  identityStatus: z.enum(['CONFIRMED', 'UNRESOLVED']).optional(),
+  maskedIdentifier: z
+    .string()
+    .trim()
+    .regex(/^\*{0,4}\d{0,4}$/)
+    .max(8)
+    .optional(),
+  reportsToBureaus: z.boolean().optional(),
   accountStatus: z.enum(['OPEN', 'CLOSED']),
   balance: z.number().min(0).optional(),
   creditLimit: z.number().min(0).optional(),
@@ -580,13 +591,39 @@ export function createReviewRouter(
           throw new AppError('NOT_FOUND', 404, 'Active Review intake was not found');
 
         let cardId = input.cardId;
+        let duplicateWarnings: string[] = [];
         if (input.status === 'NEW') {
+          const candidates = await tx.clientCard.findMany({
+            where: {
+              clientId,
+              OR: [
+                { issuer: { equals: input.issuer, mode: 'insensitive' } },
+                { cardName: { equals: input.cardName, mode: 'insensitive' } },
+              ],
+            },
+            select: { id: true, issuer: true, cardName: true, accountStatus: true },
+            take: 5,
+          });
+          duplicateWarnings = candidates.map(
+            (candidate) =>
+              `${candidate.issuer} ${candidate.cardName} (${candidate.accountStatus ?? 'status unknown'}) may be the same account.`,
+          );
           const card = await tx.clientCard.create({
             data: {
               clientId,
               cardName: input.cardName,
               issuer: input.issuer,
               scope: input.scope,
+              portfolioType:
+                input.portfolioType ??
+                (input.scope === 'BUSINESS' ? 'BUSINESS_CREDIT' : 'PERSONAL_CREDIT'),
+              identityStatus: input.identityStatus ?? 'CONFIRMED',
+              ...(input.maskedIdentifier !== undefined
+                ? { maskedIdentifier: input.maskedIdentifier }
+                : {}),
+              ...(input.reportsToBureaus !== undefined
+                ? { reportsToBureaus: input.reportsToBureaus }
+                : {}),
               accountStatus: input.accountStatus,
               ...(input.balance !== undefined ? { balance: input.balance } : {}),
               ...(input.creditLimit !== undefined ? { creditLimit: input.creditLimit } : {}),
@@ -604,6 +641,12 @@ export function createReviewRouter(
                 cardName: input.cardName,
                 issuer: input.issuer,
                 scope: input.scope,
+                portfolioType:
+                  input.portfolioType ??
+                  (input.scope === 'BUSINESS' ? 'BUSINESS_CREDIT' : 'PERSONAL_CREDIT'),
+                identityStatus: input.identityStatus ?? 'CONFIRMED',
+                maskedIdentifier: input.maskedIdentifier ?? null,
+                reportsToBureaus: input.reportsToBureaus ?? null,
                 accountStatus: input.accountStatus,
                 balance: input.balance ?? null,
                 creditLimit: input.creditLimit ?? null,
@@ -611,7 +654,7 @@ export function createReviewRouter(
             });
         }
 
-        const savedReview = { ...input, cardId };
+        const savedReview = { ...input, cardId, duplicateWarnings };
         const priorReviews = Array.isArray(review.intake.creditAccountReviews)
           ? review.intake.creditAccountReviews
           : [];

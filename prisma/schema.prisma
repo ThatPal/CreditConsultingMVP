@@ -83,6 +83,18 @@ enum ClientCardAccountStatus {
   CLOSED
 }
 
+enum ClientCardPortfolioType {
+  PERSONAL_CREDIT
+  BUSINESS_CREDIT
+  SECURED
+  NON_REPORTING
+}
+
+enum ClientCardIdentityStatus {
+  CONFIRMED
+  UNRESOLVED
+}
+
 enum CardApplicationOutcome {
   APPROVED
   DECLINED
@@ -724,6 +736,10 @@ model ClientCard {
   cardName           String
   issuer             String
   scope              ClientCardScope
+  portfolioType      ClientCardPortfolioType    @default(PERSONAL_CREDIT)
+  identityStatus     ClientCardIdentityStatus   @default(CONFIRMED)
+  maskedIdentifier   String?
+  reportsToBureaus   Boolean?
   creditLimit        Decimal?                 @db.Decimal(14, 2)
   balance            Decimal?                 @db.Decimal(14, 2)
   accountStatus      ClientCardAccountStatus?
@@ -737,6 +753,7 @@ model ClientCard {
   client             Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
   @@index([clientId, accountStatus, issuer])
+  @@index([clientId, portfolioType, identityStatus])
   @@index([clientId, applicationOutcome, appliedAt])
 }
 

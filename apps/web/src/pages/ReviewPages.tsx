@@ -159,6 +159,11 @@ type CreditAccountReview = {
   cardName: string;
   issuer: string;
   scope: 'PERSONAL' | 'BUSINESS';
+  portfolioType?: 'PERSONAL_CREDIT' | 'BUSINESS_CREDIT' | 'SECURED' | 'NON_REPORTING';
+  identityStatus?: 'CONFIRMED' | 'UNRESOLVED';
+  maskedIdentifier?: string | undefined;
+  reportsToBureaus?: boolean | undefined;
+  duplicateWarnings?: string[] | undefined;
   accountStatus: 'OPEN' | 'CLOSED';
   balance?: number | undefined;
   creditLimit?: number | undefined;
@@ -2268,6 +2273,8 @@ export function ClientReviewPage({
     cardName: '',
     issuer: '',
     scope: 'PERSONAL',
+    portfolioType: 'PERSONAL_CREDIT',
+    identityStatus: 'CONFIRMED',
     accountStatus: 'OPEN',
   });
   const [accountDraft, setAccountDraft] = useState<AccountUpdate>({
@@ -3899,6 +3906,37 @@ export function ClientReviewPage({
                     <ToggleButton value="BUSINESS">Business</ToggleButton>
                   </ToggleButtonGroup>
                 </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    Portfolio category
+                  </Typography>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    value={newCardDraft.portfolioType}
+                    onChange={(_, value: CreditAccountReview['portfolioType'] | null) =>
+                      value && setNewCardDraft({ ...newCardDraft, portfolioType: value })
+                    }
+                  >
+                    <ToggleButton value="PERSONAL_CREDIT">Personal</ToggleButton>
+                    <ToggleButton value="BUSINESS_CREDIT">Business</ToggleButton>
+                    <ToggleButton value="SECURED">Secured</ToggleButton>
+                    <ToggleButton value="NON_REPORTING">Non-reporting</ToggleButton>
+                  </ToggleButtonGroup>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    value={newCardDraft.identityStatus}
+                    onChange={(_, value: CreditAccountReview['identityStatus'] | null) =>
+                      value && setNewCardDraft({ ...newCardDraft, identityStatus: value })
+                    }
+                  >
+                    <ToggleButton value="CONFIRMED">Identity confirmed</ToggleButton>
+                    <ToggleButton value="UNRESOLVED">Not sure which account</ToggleButton>
+                  </ToggleButtonGroup>
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <ToggleButtonGroup
                     exclusive
@@ -3934,6 +3972,8 @@ export function ClientReviewPage({
                               cardName: '',
                               issuer: '',
                               scope: 'PERSONAL',
+                              portfolioType: 'PERSONAL_CREDIT',
+                              identityStatus: 'CONFIRMED',
                               accountStatus: 'OPEN',
                             });
                             setNewCardOpen(false);
@@ -3968,6 +4008,11 @@ export function ClientReviewPage({
                     <Typography variant="body2" color="text.secondary">
                       {item.issuer} · new card
                     </Typography>
+                    {item.duplicateWarnings?.map((warning) => (
+                      <Alert key={warning} severity="warning" sx={{ mt: 0.75 }}>
+                        {warning}
+                      </Alert>
+                    ))}
                   </Box>
                   <Button
                     size="small"
