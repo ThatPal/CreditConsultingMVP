@@ -24,3 +24,7 @@ The safe synthetic fixture covers three bureau scores, repeated logical tradelin
 The supported CI fixture is a safe structured synthetic three-bureau representation. Arbitrary OCR/PDF vendor parsing and production provider binding remain intentionally unsupported until a canonical report format/provider is approved. No real client report data is included.
 
 Sprint 7.3 normalization, account reconciliation, and ClientCard matching were not included in this boundary.
+
+## C1 execution-path addendum
+
+`credit_report.validate@1` and `credit_report.extract@1` now execute through the PostgreSQL-backed job/output/artifact path. Their validated outputs are immutable `AIJobOutput` and `CreditReportArtifact` records tied to the exact `CreditReportDocument`, source checksum, process/schema version, provider/model-profile provenance, and correlation ID. The extraction artifact retains bureau/page/label evidence. Replay reuses canonical durable records.

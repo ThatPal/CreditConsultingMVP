@@ -20,3 +20,7 @@ Ambiguous accounts are not force-merged. Exact card matches require issuer plus 
 ## Limitations
 
 Unknown semantic labels remain unresolved; no external model/provider is configured. Consultant exception resolution, profile materialization, findings, recommendations, publication, and Credit Center work remain Phase 8 scope and were not implemented.
+
+## C1 execution-path addendum
+
+`credit_report.normalize@1`, `credit_report.reconcile_accounts@1`, and `credit_report.match_cards@1` now run sequentially through the same durable runtime. Each stage creates exactly one versioned output/artifact carrying the upstream report checksum and immutable process/schema provenance. The five-stage acceptance fixture produces five succeeded jobs, five outputs, and five report artifacts; stale-source invalidation makes historical artifacts non-current without deleting them.
