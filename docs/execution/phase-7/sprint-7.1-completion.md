@@ -43,3 +43,5 @@ Job intent is committed before BullMQ publication. Workers receive only a durabl
 Recovery rediscoveries cover queued/retryable jobs and abandoned RUNNING jobs without outputs. Duplicate deliveries and concurrent workers converge on one output/artifact. Provider-unavailable, transient, non-retryable, schema-invalid, and stale states are durable. Current-artifact consumption rejects stale or cross-client data.
 
 C1 focused proof: 8 PostgreSQL/BullMQ integration cases passed, covering real queue delivery, fresh-instance reads, restart, Redis loss, crash-before-commit, concurrency, failure states, stale provenance, cross-client denial, and the full five-process Phase 7 chain.
+
+C1 exact correction/report-head CI passed on `07568254f90b3908e00f1e894ad082162cde6b30` ([run 33650205892](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33650205892)).
