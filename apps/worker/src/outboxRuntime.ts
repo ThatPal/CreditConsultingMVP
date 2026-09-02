@@ -146,7 +146,10 @@ export async function startOutboxRuntime(options: {
             : envelope,
           {
             ...outboxJobOptions,
-            jobId: event.id,
+            // A failed Bull job remains retained for diagnostics. Use the
+            // durable database attempt as part of the transport identity so
+            // a recovered outbox event can actually be delivered again.
+            jobId: `${event.id}-${event.attemptCount + 1}`,
           },
         );
         await job.waitUntilFinished(queueEvents, 15_000);

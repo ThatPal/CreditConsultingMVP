@@ -3,7 +3,14 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { createPrisma } from '../lib/prisma.js';
 import { DurableAIRuntime } from './durableRuntime.js';
-import { Phase7DeterministicProvider, RecordingAIQueue, phase7Validators, runDurablePhase7Pipeline } from './durableCreditReportPipeline.js';
+import {
+  Phase7DeterministicProvider,
+  RecordingAIQueue,
+  advanceDurablePhase7Pipeline,
+  enqueueDurablePhase7Pipeline,
+  phase7Validators,
+  runDurablePhase7Pipeline,
+} from './durableCreditReportPipeline.js';
 import { supportedThreeBureauReport } from './fixtures/syntheticReports.js';
 import { AIProviderError, DeterministicAIProvider, type ProcessDefinition } from './runtime.js';
 import { BullAIJobQueue, startDurableAIWorker } from './bullTransport.js';
@@ -20,24 +27,49 @@ describe('Phase 7 C1 durable PostgreSQL runtime', () => {
   let userId: string;
   const documentIds: string[] = [];
   const definition: ProcessDefinition = {
-    processKey, processVersion: 1, authorityLevel: 'FACTUAL_LEVEL_1', enabled: true,
-    modelProfile: 'document_extraction', inputSchemaVersion: 1, outputSchemaVersion: 1,
-    maxAttempts: 3, dataClassification: 'CLIENT_FINANCIAL_REPORT',
+    processKey,
+    processVersion: 1,
+    authorityLevel: 'FACTUAL_LEVEL_1',
+    enabled: true,
+    modelProfile: 'document_extraction',
+    inputSchemaVersion: 1,
+    outputSchemaVersion: 1,
+    maxAttempts: 3,
+    dataClassification: 'CLIENT_FINANCIAL_REPORT',
   };
   const successProvider = new DeterministicAIProvider(() => ({
     result: { valid: true, evidence: [{ bureau: 'EXPERIAN', page: 1, label: 'fixture' }] },
-    confidence: 'high', evidence: [{ kind: 'direct_source', source: 'EXPERIAN', page: 1, label: 'fixture' }],
-    exceptions: [], provider: 'deterministic', model: 'fixture-v1',
+    confidence: 'high',
+    evidence: [{ kind: 'direct_source', source: 'EXPERIAN', page: 1, label: 'fixture' }],
+    exceptions: [],
+    provider: 'deterministic',
+    model: 'fixture-v1',
   }));
-  const runtime = (provider = successProvider, hook?: ConstructorParameters<typeof DurableAIRuntime>[4]) =>
-    new DurableAIRuntime(prisma, queue, provider, { [validatorKey]: (value) => (value as { valid?: boolean }).valid === true, ...phase7Validators }, hook);
+  const runtime = (
+    provider = successProvider,
+    hook?: ConstructorParameters<typeof DurableAIRuntime>[4],
+  ) =>
+    new DurableAIRuntime(
+      prisma,
+      queue,
+      provider,
+      {
+        [validatorKey]: (value) => (value as { valid?: boolean }).valid === true,
+        ...phase7Validators,
+      },
+      hook,
+    );
 
   async function createDocument(suffix: string) {
     const doc = await prisma.creditReportDocument.create({
       data: {
-        storageKey: `${marker}/${suffix}.pdf`, originalFileName: `${suffix}.pdf`,
-        mimeType: 'application/pdf', sizeBytes: 100, sha256: `${suffix}`.padEnd(64, 'a').slice(0, 64),
-        validationStatus: 'ACCEPTED', uploadedByUserId: userId,
+        storageKey: `${marker}/${suffix}.pdf`,
+        originalFileName: `${suffix}.pdf`,
+        mimeType: 'application/pdf',
+        sizeBytes: 100,
+        sha256: `${suffix}`.padEnd(64, 'a').slice(0, 64),
+        validationStatus: 'ACCEPTED',
+        uploadedByUserId: userId,
       },
     });
     documentIds.push(doc.id);
@@ -47,9 +79,15 @@ describe('Phase 7 C1 durable PostgreSQL runtime', () => {
     const service = runtime();
     await service.registerProcess(definition);
     return service.createAndEnqueue({
-      processKey, processVersion: 1, clientId, correlationId: correlation,
-      relatedEntityType: 'CreditReportDocument', relatedEntityId: doc.id,
-      sourceIdentity: doc.sha256, sourceVersions: { report: doc.sha256 }, input: { safe: true },
+      processKey,
+      processVersion: 1,
+      clientId,
+      correlationId: correlation,
+      relatedEntityType: 'CreditReportDocument',
+      relatedEntityId: doc.id,
+      sourceIdentity: doc.sha256,
+      sourceVersions: { report: doc.sha256 },
+      input: { safe: true },
     });
   }
 
@@ -57,7 +95,13 @@ describe('Phase 7 C1 durable PostgreSQL runtime', () => {
     prisma = createPrisma(databaseUrl);
     await prisma.$connect();
     const user = await prisma.user.create({
-      data: { email: `${marker}@example.test`, role: 'CLIENT', client: { create: { firstName: 'Durable', lastName: 'Runtime', termsAcceptedAt: new Date() } } },
+      data: {
+        email: `${marker}@example.test`,
+        role: 'CLIENT',
+        client: {
+          create: { firstName: 'Durable', lastName: 'Runtime', termsAcceptedAt: new Date() },
+        },
+      },
       include: { client: true },
     });
     userId = user.id;
@@ -91,15 +135,23 @@ describe('Phase 7 C1 durable PostgreSQL runtime', () => {
     if (!redisUrl) throw new Error('REDIS_URL is required');
     const doc = await createDocument('bull-delivery');
     const bullQueue = new BullAIJobQueue(redisUrl);
-    const service = new DurableAIRuntime(prisma, bullQueue, successProvider, { [validatorKey]: () => true });
+    const service = new DurableAIRuntime(prisma, bullQueue, successProvider, {
+      [validatorKey]: () => true,
+    });
     await service.registerProcess(definition);
     const worker = startDurableAIWorker(redisUrl, service);
     await worker.waitUntilReady();
     try {
       const job = await service.createAndEnqueue({
-        processKey, processVersion: 1, clientId, correlationId: `${marker}:bull`,
-        relatedEntityType: 'CreditReportDocument', relatedEntityId: doc.id,
-        sourceIdentity: doc.sha256, sourceVersions: { report: doc.sha256 }, input: { safe: true },
+        processKey,
+        processVersion: 1,
+        clientId,
+        correlationId: `${marker}:bull`,
+        relatedEntityType: 'CreditReportDocument',
+        relatedEntityId: doc.id,
+        sourceIdentity: doc.sha256,
+        sourceVersions: { report: doc.sha256 },
+        input: { safe: true },
       });
       let persisted = await service.inspect(job.id, clientId);
       for (let attempt = 0; attempt < 50 && persisted.status !== 'SUCCEEDED'; attempt += 1) {
@@ -132,7 +184,9 @@ describe('Phase 7 C1 durable PostgreSQL runtime', () => {
   test('crash before result commit recovers and converges to one output/artifact', async () => {
     const doc = await createDocument('crash');
     const job = await createJob(doc, `${marker}:crash`);
-    const crashing = runtime(successProvider, async () => { throw new Error('SIMULATED_CRASH'); });
+    const crashing = runtime(successProvider, async () => {
+      throw new Error('SIMULATED_CRASH');
+    });
     await expect(crashing.processJob(job.id)).rejects.toThrow('SIMULATED_CRASH');
     await prisma.aIJob.update({ where: { id: job.id }, data: { startedAt: new Date(0) } });
     const recovered = runtime();
@@ -156,16 +210,28 @@ describe('Phase 7 C1 durable PostgreSQL runtime', () => {
   test('provider and schema failures persist governed non-authoritative states', async () => {
     const unavailableDoc = await createDocument('unavailable');
     const unavailableJob = await createJob(unavailableDoc, `${marker}:unavailable`);
-    expect((await new DurableAIRuntime(prisma, queue, null, { [validatorKey]: () => true }).processJob(unavailableJob.id)).status).toBe('RETRYABLE_FAILURE');
+    expect(
+      (
+        await new DurableAIRuntime(prisma, queue, null, { [validatorKey]: () => true }).processJob(
+          unavailableJob.id,
+        )
+      ).status,
+    ).toBe('RETRYABLE_FAILURE');
 
     const permanentDoc = await createDocument('permanent');
     const permanentJob = await createJob(permanentDoc, `${marker}:permanent`);
-    const permanent = new DeterministicAIProvider(() => { throw new AIProviderError('denied', false, 'PROVIDER_DENIED'); });
-    expect((await runtime(permanent).processJob(permanentJob.id)).status).toBe('NON_RETRYABLE_FAILURE');
+    const permanent = new DeterministicAIProvider(() => {
+      throw new AIProviderError('denied', false, 'PROVIDER_DENIED');
+    });
+    expect((await runtime(permanent).processJob(permanentJob.id)).status).toBe(
+      'NON_RETRYABLE_FAILURE',
+    );
 
     const invalidDoc = await createDocument('invalid');
     const invalidJob = await createJob(invalidDoc, `${marker}:invalid`);
-    const invalid = new DurableAIRuntime(prisma, queue, successProvider, { [validatorKey]: () => false });
+    const invalid = new DurableAIRuntime(prisma, queue, successProvider, {
+      [validatorKey]: () => false,
+    });
     expect((await invalid.processJob(invalidJob.id)).status).toBe('SCHEMA_INVALID');
 
     const transientDoc = await createDocument('transient');
@@ -173,7 +239,14 @@ describe('Phase 7 C1 durable PostgreSQL runtime', () => {
     let attempts = 0;
     const transient = new DeterministicAIProvider(() => {
       if (attempts++ === 0) throw new AIProviderError('temporary', true, 'PROVIDER_TEMPORARY');
-      return { result: { valid: true }, confidence: 'high', evidence: [], exceptions: [], provider: 'deterministic', model: 'fixture-v1' };
+      return {
+        result: { valid: true },
+        confidence: 'high',
+        evidence: [],
+        exceptions: [],
+        provider: 'deterministic',
+        model: 'fixture-v1',
+      };
     });
     const transientRuntime = runtime(transient);
     expect((await transientRuntime.processJob(transientJob.id)).status).toBe('RETRYABLE_FAILURE');
@@ -193,27 +266,109 @@ describe('Phase 7 C1 durable PostgreSQL runtime', () => {
     expect(persisted.status).toBe('STALE');
     expect(persisted.outputs[0]?.staleAt).not.toBeNull();
     expect(persisted.artifacts[0]?.current).toBe(false);
-    await expect(service.consumeCurrentArtifact(doc.id, processKey, clientId)).rejects.toThrow('CURRENT_ARTIFACT_NOT_FOUND');
+    await expect(service.consumeCurrentArtifact(doc.id, processKey, clientId)).rejects.toThrow(
+      'CURRENT_ARTIFACT_NOT_FOUND',
+    );
     await expect(service.inspect(job.id, randomUUID())).rejects.toThrow('NOT_FOUND');
   });
 
   test('full five-process synthetic chain is durable with source/evidence provenance', async () => {
     const doc = await createDocument('pipeline');
-    const service = new DurableAIRuntime(prisma, queue, new Phase7DeterministicProvider(), phase7Validators);
+    const service = new DurableAIRuntime(
+      prisma,
+      queue,
+      new Phase7DeterministicProvider(),
+      phase7Validators,
+    );
     const result = await runDurablePhase7Pipeline({
       runtime: service,
-      source: { reportDocumentId: doc.id, clientId, sha256: doc.sha256, acceptedReportDate: '2026-08-31', validationStatus: 'ACCEPTED' },
+      source: {
+        reportDocumentId: doc.id,
+        clientId,
+        sha256: doc.sha256,
+        acceptedReportDate: '2026-08-31',
+        validationStatus: 'ACCEPTED',
+      },
       report: supportedThreeBureauReport,
-      cards: [{ id: 'client-card-1', issuer: 'Example Bank', cardName: 'Everyday', maskedIdentifier: '4242', portfolioType: 'PERSONAL_CREDIT', reportsToBureaus: true }],
+      cards: [
+        {
+          id: 'client-card-1',
+          issuer: 'Example Bank',
+          cardName: 'Everyday',
+          maskedIdentifier: '4242',
+          portfolioType: 'PERSONAL_CREDIT',
+          reportsToBureaus: true,
+        },
+      ],
       correlationId: `${marker}:pipeline`,
     });
     expect(result.matching?.status).toBe('SUCCEEDED');
-    const jobs = await prisma.aIJob.findMany({ where: { correlationId: `${marker}:pipeline` }, include: { outputs: true, artifacts: true, processDefinition: true } });
+    const jobs = await prisma.aIJob.findMany({
+      where: { correlationId: `${marker}:pipeline` },
+      include: { outputs: true, artifacts: true, processDefinition: true },
+    });
     expect(jobs).toHaveLength(5);
-    expect(jobs.every((job) => job.status === 'SUCCEEDED' && job.outputs.length === 1 && job.artifacts.length === 1)).toBe(true);
-    const extraction = jobs.find((job) => job.processDefinition.processKey === 'credit_report.extract');
+    expect(
+      jobs.every(
+        (job) =>
+          job.status === 'SUCCEEDED' && job.outputs.length === 1 && job.artifacts.length === 1,
+      ),
+    ).toBe(true);
+    const extraction = jobs.find(
+      (job) => job.processDefinition.processKey === 'credit_report.extract',
+    );
     expect(JSON.stringify(extraction?.outputs[0]?.result)).toContain('EXPERIAN');
     expect(JSON.stringify(extraction?.outputs[0]?.result)).toContain('page');
     expect(extraction?.sourceIdentity).toBe(doc.sha256);
+  });
+
+  test('automatic durable coordinator advances all five jobs and remains duplicate safe', async () => {
+    const doc = await createDocument('automatic-pipeline');
+    const service = new DurableAIRuntime(
+      prisma,
+      queue,
+      new Phase7DeterministicProvider(),
+      phase7Validators,
+    );
+    let current = await enqueueDurablePhase7Pipeline({
+      runtime: service,
+      source: {
+        reportDocumentId: doc.id,
+        clientId,
+        sha256: doc.sha256,
+        acceptedReportDate: '2026-08-31',
+        validationStatus: 'ACCEPTED',
+      },
+      report: supportedThreeBureauReport,
+      cards: [
+        {
+          id: 'client-card-auto',
+          issuer: 'Example Bank',
+          cardName: 'Everyday',
+          maskedIdentifier: '4242',
+          portfolioType: 'PERSONAL_CREDIT',
+          reportsToBureaus: true,
+        },
+      ],
+      correlationId: `${marker}:automatic-pipeline`,
+    });
+    for (let step = 0; step < 5; step += 1) {
+      const processed = await service.processJob(current.id);
+      const next = await advanceDurablePhase7Pipeline(service, processed);
+      await advanceDurablePhase7Pipeline(service, processed);
+      if ('processDefinitionId' in next && next.id !== current.id) current = next;
+    }
+    const jobs = await prisma.aIJob.findMany({
+      where: { correlationId: `${marker}:automatic-pipeline` },
+      include: { outputs: true },
+    });
+    expect(jobs).toHaveLength(5);
+    expect(jobs.every((job) => job.status === 'SUCCEEDED' && job.outputs.length === 1)).toBe(true);
+    const listed = await service.list({
+      clientId,
+      processKey: 'credit_report.match_cards',
+      limit: 1,
+    });
+    expect(listed.items).toHaveLength(1);
   });
 });

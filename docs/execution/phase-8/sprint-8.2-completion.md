@@ -1,5 +1,7 @@
 # Sprint 8.2 completion
 
+Checkpoint correction: the original completion evidence covered pure analysis/readiness helpers and persistence shape but did not include the required application-layer authoring commands or CRM-11 Analysis/Recommendation/Publish preparation UI. The Phases 6–8 accumulated checkpoint adds persisted finding decisions, consultant-approved analysis and recommendation commands, exact readiness projection, and real workspace controls. AI remains proposal-only and Phase 9 Plan work remains staged.
+
 - Start/report boundary: `923a8582a46df3b64c67dc80ddec9788e31ff9c5`
 - Implementation: `8e5be50b240522df24646e7bd50874e76abf10b1`
 

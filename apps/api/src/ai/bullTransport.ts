@@ -27,11 +27,26 @@ export class BullAIJobQueue implements AIJobQueue {
       removeOnFail: 1_000,
     });
   }
-  close() { return this.queue.close(); }
+  close() {
+    return this.queue.close();
+  }
 }
 
-export function startDurableAIWorker(redisUrl: string, runtime: DurableAIRuntime) {
-  return new Worker(AI_QUEUE, async (job) => runtime.processJob(String(job.data.jobId)), {
-    connection: bullConnection(redisUrl), concurrency: 4,
-  });
+export function startDurableAIWorker(
+  redisUrl: string,
+  runtime: DurableAIRuntime,
+  onProcessed?: (result: Awaited<ReturnType<DurableAIRuntime['processJob']>>) => Promise<unknown>,
+) {
+  return new Worker(
+    AI_QUEUE,
+    async (job) => {
+      const result = await runtime.processJob(String(job.data.jobId));
+      await onProcessed?.(result);
+      return result;
+    },
+    {
+      connection: bullConnection(redisUrl),
+      concurrency: 4,
+    },
+  );
 }

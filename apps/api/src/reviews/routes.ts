@@ -27,6 +27,15 @@ import { validateCreditReportUpload } from './reportValidation.js';
 import { submitCreditReview } from './reviewSubmission.js';
 import { getPublishedCreditCenter } from './publishedCreditCenter.js';
 import { publishCreditReview } from './publishCreditReview.js';
+import { parseSupportedReportBytes } from '../ai/creditReportProcessing.js';
+import {
+  decidePersistedFinding,
+  getOrCreateReviewWorkspace,
+  resolveReviewException,
+  reviewWorkspaceReadiness,
+  saveReviewAnalysis,
+  saveReviewOverride,
+} from './persistedReviewWorkspace.js';
 
 const startSchema = z.object({ intendedReportDate: z.coerce.date() });
 const creditAccountReviewSchema = z.object({
@@ -264,6 +273,7 @@ export function createReviewRouter(
   documentStorage: DocumentStorage = createLocalDocumentStorage(),
   authorization: AuthorizationService = createPrismaAuthorizationService(prisma),
   denialRecorder: AuthorizationDenialRecorder = createPrismaAuthorizationDenialRecorder(prisma),
+  enqueueReviewProcessing?: (reviewId: string) => Promise<unknown>,
 ) {
   const router = Router();
   router.use(requireAuth);
@@ -323,6 +333,260 @@ export function createReviewRouter(
           'notifications',
         );
         res.json({ publication });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
+    '/consultant/:clientId/:reviewId/workspace',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.read', 'clientId', undefined, denialRecorder),
+    async (req, res, next) => {
+      try {
+        const workspace = await getOrCreateReviewWorkspace(
+          prisma,
+          req.params.clientId as string,
+          req.params.reviewId as string,
+          req.auth!.userId,
+        );
+        const safeReport = {
+          id: workspace.report.id,
+          originalFileName: workspace.report.originalFileName,
+          mimeType: workspace.report.mimeType,
+          sizeBytes: workspace.report.sizeBytes,
+          sha256: workspace.report.sha256,
+          validationStatus: workspace.report.validationStatus,
+          sourceEntered: workspace.report.sourceEntered,
+          sourceDetected: workspace.report.sourceDetected,
+          reportDateEntered: workspace.report.reportDateEntered,
+          reportDateDetected: workspace.report.reportDateDetected,
+          uploadedAt: workspace.report.uploadedAt,
+        };
+        res.json({ ...workspace, report: safeReport });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
+    '/consultant/:clientId/ai-jobs',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.read', 'clientId', undefined, denialRecorder),
+    async (req, res, next) => {
+      try {
+        const input = parse(
+          z.object({
+            status: z
+              .enum([
+                'QUEUED',
+                'RUNNING',
+                'SUCCEEDED',
+                'RETRYABLE_FAILURE',
+                'NON_RETRYABLE_FAILURE',
+                'SCHEMA_INVALID',
+                'STALE',
+              ])
+              .optional(),
+            processKey: z.string().trim().min(1).max(120).optional(),
+            cursor: z.string().uuid().optional(),
+            limit: z.coerce.number().int().min(1).max(100).default(25),
+          }),
+          req.query,
+        );
+        const jobs = await prisma.aIJob.findMany({
+          where: {
+            clientId: req.params.clientId as string,
+            ...(input.status ? { status: input.status } : {}),
+            ...(input.processKey ? { processDefinition: { processKey: input.processKey } } : {}),
+            ...(input.cursor ? { id: { gt: input.cursor } } : {}),
+          },
+          select: {
+            id: true,
+            status: true,
+            currentAttempt: true,
+            maxAttempts: true,
+            failureCategory: true,
+            failureCode: true,
+            createdAt: true,
+            completedAt: true,
+            processDefinition: {
+              select: { processKey: true, processVersion: true, authorityLevel: true },
+            },
+          },
+          orderBy: { id: 'asc' },
+          take: input.limit + 1,
+        });
+        res.json({
+          jobs: jobs.slice(0, input.limit),
+          nextCursor: jobs.length > input.limit ? jobs[input.limit - 1]!.id : null,
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.patch(
+    '/consultant/:clientId/:reviewId/workspace/override',
+    requireRole('CONSULTANT'),
+    requireCapability(
+      authorization,
+      'review.publish',
+      'clientId',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+    async (req, res, next) => {
+      try {
+        const input = parse(
+          z.object({
+            expectedVersion: z.number().int().positive(),
+            fieldPath: z.string().trim().min(1).max(120),
+            effectiveValue: z.unknown(),
+            reason: z.string().trim().min(1).max(1000),
+            sourceReference: z.unknown(),
+          }),
+          req.body,
+        );
+        const draft = await saveReviewOverride(prisma, {
+          ...input,
+          clientId: req.params.clientId as string,
+          reviewId: req.params.reviewId as string,
+          actorId: req.auth!.userId,
+        });
+        res.json({ draft });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.post(
+    '/consultant/:clientId/:reviewId/workspace/exceptions/:exceptionKey/resolve',
+    requireRole('CONSULTANT'),
+    requireCapability(
+      authorization,
+      'review.publish',
+      'clientId',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+    async (req, res, next) => {
+      try {
+        const input = parse(z.object({ reason: z.string().trim().min(1).max(1000) }), req.body);
+        await resolveReviewException(prisma, {
+          clientId: req.params.clientId as string,
+          reviewId: req.params.reviewId as string,
+          actorId: req.auth!.userId,
+          exceptionKey: req.params.exceptionKey as string,
+          reason: input.reason,
+        });
+        res.status(204).send();
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.patch(
+    '/consultant/:clientId/:reviewId/workspace/findings/:code',
+    requireRole('CONSULTANT'),
+    requireCapability(
+      authorization,
+      'review.publish',
+      'clientId',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+    async (req, res, next) => {
+      try {
+        const input = parse(
+          z.object({
+            expectedVersion: z.number().int().positive(),
+            action: z.enum(['APPROVE', 'EDIT', 'DISMISS']),
+            clientSummary: z.string().trim().min(1).max(2000).optional(),
+            reason: z.string().trim().min(1).max(1000).optional(),
+          }),
+          req.body,
+        );
+        await decidePersistedFinding(prisma, {
+          ...input,
+          clientId: req.params.clientId as string,
+          reviewId: req.params.reviewId as string,
+          actorId: req.auth!.userId,
+          code: req.params.code as string,
+        });
+        res.status(204).send();
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.put(
+    '/consultant/:clientId/:reviewId/workspace/analysis',
+    requireRole('CONSULTANT'),
+    requireCapability(
+      authorization,
+      'review.publish',
+      'clientId',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+    async (req, res, next) => {
+      try {
+        const input = parse(
+          z.object({
+            expectedVersion: z.number().int().positive(),
+            analysis: z.record(z.string(), z.unknown()),
+            recommendation: z
+              .object({
+                outcome: z.enum([
+                  'PROCEED',
+                  'PROCEED_SELECTIVELY',
+                  'PREPARE_FIRST',
+                  'WAIT_NURTURE',
+                  'MAJOR_APPLICATION_PRIORITY',
+                ]),
+                clientExplanation: z.string().trim().min(1).max(4000),
+                reasons: z.array(z.string().trim().min(1).max(500)).max(20),
+                approved: z.boolean().default(false),
+              })
+              .optional(),
+            approveAnalysis: z.boolean().optional(),
+            approveRecommendation: z.boolean().optional(),
+          }),
+          req.body,
+        );
+        const draft = await saveReviewAnalysis(prisma, {
+          ...input,
+          clientId: req.params.clientId as string,
+          reviewId: req.params.reviewId as string,
+          actorId: req.auth!.userId,
+        });
+        res.json({ draft });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
+    '/consultant/:clientId/:reviewId/workspace/readiness',
+    requireRole('CONSULTANT'),
+    requireCapability(
+      authorization,
+      'review.publish',
+      'clientId',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+    async (req, res, next) => {
+      try {
+        res.json(
+          await reviewWorkspaceReadiness(
+            prisma,
+            req.params.clientId as string,
+            req.params.reviewId as string,
+            req.auth!.role,
+          ),
+        );
       } catch (error) {
         next(error);
       }
@@ -848,12 +1112,28 @@ export function createReviewRouter(
       const idempotencyKey = req.get('idempotency-key');
       if (!idempotencyKey)
         throw new AppError('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key is required');
+      if (enqueueReviewProcessing) {
+        const source = await prisma.creditReview.findFirst({
+          where: { id: reviewId, clientId },
+          select: { intake: { select: { reportDocument: { select: { storageKey: true } } } } },
+        });
+        const bytes = source?.intake?.reportDocument
+          ? await documentStorage.read(source.intake.reportDocument.storageKey)
+          : null;
+        if (!bytes || parseSupportedReportBytes(bytes).format !== 'SYNTHETIC_3_BUREAU_V1')
+          throw new AppError(
+            'REPORT_SOURCE_UNSUPPORTED',
+            409,
+            'This report source needs staff validation before it can be submitted',
+          );
+      }
       const submitted = await submitCreditReview(prisma, {
         clientId,
         actorId: req.auth!.userId,
         reviewId,
         idempotencyKey,
       });
+      await enqueueReviewProcessing?.(reviewId);
       const review = await prisma.creditReview.findUnique({
         where: { id: reviewId },
         include: includeReview,

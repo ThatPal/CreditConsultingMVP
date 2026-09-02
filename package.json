@@ -31,7 +31,8 @@
     "db:seed:demo": "pnpm demo:setup",
     "demo:setup": "pnpm --filter @credit/api exec tsx src/scripts/setupDemo.ts",
     "review:setup": "pnpm db:migrate:deploy && pnpm db:seed:system && pnpm db:seed:demo",
-    "review:phase4-5:start": "powershell -ExecutionPolicy Bypass -File scripts/start-phase4-5-review.ps1"
+    "review:phase4-5:start": "powershell -ExecutionPolicy Bypass -File scripts/start-phase4-5-review.ps1",
+    "review:phase6-8:start": "powershell -ExecutionPolicy Bypass -File scripts/start-phase6-8-review.ps1"
   },
   "devDependencies": {
     "@eslint/js": "latest",

@@ -4483,7 +4483,7 @@ export function ConsultantReviewsPage() {
               </Box>
               <Button
                 component={Link}
-                to={`/crm/reviews/${r.clientId}/${r.id}`}
+                to={`/crm/clients/${r.clientId}/reviews/${r.id}`}
                 endIcon={<ArrowForwardRounded />}
               >
                 Open guided Review
@@ -4496,7 +4496,7 @@ export function ConsultantReviewsPage() {
   );
 }
 
-export function ConsultantReviewWorkspacePage() {
+export function LegacyConsultantReviewWorkspacePage() {
   const { clientId, reviewId } = useParams();
   const navigate = useNavigate();
   const [readiness, setReadiness] = useState('MEDIUM');
@@ -4867,6 +4867,485 @@ export function ConsultantReviewWorkspacePage() {
           {complete.isPending ? 'Completing Review…' : 'Complete Review and update Credit Profile'}
         </Button>
       )}
+    </Stack>
+  );
+}
+
+type PersistedWorkspace = {
+  review: Review & {
+    verificationExceptions: Array<{
+      exceptionKey: string;
+      summary: string;
+      blocking: boolean;
+      status: string;
+      evidence: unknown;
+    }>;
+  };
+  report: {
+    id: string;
+    originalFileName: string;
+    validationStatus: string;
+    sourceEntered: string | null;
+    reportDateEntered: string | null;
+  };
+  jobs: Array<{
+    id: string;
+    status: string;
+    failureCode: string | null;
+    processDefinition: { processKey: string };
+  }>;
+  draft: null | {
+    id: string;
+    version: number;
+    profile: Record<string, unknown>;
+    analysis: { clientSummary?: string } | null;
+    recommendation: {
+      outcome: string;
+      clientExplanation: string;
+      reasons: string[];
+      approved: boolean;
+    } | null;
+    findings: Array<{
+      code: string;
+      title: string;
+      clientSummary: string | null;
+      severity: string;
+      status: string;
+      version: number;
+    }>;
+    overrides: Array<{
+      fieldPath: string;
+      effectiveValue: unknown;
+      reason: string;
+      actorId: string;
+    }>;
+  };
+  effectiveProfile: Record<string, unknown> | null;
+  stale: boolean;
+};
+
+export function ConsultantReviewWorkspacePage() {
+  const { clientId, reviewId } = useParams();
+  const queryClient = useQueryClient();
+  const [section, setSection] = useState<'SOURCE' | 'PROFILE' | 'ANALYSIS' | 'PUBLISH'>('SOURCE');
+  const [overrideField, setOverrideField] = useState('aggregateUtilization');
+  const [overrideValue, setOverrideValue] = useState('');
+  const [overrideReason, setOverrideReason] = useState('');
+  const [analysis, setAnalysis] = useState('');
+  const [outcome, setOutcome] = useState('PREPARE_FIRST');
+  const [explanation, setExplanation] = useState('');
+  const workspace = useQuery({
+    queryKey: ['persisted-review-workspace', clientId, reviewId],
+    queryFn: () =>
+      apiRequest<PersistedWorkspace>(
+        `/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace`,
+      ),
+    enabled: Boolean(clientId && reviewId),
+    retry: false,
+    refetchInterval: 3000,
+  });
+  const readiness = useQuery({
+    queryKey: ['persisted-review-readiness', clientId, reviewId, workspace.data?.draft?.version],
+    queryFn: () =>
+      apiRequest<{ ready: boolean; blockers: string[]; planState: string }>(
+        `/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/readiness`,
+      ),
+    enabled: Boolean(workspace.data?.draft),
+    retry: false,
+  });
+  useEffect(() => {
+    if (workspace.data?.draft?.analysis?.clientSummary)
+      setAnalysis(workspace.data.draft.analysis.clientSummary);
+    if (workspace.data?.draft?.recommendation) {
+      setOutcome(workspace.data.draft.recommendation.outcome);
+      setExplanation(workspace.data.draft.recommendation.clientExplanation);
+    }
+  }, [workspace.data?.draft?.id]);
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ['persisted-review-workspace', clientId, reviewId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['persisted-review-readiness', clientId, reviewId],
+      }),
+    ]);
+  };
+  const override = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/override`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          expectedVersion: workspace.data!.draft!.version,
+          fieldPath: overrideField,
+          effectiveValue:
+            Number.isFinite(Number(overrideValue)) && overrideValue.trim()
+              ? Number(overrideValue)
+              : overrideValue,
+          reason: overrideReason,
+          sourceReference: { reportDocumentId: workspace.data!.report.id },
+        }),
+      }),
+    onSuccess: async () => {
+      setOverrideReason('');
+      setOverrideValue('');
+      await refresh();
+    },
+  });
+  const decideFinding = useMutation({
+    mutationFn: (input: { code: string; action: 'APPROVE' | 'DISMISS' }) =>
+      apiRequest(
+        `/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/findings/${input.code}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            expectedVersion: workspace.data!.draft!.version,
+            action: input.action,
+            ...(input.action === 'DISMISS'
+              ? { reason: 'Consultant reviewed and determined this is not client-material.' }
+              : {}),
+          }),
+        },
+      ),
+    onSuccess: refresh,
+  });
+  const resolveException = useMutation({
+    mutationFn: (exceptionKey: string) =>
+      apiRequest(
+        `/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/exceptions/${encodeURIComponent(exceptionKey)}/resolve`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            reason: 'Consultant verified the source evidence and resolved this exception.',
+          }),
+        },
+      ),
+    onSuccess: refresh,
+  });
+  const saveAnalysis = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/analysis`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          expectedVersion: workspace.data!.draft!.version,
+          analysis: { clientSummary: analysis },
+          recommendation: {
+            outcome,
+            clientExplanation: explanation,
+            reasons: [analysis],
+            approved: true,
+          },
+          approveAnalysis: true,
+          approveRecommendation: true,
+        }),
+      }),
+    onSuccess: refresh,
+  });
+  const publish = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/v1/reviews/consultant/${clientId}/${reviewId}/publish`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': `publish-${reviewId}` },
+        body: JSON.stringify({ expectedDraftVersion: workspace.data!.draft!.version }),
+      }),
+    onSuccess: refresh,
+  });
+  if (workspace.isLoading) return <LoadingSkeleton />;
+  if (workspace.isError)
+    return (
+      <Alert severity="error">
+        Unable to load the governed Review workspace. Confirm consultant access and MFA step-up.
+      </Alert>
+    );
+  const data = workspace.data!;
+  const draft = data.draft;
+  const running = data.jobs.some((job) =>
+    ['QUEUED', 'RUNNING', 'RETRYABLE_FAILURE'].includes(job.status),
+  );
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="CRM-11 · Governed Credit Review"
+        title="Credit Review workspace"
+        description="Verify immutable source facts, resolve exceptions, approve client-safe analysis, then publish one frozen version."
+      />
+      {data.stale && (
+        <Alert severity="warning">
+          Source context changed. Refresh and reconcile the draft before publication.
+        </Alert>
+      )}
+      {!draft && (
+        <Alert severity={running ? 'info' : 'warning'}>
+          {running
+            ? 'Durable report processing is in progress. This page updates automatically.'
+            : 'No reviewable draft is available. Inspect the processing rail for a governed failure.'}
+        </Alert>
+      )}
+      <ToggleButtonGroup
+        exclusive
+        value={section}
+        onChange={(_, next) => next && setSection(next)}
+        aria-label="Review workspace section"
+        fullWidth
+      >
+        <ToggleButton value="SOURCE">Source</ToggleButton>
+        <ToggleButton value="PROFILE">Profile</ToggleButton>
+        <ToggleButton value="ANALYSIS">Analysis</ToggleButton>
+        <ToggleButton value="PUBLISH">Publish</ToggleButton>
+      </ToggleButtonGroup>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, lg: 8 }}>
+          {section === 'SOURCE' && (
+            <Stack spacing={2}>
+              <SectionCard variant="elevated">
+                <Typography variant="h3">Accepted source report</Typography>
+                <Typography>{data.report.originalFileName}</Typography>
+                <Typography color="text.secondary">
+                  {data.report.sourceEntered ?? 'Source not recorded'} ·{' '}
+                  {data.report.reportDateEntered
+                    ? new Date(data.report.reportDateEntered).toLocaleDateString()
+                    : 'Date unavailable'}{' '}
+                  · {data.report.validationStatus}
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <SecureReportViewer documentId={data.report.id} />
+                </Box>
+              </SectionCard>
+              <SectionCard>
+                <Typography variant="h3">Verification exceptions</Typography>
+                <Stack spacing={1.5} sx={{ mt: 2 }}>
+                  {data.review.verificationExceptions.length === 0 ? (
+                    <Typography color="text.secondary">
+                      No source exceptions require review.
+                    </Typography>
+                  ) : (
+                    data.review.verificationExceptions.map((item) => (
+                      <Box
+                        key={item.exceptionKey}
+                        sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}
+                      >
+                        <Stack
+                          direction={{ xs: 'column', sm: 'row' }}
+                          spacing={2}
+                          sx={{ alignItems: { sm: 'center' } }}
+                        >
+                          <Box sx={{ flex: 1 }}>
+                            <Typography sx={{ fontWeight: 700 }}>{item.summary}</Typography>
+                            <Typography color="text.secondary">
+                              {item.blocking ? 'Publication blocker' : 'Review note'} ·{' '}
+                              {item.status}
+                            </Typography>
+                          </Box>
+                          {item.status === 'OPEN' && (
+                            <Button onClick={() => resolveException.mutate(item.exceptionKey)}>
+                              Resolve with verification
+                            </Button>
+                          )}
+                        </Stack>
+                      </Box>
+                    ))
+                  )}
+                </Stack>
+              </SectionCard>
+            </Stack>
+          )}
+          {section === 'PROFILE' && (
+            <Stack spacing={2}>
+              <SectionCard variant="elevated">
+                <Typography variant="h3">Materialized Credit Profile</Typography>
+                <Grid container spacing={1.5} sx={{ mt: 1 }}>
+                  {Object.entries(data.effectiveProfile ?? {}).map(([key, value]) => (
+                    <Grid key={key} size={{ xs: 6, md: 4 }}>
+                      <MetricCard
+                        label={key.replace(/([A-Z])/g, ' $1')}
+                        value={String(value ?? '—')}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+              </SectionCard>
+              {draft && (
+                <SectionCard>
+                  <Typography variant="h3">Attributed override</Typography>
+                  <Stack spacing={2} sx={{ mt: 2 }}>
+                    <TextField
+                      select={false}
+                      label="Profile field"
+                      value={overrideField}
+                      onChange={(e) => setOverrideField(e.target.value)}
+                    />
+                    <TextField
+                      label="Effective value"
+                      value={overrideValue}
+                      onChange={(e) => setOverrideValue(e.target.value)}
+                    />
+                    <TextField
+                      label="Reason and evidence"
+                      multiline
+                      minRows={2}
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.target.value)}
+                    />
+                    <Button
+                      onClick={() => override.mutate()}
+                      disabled={
+                        !overrideValue.trim() || !overrideReason.trim() || override.isPending
+                      }
+                    >
+                      Save versioned override
+                    </Button>
+                    {draft.overrides.map((item) => (
+                      <Alert key={item.fieldPath} severity="info">
+                        {item.fieldPath}: {String(item.effectiveValue)} — {item.reason}
+                      </Alert>
+                    ))}
+                  </Stack>
+                </SectionCard>
+              )}
+            </Stack>
+          )}
+          {section === 'ANALYSIS' && (
+            <Stack spacing={2}>
+              <SectionCard>
+                <Typography variant="h3">Finding decisions</Typography>
+                <Stack spacing={1.5} sx={{ mt: 2 }}>
+                  {draft?.findings.map((finding) => (
+                    <Box
+                      key={finding.code}
+                      sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}
+                    >
+                      <Typography sx={{ fontWeight: 700 }}>{finding.title}</Typography>
+                      <Typography color="text.secondary">{finding.clientSummary}</Typography>
+                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        <Chip label={finding.status} />
+                        <Button
+                          size="small"
+                          disabled={finding.status !== 'PROPOSED'}
+                          onClick={() =>
+                            decideFinding.mutate({ code: finding.code, action: 'APPROVE' })
+                          }
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="small"
+                          color="inherit"
+                          disabled={finding.status !== 'PROPOSED'}
+                          onClick={() =>
+                            decideFinding.mutate({ code: finding.code, action: 'DISMISS' })
+                          }
+                        >
+                          Dismiss
+                        </Button>
+                      </Stack>
+                    </Box>
+                  )) ?? (
+                    <Typography>Processing must finish before findings can be reviewed.</Typography>
+                  )}
+                </Stack>
+              </SectionCard>
+              {draft && (
+                <SectionCard variant="elevated">
+                  <Typography variant="h3">
+                    Consultant-approved analysis and recommendation
+                  </Typography>
+                  <Stack spacing={2} sx={{ mt: 2 }}>
+                    <TextField
+                      label="Client-safe analysis"
+                      multiline
+                      minRows={4}
+                      value={analysis}
+                      onChange={(e) => setAnalysis(e.target.value)}
+                    />
+                    <TextField
+                      label="Recommendation outcome"
+                      value={outcome}
+                      onChange={(e) => setOutcome(e.target.value)}
+                      helperText="PROCEED, PROCEED_SELECTIVELY, PREPARE_FIRST, WAIT_NURTURE, or MAJOR_APPLICATION_PRIORITY"
+                    />
+                    <TextField
+                      label="Client-safe explanation"
+                      multiline
+                      minRows={3}
+                      value={explanation}
+                      onChange={(e) => setExplanation(e.target.value)}
+                    />
+                    <Button
+                      onClick={() => saveAnalysis.mutate()}
+                      disabled={!analysis.trim() || !explanation.trim() || saveAnalysis.isPending}
+                    >
+                      Approve analysis and recommendation
+                    </Button>
+                  </Stack>
+                </SectionCard>
+              )}
+            </Stack>
+          )}
+          {section === 'PUBLISH' && (
+            <SectionCard variant="elevated">
+              <Typography variant="h3">Immutable publication readiness</Typography>
+              <Stack spacing={1.5} sx={{ mt: 2 }}>
+                {readiness.data?.ready ? (
+                  <Alert severity="success">
+                    All publication checks pass. Phase 9 Plan remains staged and is not part of this
+                    Review.
+                  </Alert>
+                ) : (
+                  <Alert severity="warning">
+                    Resolve: {(readiness.data?.blockers ?? ['DRAFT_NOT_READY']).join(', ')}
+                  </Alert>
+                )}
+                <Button
+                  variant="contained"
+                  startIcon={<CheckRounded />}
+                  disabled={!readiness.data?.ready || publish.isPending}
+                  onClick={() => publish.mutate()}
+                >
+                  {publish.isPending ? 'Publishing…' : 'Publish frozen Credit Review'}
+                </Button>
+                {publish.isError && (
+                  <Alert severity="error">Publication failed: {publish.error.message}</Alert>
+                )}
+              </Stack>
+            </SectionCard>
+          )}
+        </Grid>
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <SectionCard variant="operational">
+            <Typography variant="h3">Attention & AI context</Typography>
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              Durable factual processing only. AI cannot approve or publish.
+            </Typography>
+            <Stack spacing={1}>
+              {data.jobs.map((job) => (
+                <Box key={job.id}>
+                  <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
+                    <Typography variant="body2">
+                      {job.processDefinition.processKey.replace('credit_report.', '')}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={job.status.replaceAll('_', ' ')}
+                      color={
+                        job.status === 'SUCCEEDED'
+                          ? 'success'
+                          : job.failureCode
+                            ? 'warning'
+                            : 'default'
+                      }
+                    />
+                  </Stack>
+                  {job.failureCode && (
+                    <Typography variant="caption" color="warning.main">
+                      {job.failureCode}
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          </SectionCard>
+        </Grid>
+      </Grid>
     </Stack>
   );
 }

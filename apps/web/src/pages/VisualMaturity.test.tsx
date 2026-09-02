@@ -29,8 +29,26 @@ const journey: JourneyProjection = {
     id: 'journey',
     status: 'ACTIVE',
     startedAt: '2026-01-01T00:00:00.000Z',
-    currentFocus: { code: 'REVIEW', title: 'Complete your review', detail: null, action: '/app/credit-center/review' },
-    cycles: [{ id: 'cycle', cycleNumber: 1, displayName: 'Current cycle', status: 'ACTIVE', currentStage: 'CREDIT_REVIEW', startedAt: '2026-01-01T00:00:00.000Z', closedAt: null, finalResult: null, timelineGroup: 'CURRENT', goalSnapshot: null }],
+    currentFocus: {
+      code: 'REVIEW',
+      title: 'Complete your review',
+      detail: null,
+      action: '/app/credit-center/review',
+    },
+    cycles: [
+      {
+        id: 'cycle',
+        cycleNumber: 1,
+        displayName: 'Current cycle',
+        status: 'ACTIVE',
+        currentStage: 'CREDIT_REVIEW',
+        startedAt: '2026-01-01T00:00:00.000Z',
+        closedAt: null,
+        finalResult: null,
+        timelineGroup: 'CURRENT',
+        goalSnapshot: null,
+      },
+    ],
     nurturePeriods: [],
   },
   foundations: {
@@ -51,7 +69,9 @@ describe('Phase 4–5 visual maturity regressions', () => {
     rerender(
       <ThemeProvider theme={theme}>
         <QueryClientProvider client={new QueryClient()}>
-          <MemoryRouter><JourneySummary data={journey} /></MemoryRouter>
+          <MemoryRouter>
+            <JourneySummary data={journey} />
+          </MemoryRouter>
         </QueryClientProvider>
       </ThemeProvider>,
     );
@@ -61,18 +81,20 @@ describe('Phase 4–5 visual maturity regressions', () => {
 
   test('opens consultant Reviews inside the canonical CRM shell route', async () => {
     mockedApi.mockResolvedValue({
-      reviews: [{
-        id: 'review',
-        clientId: 'client',
-        status: 'INFORMATION_RECEIVED',
-        submittedAt: '2026-01-01T00:00:00.000Z',
-        client: { firstName: 'Jordan', lastName: 'Blake' },
-      }],
+      reviews: [
+        {
+          id: 'review',
+          clientId: 'client',
+          status: 'INFORMATION_RECEIVED',
+          submittedAt: '2026-01-01T00:00:00.000Z',
+          client: { firstName: 'Jordan', lastName: 'Blake' },
+        },
+      ],
     });
     renderPage(<ConsultantReviewsPage />);
     expect(await screen.findByRole('link', { name: 'Open guided Review' })).toHaveAttribute(
       'href',
-      '/crm/reviews/client/review',
+      '/crm/clients/client/reviews/review',
     );
   });
 });

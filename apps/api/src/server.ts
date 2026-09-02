@@ -18,6 +18,18 @@ import {
   createRealtimeAuthorizationBridge,
 } from './authorization/authorizationService.js';
 import { startRealtimeRuntime } from './realtime/runtime.js';
+import { createDocumentStorageRegistry } from './storage/documentStorage.js';
+import { BullAIJobQueue, startDurableAIWorker } from './ai/bullTransport.js';
+import { DurableAIRuntime } from './ai/durableRuntime.js';
+import {
+  Phase7DeterministicProvider,
+  advanceDurablePhase7Pipeline,
+  phase7Validators,
+} from './ai/durableCreditReportPipeline.js';
+import {
+  enqueueSubmittedReviewPipeline,
+  recoverSubmittedReviewPipelines,
+} from './ai/submittedReviewPipeline.js';
 
 const env = loadEnv();
 const logger = createLogger(env);
@@ -32,6 +44,20 @@ const auth = createAuthService(
 const betterAuth = createBetterAuth(prisma, env, emailProvider);
 const goals = createGoalService(createPrismaGoalStore(prisma));
 const services = createServiceCatalog(createPrismaServiceStore(prisma));
+const documentStorage = createDocumentStorageRegistry();
+const aiQueue = new BullAIJobQueue(env.REDIS_URL);
+const aiRuntime = new DurableAIRuntime(
+  prisma,
+  aiQueue,
+  new Phase7DeterministicProvider(),
+  phase7Validators,
+);
+const aiWorker = startDurableAIWorker(env.REDIS_URL, aiRuntime, (result) =>
+  advanceDurablePhase7Pipeline(aiRuntime, result),
+);
+await aiWorker.waitUntilReady();
+await aiRuntime.reconstructAndEnqueue();
+await recoverSubmittedReviewPipelines(prisma, documentStorage, aiRuntime);
 const server = createServer(
   createApp(
     env,
@@ -51,6 +77,17 @@ const server = createServer(
     betterAuth,
     undefined,
     emailProvider,
+    async (reviewId) => {
+      try {
+        return await enqueueSubmittedReviewPipeline(prisma, documentStorage, aiRuntime, reviewId);
+      } catch (error) {
+        logger.error(
+          { err: error, reviewId },
+          'Submitted Review processing enqueue deferred to recovery',
+        );
+        return null;
+      }
+    },
   ),
 );
 
@@ -69,7 +106,13 @@ server.listen(env.PORT, () => logger.info({ port: env.PORT }, 'API and realtime 
 async function shutdown(signal: string) {
   logger.info({ signal }, 'Graceful shutdown started');
   server.close(async (error) => {
-    await Promise.allSettled([realtime.close(), prisma.$disconnect(), closeRedis(redis)]);
+    await Promise.allSettled([
+      realtime.close(),
+      aiWorker.close(),
+      aiQueue.close(),
+      prisma.$disconnect(),
+      closeRedis(redis),
+    ]);
     if (error) {
       logger.error({ err: error }, 'HTTP server shutdown failed');
       process.exitCode = 1;

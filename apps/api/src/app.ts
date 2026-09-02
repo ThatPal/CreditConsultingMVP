@@ -56,6 +56,7 @@ export function createApp(
   betterAuth?: BetterAuthInstance,
   documentStorageRegistry?: DocumentStorageRegistry,
   emailProvider?: EmailProvider,
+  enqueueReviewProcessing?: (reviewId: string) => Promise<unknown>,
 ) {
   const app = express();
   const paymentGateways = createPaymentGatewayRegistry();
@@ -160,7 +161,14 @@ export function createApp(
       );
       app.use(
         '/api/v1/reviews',
-        createReviewRouter(prisma, auth, undefined, authorization, denialRecorder),
+        createReviewRouter(
+          prisma,
+          auth,
+          undefined,
+          authorization,
+          denialRecorder,
+          enqueueReviewProcessing,
+        ),
       );
       app.use('/api/v1/client/credit-profile', createCreditProfileRouter(prisma));
       app.use(

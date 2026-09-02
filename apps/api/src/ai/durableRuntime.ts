@@ -28,7 +28,8 @@ export type DurableJobInput = {
 type ProcessHook = (stage: 'before-result-commit', jobId: string) => Promise<void>;
 
 const json = (value: unknown) => value as Prisma.InputJsonValue;
-const confidence = (value: ProviderResponse['confidence']) => value.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW';
+const confidence = (value: ProviderResponse['confidence']) =>
+  value.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW';
 
 export class DurableAIRuntime {
   constructor(
@@ -39,11 +40,13 @@ export class DurableAIRuntime {
     private readonly hook?: ProcessHook,
   ) {}
 
-  async registerProcess(definition: ProcessDefinition & {
-    instructionVersion?: string;
-    domainConsumer?: string;
-    allowedContext?: unknown;
-  }) {
+  async registerProcess(
+    definition: ProcessDefinition & {
+      instructionVersion?: string;
+      domainConsumer?: string;
+      allowedContext?: unknown;
+    },
+  ) {
     return this.prisma.aIProcessDefinition.upsert({
       where: {
         processKey_processVersion: {
@@ -71,9 +74,15 @@ export class DurableAIRuntime {
 
   async createAndEnqueue(input: DurableJobInput) {
     const process = await this.prisma.aIProcessDefinition.findUnique({
-      where: { processKey_processVersion: { processKey: input.processKey, processVersion: input.processVersion } },
+      where: {
+        processKey_processVersion: {
+          processKey: input.processKey,
+          processVersion: input.processVersion,
+        },
+      },
     });
-    if (!process?.enabled) throw new AIProviderError('AI process is unavailable', true, 'AI_UNAVAILABLE');
+    if (!process?.enabled)
+      throw new AIProviderError('AI process is unavailable', true, 'AI_UNAVAILABLE');
     if (process.authorityLevel !== 'FACTUAL_LEVEL_1')
       throw new AIProviderError('Prohibited AI authority level', false, 'AI_AUTHORITY_PROHIBITED');
     const job = await this.prisma.aIJob.upsert({
@@ -107,7 +116,8 @@ export class DurableAIRuntime {
 
   async processJob(jobId: string) {
     const existing = await this.prisma.aIJob.findUnique({
-      where: { id: jobId }, include: { processDefinition: true, outputs: true },
+      where: { id: jobId },
+      include: { processDefinition: true, outputs: true },
     });
     if (!existing) throw new Error('JOB_NOT_FOUND');
     if (existing.status === 'SUCCEEDED' && existing.outputs[0]) return existing;
@@ -117,15 +127,25 @@ export class DurableAIRuntime {
         status: { in: ['QUEUED', 'RETRYABLE_FAILURE'] },
         currentAttempt: { lt: existing.maxAttempts },
       },
-      data: { status: 'RUNNING', currentAttempt: { increment: 1 }, startedAt: new Date(), failureCode: null, failureCategory: null },
+      data: {
+        status: 'RUNNING',
+        currentAttempt: { increment: 1 },
+        startedAt: new Date(),
+        failureCode: null,
+        failureCategory: null,
+      },
     });
     if (claimed.count !== 1) {
-      const current = await this.prisma.aIJob.findUnique({ where: { id: jobId }, include: { processDefinition: true, outputs: true } });
+      const current = await this.prisma.aIJob.findUnique({
+        where: { id: jobId },
+        include: { processDefinition: true, outputs: true },
+      });
       if (current?.status === 'SUCCEEDED' && current.outputs[0]) return current;
       throw new Error('JOB_ALREADY_RUNNING');
     }
     const job = await this.prisma.aIJob.findUniqueOrThrow({
-      where: { id: jobId }, include: { processDefinition: true, outputs: true },
+      where: { id: jobId },
+      include: { processDefinition: true, outputs: true },
     });
     if (!this.provider) return this.persistFailure(job.id, true, 'AI_UNAVAILABLE', 'PROVIDER');
     try {
@@ -148,63 +168,82 @@ export class DurableAIRuntime {
       });
       const validator = this.validators[`${process.processKey}@${process.outputSchemaVersion}`];
       if (!validator?.(response.result))
-        return this.persistFailure(job.id, false, 'OUTPUT_SCHEMA_INVALID', 'SCHEMA', 'SCHEMA_INVALID');
+        return this.persistFailure(
+          job.id,
+          false,
+          'OUTPUT_SCHEMA_INVALID',
+          'SCHEMA',
+          'SCHEMA_INVALID',
+        );
       await this.hook?.('before-result-commit', job.id);
-      return this.prisma.$transaction(async (tx) => {
-        const output = await tx.aIJobOutput.upsert({
-          where: { jobId_outputVersion: { jobId: job.id, outputVersion: 1 } },
-          create: {
-            jobId: job.id,
-            outputVersion: 1,
-            outputSchemaVersion: process.outputSchemaVersion,
-            status: 'VALIDATED',
-            result: json(response.result),
-            exceptions: json(response.exceptions),
-            confidence: confidence(response.confidence),
-            evidence: json(response.evidence),
-            humanReview: json({ required: response.exceptions.some((item) => item.humanReviewRequired) }),
-            provenance: json({
-              processKey: process.processKey,
-              processVersion: process.processVersion,
-              provider: response.provider,
-              model: response.model,
-              modelProfile: process.modelProfile,
-              generatedAt: new Date().toISOString(),
-              attempt: job.currentAttempt,
-              latencyMs: response.latencyMs ?? null,
-              tokenUsage: response.tokenUsage ?? null,
-            }),
-            sourceVersions: json(job.sourceVersions),
-          },
-          update: {},
-        });
-        if (job.relatedEntityType === 'CreditReportDocument')
-          await tx.creditReportArtifact.upsert({
-            where: {
-              reportDocumentId_artifactType_artifactVersion: {
-                reportDocumentId: job.relatedEntityId,
-                artifactType: process.processKey,
-                artifactVersion: 1,
-              },
-            },
+      return this.prisma.$transaction(
+        async (tx) => {
+          const output = await tx.aIJobOutput.upsert({
+            where: { jobId_outputVersion: { jobId: job.id, outputVersion: 1 } },
             create: {
-              reportDocumentId: job.relatedEntityId,
-              aiJobId: job.id,
-              aiJobOutputId: output.id,
-              artifactType: process.processKey,
-              artifactVersion: 1,
-              sourceVersion: job.sourceIdentity,
-              schemaVersion: process.outputSchemaVersion,
-              payload: json(response.result),
+              jobId: job.id,
+              outputVersion: 1,
+              outputSchemaVersion: process.outputSchemaVersion,
+              status: 'VALIDATED',
+              result: json(response.result),
+              exceptions: json(response.exceptions),
+              confidence: confidence(response.confidence),
+              evidence: json(response.evidence),
+              humanReview: json({
+                required: response.exceptions.some((item) => item.humanReviewRequired),
+              }),
+              provenance: json({
+                processKey: process.processKey,
+                processVersion: process.processVersion,
+                provider: response.provider,
+                model: response.model,
+                modelProfile: process.modelProfile,
+                generatedAt: new Date().toISOString(),
+                attempt: job.currentAttempt,
+                latencyMs: response.latencyMs ?? null,
+                tokenUsage: response.tokenUsage ?? null,
+              }),
+              sourceVersions: json(job.sourceVersions),
             },
             update: {},
           });
-        await tx.aIJob.update({
-          where: { id: job.id },
-          data: { status: 'SUCCEEDED', completedAt: new Date(), failureCode: null, failureCategory: null },
-        });
-        return tx.aIJob.findUniqueOrThrow({ where: { id: job.id }, include: { processDefinition: true, outputs: true, artifacts: true } });
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+          if (job.relatedEntityType === 'CreditReportDocument')
+            await tx.creditReportArtifact.upsert({
+              where: {
+                reportDocumentId_artifactType_artifactVersion: {
+                  reportDocumentId: job.relatedEntityId,
+                  artifactType: process.processKey,
+                  artifactVersion: 1,
+                },
+              },
+              create: {
+                reportDocumentId: job.relatedEntityId,
+                aiJobId: job.id,
+                aiJobOutputId: output.id,
+                artifactType: process.processKey,
+                artifactVersion: 1,
+                sourceVersion: job.sourceIdentity,
+                schemaVersion: process.outputSchemaVersion,
+                payload: json(response.result),
+              },
+              update: {},
+            });
+          await tx.aIJob.update({
+            where: { id: job.id },
+            data: {
+              status: 'SUCCEEDED',
+              completedAt: new Date(),
+              failureCode: null,
+              failureCategory: null,
+            },
+          });
+          return tx.aIJob.findUniqueOrThrow({
+            where: { id: job.id },
+            include: { processDefinition: true, outputs: true, artifacts: true },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
     } catch (error) {
       if (error instanceof AIProviderError)
         return this.persistFailure(job.id, error.retryable, error.code, 'PROVIDER');
@@ -257,23 +296,77 @@ export class DurableAIRuntime {
     const job = await this.prisma.aIJob.findUniqueOrThrow({ where: { id: jobId } });
     if (JSON.stringify(job.sourceVersions) === JSON.stringify(currentSourceVersions)) return job;
     return this.prisma.$transaction(async (tx) => {
-      await tx.aIJobOutput.updateMany({ where: { jobId, staleAt: null }, data: { staleAt: new Date() } });
-      await tx.creditReportArtifact.updateMany({ where: { aiJobId: jobId, current: true }, data: { current: false, staleAt: new Date() } });
+      await tx.aIJobOutput.updateMany({
+        where: { jobId, staleAt: null },
+        data: { staleAt: new Date() },
+      });
+      await tx.creditReportArtifact.updateMany({
+        where: { aiJobId: jobId, current: true },
+        data: { current: false, staleAt: new Date() },
+      });
       return tx.aIJob.update({ where: { id: jobId }, data: { status: 'STALE' } });
     });
   }
 
   async inspect(jobId: string, clientId: string) {
     const job = await this.prisma.aIJob.findFirst({
-      where: { id: jobId, clientId }, include: { processDefinition: true, outputs: true, artifacts: true },
+      where: { id: jobId, clientId },
+      include: { processDefinition: true, outputs: true, artifacts: true },
     });
     if (!job) throw new Error('NOT_FOUND');
     return job;
   }
 
+  async list(input: {
+    clientId: string;
+    status?:
+      | 'QUEUED'
+      | 'RUNNING'
+      | 'SUCCEEDED'
+      | 'RETRYABLE_FAILURE'
+      | 'NON_RETRYABLE_FAILURE'
+      | 'SCHEMA_INVALID'
+      | 'STALE';
+    processKey?: string;
+    cursor?: string;
+    limit?: number;
+  }) {
+    const limit = Math.min(Math.max(input.limit ?? 25, 1), 100);
+    const jobs = await this.prisma.aIJob.findMany({
+      where: {
+        clientId: input.clientId,
+        ...(input.status ? { status: input.status } : {}),
+        ...(input.processKey ? { processDefinition: { processKey: input.processKey } } : {}),
+        ...(input.cursor ? { id: { gt: input.cursor } } : {}),
+      },
+      select: {
+        id: true,
+        status: true,
+        currentAttempt: true,
+        maxAttempts: true,
+        failureCode: true,
+        createdAt: true,
+        completedAt: true,
+        processDefinition: { select: { processKey: true, processVersion: true } },
+      },
+      orderBy: [{ id: 'asc' }],
+      take: limit + 1,
+    });
+    return {
+      items: jobs.slice(0, limit),
+      nextCursor: jobs.length > limit ? jobs[limit - 1]!.id : null,
+    };
+  }
+
   async consumeCurrentArtifact(reportDocumentId: string, artifactType: string, clientId: string) {
     const artifact = await this.prisma.creditReportArtifact.findFirst({
-      where: { reportDocumentId, artifactType, current: true, staleAt: null, aiJob: { clientId, status: 'SUCCEEDED' } },
+      where: {
+        reportDocumentId,
+        artifactType,
+        current: true,
+        staleAt: null,
+        aiJob: { clientId, status: 'SUCCEEDED' },
+      },
     });
     if (!artifact) throw new Error('CURRENT_ARTIFACT_NOT_FOUND');
     return artifact;
