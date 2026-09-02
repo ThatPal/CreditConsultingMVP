@@ -745,6 +745,7 @@ model CreditSnapshot {
   client                  Client                  @relation(fields: [clientId], references: [id], onDelete: Restrict)
   review                  CreditReview?
   accounts                CreditAccountSnapshot[]
+  publication             PublishedCreditReview?
 
   @@index([clientId, capturedAt])
 }
@@ -991,6 +992,7 @@ model CreditReview {
   drafts                   ReviewDraft[]
   draftOverrides           ReviewDraftOverride[]
   verificationExceptions  ReviewVerificationException[]
+  publication             PublishedCreditReview?
 
   @@index([clientId, status, createdAt])
   @@index([clientId, intendedReportDate, createdAt])
@@ -1050,6 +1052,23 @@ model CreditReportDocument {
   aiArtifacts      CreditReportArtifact[]
 
   @@index([uploadedByUserId, uploadedAt])
+}
+
+model PublishedCreditReview {
+  id                   String @id @default(uuid()) @db.Uuid
+  reviewId             String @unique @db.Uuid
+  clientId             String @db.Uuid
+  snapshotId           String @unique @db.Uuid
+  idempotencyKey       String @unique
+  sourceVersions       Json
+  clientSafeProjection Json
+  recommendation       ReviewRecommendation
+  publishedByUserId    String @db.Uuid
+  publishedAt          DateTime @default(now()) @db.Timestamptz(3)
+  review               CreditReview @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  snapshot             CreditSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@index([clientId, publishedAt])
 }
 
 model ReviewDraft {
