@@ -343,6 +343,59 @@ enum PlanActionOwner {
   SYSTEM
 }
 
+enum PlanPurpose {
+  PREPARATION
+  NURTURE
+  POST_ROUND
+  MAJOR_READINESS
+}
+
+enum PlanLifecycleStatus {
+  DRAFT
+  APPROVED
+  ACTIVE
+  STALE
+  SUPERSEDED
+  COMPLETED
+  CANCELLED
+}
+
+enum PlanItemType {
+  ACTION
+  GUIDANCE
+  MILESTONE
+}
+
+enum PlanCompletionMode {
+  ACKNOWLEDGEMENT
+  STRUCTURED_OUTCOME
+  CLIENT_REPORT_CONSULTANT_VERIFY
+  CONSULTANT_VERIFY
+  SYSTEM_VERIFY
+}
+
+enum PlanItemExecutionStatus {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  AWAITING_VERIFICATION
+  UNABLE
+  COMPLETED
+  CANCELLED
+}
+
+enum PlanDependencyMode {
+  ALL
+  ANY
+}
+
+enum PlanPathStatus {
+  AVAILABLE
+  ACTIVE
+  INACTIVE
+  RETIRED
+}
+
 enum ReadinessOutcome {
   APPLY_NOW
   PREPARE_FIRST
@@ -621,6 +674,7 @@ model Client {
   reviewPlans              ReviewPlan[]
   creditSnapshots          CreditSnapshot[]
   planActions              PlanAction[]
+  plans                    Plan[]
   workItems                WorkItem[]
   readinessAssessments     ReadinessAssessment[]
   auditEvents              AuditEvent[]
@@ -756,8 +810,8 @@ model ClientCard {
   cardName           String
   issuer             String
   scope              ClientCardScope
-  portfolioType      ClientCardPortfolioType    @default(PERSONAL_CREDIT)
-  identityStatus     ClientCardIdentityStatus   @default(CONFIRMED)
+  portfolioType      ClientCardPortfolioType  @default(PERSONAL_CREDIT)
+  identityStatus     ClientCardIdentityStatus @default(CONFIRMED)
   maskedIdentifier   String?
   reportsToBureaus   Boolean?
   creditLimit        Decimal?                 @db.Decimal(14, 2)
@@ -961,14 +1015,14 @@ model CycleApplication {
 }
 
 model CreditReview {
-  id                       String                    @id @default(uuid()) @db.Uuid
-  clientId                 String                    @db.Uuid
-  purchaseId               String?                   @unique @db.Uuid
-  consultantId             String?                   @db.Uuid
-  status                   CreditReviewStatus        @default(INTAKE_REQUIRED)
-  intendedReportDate       DateTime?                 @db.Date
-  reservationExpiresAt     DateTime?                 @db.Timestamptz(3)
-  generalReadiness         GeneralReadiness          @default(UNDER_REVIEW)
+  id                       String                        @id @default(uuid()) @db.Uuid
+  clientId                 String                        @db.Uuid
+  purchaseId               String?                       @unique @db.Uuid
+  consultantId             String?                       @db.Uuid
+  status                   CreditReviewStatus            @default(INTAKE_REQUIRED)
+  intendedReportDate       DateTime?                     @db.Date
+  reservationExpiresAt     DateTime?                     @db.Timestamptz(3)
+  generalReadiness         GeneralReadiness              @default(UNDER_REVIEW)
   recommendation           ReviewRecommendation?
   readinessExpiresAt       DateTime?
   nextReviewRecommendedAt  DateTime?
@@ -978,21 +1032,21 @@ model CreditReview {
   submittedSourceSnapshot  Json?
   reviewStartedAt          DateTime?
   completedAt              DateTime?
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime                  @updatedAt
-  client                   Client                    @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  purchase                 ServicePurchase?          @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
-  consultant               User?                     @relation("ReviewConsultant", fields: [consultantId], references: [id], onDelete: SetNull)
+  createdAt                DateTime                      @default(now())
+  updatedAt                DateTime                      @updatedAt
+  client                   Client                        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  purchase                 ServicePurchase?              @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  consultant               User?                         @relation("ReviewConsultant", fields: [consultantId], references: [id], onDelete: SetNull)
   intake                   ReviewIntake?
   findings                 ReviewFinding[]
-  snapshot                 CreditSnapshot?           @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
-  snapshotId               String?                   @unique @db.Uuid
+  snapshot                 CreditSnapshot?               @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  snapshotId               String?                       @unique @db.Uuid
   reviewCreditTransactions ReviewCreditTransaction[]
   clientUpdates            ClientUpdate[]
   drafts                   ReviewDraft[]
   draftOverrides           ReviewDraftOverride[]
-  verificationExceptions  ReviewVerificationException[]
-  publication             PublishedCreditReview?
+  verificationExceptions   ReviewVerificationException[]
+  publication              PublishedCreditReview?
 
   @@index([clientId, status, createdAt])
   @@index([clientId, intendedReportDate, createdAt])
@@ -1025,183 +1079,183 @@ model ReviewIntake {
 }
 
 model CreditReportDocument {
-  id               String          @id @default(uuid()) @db.Uuid
-  storageKey       String          @unique
-  originalFileName String
-  mimeType         String
-  sizeBytes        Int
-  sha256           String
-  provider         String?
-  storageProvider  StorageProvider @default(LOCAL_DISK)
-  validationStatus CreditReportValidationStatus @default(UPLOADED)
-  sourceEntered    String?
-  sourceDetected   String?
-  reportDateEntered DateTime?       @db.Date
-  reportDateDetected DateTime?      @db.Date
-  rejectionCode    String?
-  rejectionReason  String?
-  reportDate       DateTime?
-  bureauCoverage   Json?
-  uploadedByUserId String          @db.Uuid
-  uploadedAt       DateTime        @default(now())
-  supersededAt     DateTime?
-  supersededById   String?          @unique @db.Uuid
-  intake           ReviewIntake?
-  supersededBy     CreditReportDocument? @relation("CreditReportReplacement", fields: [supersededById], references: [id], onDelete: SetNull)
-  supersedes       CreditReportDocument? @relation("CreditReportReplacement")
-  aiArtifacts      CreditReportArtifact[]
+  id                 String                       @id @default(uuid()) @db.Uuid
+  storageKey         String                       @unique
+  originalFileName   String
+  mimeType           String
+  sizeBytes          Int
+  sha256             String
+  provider           String?
+  storageProvider    StorageProvider              @default(LOCAL_DISK)
+  validationStatus   CreditReportValidationStatus @default(UPLOADED)
+  sourceEntered      String?
+  sourceDetected     String?
+  reportDateEntered  DateTime?                    @db.Date
+  reportDateDetected DateTime?                    @db.Date
+  rejectionCode      String?
+  rejectionReason    String?
+  reportDate         DateTime?
+  bureauCoverage     Json?
+  uploadedByUserId   String                       @db.Uuid
+  uploadedAt         DateTime                     @default(now())
+  supersededAt       DateTime?
+  supersededById     String?                      @unique @db.Uuid
+  intake             ReviewIntake?
+  supersededBy       CreditReportDocument?        @relation("CreditReportReplacement", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes         CreditReportDocument?        @relation("CreditReportReplacement")
+  aiArtifacts        CreditReportArtifact[]
 
   @@index([uploadedByUserId, uploadedAt])
 }
 
 model PublishedCreditReview {
-  id                   String @id @default(uuid()) @db.Uuid
-  reviewId             String @unique @db.Uuid
-  clientId             String @db.Uuid
-  snapshotId           String @unique @db.Uuid
-  idempotencyKey       String @unique
+  id                   String               @id @default(uuid()) @db.Uuid
+  reviewId             String               @unique @db.Uuid
+  clientId             String               @db.Uuid
+  snapshotId           String               @unique @db.Uuid
+  idempotencyKey       String               @unique
   sourceVersions       Json
   clientSafeProjection Json
   recommendation       ReviewRecommendation
-  publishedByUserId    String @db.Uuid
-  publishedAt          DateTime @default(now()) @db.Timestamptz(3)
-  review               CreditReview @relation(fields: [reviewId], references: [id], onDelete: Restrict)
-  snapshot             CreditSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  publishedByUserId    String               @db.Uuid
+  publishedAt          DateTime             @default(now()) @db.Timestamptz(3)
+  review               CreditReview         @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  snapshot             CreditSnapshot       @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
 
   @@index([clientId, publishedAt])
 }
 
 model ReviewDraft {
-  id                     String   @id @default(uuid()) @db.Uuid
-  reviewId               String   @db.Uuid
-  version                Int
-  sourceVersions         Json
-  profile                Json
-  analysis               Json?
-  recommendation         Json?
-  analysisApprovedAt     DateTime? @db.Timestamptz(3)
-  recommendationApprovedAt DateTime? @db.Timestamptz(3)
-  approvedByUserId       String?  @db.Uuid
-  contextVersion         String
-  createdByUserId        String   @db.Uuid
-  createdAt              DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt              DateTime @updatedAt @db.Timestamptz(3)
-  review                 CreditReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  overrides              ReviewDraftOverride[]
-  findings               ReviewDraftFinding[]
+  id                       String                @id @default(uuid()) @db.Uuid
+  reviewId                 String                @db.Uuid
+  version                  Int
+  sourceVersions           Json
+  profile                  Json
+  analysis                 Json?
+  recommendation           Json?
+  analysisApprovedAt       DateTime?             @db.Timestamptz(3)
+  recommendationApprovedAt DateTime?             @db.Timestamptz(3)
+  approvedByUserId         String?               @db.Uuid
+  contextVersion           String
+  createdByUserId          String                @db.Uuid
+  createdAt                DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime              @updatedAt @db.Timestamptz(3)
+  review                   CreditReview          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  overrides                ReviewDraftOverride[]
+  findings                 ReviewDraftFinding[]
 
   @@unique([reviewId, version])
   @@index([reviewId, updatedAt])
 }
 
 model ReviewDraftFinding {
-  id              String @id @default(uuid()) @db.Uuid
-  draftId         String @db.Uuid
-  code            String
-  title           String
-  clientSummary   String?
-  internalDetail  String?
-  severity        FindingSeverity
-  status          ReviewFindingStatus @default(PROPOSED)
-  origin          String
-  evidence        Json
-  aiProvenance    Json?
-  actorId         String? @db.Uuid
-  decisionReason  String?
-  version         Int @default(1)
-  createdAt       DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
-  draft           ReviewDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  id             String              @id @default(uuid()) @db.Uuid
+  draftId        String              @db.Uuid
+  code           String
+  title          String
+  clientSummary  String?
+  internalDetail String?
+  severity       FindingSeverity
+  status         ReviewFindingStatus @default(PROPOSED)
+  origin         String
+  evidence       Json
+  aiProvenance   Json?
+  actorId        String?             @db.Uuid
+  decisionReason String?
+  version        Int                 @default(1)
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+  draft          ReviewDraft         @relation(fields: [draftId], references: [id], onDelete: Cascade)
 
   @@unique([draftId, code])
   @@index([draftId, status, severity])
 }
 
 model ReviewDraftOverride {
-  id                String   @id @default(uuid()) @db.Uuid
-  reviewId          String   @db.Uuid
-  draftId           String   @db.Uuid
-  fieldPath         String
-  originalValue     Json
-  effectiveValue    Json
-  reason            String
-  sourceReference   Json
-  actorId           String   @db.Uuid
-  createdAt         DateTime @default(now()) @db.Timestamptz(3)
-  review            CreditReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  draft             ReviewDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  id              String       @id @default(uuid()) @db.Uuid
+  reviewId        String       @db.Uuid
+  draftId         String       @db.Uuid
+  fieldPath       String
+  originalValue   Json
+  effectiveValue  Json
+  reason          String
+  sourceReference Json
+  actorId         String       @db.Uuid
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  review          CreditReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  draft           ReviewDraft  @relation(fields: [draftId], references: [id], onDelete: Cascade)
 
   @@unique([draftId, fieldPath])
   @@index([reviewId, createdAt])
 }
 
 model ReviewVerificationException {
-  id                String   @id @default(uuid()) @db.Uuid
-  reviewId          String   @db.Uuid
-  exceptionKey      String
-  category          String
-  summary           String
-  materiality       String
-  blocking          Boolean
-  status            ReviewExceptionStatus @default(OPEN)
-  evidence          Json
-  resolutionReason  String?
-  resolvedByUserId  String?  @db.Uuid
-  resolvedAt        DateTime? @db.Timestamptz(3)
-  createdAt         DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
-  review            CreditReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  id               String                @id @default(uuid()) @db.Uuid
+  reviewId         String                @db.Uuid
+  exceptionKey     String
+  category         String
+  summary          String
+  materiality      String
+  blocking         Boolean
+  status           ReviewExceptionStatus @default(OPEN)
+  evidence         Json
+  resolutionReason String?
+  resolvedByUserId String?               @db.Uuid
+  resolvedAt       DateTime?             @db.Timestamptz(3)
+  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
+  review           CreditReview          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
   @@unique([reviewId, exceptionKey])
   @@index([reviewId, status, blocking])
 }
 
 model AIProcessDefinition {
-  id                    String           @id @default(uuid()) @db.Uuid
-  processKey            String
-  processVersion        Int
-  authorityLevel        AIAuthorityLevel @default(FACTUAL_LEVEL_1)
-  enabled               Boolean          @default(true)
-  modelProfile          String
-  inputSchemaVersion    Int
-  outputSchemaVersion   Int
-  instructionVersion    String
-  knowledgeReferences   Json?
-  retryPolicy           Json
-  dataClassification    String
-  allowedContext        Json
-  domainConsumer        String
-  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
-  retiredAt             DateTime?        @db.Timestamptz(3)
-  jobs                  AIJob[]
+  id                  String           @id @default(uuid()) @db.Uuid
+  processKey          String
+  processVersion      Int
+  authorityLevel      AIAuthorityLevel @default(FACTUAL_LEVEL_1)
+  enabled             Boolean          @default(true)
+  modelProfile        String
+  inputSchemaVersion  Int
+  outputSchemaVersion Int
+  instructionVersion  String
+  knowledgeReferences Json?
+  retryPolicy         Json
+  dataClassification  String
+  allowedContext      Json
+  domainConsumer      String
+  createdAt           DateTime         @default(now()) @db.Timestamptz(3)
+  retiredAt           DateTime?        @db.Timestamptz(3)
+  jobs                AIJob[]
 
   @@unique([processKey, processVersion])
   @@index([processKey, enabled, processVersion])
 }
 
 model AIJob {
-  id                  String              @id @default(uuid()) @db.Uuid
-  processDefinitionId String              @db.Uuid
-  clientId            String              @db.Uuid
+  id                  String                 @id @default(uuid()) @db.Uuid
+  processDefinitionId String                 @db.Uuid
+  clientId            String                 @db.Uuid
   correlationId       String
   relatedEntityType   String
-  relatedEntityId     String              @db.Uuid
+  relatedEntityId     String                 @db.Uuid
   sourceIdentity      String
-  status              AIJobStatus         @default(QUEUED)
+  status              AIJobStatus            @default(QUEUED)
   inputSchemaVersion  Int
   outputSchemaVersion Int
   sourceVersions      Json
   inputEnvelope       Json
-  currentAttempt      Int                 @default(0)
-  maxAttempts         Int                 @default(3)
-  availableAt         DateTime            @default(now()) @db.Timestamptz(3)
-  startedAt           DateTime?           @db.Timestamptz(3)
-  completedAt         DateTime?           @db.Timestamptz(3)
+  currentAttempt      Int                    @default(0)
+  maxAttempts         Int                    @default(3)
+  availableAt         DateTime               @default(now()) @db.Timestamptz(3)
+  startedAt           DateTime?              @db.Timestamptz(3)
+  completedAt         DateTime?              @db.Timestamptz(3)
   failureCategory     String?
   failureCode         String?
-  createdAt           DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime            @updatedAt @db.Timestamptz(3)
-  processDefinition   AIProcessDefinition @relation(fields: [processDefinitionId], references: [id], onDelete: Restrict)
+  createdAt           DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime               @updatedAt @db.Timestamptz(3)
+  processDefinition   AIProcessDefinition    @relation(fields: [processDefinitionId], references: [id], onDelete: Restrict)
   outputs             AIJobOutput[]
   artifacts           CreditReportArtifact[]
 
@@ -1212,8 +1266,8 @@ model AIJob {
 }
 
 model AIJobOutput {
-  id                  String       @id @default(uuid()) @db.Uuid
-  jobId               String       @db.Uuid
+  id                  String                 @id @default(uuid()) @db.Uuid
+  jobId               String                 @db.Uuid
   outputVersion       Int
   outputSchemaVersion Int
   status              String
@@ -1224,9 +1278,9 @@ model AIJobOutput {
   humanReview         Json
   provenance          Json
   sourceVersions      Json
-  staleAt             DateTime?    @db.Timestamptz(3)
-  createdAt           DateTime     @default(now()) @db.Timestamptz(3)
-  job                 AIJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  staleAt             DateTime?              @db.Timestamptz(3)
+  createdAt           DateTime               @default(now()) @db.Timestamptz(3)
+  job                 AIJob                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
   artifacts           CreditReportArtifact[]
 
   @@unique([jobId, outputVersion])
@@ -1376,6 +1430,137 @@ model PlanAction {
 
   @@unique([sourceType, sourceId, title])
   @@index([clientId, status, sortOrder])
+}
+
+model Plan {
+  id        String              @id @default(uuid()) @db.Uuid
+  clientId  String              @db.Uuid
+  purpose   PlanPurpose
+  status    PlanLifecycleStatus @default(DRAFT)
+  title     String
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  client    Client              @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  versions  PlanVersion[]
+
+  @@index([clientId, status, updatedAt])
+}
+
+model PlanVersion {
+  id                   String              @id @default(uuid()) @db.Uuid
+  planId               String              @db.Uuid
+  version              Int
+  status               PlanLifecycleStatus @default(DRAFT)
+  sourceReviewId       String?             @db.Uuid
+  sourceReviewVersion  Int?
+  sourceGoalRevisionId String?             @db.Uuid
+  sourceProfileVersion Int?
+  sourceFingerprint    String
+  supersedesVersionId  String?             @db.Uuid
+  optimisticVersion    Int                 @default(1)
+  approvedById         String?             @db.Uuid
+  approvedAt           DateTime?
+  activatedAt          DateTime?
+  staleAt              DateTime?
+  staleReason          String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  plan                 Plan                @relation(fields: [planId], references: [id], onDelete: Cascade)
+  supersedes           PlanVersion?        @relation("PlanVersionLineage", fields: [supersedesVersionId], references: [id], onDelete: Restrict)
+  replacements         PlanVersion[]       @relation("PlanVersionLineage")
+  items                PlanItem[]
+  paths                PlanPath[]
+
+  @@unique([planId, version])
+  @@index([planId, status, version])
+  @@index([sourceReviewId, sourceReviewVersion])
+  @@index([sourceGoalRevisionId])
+}
+
+model PlanItem {
+  id                  String                  @id @default(uuid()) @db.Uuid
+  planVersionId       String                  @db.Uuid
+  stableKey           String
+  type                PlanItemType
+  completionMode      PlanCompletionMode
+  status              PlanItemExecutionStatus @default(LOCKED)
+  owner               PlanActionOwner
+  clientTitle         String
+  clientBody          String?
+  consultantRationale String?
+  sortOrder           Int                     @default(0)
+  required            Boolean                 @default(true)
+  targetAt            DateTime?
+  dueAt               DateTime?
+  deepLink            String?
+  outcomeSchema       Json?
+  manuallyProtected   Boolean                 @default(false)
+  acknowledgedAt      DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  planVersion         PlanVersion             @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  pathMemberships     PlanPathItem[]
+  prerequisites       PlanDependency[]        @relation("PlanDependent")
+  dependents          PlanDependency[]        @relation("PlanPrerequisite")
+  outcomes            PlanItemOutcome[]
+
+  @@unique([planVersionId, stableKey])
+  @@index([planVersionId, status, sortOrder, id])
+}
+
+model PlanPath {
+  id            String         @id @default(uuid()) @db.Uuid
+  planVersionId String         @db.Uuid
+  key           String
+  clientLabel   String
+  internalLabel String?
+  status        PlanPathStatus @default(AVAILABLE)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  planVersion   PlanVersion    @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  items         PlanPathItem[]
+
+  @@unique([planVersionId, key])
+  @@index([planVersionId, status, sortOrder])
+}
+
+model PlanPathItem {
+  pathId String   @db.Uuid
+  itemId String   @db.Uuid
+  path   PlanPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  item   PlanItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([pathId, itemId])
+  @@index([itemId])
+}
+
+model PlanDependency {
+  id                 String             @id @default(uuid()) @db.Uuid
+  dependentItemId    String             @db.Uuid
+  prerequisiteItemId String             @db.Uuid
+  groupKey           String             @default("default")
+  mode               PlanDependencyMode @default(ALL)
+  dependentItem      PlanItem           @relation("PlanDependent", fields: [dependentItemId], references: [id], onDelete: Cascade)
+  prerequisiteItem   PlanItem           @relation("PlanPrerequisite", fields: [prerequisiteItemId], references: [id], onDelete: Cascade)
+
+  @@unique([dependentItemId, prerequisiteItemId])
+  @@index([prerequisiteItemId])
+}
+
+model PlanItemOutcome {
+  id             String   @id @default(uuid()) @db.Uuid
+  planItemId     String   @db.Uuid
+  idempotencyKey String
+  actorId        String   @db.Uuid
+  kind           String
+  data           Json?
+  createdAt      DateTime @default(now())
+  planItem       PlanItem @relation(fields: [planItemId], references: [id], onDelete: Restrict)
+
+  @@unique([planItemId, idempotencyKey])
+  @@index([planItemId, createdAt])
 }
 
 model ReadinessAssessment {
@@ -1819,29 +2004,29 @@ model ReviewCreditTransaction {
 }
 
 model Payment {
-  id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clientId                String          @db.Uuid
-  purchaseId              String          @db.Uuid
+  id                      String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId                String                  @db.Uuid
+  purchaseId              String                  @db.Uuid
   provider                PaymentProvider
-  state                   PaymentState    @default(PENDING)
-  amount                  Decimal         @db.Decimal(12, 2)
-  currency                String          @default("USD")
+  state                   PaymentState            @default(PENDING)
+  amount                  Decimal                 @db.Decimal(12, 2)
+  currency                String                  @default("USD")
   providerPaymentId       String?
   providerOrderId         String?
   providerCustomerId      String?
   checkoutUrl             String?
-  providerEnvironment     String          @default("SANDBOX")
+  providerEnvironment     String                  @default("SANDBOX")
   lastErrorCode           String?
   verifiedProviderEventId String?
   occurredAt              DateTime?
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  client                  Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  purchase                ServicePurchase @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  client                  Client                  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  purchase                ServicePurchase         @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
   providerEvents          PaymentProviderEvent[]
   refunds                 PaymentRefund[]
   disputes                PaymentDispute[]
-  reconciliationAttempts PaymentReconciliation[]
+  reconciliationAttempts  PaymentReconciliation[]
 
   @@unique([provider, verifiedProviderEventId])
   @@index([purchaseId, createdAt])
@@ -1851,22 +2036,22 @@ model Payment {
 }
 
 model PaymentGatewayConfig {
-  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  provider              PaymentProvider @unique
-  environment           String          @default("SANDBOX")
-  configured            Boolean         @default(false)
-  connected             Boolean         @default(false)
-  enabledForNewPayments Boolean         @default(false)
-  defaultForCheckout    Boolean         @default(false)
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider              PaymentProvider   @unique
+  environment           String            @default("SANDBOX")
+  configured            Boolean           @default(false)
+  connected             Boolean           @default(false)
+  enabledForNewPayments Boolean           @default(false)
+  defaultForCheckout    Boolean           @default(false)
   status                IntegrationStatus @default(UNTESTED)
   configurationMetadata Json?
   secretReferences      String[]
-  lastTestedAt          DateTime?       @db.Timestamptz(3)
-  lastSuccessAt         DateTime?       @db.Timestamptz(3)
+  lastTestedAt          DateTime?         @db.Timestamptz(3)
+  lastSuccessAt         DateTime?         @db.Timestamptz(3)
   lastErrorCategory     String?
-  version               Int             @default(1)
-  createdAt             DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
+  version               Int               @default(1)
+  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime          @updatedAt @db.Timestamptz(3)
 
   @@index([enabledForNewPayments, defaultForCheckout])
 }
@@ -1898,59 +2083,59 @@ model PaymentRefund {
 }
 
 model PaymentDispute {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentId         String          @db.Uuid
-  clientId          String          @db.Uuid
-  provider          PaymentProvider
-  providerDisputeId String
-  status            DisputeStatus   @default(OPEN)
-  amount            Decimal?        @db.Decimal(12, 2)
-  currency          String?
-  reason            String?
-  category          String?
-  evidenceDueAt     DateTime?       @db.Timestamptz(3)
-  providerOccurredAt DateTime?      @db.Timestamptz(3)
-  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime        @updatedAt @db.Timestamptz(3)
-  payment           Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId          String          @db.Uuid
+  clientId           String          @db.Uuid
+  provider           PaymentProvider
+  providerDisputeId  String
+  status             DisputeStatus   @default(OPEN)
+  amount             Decimal?        @db.Decimal(12, 2)
+  currency           String?
+  reason             String?
+  category           String?
+  evidenceDueAt      DateTime?       @db.Timestamptz(3)
+  providerOccurredAt DateTime?       @db.Timestamptz(3)
+  createdAt          DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime        @updatedAt @db.Timestamptz(3)
+  payment            Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
 
   @@unique([provider, providerDisputeId])
   @@index([paymentId, status, createdAt])
 }
 
 model PaymentReconciliation {
-  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentId        String               @db.Uuid
-  provider         PaymentProvider
-  idempotencyKey   String
-  status           ReconciliationStatus
-  beforeState      PaymentState
-  providerState    PaymentState?
-  corrected        Boolean              @default(false)
-  errorCode        String?
-  actorId          String?              @db.Uuid
-  createdAt        DateTime             @default(now()) @db.Timestamptz(3)
-  payment          Payment              @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId      String               @db.Uuid
+  provider       PaymentProvider
+  idempotencyKey String
+  status         ReconciliationStatus
+  beforeState    PaymentState
+  providerState  PaymentState?
+  corrected      Boolean              @default(false)
+  errorCode      String?
+  actorId        String?              @db.Uuid
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  payment        Payment              @relation(fields: [paymentId], references: [id], onDelete: Restrict)
 
   @@unique([paymentId, idempotencyKey])
   @@index([paymentId, createdAt])
 }
 
 model PaymentProviderEvent {
-  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  provider          PaymentProvider
-  providerEventId   String
-  eventType         String
-  disposition       PaymentEventDisposition @default(APPLIED)
-  normalizedState   PaymentState?
-  paymentId         String?                 @db.Uuid
-  actorId           String?                 @db.Uuid
-  safeMetadata      Json?
-  occurredAt        DateTime?               @db.Timestamptz(3)
-  verifiedAt        DateTime                @default(now()) @db.Timestamptz(3)
-  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
-  payment           Payment?                @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  actor             User?                   @relation("PaymentEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider        PaymentProvider
+  providerEventId String
+  eventType       String
+  disposition     PaymentEventDisposition @default(APPLIED)
+  normalizedState PaymentState?
+  paymentId       String?                 @db.Uuid
+  actorId         String?                 @db.Uuid
+  safeMetadata    Json?
+  occurredAt      DateTime?               @db.Timestamptz(3)
+  verifiedAt      DateTime                @default(now()) @db.Timestamptz(3)
+  createdAt       DateTime                @default(now()) @db.Timestamptz(3)
+  payment         Payment?                @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  actor           User?                   @relation("PaymentEventActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@unique([provider, providerEventId])
   @@index([paymentId, createdAt])
