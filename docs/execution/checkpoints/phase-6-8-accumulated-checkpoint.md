@@ -111,4 +111,7 @@ The acceptance proof performs eligibility, review start, protected report upload
 
 ### CI and final head
 
-The exact final commit and CI run URL are recorded after the report commit is pushed. The branch remains separate from `ai-enabled`; Phase 9 was not started.
+- Consolidated implementation/report commit: `a1b889d103d290050a5c705e11185a4b7e82d512`.
+- Exact-final-head CI: pending the evidence-only report commit and push; the successful run URL is added as a post-CI evidence addendum rather than rewriting the tested implementation.
+
+The branch remains separate from `ai-enabled`; Phase 9 was not started.
