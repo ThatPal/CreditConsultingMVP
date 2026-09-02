@@ -797,6 +797,18 @@ enum AIConfidence {
   LOW
 }
 
+enum ReviewExceptionStatus {
+  OPEN
+  RESOLVED
+  ACCEPTED
+}
+
+enum ReviewFindingStatus {
+  PROPOSED
+  APPROVED
+  DISMISSED
+}
+
 model ClientUpdate {
   id            String               @id @default(uuid()) @db.Uuid
   clientId      String               @db.Uuid
@@ -976,6 +988,9 @@ model CreditReview {
   snapshotId               String?                   @unique @db.Uuid
   reviewCreditTransactions ReviewCreditTransaction[]
   clientUpdates            ClientUpdate[]
+  drafts                   ReviewDraft[]
+  draftOverrides           ReviewDraftOverride[]
+  verificationExceptions  ReviewVerificationException[]
 
   @@index([clientId, status, createdAt])
   @@index([clientId, intendedReportDate, createdAt])
@@ -1035,6 +1050,62 @@ model CreditReportDocument {
   aiArtifacts      CreditReportArtifact[]
 
   @@index([uploadedByUserId, uploadedAt])
+}
+
+model ReviewDraft {
+  id                     String   @id @default(uuid()) @db.Uuid
+  reviewId               String   @db.Uuid
+  version                Int
+  sourceVersions         Json
+  profile                Json
+  contextVersion         String
+  createdByUserId        String   @db.Uuid
+  createdAt              DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime @updatedAt @db.Timestamptz(3)
+  review                 CreditReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  overrides              ReviewDraftOverride[]
+
+  @@unique([reviewId, version])
+  @@index([reviewId, updatedAt])
+}
+
+model ReviewDraftOverride {
+  id                String   @id @default(uuid()) @db.Uuid
+  reviewId          String   @db.Uuid
+  draftId           String   @db.Uuid
+  fieldPath         String
+  originalValue     Json
+  effectiveValue    Json
+  reason            String
+  sourceReference   Json
+  actorId           String   @db.Uuid
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  review            CreditReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  draft             ReviewDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, fieldPath])
+  @@index([reviewId, createdAt])
+}
+
+model ReviewVerificationException {
+  id                String   @id @default(uuid()) @db.Uuid
+  reviewId          String   @db.Uuid
+  exceptionKey      String
+  category          String
+  summary           String
+  materiality       String
+  blocking          Boolean
+  status            ReviewExceptionStatus @default(OPEN)
+  evidence          Json
+  resolutionReason  String?
+  resolvedByUserId  String?  @db.Uuid
+  resolvedAt        DateTime? @db.Timestamptz(3)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+  review            CreditReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, exceptionKey])
+  @@index([reviewId, status, blocking])
 }
 
 model AIProcessDefinition {
