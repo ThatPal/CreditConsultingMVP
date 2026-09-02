@@ -1,10 +1,16 @@
 # Sprint 5.5 — Gateway Selection, Refunds, Disputes & Reconciliation
 
-Status: COMPLETE — pending exact-boundary GitHub CI at initial commit time  
-Package: Continuous Rapid-Build Contract & Codex Package, retrieved 2026-09-01  
-Branch: `rapid/phase4-5-client-commerce`  
-Accepted base: `efe7f4b1babf152a62edd098363f5ed0dac9f6c1`  
-Implementation/final boundary: recorded after commit and CI below
+Status: COMPLETE
+
+Package: Continuous Rapid-Build Contract & Codex Package, retrieved 2026-09-01
+
+Branch: `rapid/phase4-5-client-commerce`
+
+Accepted base: `efe7f4b1babf152a62edd098363f5ed0dac9f6c1`
+
+Implementation boundary: `7e4ac96269e822c395ec4a30fcb576e4ad8673e6`
+
+Final report boundary: the docs-only commit containing this CI result
 
 ## Delivered outcome
 
@@ -64,7 +70,7 @@ Admin can inspect configured/connected/enabled/default state and capabilities, t
 - Web build: PASS (existing non-blocking Vite chunk-size advisory only).
 - Persistent migration deploy and demo scenario refresh: PASS.
 - Clean migration + system seed: PASS.
-- GitHub CI: PENDING final push.
+- Implementation-boundary GitHub CI: PASS — run `33573878644` on `7e4ac96269e822c395ec4a30fcb576e4ad8673e6`.
 
 ## Requirement reconciliation
 
