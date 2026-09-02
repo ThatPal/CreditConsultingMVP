@@ -141,6 +141,14 @@ describe('business command to authorized realtime refetch', () => {
     const outbox = await prisma.outboxEvent.findUniqueOrThrow({
       where: { eventKey: `${suite}:${key}` },
     });
+    // The accumulated suite intentionally shares a database and may contain
+    // unrelated pending fixtures. Put this proof event at the front of the
+    // production worker's bounded oldest-first claim without deleting or
+    // mutating another test's durable state.
+    await prisma.outboxEvent.update({
+      where: { id: outbox.id },
+      data: { createdAt: new Date('2000-01-01T00:00:00.000Z') },
+    });
     expect(await prisma.clientGoal.count({ where: { clientId: client.id } })).toBe(1);
     expect(await prisma.auditEvent.count({ where: { correlationId: key } })).toBe(1);
     expect(await prisma.outboxEvent.count({ where: { eventKey: `${suite}:${key}` } })).toBe(1);
@@ -191,7 +199,10 @@ describe('business command to authorized realtime refetch', () => {
     });
     await prisma.outboxEvent.update({
       where: { id: outbox.id },
-      data: { availableAt: new Date(Date.now() + 60_000) },
+      data: {
+        availableAt: new Date(Date.now() + 60_000),
+        createdAt: new Date('2000-01-01T00:00:00.000Z'),
+      },
     });
 
     const firstWorker = await startOutboxRuntime({
