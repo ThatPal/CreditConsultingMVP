@@ -9,4 +9,4 @@ Publication is consultant-only and fails closed for a missing or mismatched revi
 
 Real-database acceptance proof: 3 transaction scenarios passed, covering injected mid-transaction rollback followed by successful retry and replay; exactly one publication, audit event, outbox event and notification; concurrent publication convergence; internal-field exclusion; and zero publications for blocking, stale, unapproved and unauthorized attempts. Sprint 8.1/8.2 focused regression (8 tests), API typecheck and repository lint also passed before the boundary.
 
-Mandatory immediate exact-head CI: pending report-boundary push. Sprint 8.4 must not begin until this gate is green.
+Mandatory immediate CI passed on report boundary `dcd1ad79075a317ed861a06c0a3a3fe6cbcb946f`: GitHub Actions run [33656981787](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33656981787) completed successfully, including migration deploy, repeatable system seed, lint, typecheck, complete tests and build. This green gate authorizes entry into Sprint 8.4.
