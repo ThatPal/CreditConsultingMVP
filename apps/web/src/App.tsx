@@ -37,6 +37,7 @@ import {
 import { ConsultantDashboardPage, ReadinessPage, WorkQueuePage } from './pages/PlatformPages';
 import { Client360Page, ClientsPage } from './pages/ClientContextPages';
 import { ClientHomePage, ClientJourneyPage } from './pages/JourneyPages';
+import { ClientPlanPage, ConsultantPlanBuilderPage } from './pages/PlanPages';
 import {
   ClientReviewPage,
   ConsultantReviewsPage,
@@ -92,6 +93,7 @@ export function App() {
         <Route path="/app" element={<ClientAppShell />}>
           <Route index element={<ClientHomePage />} />
           <Route path="journey" element={<ClientJourneyPage />} />
+          <Route path="plan" element={<ClientPlanPage />} />
           <Route path="credit-center" element={<PublishedCreditCenterPage view="overview" />} />
           <Route
             path="credit-center/profile"
@@ -141,6 +143,7 @@ export function App() {
           <Route path="work-queue" element={<WorkQueuePage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:clientId" element={<Client360Page />} />
+          <Route path="clients/:clientId/plan" element={<ConsultantPlanBuilderPage />} />
           <Route
             path="clients/:clientId/credit-center"
             element={<ConsultantClientCreditCenterPage />}

@@ -39,6 +39,7 @@ import { createJourneyRouter } from './journey/routes.js';
 import { createCommerceRouter } from './commerce/routes.js';
 import { createPaymentGatewayRegistry } from './commerce/paymentGateway.js';
 import { createPaymentRouter, createPaymentWebhookRouter } from './commerce/paymentRoutes.js';
+import { createPlanRouter } from './plans/routes.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -138,6 +139,7 @@ export function createApp(
       app.use('/api/v1/client/goal-intakes', createGoalIntakeBindingRouter(prisma));
       app.use('/api/v1', createClientContextRouter(prisma, authorization, denialRecorder));
       app.use('/api/v1', createJourneyRouter(prisma, authorization, denialRecorder));
+      app.use('/api/v1', createPlanRouter(prisma, authorization, denialRecorder));
       app.use(
         '/api/v1',
         createCommerceRouter(prisma, authorization, denialRecorder, paymentGateways.getDefault()),
