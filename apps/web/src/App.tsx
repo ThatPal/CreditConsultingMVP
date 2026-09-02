@@ -41,8 +41,11 @@ import {
   ClientReviewPage,
   ConsultantReviewsPage,
   ConsultantReviewWorkspacePage,
-  CreditProfilePage,
 } from './pages/ReviewPages';
+import {
+  ConsultantClientCreditCenterPage,
+  PublishedCreditCenterPage,
+} from './pages/PublishedCreditCenterPages';
 
 const DesignSystemPage = lazy(() =>
   import('./pages/dev/DesignSystemPage').then((module) => ({ default: module.DesignSystemPage })),
@@ -89,7 +92,23 @@ export function App() {
         <Route path="/app" element={<ClientAppShell />}>
           <Route index element={<ClientHomePage />} />
           <Route path="journey" element={<ClientJourneyPage />} />
-          <Route path="credit-center" element={<CreditProfilePage />} />
+          <Route path="credit-center" element={<PublishedCreditCenterPage view="overview" />} />
+          <Route
+            path="credit-center/profile"
+            element={<PublishedCreditCenterPage view="profile" />}
+          />
+          <Route
+            path="credit-center/report"
+            element={<PublishedCreditCenterPage view="report" />}
+          />
+          <Route
+            path="credit-center/analysis"
+            element={<PublishedCreditCenterPage view="analysis" />}
+          />
+          <Route
+            path="credit-center/history"
+            element={<PublishedCreditCenterPage view="history" />}
+          />
           <Route path="credit-center/review" element={<ClientReviewPage />} />
           <Route path="readiness" element={<ReadinessPage />} />
           <Route path="cards" element={<CardsPage />} />
@@ -122,6 +141,14 @@ export function App() {
           <Route path="work-queue" element={<WorkQueuePage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:clientId" element={<Client360Page />} />
+          <Route
+            path="clients/:clientId/credit-center"
+            element={<ConsultantClientCreditCenterPage />}
+          />
+          <Route
+            path="clients/:clientId/reviews/:reviewId"
+            element={<ConsultantReviewWorkspacePage />}
+          />
           <Route path="reviews" element={<ConsultantReviewsPage />} />
           <Route path="reviews/:clientId/:reviewId" element={<ConsultantReviewWorkspacePage />} />
           <Route path="readiness" element={<ReadinessPage consultant />} />

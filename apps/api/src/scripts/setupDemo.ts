@@ -318,6 +318,160 @@ try {
       },
     },
   });
+  const publishedReportKey = `credit-reports/${client.id}/demo-published-credit-report.pdf`;
+  const publishedReportBytes = makeReviewPdf();
+  const reviewStorage = createLocalDocumentStorage();
+  if (!(await reviewStorage.read(publishedReportKey)))
+    await reviewStorage.put(publishedReportKey, publishedReportBytes);
+  const publishedReport = await prisma.creditReportDocument.upsert({
+    where: { storageKey: publishedReportKey },
+    create: {
+      storageKey: publishedReportKey,
+      originalFileName: 'Demo Three-Bureau Credit Report.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: publishedReportBytes.length,
+      sha256: createHash('sha256').update(publishedReportBytes).digest('hex'),
+      validationStatus: 'ACCEPTED',
+      sourceEntered: 'Three-bureau monitoring export',
+      reportDateEntered: daysAgo(2),
+      reportDate: daysAgo(2),
+      uploadedByUserId: clientUser.id,
+    },
+    update: {
+      sizeBytes: publishedReportBytes.length,
+      sha256: createHash('sha256').update(publishedReportBytes).digest('hex'),
+      validationStatus: 'ACCEPTED',
+    },
+  });
+  let publishedPurchase = await prisma.servicePurchase.findFirst({
+    where: { clientId: client.id, paymentReference: 'DEMO-PUBLISHED-REVIEW-001' },
+  });
+  publishedPurchase ??= await prisma.servicePurchase.create({
+    data: {
+      clientId: client.id,
+      serviceType: 'CREDIT_PROFILE_REVIEW',
+      amount: 0,
+      status: 'PAID',
+      paymentProvider: 'MANUAL',
+      paymentReference: 'DEMO-PUBLISHED-REVIEW-001',
+      purchasedAt: daysAgo(3),
+    },
+  });
+  let publishedReview = await prisma.creditReview.findFirst({
+    where: { clientId: client.id, intake: { reportDocumentId: publishedReport.id } },
+  });
+  publishedReview ??= await prisma.creditReview.create({
+    data: {
+      clientId: client.id,
+      purchaseId: publishedPurchase.id,
+      consultantId: consultant.id,
+      status: 'COMPLETE',
+      recommendation: 'PREPARE_FIRST',
+      generalReadiness: 'MEDIUM',
+      clientSummary:
+        'Your payment foundation is strong. Lower revolving utilization before the next application.',
+      completedAt: daysAgo(1),
+      submittedAt: daysAgo(2),
+      intake: {
+        create: {
+          reportDocumentId: publishedReport.id,
+          reportDocumentKey: publishedReportKey,
+          reportSource: 'Three-bureau monitoring export',
+          reportDate: daysAgo(2),
+          clientConfirmedAt: daysAgo(2),
+          submittedAt: daysAgo(2),
+        },
+      },
+    },
+  });
+  if (
+    !(await prisma.publishedCreditReview.findUnique({ where: { reviewId: publishedReview.id } }))
+  ) {
+    const snapshot = await prisma.creditSnapshot.create({
+      data: {
+        clientId: client.id,
+        capturedAt: daysAgo(2),
+        expiresAt: new Date(Date.now() + 178 * 86_400_000),
+        source: 'PUBLISHED_CREDIT_REVIEW',
+        experianScore: 718,
+        equifaxScore: 711,
+        transunionScore: 724,
+        aggregateUtilization: 38,
+        revolvingBalance: 15_200,
+        revolvingLimit: 40_000,
+        openAccounts: 8,
+        recentInquiries: 3,
+        derogatoryItems: 0,
+      },
+    });
+    await prisma.$transaction([
+      prisma.publishedCreditReview.create({
+        data: {
+          reviewId: publishedReview.id,
+          clientId: client.id,
+          snapshotId: snapshot.id,
+          idempotencyKey: 'demo-phase-8-published-review',
+          sourceVersions: { report: publishedReport.sha256, scenario: 'phase-8-review' },
+          clientSafeProjection: {
+            profile: {
+              experianScore: 718,
+              equifaxScore: 711,
+              transunionScore: 724,
+              aggregateUtilization: 38,
+              revolvingBalance: 15_200,
+              revolvingLimit: 40_000,
+              openAccounts: 8,
+              recentInquiries: 3,
+              derogatoryItems: 0,
+            },
+            analysisSummary:
+              'Your payment foundation is strong. Lower revolving utilization before the next application.',
+            findings: [
+              {
+                code: 'payment-history',
+                title: 'Strong payment foundation',
+                summary: 'Your reported payment history is supporting your profile.',
+                severity: 'POSITIVE',
+              },
+              {
+                code: 'utilization',
+                title: 'Utilization opportunity',
+                summary: 'Lower revolving balances before the next application.',
+                severity: 'CAUTION',
+              },
+            ],
+            recommendation: {
+              outcome: 'PREPARE_FIRST',
+              explanation: 'Reduce utilization before beginning the next application round.',
+              reasons: ['Lower revolving utilization'],
+            },
+          },
+          recommendation: 'PREPARE_FIRST',
+          publishedByUserId: consultant.id,
+          publishedAt: daysAgo(1),
+        },
+      }),
+      prisma.creditReview.update({
+        where: { id: publishedReview.id },
+        data: { snapshotId: snapshot.id },
+      }),
+      prisma.creditProfileState.upsert({
+        where: { clientId: client.id },
+        create: {
+          clientId: client.id,
+          status: 'CURRENT',
+          sourceReviewId: publishedReview.id,
+          effectiveAt: daysAgo(1),
+        },
+        update: {
+          status: 'CURRENT',
+          sourceReviewId: publishedReview.id,
+          effectiveAt: daysAgo(1),
+          staleAt: null,
+        },
+      }),
+    ]);
+  }
   const existingWork = await prisma.workItem.findFirst({
     where: {
       clientId: client.id,
@@ -668,6 +822,7 @@ try {
       {
         clientId: client.id,
         reviewId: review.id,
+        publishedReviewId: publishedReview.id,
         accounts: ['client@credit.local', 'consultant@credit.local', 'admin@credit.local'],
         reviewVolume: {
           documents: 25,
@@ -690,6 +845,11 @@ try {
           'PayPal default with partial refund',
           'Stripe disabled for new checkout with historical dispute',
           'BofA historical payment with refund/reconciliation capability blocked',
+        ],
+        phase8Scenarios: [
+          'published client Credit Center overview, profile, report, analysis, and history',
+          'consultant CRM published Credit Center projection',
+          'separate active unpublished Review remains private',
         ],
       },
       null,

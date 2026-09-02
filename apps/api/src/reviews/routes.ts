@@ -25,6 +25,8 @@ import {
 } from './reviewLifecycle.js';
 import { validateCreditReportUpload } from './reportValidation.js';
 import { submitCreditReview } from './reviewSubmission.js';
+import { getPublishedCreditCenter } from './publishedCreditCenter.js';
+import { publishCreditReview } from './publishCreditReview.js';
 
 const startSchema = z.object({ intendedReportDate: z.coerce.date() });
 const creditAccountReviewSchema = z.object({
@@ -265,6 +267,67 @@ export function createReviewRouter(
 ) {
   const router = Router();
   router.use(requireAuth);
+
+  router.get(
+    '/consultant/:clientId/credit-center',
+    requireRole('CONSULTANT'),
+    requireClientAccess(authorization, 'clientId', denialRecorder),
+    async (req, res, next) => {
+      try {
+        const clientId = req.params.clientId as string;
+        const [client, creditCenter] = await Promise.all([
+          prisma.client.findUnique({
+            where: { id: clientId },
+            select: { id: true, firstName: true, lastName: true },
+          }),
+          getPublishedCreditCenter(prisma, clientId),
+        ]);
+        if (!client) throw new AppError('NOT_FOUND', 404, 'Client was not found');
+        res.json({ client, ...creditCenter });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.post(
+    '/consultant/:clientId/:reviewId/publish',
+    requireRole('CONSULTANT'),
+    requireCapability(
+      authorization,
+      'review.publish',
+      'clientId',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+    async (req, res, next) => {
+      try {
+        const input = parse(
+          z.object({ expectedDraftVersion: z.number().int().positive() }),
+          req.body,
+        );
+        const idempotencyKey = req.get('idempotency-key');
+        if (!idempotencyKey)
+          throw new AppError('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key is required');
+        const publication = await publishCreditReview(prisma, {
+          reviewId: req.params.reviewId as string,
+          clientId: req.params.clientId as string,
+          actorId: req.auth!.userId,
+          actorRole: req.auth!.role,
+          idempotencyKey,
+          expectedDraftVersion: input.expectedDraftVersion,
+        });
+        publishLiveUpdate(
+          req.params.clientId as string,
+          'review',
+          'credit-profile',
+          'notifications',
+        );
+        res.json({ publication });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get('/report-documents/client', requireRole('CLIENT'), async (req, res, next) => {
     try {
@@ -1271,47 +1334,7 @@ export function createCreditProfileRouter(prisma: PrismaClient) {
   router.use(requireAuth, requireRole('CLIENT'));
   router.get('/', async (req, res, next) => {
     try {
-      const [reviews, actions] = await Promise.all([
-        prisma.creditReview.findMany({
-          where: { clientId: req.auth!.clientId!, status: 'COMPLETE' },
-          orderBy: { completedAt: 'desc' },
-          include: includeReview,
-          take: 24,
-        }),
-        prisma.planAction.findMany({
-          where: { clientId: req.auth!.clientId!, status: { notIn: ['CANCELLED'] } },
-          orderBy: [{ status: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-          take: 100,
-        }),
-      ]);
-      const review = reviews[0] ?? null;
-      const now = new Date();
-      const generalReadiness = !review
-        ? 'NEEDS_REVIEW'
-        : !review.readinessExpiresAt || review.readinessExpiresAt <= now
-          ? 'EXPIRED'
-          : review.generalReadiness;
-      res.json({
-        profile: review
-          ? {
-              review: present(review),
-              history: reviews.map(present),
-              generalReadiness,
-              freshness: {
-                asOf: review.snapshot?.capturedAt ?? null,
-                expiresAt: review.readinessExpiresAt,
-                isCurrent: generalReadiness !== 'EXPIRED',
-              },
-              actions,
-            }
-          : {
-              review: null,
-              history: [],
-              generalReadiness,
-              freshness: { asOf: null, expiresAt: null, isCurrent: false },
-              actions,
-            },
-      });
+      res.json(await getPublishedCreditCenter(prisma, req.auth!.clientId!));
     } catch (error) {
       next(error);
     }

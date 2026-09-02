@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { createPrisma } from '../lib/prisma.js';
 import { publishCreditReview } from './publishCreditReview.js';
+import { getPublishedCreditCenter } from './publishedCreditCenter.js';
 describe('Sprint 8.3 immutable publication transaction', () => {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is required');
@@ -129,8 +130,12 @@ describe('Sprint 8.3 immutable publication transaction', () => {
     expect(
       await prisma.creditSnapshot.count({ where: { clientId, source: 'PUBLISHED_CREDIT_REVIEW' } }),
     ).toBe(0);
+    expect((await getPublishedCreditCenter(prisma, clientId)).current).toBeNull();
     await publishCreditReview(prisma, input);
     await publishCreditReview(prisma, input);
+    const creditCenter = await getPublishedCreditCenter(prisma, clientId);
+    expect(creditCenter.current?.reviewId).toBe(review.id);
+    expect(creditCenter.history).toHaveLength(1);
     expect(await prisma.publishedCreditReview.count({ where: { reviewId: review.id } })).toBe(1);
     expect(
       await prisma.auditEvent.count({
