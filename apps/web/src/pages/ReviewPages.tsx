@@ -2457,7 +2457,10 @@ export function ClientReviewPage({
     mutationFn: async () => {
       await persistIntake();
       const review = query.data!.review!;
-      return apiRequest(`/api/v1/reviews/client/${review.id}/submit`, { method: 'POST' });
+      return apiRequest(`/api/v1/reviews/client/${review.id}/submit`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['review'] }),
   });
@@ -2625,6 +2628,17 @@ export function ClientReviewPage({
                 : 'No further action is needed right now. Your consultant will begin the Review and contact you if anything else is required.'}
           </Typography>
         </Box>
+
+        {!reviewComplete && (
+          <Button
+            component={Link}
+            to={`/app/support?contextType=REVIEW&contextResourceId=${encodeURIComponent(review.id)}`}
+            variant="outlined"
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Ask support about this Review
+          </Button>
+        )}
 
         <Box
           sx={{

@@ -24,6 +24,7 @@ import {
   startCreditReview,
 } from './reviewLifecycle.js';
 import { validateCreditReportUpload } from './reportValidation.js';
+import { submitCreditReview } from './reviewSubmission.js';
 
 const startSchema = z.object({ intendedReportDate: z.coerce.date() });
 const creditAccountReviewSchema = z.object({
@@ -781,97 +782,20 @@ export function createReviewRouter(
     try {
       const clientId = req.auth!.clientId!;
       const reviewId = req.params.reviewId as string;
-      const review = await prisma.$transaction(async (tx) => {
-        const current = await tx.creditReview.findFirst({
-          where: {
-            id: reviewId,
-            clientId,
-            status: { in: ['INTAKE_REQUIRED', 'INFORMATION_REQUESTED'] },
-          },
-          include: { intake: true },
-        });
-        if (!current?.intake?.reportDocumentKey || !current.intake.reportDate)
-          throw new AppError(
-            'REVIEW_INTAKE_INCOMPLETE',
-            409,
-            'Report upload and report date are required',
-          );
-        if (
-          !Array.isArray(current.intake.materialChanges) ||
-          current.intake.materialChanges.length === 0
-        )
-          throw new AppError(
-            'REVIEW_INTAKE_INCOMPLETE',
-            409,
-            'Confirm whether anything changed after the report date',
-          );
-        if (current.intake.creditAccountsConfirmed == null)
-          throw new AppError(
-            'REVIEW_INTAKE_INCOMPLETE',
-            409,
-            'Review and confirm the credit accounts in your profile',
-          );
-        if (
-          current.intake.creditAccountsConfirmed === false &&
-          (!Array.isArray(current.intake.creditAccountReviews) ||
-            !current.intake.creditAccountReviews.some(
-              (item) =>
-                typeof item === 'object' &&
-                item !== null &&
-                'status' in item &&
-                item.status !== 'CONFIRMED',
-            ))
-        )
-          throw new AppError(
-            'REVIEW_INTAKE_INCOMPLETE',
-            409,
-            'Add at least one credit-account change before submitting',
-          );
-        await tx.reviewIntake.update({
-          where: { reviewId },
-          data: {
-            clientConfirmedAt: new Date(),
-            submittedAt: new Date(),
-            ...(current.status === 'INFORMATION_REQUESTED'
-              ? { informationResolvedAt: new Date() }
-              : {}),
-          },
-        });
-        const updated = await tx.creditReview.update({
-          where: { id: reviewId },
-          data: {
-            status: 'INFORMATION_RECEIVED',
-            generalReadiness: 'UNDER_REVIEW',
-            submittedAt: new Date(),
-          },
-          include: includeReview,
-        });
-        await tx.workItem.updateMany({
-          where: { clientId, domain: 'CREDIT_REVIEW', status: { in: ['OPEN', 'IN_PROGRESS'] } },
-          data: { status: 'COMPLETED', completedAt: new Date() },
-        });
-        await tx.workItem.create({
-          data: {
-            clientId,
-            assigneeId: null,
-            title: 'Review submitted Credit Profile',
-            domain: 'CREDIT_REVIEW',
-            priority: 'HIGH',
-            suggestedNextAction: 'Open guided Review workspace',
-          },
-        });
-        await tx.auditEvent.create({
-          data: {
-            clientId,
-            actorId: req.auth!.userId,
-            action: 'CREDIT_REVIEW_SUBMITTED',
-            entityType: 'CreditReview',
-            entityId: reviewId,
-          },
-        });
-        return updated;
+      const idempotencyKey = req.get('idempotency-key');
+      if (!idempotencyKey)
+        throw new AppError('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key is required');
+      const submitted = await submitCreditReview(prisma, {
+        clientId,
+        actorId: req.auth!.userId,
+        reviewId,
+        idempotencyKey,
       });
-      res.json({ review: present(review) });
+      const review = await prisma.creditReview.findUnique({
+        where: { id: reviewId },
+        include: includeReview,
+      });
+      res.json({ review: present(review), replayed: submitted.replayed });
     } catch (error) {
       next(error);
     }

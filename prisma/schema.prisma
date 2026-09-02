@@ -941,6 +941,7 @@ model CreditReview {
   clientSummary            String?
   internalNotes            String?
   submittedAt              DateTime?
+  submittedSourceSnapshot  Json?
   reviewStartedAt          DateTime?
   completedAt              DateTime?
   createdAt                DateTime                  @default(now())
