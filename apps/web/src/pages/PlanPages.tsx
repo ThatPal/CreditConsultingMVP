@@ -68,10 +68,32 @@ export function ConsultantPlanBuilderPage() {
 }
 
 export function ClientPlanPage() {
+  const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ['client-plan'], queryFn: () => apiRequest<any>('/api/v1/client/plan') });
+  const [outcomeText, setOutcomeText] = useState('');
+  const act = useMutation({
+    mutationFn: ({ item, action }: { item: any; action: 'COMPLETE' | 'UNABLE' }) =>
+      apiRequest(`/api/v1/client/plan/items/${item.id}/outcomes`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          idempotencyKey: crypto.randomUUID(),
+          action,
+          ...(action === 'UNABLE'
+            ? { reason: outcomeText || 'I need help completing this step.' }
+            : item.completionMode === 'STRUCTURED_OUTCOME'
+              ? { outcome: { clientReport: outcomeText } }
+              : {}),
+        }),
+      }),
+    onSuccess: () => {
+      setOutcomeText('');
+      queryClient.invalidateQueries({ queryKey: ['client-plan'] });
+    },
+  });
   if (query.isLoading) return <Typography>Loading your Plan…</Typography>;
   if (query.isError) return <Alert severity="error">Your Plan could not be loaded.</Alert>;
   if (!query.data?.plan) return <Stack spacing={2}><PageHeader eyebrow="Plan" title="Your next steps" description="An approved Plan will appear here when it is ready." /><Alert severity="info">No approved Plan is available yet.</Alert></Stack>;
   const plan = query.data.plan;
-  return <Stack spacing={3}><PageHeader eyebrow="PORTAL-08" title={plan.title} description="Follow the available steps. Locked milestones open only when their prerequisites are satisfied." />{plan.version.staleAt && <Alert severity="warning">This Plan is being reviewed after a source change. Completed history remains available.</Alert>}<Stack spacing={2}>{plan.version.items.map((item: any) => <Card key={item.id}><CardContent><Stack spacing={1}><Stack direction="row" sx={{ justifyContent: 'space-between' }}><Typography variant="h6">{item.title}</Typography><Chip label={item.status.replaceAll('_',' ')} /></Stack><Typography>{item.body}</Typography>{item.prerequisites.length > 0 && item.status === 'LOCKED' && <Typography color="text.secondary">Available after: {item.prerequisites.map((value: any) => value.title).join(', ')}</Typography>}{item.deepLink && <Button component={Link} to={item.deepLink}>Open related area</Button>}</Stack></CardContent></Card>)}</Stack></Stack>;
+  return <Stack spacing={3}><PageHeader eyebrow="PORTAL-08" title={plan.title} description="Follow the available steps. Locked milestones open only when their prerequisites are satisfied." />{plan.version.staleAt && <Alert severity="warning">This Plan is being reviewed after a source change. Completed history remains available.</Alert>}{act.isError && <Alert severity="error">That outcome was not accepted. Reload the Plan and check prerequisite or verification requirements.</Alert>}<Stack spacing={2}>{plan.version.items.map((item: any) => <Card key={item.id}><CardContent><Stack spacing={1}><Stack direction="row" sx={{ justifyContent: 'space-between' }}><Typography variant="h6">{item.title}</Typography><Chip label={item.status.replaceAll('_',' ')} /></Stack><Typography>{item.body}</Typography>{item.prerequisites.length > 0 && item.status === 'LOCKED' && <Typography color="text.secondary">Available after: {item.prerequisites.map((value: any) => value.title).join(', ')}</Typography>}{item.deepLink && <Button component={Link} to={item.deepLink}>Open related area</Button>}{item.status === 'AVAILABLE' && !['MILESTONE','CONSULTANT_VERIFY','SYSTEM_VERIFY'].includes(item.type) && <Stack spacing={1}><TextField label={item.completionMode === 'STRUCTURED_OUTCOME' ? 'What changed?' : 'Optional note'} value={outcomeText} onChange={(event) => setOutcomeText(event.target.value)} /><Stack direction="row" spacing={1}><Button variant="contained" disabled={act.isPending || (item.completionMode === 'STRUCTURED_OUTCOME' && !outcomeText)} onClick={() => act.mutate({ item, action: 'COMPLETE' })}>{item.type === 'GUIDANCE' ? 'I understand' : 'Report complete'}</Button><Button disabled={act.isPending} onClick={() => act.mutate({ item, action: 'UNABLE' })}>I need help</Button></Stack></Stack>}{item.status === 'AWAITING_VERIFICATION' && <Alert severity="info">Your update was recorded and is awaiting consultant verification.</Alert>}</Stack></CardContent></Card>)}</Stack></Stack>;
 }

@@ -5,7 +5,7 @@ import { requireCapability, requireRole } from '../auth/middleware.js';
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
-import { approvePlan, clientSafeVersion, createPlanDraft, getPlanBuilder, revisePlanDraft } from './service.js';
+import { approvePlan, clientSafeVersion, createPlanDraft, executePlanItem, getPlanBuilder, revisePlanDraft, verifyPlanItem } from './service.js';
 
 const itemSchema = z.object({
   stableKey: z.string().min(1).max(80),
@@ -59,6 +59,22 @@ export function createPlanRouter(prisma: PrismaClient, authorization: Authorizat
       const version = builder.plan?.versions.find(({ status }) => ['ACTIVE', 'APPROVED', 'STALE'].includes(status));
       res.json({ plan: builder.plan && version ? { id: builder.plan.id, title: builder.plan.title, purpose: builder.plan.purpose, status: builder.plan.status, version: clientSafeVersion(version) } : null });
     } catch (error) { next(error); }
+  });
+  router.post('/client/plan/items/:itemId/outcomes', requireRole('CLIENT'), async (req, res, next) => {
+    try {
+      const parsed = z.object({ idempotencyKey: z.string().min(8).max(160), action: z.enum(['COMPLETE', 'UNABLE']), outcome: z.record(z.string(), z.unknown()).optional(), reason: z.string().min(1).max(1000).optional() }).parse(req.body);
+      res.json(
+        await executePlanItem(prisma, {
+          clientId: req.auth!.clientId!,
+          itemId: req.params.itemId as string,
+          actorId: req.auth!.userId,
+          ...parsed,
+        } as Parameters<typeof executePlanItem>[1]),
+      );
+    } catch (error) { next(error); }
+  });
+  router.post('/consultant/clients/:clientId/plan/items/:itemId/verify', requireRole('CONSULTANT'), requireCapability(authorization, 'review.publish', 'clientId', { requireStepUp: true }, recorder), async (req, res, next) => {
+    try { res.json(await verifyPlanItem(prisma, req.params.clientId as string, req.params.itemId as string, req.auth!.userId)); } catch (error) { next(error); }
   });
   return router;
 }

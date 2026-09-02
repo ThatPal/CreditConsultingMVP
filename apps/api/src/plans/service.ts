@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { validatePlanGraph } from './validation.js';
+import { prerequisitesSatisfied } from './validation.js';
 
 export type PlanItemInput = {
   stableKey: string;
@@ -277,5 +278,129 @@ export async function approvePlan(prisma: PrismaClient, clientId: string, planId
     await tx.auditEvent.create({ data: { clientId, actorId, action: 'plan.approved', entityType: 'PlanVersion', entityId: version.id } });
     await tx.outboxEvent.create({ data: { eventType: 'plan.approved', eventKey: `plan-approved:${version.id}`, aggregateType: 'Plan', aggregateId: planId, payload: { clientId, domains: ['plan', 'journey', 'home'] } } });
     return { planId, versionId: version.id, version: version.version };
+  });
+}
+
+export async function executePlanItem(
+  prisma: PrismaClient,
+  input: {
+    clientId: string;
+    itemId: string;
+    actorId: string;
+    idempotencyKey: string;
+    action: 'COMPLETE' | 'UNABLE';
+    outcome?: Prisma.InputJsonValue;
+    reason?: string;
+  },
+) {
+  const existing = await prisma.planItemOutcome.findUnique({
+    where: { planItemId_idempotencyKey: { planItemId: input.itemId, idempotencyKey: input.idempotencyKey } },
+  });
+  if (existing) return { replayed: true, outcomeId: existing.id };
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const item = await tx.planItem.findFirst({
+        where: { id: input.itemId, planVersion: { plan: { clientId: input.clientId } } },
+        include: {
+          planVersion: { include: { plan: true } },
+          prerequisites: true,
+        },
+      });
+      if (!item) throw new AppError('NOT_FOUND', 404, 'Plan item was not found');
+      if (item.planVersion.status !== 'ACTIVE' || item.planVersion.plan.status !== 'ACTIVE')
+        throw new AppError('PLAN_NOT_ACTIVE', 409, 'This Plan is no longer available for new outcomes');
+      if (item.status !== 'AVAILABLE' && item.status !== 'IN_PROGRESS')
+        throw new AppError('PLAN_ITEM_LOCKED', 409, 'Complete the required earlier steps first');
+      if (item.type === 'MILESTONE' || ['CONSULTANT_VERIFY', 'SYSTEM_VERIFY'].includes(item.completionMode))
+        throw new AppError('PLAN_ITEM_VERIFICATION_REQUIRED', 403, 'This step requires authoritative verification');
+      if (item.completionMode === 'STRUCTURED_OUTCOME' && input.action === 'COMPLETE' && input.outcome === undefined)
+        throw new AppError('OUTCOME_REQUIRED', 422, 'A structured outcome is required');
+
+      const outcome = await tx.planItemOutcome.create({
+        data: {
+          planItemId: item.id,
+          idempotencyKey: input.idempotencyKey,
+          actorId: input.actorId,
+          kind: input.action,
+          ...(input.outcome === undefined
+            ? input.reason
+              ? { data: { reason: input.reason } }
+              : {}
+            : { data: input.outcome }),
+        },
+      });
+      const nextStatus =
+        input.action === 'UNABLE'
+          ? 'UNABLE'
+          : item.completionMode === 'CLIENT_REPORT_CONSULTANT_VERIFY'
+            ? 'AWAITING_VERIFICATION'
+            : 'COMPLETED';
+      await tx.planItem.update({
+        where: { id: item.id },
+        data: {
+          status: nextStatus,
+          ...(nextStatus === 'COMPLETED' ? { completedAt: new Date() } : {}),
+          ...(item.type === 'GUIDANCE' ? { acknowledgedAt: new Date() } : {}),
+        },
+      });
+      if (item.completionMode === 'STRUCTURED_OUTCOME' && input.action === 'COMPLETE')
+        await tx.clientUpdate.create({
+          data: {
+            clientId: input.clientId,
+            sourceKey: `plan-outcome:${outcome.id}`,
+            category: 'OTHER',
+            source: 'CLIENT_DECLARED',
+            subject: item.clientTitle,
+            details: 'Structured Plan outcome recorded.',
+            provenance: { planItemId: item.id, outcomeId: outcome.id, data: input.outcome },
+          },
+        });
+      if (nextStatus === 'UNABLE' || nextStatus === 'AWAITING_VERIFICATION')
+        await tx.workItem.create({
+          data: {
+            clientId: input.clientId,
+            title: nextStatus === 'UNABLE' ? `Client needs help: ${item.clientTitle}` : `Verify Plan step: ${item.clientTitle}`,
+            domain: 'PLAN',
+            authority: 'ATTENTION_PROJECTION',
+            sourceType: 'PlanItem',
+            sourceId: item.id,
+            reasonCode: nextStatus,
+            dedupeKey: `plan-item:${item.id}:${nextStatus}`,
+            deepLink: { route: `/crm/clients/${input.clientId}/plan` },
+            neededSince: new Date(),
+          },
+        });
+      await tx.auditEvent.create({ data: { clientId: input.clientId, actorId: input.actorId, action: `plan.item.${input.action.toLowerCase()}`, entityType: 'PlanItem', entityId: item.id, correlationId: input.idempotencyKey } });
+      await tx.outboxEvent.create({ data: { eventType: 'plan.item.changed', eventKey: `plan-item:${item.id}:${input.idempotencyKey}`, aggregateType: 'Plan', aggregateId: item.planVersion.planId, payload: { clientId: input.clientId, domains: ['plan', 'home', 'journey', 'credit-center', 'work-queue'] } } });
+
+      if (nextStatus === 'COMPLETED') {
+        const versionItems = await tx.planItem.findMany({ where: { planVersionId: item.planVersionId }, include: { prerequisites: true } });
+        const completed = new Set(versionItems.filter(({ status }) => status === 'COMPLETED').map(({ id }) => id));
+        const dependencies = versionItems.flatMap((candidate) => candidate.prerequisites.map((edge) => ({ dependentItemId: candidate.id, prerequisiteItemId: edge.prerequisiteItemId, groupKey: edge.groupKey, mode: edge.mode })));
+        const unlockIds = versionItems.filter((candidate) => candidate.status === 'LOCKED' && prerequisitesSatisfied(candidate.id, dependencies, completed)).map(({ id }) => id);
+        if (unlockIds.length) await tx.planItem.updateMany({ where: { id: { in: unlockIds } }, data: { status: 'AVAILABLE' } });
+      }
+      return { replayed: false, outcomeId: outcome.id, status: nextStatus };
+    });
+  } catch (error) {
+    if (typeof error === 'object' && error && 'code' in error && error.code === 'P2002') {
+      const replay = await prisma.planItemOutcome.findUniqueOrThrow({ where: { planItemId_idempotencyKey: { planItemId: input.itemId, idempotencyKey: input.idempotencyKey } } });
+      return { replayed: true, outcomeId: replay.id };
+    }
+    throw error;
+  }
+}
+
+export async function verifyPlanItem(prisma: PrismaClient, clientId: string, itemId: string, actorId: string) {
+  return prisma.$transaction(async (tx) => {
+    const item = await tx.planItem.findFirst({ where: { id: itemId, planVersion: { plan: { clientId, status: 'ACTIVE' }, status: 'ACTIVE' } }, include: { planVersion: true } });
+    if (!item) throw new AppError('NOT_FOUND', 404, 'Plan item was not found');
+    if (!['AWAITING_VERIFICATION', 'AVAILABLE'].includes(item.status) || !['CLIENT_REPORT_CONSULTANT_VERIFY', 'CONSULTANT_VERIFY'].includes(item.completionMode))
+      throw new AppError('INVALID_PLAN_ITEM_STATE', 409, 'This item is not awaiting consultant verification');
+    await tx.planItem.update({ where: { id: item.id }, data: { status: 'COMPLETED', completedAt: new Date() } });
+    await tx.workItem.updateMany({ where: { sourceType: 'PlanItem', sourceId: item.id, status: { not: 'COMPLETED' } }, data: { status: 'COMPLETED', completedAt: new Date(), resolvedAt: new Date() } });
+    await tx.auditEvent.create({ data: { clientId, actorId, action: 'plan.item.verified', entityType: 'PlanItem', entityId: item.id } });
+    await tx.outboxEvent.create({ data: { eventType: 'plan.item.verified', eventKey: `plan-item-verified:${item.id}`, aggregateType: 'Plan', aggregateId: item.planVersion.planId, payload: { clientId, domains: ['plan', 'home', 'journey', 'work-queue'] } } });
+    return { itemId: item.id, status: 'COMPLETED' as const };
   });
 }
