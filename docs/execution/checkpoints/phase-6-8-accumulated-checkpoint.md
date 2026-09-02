@@ -115,6 +115,8 @@ The acceptance proof performs eligibility, review start, protected report upload
 ### CI and final head
 
 - Consolidated implementation/report commit: `a1b889d103d290050a5c705e11185a4b7e82d512`.
-- Exact-final-head CI: pending the evidence-only report commit and push; the successful run URL is added as a post-CI evidence addendum rather than rewriting the tested implementation.
+- Final corrected implementation head: `d956d187cb95da824e1ef65c64b0f5037a23cb80`.
+- Exact implementation-head CI: **passed** — [GitHub Actions run 33685045366](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33685045366).
+- CI correction history: the first accumulated run exposed shared-service parallel contention; a serialized rerun then exposed unrelated pending-fixture ordering in the bounded worker claim. Both were corrected without relaxing event deadlines or assertions before the successful run above.
 
 The branch remains separate from `ai-enabled`; Phase 9 was not started.
