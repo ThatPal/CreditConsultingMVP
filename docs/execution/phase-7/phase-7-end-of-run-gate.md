@@ -18,7 +18,7 @@
 - Phase 6 regression: upload validation and atomic Review submission green.
 - Database: all 41 forward migrations applied to `credit_strategy_phase6_8_block`; second deployment is an idempotent no-op.
 - API/worker typecheck, focused lint, and production builds: green.
-- Final GitHub CI: pending exact-head push.
+- Final GitHub CI: passed on `fd42242089ddc916250e937c6debd6997181d8d7` ([run 33597381028](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33597381028)).
 
 ## Authority and phase boundary
 

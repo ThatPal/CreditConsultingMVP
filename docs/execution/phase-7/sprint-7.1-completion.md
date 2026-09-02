@@ -23,7 +23,7 @@ The runtime validates structured output before consumption, deduplicates success
 - API and worker typecheck: passed.
 - API and worker production builds: passed.
 - Focused lint: passed.
-- Immediate branch CI: first run exposed unrelated Prisma drift statements in the generated migration; the migration was bounded to Phase 7.1 objects and successfully deployed twice (apply + idempotent no-op). Corrected CI is required before Sprint 7.2 begins.
+- Immediate branch CI: first run exposed unrelated Prisma drift statements in the generated migration; the migration was bounded to Phase 7.1 objects and successfully deployed twice (apply + idempotent no-op). Corrected CI passed on `457c8e527896b631261fd776510c178c76002b75` ([run 33596484988](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33596484988)) before Sprint 7.2 began.
 
 ## Deviations and limitations
 
