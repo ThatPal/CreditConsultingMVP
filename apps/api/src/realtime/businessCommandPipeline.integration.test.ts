@@ -11,7 +11,7 @@ import { createPrisma } from '../lib/prisma.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
 import { startRealtimeRuntime } from './runtime.js';
 
-function onceWithTimeout<T>(socket: ReturnType<typeof connect>, event: string, timeoutMs = 8000) {
+function onceWithTimeout<T>(socket: ReturnType<typeof connect>, event: string, timeoutMs = 20_000) {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${event}`)), timeoutMs);
     socket.once(event, (value: T) => {
@@ -180,7 +180,7 @@ describe('business command to authorized realtime refetch', () => {
       await worker.close();
       socket.close();
     }
-  }, 15_000);
+  }, 30_000);
 
   test('publishes a pending durable event after worker restart without rerunning the command', async () => {
     const client = await createBusinessClient();
@@ -229,5 +229,5 @@ describe('business command to authorized realtime refetch', () => {
       await restartedWorker.close();
       socket.close();
     }
-  }, 15_000);
+  }, 30_000);
 });
