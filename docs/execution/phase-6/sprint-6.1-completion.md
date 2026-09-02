@@ -1,6 +1,6 @@
 # Sprint 6.1 — Review Eligibility & Credit Reservation
 
-Status: COMPLETE — implementation gate passed; immediate branch CI pending
+Status: COMPLETE
 
 Branch: `rapid/phase6-8-review-golden-path`
 
@@ -38,7 +38,7 @@ Implementation boundary: `c4c8b62`
 - API build: PASS.
 - Web build: PASS (existing non-blocking Vite chunk-size advisory only).
 - Credit-only migration deploy: PASS on `credit_strategy_phase6_8_block` (PostgreSQL port 5433).
-- Immediate branch CI: pending push of this Sprint boundary; result will be recorded before Sprint 6.2 begins.
+- Immediate branch CI: PASS — run `33591552069` on `fa57a751a41964729e6209c25ae38d3527f53071`.
 
 ## Acceptance reconciliation
 
