@@ -1,5 +1,15 @@
-import { Alert, Button, Chip, LinearProgress, Stack, Typography } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import {
+  Alert,
+  Button,
+  Chip,
+  LinearProgress,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
@@ -16,9 +26,40 @@ type Payment = {
   client?: { firstName: string; lastName: string };
 };
 export function AdminPaymentsPage() {
+  const [page, setPage] = useState(1);
+  const [provider, setProvider] = useState('');
+  const [state, setState] = useState('');
   const query = useQuery({
-    queryKey: ['admin-payments'],
-    queryFn: () => apiRequest<{ payments: Payment[]; total: number }>('/api/v1/admin/payments'),
+    queryKey: ['admin-payments', page, provider, state],
+    queryFn: () =>
+      apiRequest<{ payments: Payment[]; total: number; pageSize: number }>(
+        `/api/v1/admin/payments?page=${page}${provider ? `&provider=${provider}` : ''}${state ? `&state=${state}` : ''}`,
+      ),
+  });
+  const refunds = useQuery({
+    queryKey: ['admin-refunds'],
+    queryFn: () =>
+      apiRequest<{
+        refunds: Array<{
+          id: string;
+          provider: string;
+          amount: string;
+          currency: string;
+          status: string;
+        }>;
+      }>('/api/v1/admin/refunds?pageSize=5'),
+  });
+  const disputes = useQuery({
+    queryKey: ['admin-disputes'],
+    queryFn: () =>
+      apiRequest<{
+        disputes: Array<{
+          id: string;
+          provider: string;
+          providerDisputeId: string;
+          status: string;
+        }>;
+      }>('/api/v1/admin/disputes?pageSize=5'),
   });
   if (query.isLoading) return <LinearProgress />;
   if (query.isError)
@@ -30,8 +71,51 @@ export function AdminPaymentsPage() {
       <PageHeader
         eyebrow="Commerce"
         title="Payments"
-        description="Provider-neutral payment operations. No refund or dispute actions are available in this sprint."
+        description="Provider-neutral payment, refund, dispute, and reconciliation operations."
       />
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+        <TextField
+          select
+          label="Provider"
+          value={provider}
+          onChange={(event) => {
+            setProvider(event.target.value);
+            setPage(1);
+          }}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">All providers</MenuItem>
+          <MenuItem value="PAYPAL">PayPal</MenuItem>
+          <MenuItem value="STRIPE">Stripe</MenuItem>
+          <MenuItem value="BOFA_MERCHANT">BofA</MenuItem>
+        </TextField>
+        <TextField
+          select
+          label="State"
+          value={state}
+          onChange={(event) => {
+            setState(event.target.value);
+            setPage(1);
+          }}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">All states</MenuItem>
+          {[
+            'PENDING',
+            'AWAITING_CUSTOMER',
+            'PROCESSING',
+            'SUCCEEDED',
+            'FAILED',
+            'CANCELLED',
+            'PARTIALLY_REFUNDED',
+            'REFUNDED',
+          ].map((value) => (
+            <MenuItem key={value} value={value}>
+              {value.replaceAll('_', ' ')}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
       {query.data!.payments.map((payment) => (
         <SectionCard key={payment.id} variant="interactive">
           <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between' }}>
@@ -61,6 +145,38 @@ export function AdminPaymentsPage() {
           </Stack>
         </SectionCard>
       ))}
+      <Stack direction="row" spacing={1}>
+        <Button disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
+          Previous
+        </Button>
+        <Typography>Page {page}</Typography>
+        <Button
+          disabled={page * query.data!.pageSize >= query.data!.total}
+          onClick={() => setPage((value) => value + 1)}
+        >
+          Next
+        </Button>
+      </Stack>
+      <SectionCard>
+        <Stack spacing={1}>
+          <Typography variant="h3">Recent refunds</Typography>
+          {refunds.data?.refunds.map((item) => (
+            <Typography key={item.id}>
+              {item.provider} · {item.amount} {item.currency} · {item.status}
+            </Typography>
+          )) ?? <Typography color="text.secondary">No refund records.</Typography>}
+        </Stack>
+      </SectionCard>
+      <SectionCard>
+        <Stack spacing={1}>
+          <Typography variant="h3">Open dispute activity</Typography>
+          {disputes.data?.disputes.map((item) => (
+            <Typography key={item.id}>
+              {item.provider} · {item.providerDisputeId} · {item.status}
+            </Typography>
+          )) ?? <Typography color="text.secondary">No dispute records.</Typography>}
+        </Stack>
+      </SectionCard>
     </Stack>
   );
 }
@@ -78,7 +194,29 @@ export function AdminPaymentDetailPage() {
           normalizedState: string;
           occurredAt: string;
         }>;
+        refunds: Array<{ id: string; amount: string; currency: string; status: string }>;
+        disputes: Array<{ id: string; providerDisputeId: string; status: string }>;
+        reconciliations: Array<{ id: string; status: string; corrected: boolean }>;
       }>(`/api/v1/admin/payments/${paymentId}`),
+  });
+  const client = useQueryClient();
+  const [refundAmount, setRefundAmount] = useState('');
+  const refund = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/v1/admin/payments/${paymentId}/refunds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ amount: refundAmount }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['admin-payment', paymentId] }),
+  });
+  const reconcile = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/v1/admin/payments/${paymentId}/reconcile`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['admin-payment', paymentId] }),
   });
   if (query.isLoading) return <LinearProgress />;
   if (query.isError) return <Alert severity="error">Payment detail is unavailable.</Alert>;
@@ -95,6 +233,48 @@ export function AdminPaymentDetailPage() {
           <Typography>
             {query.data!.payment.amount} {query.data!.payment.currency}
           </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <TextField
+              label="Refund amount"
+              value={refundAmount}
+              onChange={(event) => setRefundAmount(event.target.value)}
+              inputMode="decimal"
+            />
+            <Button
+              variant="contained"
+              disabled={!refundAmount || refund.isPending}
+              onClick={() =>
+                window.confirm('Issue this refund through the original payment provider?') &&
+                refund.mutate()
+              }
+            >
+              Issue refund
+            </Button>
+            <Button disabled={reconcile.isPending} onClick={() => reconcile.mutate()}>
+              Reconcile provider status
+            </Button>
+          </Stack>
+          {(refund.isError || reconcile.isError) && (
+            <Alert severity="warning">
+              The operation was blocked or unavailable. No alternate provider was used.
+            </Alert>
+          )}
+          {query.data!.refunds.map((item) => (
+            <Typography key={item.id}>
+              Refund {item.amount} {item.currency} · {item.status}
+            </Typography>
+          ))}
+          {query.data!.disputes.map((item) => (
+            <Typography key={item.id}>
+              Dispute {item.providerDisputeId} · {item.status}
+            </Typography>
+          ))}
+          {query.data!.reconciliations.map((item) => (
+            <Typography key={item.id}>
+              Reconciliation · {item.status}
+              {item.corrected ? ' · corrected' : ''}
+            </Typography>
+          ))}
           {query.data!.events.map((event) => (
             <Typography key={event.id}>
               {event.eventType} · {event.normalizedState} · {event.disposition}
@@ -132,6 +312,38 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa'
           };
         };
       }>(`/api/v1/admin/integrations/${provider}`),
+  });
+  const client = useQueryClient();
+  const canonicalProvider =
+    provider === 'paypal' ? 'PAYPAL' : provider === 'stripe' ? 'STRIPE' : 'BOFA_MERCHANT';
+  const configs = useQuery({
+    queryKey: ['payment-gateways'],
+    queryFn: () =>
+      apiRequest<{
+        gateways: Array<{
+          provider: string;
+          enabledForNewPayments: boolean;
+          defaultForCheckout: boolean;
+          connected: boolean;
+        }>;
+      }>('/api/v1/admin/payment-gateways'),
+  });
+  const config = configs.data?.gateways.find((item) => item.provider === canonicalProvider);
+  const update = useMutation({
+    mutationFn: ({ action, body }: { action: 'default' | 'enabled'; body?: unknown }) =>
+      apiRequest(`/api/v1/admin/payment-gateways/${canonicalProvider}/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['payment-gateways'] }),
+  });
+  const testConnection = useMutation({
+    mutationFn: () => apiRequest(`/api/v1/admin/integrations/${provider}/test`, { method: 'POST' }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: [provider, 'health'] });
+      client.invalidateQueries({ queryKey: ['payment-gateways'] });
+    },
   });
   if (query.isLoading) return <LinearProgress />;
   if (query.isError)
@@ -172,6 +384,48 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa'
               {gateway.capabilities.reconciliation.toLowerCase().replaceAll('_', ' ')}
             </Typography>
           )}
+          {config && (
+            <Typography color="text.secondary">
+              {config.connected ? 'Connected' : 'Connection not verified'} ·{' '}
+              {config.enabledForNewPayments
+                ? 'Enabled for new payments'
+                : 'Historical operations only'}{' '}
+              · {config.defaultForCheckout ? 'Current default' : 'Not default'}
+            </Typography>
+          )}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <Button disabled={testConnection.isPending} onClick={() => testConnection.mutate()}>
+              Test connection
+            </Button>
+            <Button
+              disabled={
+                !config ||
+                config.defaultForCheckout ||
+                !config.enabledForNewPayments ||
+                update.isPending
+              }
+              onClick={() =>
+                window.confirm(`Make ${displayName} the default for future checkout?`) &&
+                update.mutate({ action: 'default' })
+              }
+            >
+              Set as default
+            </Button>
+            <Button
+              disabled={!config || config.defaultForCheckout || update.isPending}
+              onClick={() =>
+                config &&
+                update.mutate({
+                  action: 'enabled',
+                  body: { enabled: !config.enabledForNewPayments },
+                })
+              }
+            >
+              {config?.enabledForNewPayments
+                ? 'Disable for new payments'
+                : 'Enable for new payments'}
+            </Button>
+          </Stack>
         </Stack>
       </SectionCard>
     </Stack>

@@ -19,6 +19,14 @@ export type VerifiedPaymentEvent = {
   eventType: string;
   state: PaymentState;
   occurredAt: Date;
+  dispute?: {
+    providerDisputeId: string;
+    status: 'OPEN' | 'UNDER_REVIEW' | 'WON' | 'LOST' | 'CLOSED';
+    amount?: string;
+    currency?: string;
+    reason?: string;
+    evidenceDueAt?: Date;
+  };
 };
 export type GatewayHealth = {
   provider: PaymentProvider;
@@ -42,6 +50,17 @@ export type ProviderCheckout = {
   method?: 'GET' | 'POST';
   formFields?: Record<string, string>;
 };
+export type ProviderRefundRequest = {
+  paymentId: string;
+  providerPaymentId: string;
+  refundId: string;
+  amount: string;
+  currency: string;
+};
+export type ProviderRefundResult = {
+  providerRefundId: string;
+  status: 'PROCESSING' | 'SUCCEEDED';
+};
 export interface PaymentGateway {
   readonly provider: PaymentProvider;
   readonly environment: string;
@@ -52,6 +71,7 @@ export interface PaymentGateway {
     body: unknown,
   ): Promise<VerifiedPaymentEvent>;
   health(): Promise<GatewayHealth>;
+  refund(request: ProviderRefundRequest): Promise<ProviderRefundResult>;
 }
 
 export class PaymentGatewayRegistry {
@@ -119,6 +139,10 @@ export class DeterministicPaymentGateway implements PaymentGateway {
       healthy: this.healthy,
       message: this.healthy ? 'Test gateway healthy.' : 'Test gateway unavailable.',
     };
+  }
+  async refund(request: ProviderRefundRequest): Promise<ProviderRefundResult> {
+    if (!this.healthy) throw new Error('TEST_PROVIDER_UNAVAILABLE');
+    return { providerRefundId: `${this.provider}-REFUND-${request.refundId}`, status: 'SUCCEEDED' };
   }
 }
 
@@ -188,6 +212,9 @@ export class BankOfAmericaGateway implements PaymentGateway {
   }
   async retrieve(): Promise<VerifiedPaymentEvent> {
     throw new Error('BOFA_STATUS_RETRIEVAL_UNSUPPORTED_WITH_HOSTED_PROFILE');
+  }
+  async refund(): Promise<ProviderRefundResult> {
+    throw new Error('BOFA_REFUND_UNSUPPORTED_WITH_HOSTED_PROFILE');
   }
   async verifyWebhook(
     _headers: Record<string, string | string[] | undefined>,
@@ -354,6 +381,41 @@ export class StripeGateway implements PaymentGateway {
               : object.status === 'requires_payment_method'
                 ? 'FAILED'
                 : 'PENDING';
+    } else if (object.object === 'dispute') {
+      const dispute = object as Stripe.Dispute;
+      providerPaymentId =
+        typeof dispute.payment_intent === 'string'
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id;
+      state = 'SUCCEEDED';
+      const status =
+        dispute.status === 'won'
+          ? 'WON'
+          : dispute.status === 'lost'
+            ? 'LOST'
+            : dispute.status === 'warning_closed' || dispute.status === 'charge_refunded'
+              ? 'CLOSED'
+              : dispute.status === 'under_review'
+                ? 'UNDER_REVIEW'
+                : 'OPEN';
+      return {
+        provider: 'STRIPE',
+        providerEventId: event.id,
+        ...(providerPaymentId ? { providerPaymentId } : {}),
+        eventType: event.type,
+        state,
+        occurredAt: new Date(event.created * 1000),
+        dispute: {
+          providerDisputeId: dispute.id,
+          status,
+          amount: (dispute.amount / 100).toFixed(2),
+          currency: dispute.currency.toUpperCase(),
+          ...(dispute.reason ? { reason: dispute.reason } : {}),
+          ...(dispute.evidence_details?.due_by
+            ? { evidenceDueAt: new Date(dispute.evidence_details.due_by * 1000) }
+            : {}),
+        },
+      };
     } else {
       throw new Error('STRIPE_WEBHOOK_UNSUPPORTED');
     }
@@ -368,6 +430,7 @@ export class StripeGateway implements PaymentGateway {
     };
   }
   async health(): Promise<GatewayHealth> {
+    const capabilities: GatewayCapabilities = { checkout: 'REDIRECT', webhooks: true, statusRetrieval: true, refund: 'AVAILABLE', reconciliation: 'AVAILABLE' };
     if (!this.options.secretKey || !this.options.webhookSecret)
       return {
         provider: 'STRIPE',
@@ -375,6 +438,7 @@ export class StripeGateway implements PaymentGateway {
         configured: false,
         healthy: false,
         message: 'Stripe test credentials are not configured.',
+        capabilities,
       };
     try {
       await this.configuredClient().balance.retrieve();
@@ -384,6 +448,7 @@ export class StripeGateway implements PaymentGateway {
         configured: true,
         healthy: true,
         message: 'Stripe authentication succeeded.',
+        capabilities,
       };
     } catch {
       return {
@@ -392,8 +457,23 @@ export class StripeGateway implements PaymentGateway {
         configured: true,
         healthy: false,
         message: 'Stripe authentication failed.',
+        capabilities,
       };
     }
+  }
+  async refund(request: ProviderRefundRequest): Promise<ProviderRefundResult> {
+    const refund = await this.configuredClient().refunds.create(
+      {
+        payment_intent: request.providerPaymentId,
+        amount: Math.round(Number(request.amount) * 100),
+        metadata: { paymentId: request.paymentId, refundId: request.refundId },
+      },
+      { idempotencyKey: request.refundId },
+    );
+    return {
+      providerRefundId: refund.id,
+      status: refund.status === 'succeeded' ? 'SUCCEEDED' : 'PROCESSING',
+    };
   }
 }
 
@@ -583,6 +663,7 @@ export class PayPalGateway implements PaymentGateway {
     };
   }
   async health(): Promise<GatewayHealth> {
+    const capabilities: GatewayCapabilities = { checkout: 'REDIRECT', webhooks: true, statusRetrieval: true, refund: 'AVAILABLE', reconciliation: 'AVAILABLE' };
     if (!this.options.clientId || !this.options.clientSecret || !this.options.webhookId)
       return {
         provider: 'PAYPAL',
@@ -590,6 +671,7 @@ export class PayPalGateway implements PaymentGateway {
         configured: false,
         healthy: false,
         message: 'PayPal sandbox credentials are not configured.',
+        capabilities,
       };
     try {
       await this.token();
@@ -599,6 +681,7 @@ export class PayPalGateway implements PaymentGateway {
         configured: true,
         healthy: true,
         message: 'PayPal authentication succeeded.',
+        capabilities,
       };
     } catch {
       return {
@@ -607,8 +690,33 @@ export class PayPalGateway implements PaymentGateway {
         configured: true,
         healthy: false,
         message: 'PayPal authentication failed.',
+        capabilities,
       };
     }
+  }
+  async refund(request: ProviderRefundRequest): Promise<ProviderRefundResult> {
+    const token = await this.token();
+    const response = await fetch(
+      `${this.baseUrl}/v2/payments/captures/${encodeURIComponent(request.providerPaymentId)}/refund`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'PayPal-Request-Id': request.refundId,
+        },
+        body: JSON.stringify({
+          amount: { value: request.amount, currency_code: request.currency },
+        }),
+      },
+    );
+    if (!response.ok) throw new Error('PAYPAL_REFUND_FAILED');
+    const refund = (await response.json()) as { id?: string; status?: string };
+    if (!refund.id) throw new Error('PAYPAL_INVALID_REFUND_RESPONSE');
+    return {
+      providerRefundId: refund.id,
+      status: refund.status === 'COMPLETED' ? 'SUCCEEDED' : 'PROCESSING',
+    };
   }
 }
 

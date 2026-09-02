@@ -230,6 +230,29 @@ enum PaymentEventDisposition {
   IGNORED
 }
 
+enum RefundStatus {
+  REQUESTED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  WON
+  LOST
+  CLOSED
+}
+
+enum ReconciliationStatus {
+  SUCCEEDED
+  CORRECTED
+  BLOCKED
+  FAILED
+}
+
 enum ServiceProductVersionStatus {
   DRAFT
   ACTIVE
@@ -1495,12 +1518,101 @@ model Payment {
   client                  Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
   purchase                ServicePurchase @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
   providerEvents          PaymentProviderEvent[]
+  refunds                 PaymentRefund[]
+  disputes                PaymentDispute[]
+  reconciliationAttempts PaymentReconciliation[]
 
   @@unique([provider, verifiedProviderEventId])
   @@index([purchaseId, createdAt])
   @@index([clientId, state, createdAt])
   @@index([provider, providerOrderId])
   @@index([provider, providerPaymentId])
+}
+
+model PaymentGatewayConfig {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider              PaymentProvider @unique
+  environment           String          @default("SANDBOX")
+  configured            Boolean         @default(false)
+  connected             Boolean         @default(false)
+  enabledForNewPayments Boolean         @default(false)
+  defaultForCheckout    Boolean         @default(false)
+  status                IntegrationStatus @default(UNTESTED)
+  configurationMetadata Json?
+  secretReferences      String[]
+  lastTestedAt          DateTime?       @db.Timestamptz(3)
+  lastSuccessAt         DateTime?       @db.Timestamptz(3)
+  lastErrorCategory     String?
+  version               Int             @default(1)
+  createdAt             DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@index([enabledForNewPayments, defaultForCheckout])
+}
+
+model PaymentRefund {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId        String          @db.Uuid
+  purchaseId       String          @db.Uuid
+  clientId         String          @db.Uuid
+  provider         PaymentProvider
+  providerRefundId String?
+  idempotencyKey   String
+  amount           Decimal         @db.Decimal(12, 2)
+  currency         String
+  status           RefundStatus    @default(REQUESTED)
+  reason           String?
+  actorId          String?         @db.Uuid
+  source           String          @default("ADMIN")
+  requestedAt      DateTime        @default(now()) @db.Timestamptz(3)
+  completedAt      DateTime?       @db.Timestamptz(3)
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @db.Timestamptz(3)
+  payment          Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentId, idempotencyKey])
+  @@unique([provider, providerRefundId])
+  @@index([paymentId, status, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model PaymentDispute {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId         String          @db.Uuid
+  clientId          String          @db.Uuid
+  provider          PaymentProvider
+  providerDisputeId String
+  status            DisputeStatus   @default(OPEN)
+  amount            Decimal?        @db.Decimal(12, 2)
+  currency          String?
+  reason            String?
+  category          String?
+  evidenceDueAt     DateTime?       @db.Timestamptz(3)
+  providerOccurredAt DateTime?      @db.Timestamptz(3)
+  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @db.Timestamptz(3)
+  payment           Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerDisputeId])
+  @@index([paymentId, status, createdAt])
+}
+
+model PaymentReconciliation {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId        String               @db.Uuid
+  provider         PaymentProvider
+  idempotencyKey   String
+  status           ReconciliationStatus
+  beforeState      PaymentState
+  providerState    PaymentState?
+  corrected        Boolean              @default(false)
+  errorCode        String?
+  actorId          String?              @db.Uuid
+  createdAt        DateTime             @default(now()) @db.Timestamptz(3)
+  payment          Payment              @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentId, idempotencyKey])
+  @@index([paymentId, createdAt])
 }
 
 model PaymentProviderEvent {

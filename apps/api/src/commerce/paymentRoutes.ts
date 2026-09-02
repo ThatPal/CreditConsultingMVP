@@ -13,6 +13,16 @@ import { executeConsequentialCommand } from '../transactions/consequentialComman
 import { frozenTerms } from './domain.js';
 import { PaymentGatewayRegistry, type PaymentGateway } from './paymentGateway.js';
 import { applyVerifiedPaymentEvent } from './paymentService.js';
+import {
+  canonicalDefaultGateway,
+  ensureGatewayConfigs,
+  reconcilePayment,
+  requestRefund,
+  setDefaultGateway,
+  setGatewayEnabled,
+  testGatewayConnection,
+  updateGatewayMetadata,
+} from './paymentOperations.js';
 
 const safePayment = (payment: {
   id: string;
@@ -110,7 +120,7 @@ export function createPaymentRouter(
           'Only a canonical service product may be selected',
         );
       const { productId } = parsed.data;
-      const gateway = registry.getDefault();
+      const { gateway } = await canonicalDefaultGateway(prisma, registry);
       const idempotencyKey = keyFrom(req);
       const product = await prisma.serviceProduct.findFirst({
         where: { id: productId, active: true },
@@ -326,6 +336,74 @@ export function createPaymentRouter(
       denialRecorder,
     ),
   ];
+  const adminManageGate = [
+    requireRole('ADMIN'),
+    requireCanonicalCapability(
+      authorization,
+      'payment.manage',
+      { requireStepUp: true },
+      denialRecorder,
+    ),
+  ];
+  router.get('/admin/payment-gateways', ...adminGate, async (_req, res, next) => {
+    try {
+      await ensureGatewayConfigs(prisma, registry);
+      const configs = await prisma.paymentGatewayConfig.findMany({ orderBy: { provider: 'asc' } });
+      res.json({ gateways: configs });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post(
+    '/admin/payment-gateways/:provider/default',
+    ...adminManageGate,
+    async (req, res, next) => {
+      try {
+        const provider = z.enum(['PAYPAL', 'STRIPE', 'BOFA_MERCHANT']).parse(req.params.provider);
+        res.json({ gateway: await setDefaultGateway(prisma, provider, req.auth!.userId) });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.post(
+    '/admin/payment-gateways/:provider/enabled',
+    ...adminManageGate,
+    async (req, res, next) => {
+      try {
+        const provider = z.enum(['PAYPAL', 'STRIPE', 'BOFA_MERCHANT']).parse(req.params.provider);
+        const { enabled } = z.object({ enabled: z.boolean() }).strict().parse(req.body);
+        res.json({ gateway: await setGatewayEnabled(prisma, provider, enabled, req.auth!.userId) });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.patch('/admin/payment-gateways/:provider', ...adminManageGate, async (req, res, next) => {
+    try {
+      const provider = z.enum(['PAYPAL', 'STRIPE', 'BOFA_MERCHANT']).parse(req.params.provider);
+      const metadata = z
+        .object({
+          displayName: z.string().max(80).optional(),
+          accountReference: z.string().max(120).optional(),
+        })
+        .strict()
+        .parse(req.body);
+      res.json({
+        gateway: await updateGatewayMetadata(
+          prisma,
+          provider,
+          {
+            ...(metadata.displayName ? { displayName: metadata.displayName } : {}),
+            ...(metadata.accountReference ? { accountReference: metadata.accountReference } : {}),
+          },
+          req.auth!.userId,
+        ),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
   router.get('/admin/payments', ...adminGate, async (req, res, next) => {
     try {
       const input = z
@@ -401,6 +479,64 @@ export function createPaymentRouter(
       next(error);
     }
   });
+  router.get('/admin/refunds', ...adminGate, async (req, res, next) => {
+    try {
+      const input = z
+        .object({
+          status: z
+            .enum(['REQUESTED', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'CANCELLED'])
+            .optional(),
+          provider: z.enum(['PAYPAL', 'STRIPE', 'BOFA_MERCHANT']).optional(),
+          page: z.coerce.number().int().positive().default(1),
+          pageSize: z.coerce.number().int().min(1).max(50).default(20),
+        })
+        .parse(req.query);
+      const where: Prisma.PaymentRefundWhereInput = {
+        ...(input.status ? { status: input.status } : {}),
+        ...(input.provider ? { provider: input.provider } : {}),
+      };
+      const [total, refunds] = await prisma.$transaction([
+        prisma.paymentRefund.count({ where }),
+        prisma.paymentRefund.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (input.page - 1) * input.pageSize,
+          take: input.pageSize,
+        }),
+      ]);
+      res.json({ total, page: input.page, pageSize: input.pageSize, refunds });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.get('/admin/disputes', ...adminGate, async (req, res, next) => {
+    try {
+      const input = z
+        .object({
+          status: z.enum(['OPEN', 'UNDER_REVIEW', 'WON', 'LOST', 'CLOSED']).optional(),
+          provider: z.enum(['PAYPAL', 'STRIPE', 'BOFA_MERCHANT']).optional(),
+          page: z.coerce.number().int().positive().default(1),
+          pageSize: z.coerce.number().int().min(1).max(50).default(20),
+        })
+        .parse(req.query);
+      const where: Prisma.PaymentDisputeWhereInput = {
+        ...(input.status ? { status: input.status } : {}),
+        ...(input.provider ? { provider: input.provider } : {}),
+      };
+      const [total, disputes] = await prisma.$transaction([
+        prisma.paymentDispute.count({ where }),
+        prisma.paymentDispute.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (input.page - 1) * input.pageSize,
+          take: input.pageSize,
+        }),
+      ]);
+      res.json({ total, page: input.page, pageSize: input.pageSize, disputes });
+    } catch (error) {
+      next(error);
+    }
+  });
   router.get('/admin/payments/:paymentId', ...adminGate, async (req, res, next) => {
     try {
       const payment = await prisma.payment.findUnique({
@@ -408,6 +544,9 @@ export function createPaymentRouter(
         include: {
           purchase: { include: { entitlements: true, reviewCreditTransactions: true } },
           providerEvents: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] },
+          refunds: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] },
+          disputes: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] },
+          reconciliationAttempts: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] },
         },
       });
       if (!payment) throw new AppError('NOT_FOUND', 404, 'Payment was not found');
@@ -415,11 +554,51 @@ export function createPaymentRouter(
         payment: safePayment(payment),
         purchase: payment.purchase,
         events: payment.providerEvents,
+        refunds: payment.refunds,
+        disputes: payment.disputes,
+        reconciliations: payment.reconciliationAttempts,
       });
     } catch (error) {
       next(error);
     }
   });
+  router.post('/admin/payments/:paymentId/refunds', ...adminManageGate, async (req, res, next) => {
+    try {
+      const input = z
+        .object({
+          amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+          reason: z.string().max(500).optional(),
+        })
+        .strict()
+        .parse(req.body);
+      const refund = await requestRefund(prisma, registry, {
+        paymentId: req.params.paymentId as string,
+        amount: input.amount,
+        ...(input.reason ? { reason: input.reason } : {}),
+        actorId: req.auth!.userId,
+        idempotencyKey: keyFrom(req),
+      });
+      res.status(201).json({ refund });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post(
+    '/admin/payments/:paymentId/reconcile',
+    ...adminManageGate,
+    async (req, res, next) => {
+      try {
+        const attempt = await reconcilePayment(prisma, registry, {
+          paymentId: req.params.paymentId as string,
+          actorId: req.auth!.userId,
+          idempotencyKey: keyFrom(req),
+        });
+        res.json({ reconciliation: attempt });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.get('/admin/integrations/paypal', ...adminGate, async (_req, res) =>
     res.json({ gateway: await registry.get('PAYPAL').health() }),
   );
@@ -433,7 +612,10 @@ export function createPaymentRouter(
       denialRecorder,
     ),
     async (req, res) =>
-      res.json({ gateway: await registry.get('PAYPAL').health(), testedBy: req.auth!.userId }),
+      res.json({
+        ...(await testGatewayConnection(prisma, registry, 'PAYPAL', req.auth!.userId)),
+        testedBy: req.auth!.userId,
+      }),
   );
   router.get('/admin/integrations/bofa', ...adminGate, async (_req, res) =>
     res.json({ gateway: await registry.get('BOFA_MERCHANT').health() }),
@@ -449,7 +631,7 @@ export function createPaymentRouter(
     ),
     async (req, res) =>
       res.json({
-        gateway: await registry.get('BOFA_MERCHANT').health(),
+        ...(await testGatewayConnection(prisma, registry, 'BOFA_MERCHANT', req.auth!.userId)),
         testedBy: req.auth!.userId,
       }),
   );
@@ -466,7 +648,10 @@ export function createPaymentRouter(
       denialRecorder,
     ),
     async (req, res) =>
-      res.json({ gateway: await registry.get('STRIPE').health(), testedBy: req.auth!.userId }),
+      res.json({
+        ...(await testGatewayConnection(prisma, registry, 'STRIPE', req.auth!.userId)),
+        testedBy: req.auth!.userId,
+      }),
   );
   return router;
 }

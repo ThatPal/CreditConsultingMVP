@@ -61,6 +61,74 @@ export async function applyVerifiedPaymentEvent(prisma: PrismaClient, event: Ver
           ...(transition ? {} : { safeMetadata: { reason: 'NON_MONOTONIC_OR_NO_CHANGE' } }),
         },
       });
+      if (event.dispute) {
+        const disputeRank = { OPEN: 0, UNDER_REVIEW: 1, WON: 2, LOST: 2, CLOSED: 3 } as const;
+        const current = await tx.paymentDispute.findUnique({
+          where: {
+            provider_providerDisputeId: {
+              provider: event.provider,
+              providerDisputeId: event.dispute.providerDisputeId,
+            },
+          },
+        });
+        if (!current || disputeRank[event.dispute.status] >= disputeRank[current.status]) {
+          await tx.paymentDispute.upsert({
+            where: {
+              provider_providerDisputeId: {
+                provider: event.provider,
+                providerDisputeId: event.dispute.providerDisputeId,
+              },
+            },
+            create: {
+              paymentId: payment.id,
+              clientId: payment.clientId,
+              provider: payment.provider,
+              providerDisputeId: event.dispute.providerDisputeId,
+              status: event.dispute.status,
+              ...(event.dispute.amount ? { amount: event.dispute.amount } : {}),
+              ...(event.dispute.currency ? { currency: event.dispute.currency } : {}),
+              ...(event.dispute.reason ? { reason: event.dispute.reason } : {}),
+              ...(event.dispute.evidenceDueAt
+                ? { evidenceDueAt: event.dispute.evidenceDueAt }
+                : {}),
+              providerOccurredAt: event.occurredAt,
+            },
+            update: {
+              status: event.dispute.status,
+              ...(event.dispute.amount ? { amount: event.dispute.amount } : {}),
+              ...(event.dispute.currency ? { currency: event.dispute.currency } : {}),
+              ...(event.dispute.reason ? { reason: event.dispute.reason } : {}),
+              ...(event.dispute.evidenceDueAt
+                ? { evidenceDueAt: event.dispute.evidenceDueAt }
+                : {}),
+              providerOccurredAt: event.occurredAt,
+            },
+          });
+          await tx.auditEvent.create({
+            data: {
+              clientId: payment.clientId,
+              action: 'PAYMENT_DISPUTE_UPDATED',
+              entityType: 'PaymentDispute',
+              entityId: event.dispute.providerDisputeId,
+              metadata: { provider: payment.provider, status: event.dispute.status },
+            },
+          });
+          await tx.outboxEvent.create({
+            data: {
+              eventType: 'commerce.dispute.updated',
+              eventKey: `dispute-event:${providerEvent.id}`,
+              aggregateType: 'Payment',
+              aggregateId: payment.id,
+              payload: {
+                clientId: payment.clientId,
+                paymentId: payment.id,
+                domains: ['admin-payments'],
+              },
+            },
+          });
+        }
+        return { applied: true, paymentId: payment.id, dispute: true };
+      }
       if (!transition)
         return { applied: false, reason: 'NON_MONOTONIC_OR_NO_CHANGE', paymentId: payment.id };
       await tx.payment.update({

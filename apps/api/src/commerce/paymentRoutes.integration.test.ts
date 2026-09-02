@@ -167,6 +167,9 @@ describe('payment route boundaries', () => {
     await request(app(admin)).get('/api/v1/admin/payments').expect(403);
     await request(app(admin)).get('/api/v1/admin/integrations/stripe').expect(403);
     await request(app(admin)).get('/api/v1/admin/integrations/bofa').expect(403);
+    await request(app(admin)).get('/api/v1/admin/payment-gateways').expect(403);
+    await request(app(admin)).post('/api/v1/admin/payment-gateways/STRIPE/default').expect(403);
+    await request(app(admin)).post('/api/v1/admin/payments/00000000-0000-0000-0000-000000000000/refunds').set('Idempotency-Key', `${marker}-denied-refund`).send({ amount: '1.00' }).expect(403);
   });
   test('server-governed Stripe selection reuses canonical checkout and idempotency', async () => {
     const stripe = new DeterministicPaymentGateway('AWAITING_CUSTOMER', true, 'STRIPE');

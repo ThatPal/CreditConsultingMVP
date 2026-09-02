@@ -13,6 +13,7 @@ if (process.env.NODE_ENV === 'production' || !/localhost|127\.0\.0\.1/.test(url)
   throw new Error('Demo setup is restricted to a local non-production database');
 }
 const prisma = createPrisma(url);
+const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
 const passwordHash = await hashPassword('DemoAccess2026!');
 
 function makeReviewPdf() {
@@ -530,6 +531,138 @@ try {
       update: {},
     });
   }
+  const gatewaySeeds = [
+    {
+      provider: 'PAYPAL' as const,
+      configured: true,
+      connected: true,
+      enabledForNewPayments: true,
+      defaultForCheckout: true,
+      status: 'HEALTHY' as const,
+    },
+    {
+      provider: 'STRIPE' as const,
+      configured: true,
+      connected: true,
+      enabledForNewPayments: false,
+      defaultForCheckout: false,
+      status: 'HEALTHY' as const,
+    },
+    {
+      provider: 'BOFA_MERCHANT' as const,
+      configured: true,
+      connected: false,
+      enabledForNewPayments: false,
+      defaultForCheckout: false,
+      status: 'DEGRADED' as const,
+    },
+  ];
+  await prisma.paymentGatewayConfig.updateMany({ data: { defaultForCheckout: false } });
+  for (const seed of gatewaySeeds)
+    await prisma.paymentGatewayConfig.upsert({
+      where: { provider: seed.provider },
+      create: {
+        ...seed,
+        environment: 'SANDBOX',
+        secretReferences: [],
+        configurationMetadata: { seededScenario: true },
+      },
+      update: seed,
+    });
+  for (const [index, provider] of (['PAYPAL', 'STRIPE', 'BOFA_MERCHANT'] as const).entries()) {
+    const reference = `DEMO-COMMERCE-${provider}`;
+    let commercePurchase = await prisma.servicePurchase.findFirst({
+      where: { clientId: client.id, paymentReference: reference },
+    });
+    commercePurchase ??= await prisma.servicePurchase.create({
+      data: {
+        clientId: client.id,
+        serviceType: 'CREDIT_PROFILE_REVIEW',
+        amount: 100 + index * 25,
+        currency: 'USD',
+        status: 'PAID',
+        paymentProvider: provider,
+        paymentReference: reference,
+        purchasedAt: daysAgo(12 - index),
+      },
+    });
+    let commercePayment = await prisma.payment.findFirst({
+      where: { provider, providerOrderId: `${reference}-ORDER` },
+    });
+    commercePayment ??= await prisma.payment.create({
+      data: {
+        clientId: client.id,
+        purchaseId: commercePurchase.id,
+        provider,
+        providerEnvironment: 'SANDBOX',
+        providerOrderId: `${reference}-ORDER`,
+        providerPaymentId: `${reference}-CAPTURE`,
+        state: provider === 'PAYPAL' ? 'PARTIALLY_REFUNDED' : 'SUCCEEDED',
+        amount: commercePurchase.amount,
+        currency: 'USD',
+        occurredAt: daysAgo(12 - index),
+      },
+    });
+    if (provider === 'PAYPAL')
+      await prisma.paymentRefund.upsert({
+        where: {
+          paymentId_idempotencyKey: {
+            paymentId: commercePayment.id,
+            idempotencyKey: 'demo-partial-refund',
+          },
+        },
+        create: {
+          paymentId: commercePayment.id,
+          purchaseId: commercePurchase.id,
+          clientId: client.id,
+          provider,
+          providerRefundId: 'DEMO-PAYPAL-REFUND',
+          idempotencyKey: 'demo-partial-refund',
+          amount: '25.00',
+          currency: 'USD',
+          status: 'SUCCEEDED',
+          source: 'SYSTEM_FIXTURE',
+          completedAt: daysAgo(4),
+        },
+        update: {},
+      });
+    if (provider === 'STRIPE')
+      await prisma.paymentDispute.upsert({
+        where: {
+          provider_providerDisputeId: { provider, providerDisputeId: 'DEMO-STRIPE-DISPUTE' },
+        },
+        create: {
+          paymentId: commercePayment.id,
+          clientId: client.id,
+          provider,
+          providerDisputeId: 'DEMO-STRIPE-DISPUTE',
+          status: 'UNDER_REVIEW',
+          amount: '40.00',
+          currency: 'USD',
+          reason: 'FRAUDULENT',
+          evidenceDueAt: daysAgo(-5),
+        },
+        update: {},
+      });
+    if (provider === 'BOFA_MERCHANT')
+      await prisma.paymentReconciliation.upsert({
+        where: {
+          paymentId_idempotencyKey: {
+            paymentId: commercePayment.id,
+            idempotencyKey: 'demo-bofa-blocked',
+          },
+        },
+        create: {
+          paymentId: commercePayment.id,
+          provider,
+          idempotencyKey: 'demo-bofa-blocked',
+          status: 'BLOCKED',
+          beforeState: commercePayment.state,
+          errorCode: 'BOFA_STATUS_RETRIEVAL_UNSUPPORTED_WITH_HOSTED_PROFILE',
+        },
+        update: {},
+      });
+  }
   console.info(
     JSON.stringify(
       {
@@ -552,6 +685,11 @@ try {
           'current client primary goal with revision history',
           'active anonymous goal intake',
           'expired anonymous goal intake',
+        ],
+        commerceScenarios: [
+          'PayPal default with partial refund',
+          'Stripe disabled for new checkout with historical dispute',
+          'BofA historical payment with refund/reconciliation capability blocked',
         ],
       },
       null,
