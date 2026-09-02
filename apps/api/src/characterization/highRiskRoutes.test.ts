@@ -272,6 +272,73 @@ describe('Review entitlement and report authorization characterization', () => {
       .set('x-test-principal', unassigned.header)
       .expect(403);
   });
+
+  test('keeps rejected and date-discrepant replacements non-authoritative and owner scoped', async () => {
+    const owner = await createClient('report-validation-owner');
+    const stranger = await createClient('report-validation-stranger');
+    const review = await prisma.creditReview.create({
+      data: {
+        clientId: owner.client.id,
+        intendedReportDate: new Date('2026-08-15T00:00:00Z'),
+        status: 'INTAKE_REQUIRED',
+        intake: { create: {} },
+      },
+    });
+    const validPdf = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF');
+    const valid = await request(buildApp())
+      .post(`/reviews/client/${review.id}/report-document`)
+      .set('x-test-principal', owner.header)
+      .set('content-type', 'application/pdf')
+      .set('x-file-name', encodeURIComponent('report.pdf'))
+      .set('x-report-source', encodeURIComponent('Experian 3-Bureau Credit Report'))
+      .set('x-report-date', '2026-08-15')
+      .send(validPdf)
+      .expect(201);
+    expect(valid.body.document.validationStatus).toBe('VALIDATED');
+    const authoritative = await prisma.reviewIntake.findUnique({ where: { reviewId: review.id } });
+    expect(authoritative?.reportDocumentId).toBe(valid.body.document.id);
+
+    const invalid = await request(buildApp())
+      .post(`/reviews/client/${review.id}/report-document`)
+      .set('x-test-principal', owner.header)
+      .set('content-type', 'application/pdf')
+      .set('x-file-name', encodeURIComponent('bad.pdf'))
+      .set('x-report-source', encodeURIComponent('Experian 3-Bureau Credit Report'))
+      .set('x-report-date', '2026-08-15')
+      .send(Buffer.from('not a pdf'))
+      .expect(201);
+    expect(invalid.body.document).toMatchObject({
+      validationStatus: 'REJECTED',
+      rejectionCode: 'INVALID_PDF_SIGNATURE',
+    });
+
+    const discrepancy = await request(buildApp())
+      .post(`/reviews/client/${review.id}/report-document`)
+      .set('x-test-principal', owner.header)
+      .set('content-type', 'application/pdf')
+      .set('x-file-name', encodeURIComponent('different-date.pdf'))
+      .set('x-report-source', encodeURIComponent('Experian 3-Bureau Credit Report'))
+      .set('x-report-date', '2026-08-16')
+      .send(validPdf)
+      .expect(201);
+    expect(discrepancy.body.document.validationStatus).toBe('NEEDS_STAFF_REVIEW');
+    await expect(
+      prisma.reviewIntake.findUnique({ where: { reviewId: review.id } }),
+    ).resolves.toMatchObject({ reportDocumentId: valid.body.document.id });
+    await expect(
+      prisma.creditReportDocument.findUnique({ where: { id: valid.body.document.id } }),
+    ).resolves.toMatchObject({ supersededAt: null, supersededById: null });
+
+    await request(buildApp())
+      .post(`/reviews/client/${review.id}/report-document`)
+      .set('x-test-principal', stranger.header)
+      .set('content-type', 'application/pdf')
+      .set('x-file-name', encodeURIComponent('report.pdf'))
+      .set('x-report-source', encodeURIComponent('Experian 3-Bureau Credit Report'))
+      .set('x-report-date', '2026-08-15')
+      .send(validPdf)
+      .expect(404);
+  });
 });
 
 describe('Support, notification, and application-cycle characterization', () => {

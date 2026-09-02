@@ -2346,12 +2346,32 @@ export function ClientReviewPage({
   const upload = useMutation({
     mutationFn: async () => {
       if (!selectedFile) throw new Error('Select a report file first.');
-      return apiFileRequest(
+      return apiFileRequest<{
+        document: {
+          validationStatus: 'VALIDATED' | 'NEEDS_STAFF_REVIEW' | 'REJECTED';
+          rejectionReason: string | null;
+        };
+      }>(
         `/api/v1/reviews/client/${query.data!.review!.id}/report-document`,
         selectedFile,
+        undefined,
+        {
+          'X-Report-Source': encodeURIComponent(source),
+          'X-Report-Date': reportDate,
+        },
       );
     },
-    onSuccess: async () => {
+    onSuccess: async ({ document }) => {
+      if (document.validationStatus !== 'VALIDATED') {
+        setFileValidationError(
+          document.rejectionReason ??
+            (document.validationStatus === 'NEEDS_STAFF_REVIEW'
+              ? 'This report needs staff review before it can be used.'
+              : 'This report could not be accepted.'),
+        );
+        return;
+      }
+      setFileValidationError(null);
       setSelectedFile(null);
       await persistIntake();
       await qc.invalidateQueries({ queryKey: ['review'] });

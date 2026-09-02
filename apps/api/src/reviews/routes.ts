@@ -23,6 +23,7 @@ import {
   releaseReviewReservation,
   startCreditReview,
 } from './reviewLifecycle.js';
+import { validateCreditReportUpload } from './reportValidation.js';
 
 const startSchema = z.object({ intendedReportDate: z.coerce.date() });
 const creditAccountReviewSchema = z.object({
@@ -381,7 +382,7 @@ export function createReviewRouter(
   router.post(
     '/client/:reviewId/report-document',
     requireRole('CLIENT'),
-    express.raw({ type: 'application/pdf', limit: '15mb' }),
+    express.raw({ type: '*/*', limit: '15mb' }),
     async (req, res, next) => {
       let writtenStorageKey: string | null = null;
       try {
@@ -400,27 +401,39 @@ export function createReviewRouter(
         if (!Buffer.isBuffer(req.body) || req.body.length === 0)
           throw new AppError('REPORT_FILE_REQUIRED', 400, 'Select a PDF credit-report file');
         const mimeType = req.get('content-type')?.split(';')[0] ?? '';
-        if (mimeType !== 'application/pdf')
-          throw new AppError(
-            'REPORT_FILE_TYPE_INVALID',
-            415,
-            'Only PDF credit reports are accepted',
-          );
-        const extension = '.pdf';
         const rawName = req.get('x-file-name');
         const originalFileName = rawName
           ? decodeURIComponent(rawName).slice(0, 240)
-          : `credit-report${extension}`;
+          : 'credit-report.pdf';
+        const sourceEntered = decodeURIComponent(req.get('x-report-source') ?? '').trim();
+        const reportDateHeader = req.get('x-report-date');
+        if (!sourceEntered)
+          throw new AppError('REPORT_SOURCE_REQUIRED', 400, 'Select the report source');
+        if (!reportDateHeader)
+          throw new AppError('REPORT_DATE_REQUIRED', 400, 'Enter the report date');
+        const reportDateEntered = z.coerce.date().parse(reportDateHeader);
+        const latestAccepted = await prisma.reviewIntake.findFirst({
+          where: {
+            review: { clientId, status: 'COMPLETE', id: { not: reviewId } },
+            reportDate: { not: null },
+          },
+          orderBy: { reportDate: 'desc' },
+          select: { reportDate: true },
+        });
+        const validation = validateCreditReportUpload({
+          bytes: req.body,
+          mimeType,
+          fileName: originalFileName,
+          enteredReportDate: reportDateEntered,
+          intendedReportDate: review.intendedReportDate ?? reportDateEntered,
+          latestAcceptedReportDate: latestAccepted?.reportDate ?? null,
+        });
+        const extension = '.pdf';
         const documentId = randomUUID();
         const storageKey = `credit-reports/${clientId}/${documentId}${extension}`;
         const stored = await documentStorage.put(storageKey, req.body);
         writtenStorageKey = storageKey;
         const document = await prisma.$transaction(async (tx) => {
-          if (review.intake!.reportDocumentId)
-            await tx.creditReportDocument.update({
-              where: { id: review.intake!.reportDocumentId },
-              data: { supersededAt: new Date() },
-            });
           const created = await tx.creditReportDocument.create({
             data: {
               id: documentId,
@@ -429,22 +442,52 @@ export function createReviewRouter(
               mimeType,
               sizeBytes: stored.sizeBytes,
               sha256: stored.sha256,
-              provider: stored.provider,
+              provider: sourceEntered,
+              storageProvider: stored.provider,
+              sourceEntered,
+              reportDateEntered,
+              reportDate: reportDateEntered,
+              validationStatus: validation.status,
+              rejectionCode: validation.rejectionCode,
+              rejectionReason: validation.rejectionReason,
               uploadedByUserId: req.auth!.userId,
             },
           });
-          await tx.reviewIntake.update({
-            where: { reviewId },
-            data: { reportDocumentId: created.id, reportDocumentKey: created.storageKey },
-          });
+          if (validation.status === 'VALIDATED') {
+            if (review.intake!.reportDocumentId)
+              await tx.creditReportDocument.update({
+                where: { id: review.intake!.reportDocumentId },
+                data: { supersededAt: new Date(), supersededById: documentId },
+              });
+            await tx.reviewIntake.update({
+              where: { reviewId },
+              data: {
+                reportDocumentId: created.id,
+                reportDocumentKey: created.storageKey,
+                reportSource: sourceEntered,
+                reportDate: reportDateEntered,
+              },
+            });
+          }
           await tx.auditEvent.create({
             data: {
               clientId,
               actorId: req.auth!.userId,
-              action: 'CREDIT_REPORT_UPLOADED',
+              action:
+                validation.status === 'VALIDATED'
+                  ? 'CREDIT_REPORT_VALIDATED'
+                  : validation.status === 'NEEDS_STAFF_REVIEW'
+                    ? 'CREDIT_REPORT_STAFF_REVIEW_REQUIRED'
+                    : 'CREDIT_REPORT_REJECTED',
               entityType: 'CreditReportDocument',
               entityId: created.id,
-              metadata: { reviewId, mimeType, sizeBytes: req.body.length },
+              metadata: {
+                reviewId,
+                mimeType,
+                sizeBytes: req.body.length,
+                validationStatus: validation.status,
+                rejectionCode: validation.rejectionCode,
+              },
             },
           });
           return created;
@@ -455,6 +498,9 @@ export function createReviewRouter(
             originalFileName,
             mimeType,
             sizeBytes: document.sizeBytes,
+            validationStatus: document.validationStatus,
+            rejectionCode: document.rejectionCode,
+            rejectionReason: document.rejectionReason,
           },
         });
       } catch (error) {
@@ -475,8 +521,23 @@ export function createReviewRouter(
           clientId,
           status: { in: ['INTAKE_REQUIRED', 'INFORMATION_REQUESTED'] },
         },
+        include: { intake: { include: { reportDocument: true } } },
       });
       if (!review) throw new AppError('NOT_FOUND', 404, 'Active Review intake was not found');
+      const reportDocument = review.intake?.reportDocument;
+      if (
+        reportDocument &&
+        ((input.reportSource !== undefined &&
+          input.reportSource !== reportDocument.sourceEntered) ||
+          (input.reportDate !== undefined &&
+            input.reportDate.toISOString().slice(0, 10) !==
+              reportDocument.reportDateEntered?.toISOString().slice(0, 10)))
+      )
+        throw new AppError(
+          'REPORT_METADATA_IMMUTABLE',
+          409,
+          'Upload a replacement report to change its source or report date',
+        );
       const data = {
         ...(input.reportSource !== undefined ? { reportSource: input.reportSource } : {}),
         ...(input.reportDate !== undefined ? { reportDate: input.reportDate } : {}),
@@ -495,17 +556,7 @@ export function createReviewRouter(
           ? { materialChangeDetails: input.materialChangeDetails }
           : {}),
       };
-      await prisma.$transaction(async (tx) => {
-        const intake = await tx.reviewIntake.update({ where: { reviewId }, data });
-        if (intake.reportDocumentId && (input.reportSource || input.reportDate))
-          await tx.creditReportDocument.update({
-            where: { id: intake.reportDocumentId },
-            data: {
-              ...(input.reportSource ? { provider: input.reportSource } : {}),
-              ...(input.reportDate ? { reportDate: input.reportDate } : {}),
-            },
-          });
-      });
+      await prisma.reviewIntake.update({ where: { reviewId }, data });
       res.status(204).send();
     } catch (error) {
       next(error);
@@ -743,6 +794,96 @@ export function createReviewRouter(
         });
         if (!review) throw new AppError('NOT_FOUND', 404, 'Credit Profile Review was not found');
         res.json({ review: present(review) });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.post(
+    '/consultant/:clientId/:reviewId/report-document/:documentId/decision',
+    requireRole('CONSULTANT', 'ADMIN'),
+    requireCapability(authorization, 'review.publish', 'clientId', undefined, denialRecorder),
+    async (req, res, next) => {
+      try {
+        const input = parse(
+          z.object({
+            decision: z.enum(['ACCEPT', 'REJECT']),
+            reason: z.string().trim().min(1).max(500).optional(),
+          }),
+          req.body,
+        );
+        const clientId = req.params.clientId as string;
+        const reviewId = req.params.reviewId as string;
+        const documentId = req.params.documentId as string;
+        const document = await prisma.$transaction(async (tx) => {
+          const review = await tx.creditReview.findFirst({
+            where: {
+              id: reviewId,
+              clientId,
+              status: { in: ['INTAKE_REQUIRED', 'INFORMATION_REQUESTED'] },
+            },
+            include: { intake: true, client: { select: { userId: true } } },
+          });
+          if (!review?.intake)
+            throw new AppError('NOT_FOUND', 404, 'Active Review intake was not found');
+          if (!review.client.userId)
+            throw new AppError(
+              'REPORT_OWNER_INVALID',
+              409,
+              'The client report owner is unavailable',
+            );
+          const candidate = await tx.creditReportDocument.findFirst({
+            where: { id: documentId, uploadedByUserId: review.client.userId },
+          });
+          if (!candidate || candidate.validationStatus !== 'NEEDS_STAFF_REVIEW')
+            throw new AppError(
+              'REPORT_DECISION_NOT_AVAILABLE',
+              409,
+              'Report is not awaiting staff review',
+            );
+          if (input.decision === 'ACCEPT') {
+            if (review.intake.reportDocumentId)
+              await tx.creditReportDocument.update({
+                where: { id: review.intake.reportDocumentId },
+                data: { supersededAt: new Date(), supersededById: candidate.id },
+              });
+            await tx.reviewIntake.update({
+              where: { reviewId },
+              data: {
+                reportDocumentId: candidate.id,
+                reportDocumentKey: candidate.storageKey,
+                reportSource: candidate.sourceEntered,
+                reportDate: candidate.reportDateEntered,
+              },
+            });
+          }
+          const updated = await tx.creditReportDocument.update({
+            where: { id: candidate.id },
+            data:
+              input.decision === 'ACCEPT'
+                ? { validationStatus: 'VALIDATED', rejectionCode: null, rejectionReason: null }
+                : {
+                    validationStatus: 'REJECTED',
+                    rejectionCode: 'STAFF_REJECTED',
+                    rejectionReason: input.reason ?? 'Staff rejected the report after review.',
+                  },
+          });
+          await tx.auditEvent.create({
+            data: {
+              clientId,
+              actorId: req.auth!.userId,
+              action:
+                input.decision === 'ACCEPT'
+                  ? 'CREDIT_REPORT_STAFF_ACCEPTED'
+                  : 'CREDIT_REPORT_STAFF_REJECTED',
+              entityType: 'CreditReportDocument',
+              entityId: candidate.id,
+              metadata: { reviewId, reason: input.reason ?? null },
+            },
+          });
+          return updated;
+        });
+        res.json({ document });
       } catch (error) {
         next(error);
       }

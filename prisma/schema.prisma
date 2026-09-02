@@ -935,14 +935,32 @@ model CreditReportDocument {
   sha256           String
   provider         String?
   storageProvider  StorageProvider @default(LOCAL_DISK)
+  validationStatus CreditReportValidationStatus @default(UPLOADED)
+  sourceEntered    String?
+  sourceDetected   String?
+  reportDateEntered DateTime?       @db.Date
+  reportDateDetected DateTime?      @db.Date
+  rejectionCode    String?
+  rejectionReason  String?
   reportDate       DateTime?
   bureauCoverage   Json?
   uploadedByUserId String          @db.Uuid
   uploadedAt       DateTime        @default(now())
   supersededAt     DateTime?
+  supersededById   String?          @unique @db.Uuid
   intake           ReviewIntake?
+  supersededBy     CreditReportDocument? @relation("CreditReportReplacement", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes       CreditReportDocument? @relation("CreditReportReplacement")
 
   @@index([uploadedByUserId, uploadedAt])
+}
+
+enum CreditReportValidationStatus {
+  UPLOADED
+  VALIDATED
+  NEEDS_STAFF_REVIEW
+  ACCEPTED
+  REJECTED
 }
 
 model DocumentType {

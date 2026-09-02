@@ -50,6 +50,7 @@ export async function apiFileRequest<T>(
   path: string,
   file: File,
   documentType?: string,
+  metadataHeaders?: Record<string, string>,
 ): Promise<T> {
   const response = await fetch(`${webEnv.VITE_API_URL}${path}`, {
     method: 'POST',
@@ -58,6 +59,7 @@ export async function apiFileRequest<T>(
       'Content-Type': file.type,
       'X-File-Name': encodeURIComponent(file.name),
       ...(documentType ? { 'X-Document-Type': documentType } : {}),
+      ...metadataHeaders,
     },
     body: file,
   });
