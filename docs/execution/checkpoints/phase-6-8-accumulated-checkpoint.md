@@ -48,6 +48,7 @@ This report was opened before implementation changes. Initial dispositions below
 | C68-02  | P1       | Phase 7 orchestration synchronously calls `processJob` after enqueue and cannot represent the true multi-job dependency chain when executed by a separate Bull worker.    | Persist a durable pipeline coordinator/input contract so restart and duplicate delivery resume the next process safely.                                                   |
 | C68-03  | P2       | Consultant review listing is role-based and manually scoped rather than using the canonical `review.read` capability contract described by CRM-11.                        | Apply canonical capability and client scope on new workspace/monitoring boundaries; avoid widening Admin authority.                                                       |
 | C68-04  | P1       | A failed outbox delivery retained its Bull job identity, so the next governed outbox attempt could not enqueue and deliver the event.                                      | Key transport attempts by durable event plus attempt number while preserving the event identity in the payload; prove restart/retry delivery and duplicate-safe effects.  |
+| C68-05  | P1       | The API suite ran shared PostgreSQL/Redis integration files concurrently; exact-head CI exposed cross-file realtime contention even though each contract passed alone.      | Serialize API test files at the package test-command boundary while retaining the original strict event timeouts and full assertion coverage.                            |
 
 ## Consolidated correction wave
 
@@ -58,6 +59,7 @@ This report was opened before implementation changes. Initial dispositions below
 - Replaced the current CRM review action/link with the canonical persisted workspace. The old completion route remains only as compatibility infrastructure and is no longer exposed by the current review flow.
 - Added the real Source, Profile, Analysis and Publish workspace surfaces, including evidence-aware findings, exception handling, explicit approval gates, secure source-document viewing and an AI job rail.
 - Corrected outbox retry transport identity so a retained failed queue job cannot suppress a later governed attempt.
+- Made the API package regression deterministic by running its shared-service integration files with one Vitest worker; no timeout or assertion was relaxed.
 - Corrected the Sprint 8.1, Sprint 8.2 and Phase 8 gate evidence records to distinguish their original helper/domain boundary from the application-layer completion supplied by this checkpoint.
 - Added a Credit-only review launcher that pins the Phase 6–8 database, Redis, API and web ports and refuses the unrelated database identity.
 
@@ -78,6 +80,7 @@ This report was opened before implementation changes. Initial dispositions below
 | C68-02 | Corrected | Durable coordinator and startup recovery replace test-only synchronous orchestration for the application runtime. |
 | C68-03 | Corrected | New workspace and monitoring routes require canonical capability plus client scope, with MFA on consequential authoring commands. |
 | C68-04 | Corrected | Worker recovery suite proves retry delivery after failure/restart while canonical outbox identity and downstream duplicate safety remain intact. |
+| C68-05 | Corrected | The serialized API package command passes all 188 tests with the original realtime deadlines; exact-head CI rerun supplies the remote proof. |
 
 ## Verification and M3 golden path
 
