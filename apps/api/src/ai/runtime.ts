@@ -93,7 +93,8 @@ export type RuntimeOutput = ProviderResponse & {
 
 export type OutputValidator = (value: unknown) => boolean;
 
-export class AIRuntime {
+/** In-memory test double only. Production execution uses DurableAIRuntime. */
+export class InMemoryAIRuntime {
   private readonly jobs = new Map<string, RuntimeJob>();
   private readonly outputs = new Map<string, RuntimeOutput>();
 
