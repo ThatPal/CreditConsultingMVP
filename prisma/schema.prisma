@@ -776,6 +776,27 @@ model ClientCard {
   @@index([clientId, applicationOutcome, appliedAt])
 }
 
+enum AIJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  RETRYABLE_FAILURE
+  NON_RETRYABLE_FAILURE
+  SCHEMA_INVALID
+  STALE
+  CANCELLED
+}
+
+enum AIAuthorityLevel {
+  FACTUAL_LEVEL_1
+}
+
+enum AIConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
 model ClientUpdate {
   id            String               @id @default(uuid()) @db.Uuid
   clientId      String               @db.Uuid
@@ -1011,8 +1032,108 @@ model CreditReportDocument {
   intake           ReviewIntake?
   supersededBy     CreditReportDocument? @relation("CreditReportReplacement", fields: [supersededById], references: [id], onDelete: SetNull)
   supersedes       CreditReportDocument? @relation("CreditReportReplacement")
+  aiArtifacts      CreditReportArtifact[]
 
   @@index([uploadedByUserId, uploadedAt])
+}
+
+model AIProcessDefinition {
+  id                    String           @id @default(uuid()) @db.Uuid
+  processKey            String
+  processVersion        Int
+  authorityLevel        AIAuthorityLevel @default(FACTUAL_LEVEL_1)
+  enabled               Boolean          @default(true)
+  modelProfile          String
+  inputSchemaVersion    Int
+  outputSchemaVersion   Int
+  instructionVersion    String
+  knowledgeReferences   Json?
+  retryPolicy           Json
+  dataClassification    String
+  allowedContext        Json
+  domainConsumer        String
+  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
+  retiredAt             DateTime?        @db.Timestamptz(3)
+  jobs                  AIJob[]
+
+  @@unique([processKey, processVersion])
+  @@index([processKey, enabled, processVersion])
+}
+
+model AIJob {
+  id                  String              @id @default(uuid()) @db.Uuid
+  processDefinitionId String              @db.Uuid
+  clientId            String              @db.Uuid
+  correlationId       String
+  relatedEntityType   String
+  relatedEntityId     String              @db.Uuid
+  sourceIdentity      String
+  status              AIJobStatus         @default(QUEUED)
+  inputSchemaVersion  Int
+  outputSchemaVersion Int
+  sourceVersions      Json
+  inputEnvelope       Json
+  currentAttempt      Int                 @default(0)
+  maxAttempts         Int                 @default(3)
+  availableAt         DateTime            @default(now()) @db.Timestamptz(3)
+  startedAt           DateTime?           @db.Timestamptz(3)
+  completedAt         DateTime?           @db.Timestamptz(3)
+  failureCategory     String?
+  failureCode         String?
+  createdAt           DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @db.Timestamptz(3)
+  processDefinition   AIProcessDefinition @relation(fields: [processDefinitionId], references: [id], onDelete: Restrict)
+  outputs             AIJobOutput[]
+  artifacts           CreditReportArtifact[]
+
+  @@unique([processDefinitionId, sourceIdentity, correlationId])
+  @@index([status, availableAt, createdAt])
+  @@index([clientId, relatedEntityType, relatedEntityId])
+  @@index([correlationId])
+}
+
+model AIJobOutput {
+  id                  String       @id @default(uuid()) @db.Uuid
+  jobId               String       @db.Uuid
+  outputVersion       Int
+  outputSchemaVersion Int
+  status              String
+  result              Json
+  exceptions          Json
+  confidence          AIConfidence
+  evidence            Json
+  humanReview         Json
+  provenance          Json
+  sourceVersions      Json
+  staleAt             DateTime?    @db.Timestamptz(3)
+  createdAt           DateTime     @default(now()) @db.Timestamptz(3)
+  job                 AIJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  artifacts           CreditReportArtifact[]
+
+  @@unique([jobId, outputVersion])
+  @@index([jobId, staleAt, createdAt])
+}
+
+model CreditReportArtifact {
+  id               String               @id @default(uuid()) @db.Uuid
+  reportDocumentId String               @db.Uuid
+  aiJobId          String               @db.Uuid
+  aiJobOutputId    String               @db.Uuid
+  artifactType     String
+  artifactVersion  Int
+  sourceVersion    String
+  schemaVersion    Int
+  payload          Json
+  current          Boolean              @default(true)
+  staleAt          DateTime?            @db.Timestamptz(3)
+  createdAt        DateTime             @default(now()) @db.Timestamptz(3)
+  reportDocument   CreditReportDocument @relation(fields: [reportDocumentId], references: [id], onDelete: Restrict)
+  aiJob            AIJob                @relation(fields: [aiJobId], references: [id], onDelete: Restrict)
+  aiJobOutput      AIJobOutput          @relation(fields: [aiJobOutputId], references: [id], onDelete: Restrict)
+
+  @@unique([reportDocumentId, artifactType, artifactVersion])
+  @@index([reportDocumentId, artifactType, current])
+  @@index([aiJobId, aiJobOutputId])
 }
 
 enum CreditReportValidationStatus {
