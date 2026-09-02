@@ -155,20 +155,32 @@ afterAll(async () => {
 });
 
 describe('Review entitlement and report authorization characterization', () => {
-  test('accepts paid purchase and live ReviewPlan fallback, while rejecting invalid purchases and a second active Review', async () => {
+  test('reserves purchased credit and live ReviewPlan fallback, while rejecting no-credit and second-active starts', async () => {
     const app = buildApp();
 
     const paidClient = await createClient('paid-review');
     const paid = await createPurchase(paidClient.client.id);
+    await prisma.reviewCreditTransaction.create({
+      data: {
+        clientId: paidClient.client.id,
+        purchaseId: paid.id,
+        sourceKey: `characterization:${paid.id}`,
+        transactionType: 'PURCHASE',
+        availableDelta: 1,
+        reason: 'Characterization purchased credit',
+      },
+    });
     await request(app)
       .post('/reviews/client')
       .set('x-test-principal', paidClient.header)
-      .send({ purchaseId: paid.id })
+      .set('idempotency-key', `start-${paid.id}`)
+      .send({ intendedReportDate: '2026-08-01' })
       .expect(201);
     await request(app)
       .post('/reviews/client')
       .set('x-test-principal', paidClient.header)
-      .send({ purchaseId: paid.id })
+      .set('idempotency-key', `start-again-${paid.id}`)
+      .send({ intendedReportDate: '2026-08-01' })
       .expect(409)
       .expect(({ body }) => expect(body.error.code).toBe('REVIEW_ALREADY_ACTIVE'));
 
@@ -184,53 +196,18 @@ describe('Review entitlement and report authorization characterization', () => {
     await request(app)
       .post('/reviews/client')
       .set('x-test-principal', planClient.header)
-      .send({})
+      .set('idempotency-key', `start-plan-${planClient.client.id}`)
+      .send({ intendedReportDate: '2026-08-02' })
       .expect(201);
 
-    const pendingClient = await createClient('pending-review');
-    const pending = await createPurchase(pendingClient.client.id, 'PENDING');
+    const noCreditClient = await createClient('no-credit-review');
     await request(app)
       .post('/reviews/client')
-      .set('x-test-principal', pendingClient.header)
-      .send({ purchaseId: pending.id })
-      .expect(409);
-
-    const wrongOwner = await createClient('wrong-owner');
-    const wrongCaller = await createClient('wrong-caller');
-    const otherPurchase = await createPurchase(wrongOwner.client.id);
-    await request(app)
-      .post('/reviews/client')
-      .set('x-test-principal', wrongCaller.header)
-      .send({ purchaseId: otherPurchase.id })
-      .expect(409);
-
-    const wrongServiceClient = await createClient('wrong-service');
-    const wrongService = await createPurchase(
-      wrongServiceClient.client.id,
-      'PAID',
-      'CREDIT_CARD_ROUND',
-    );
-    await request(app)
-      .post('/reviews/client')
-      .set('x-test-principal', wrongServiceClient.header)
-      .send({ purchaseId: wrongService.id })
-      .expect(409);
-
-    const usedClient = await createClient('used-purchase');
-    const used = await createPurchase(usedClient.client.id);
-    await prisma.creditReview.create({
-      data: {
-        clientId: usedClient.client.id,
-        purchaseId: used.id,
-        status: 'COMPLETE',
-        completedAt: new Date(),
-      },
-    });
-    await request(app)
-      .post('/reviews/client')
-      .set('x-test-principal', usedClient.header)
-      .send({ purchaseId: used.id })
-      .expect(409);
+      .set('x-test-principal', noCreditClient.header)
+      .set('idempotency-key', `start-none-${noCreditClient.client.id}`)
+      .send({ intendedReportDate: '2026-08-03' })
+      .expect(409)
+      .expect(({ body }) => expect(body.error.code).toBe('REVIEW_CREDIT_REQUIRED'));
   });
 
   test('scopes report listing/content to owner and assigned consultant', async () => {

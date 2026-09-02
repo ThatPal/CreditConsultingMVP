@@ -18,8 +18,13 @@ import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate } from '../liveUpdates.js';
 import { createLocalDocumentStorage, type DocumentStorage } from '../storage/documentStorage.js';
+import {
+  checkReportEligibility,
+  releaseReviewReservation,
+  startCreditReview,
+} from './reviewLifecycle.js';
 
-const startSchema = z.object({ purchaseId: z.string().uuid().optional() });
+const startSchema = z.object({ intendedReportDate: z.coerce.date() });
 const creditAccountReviewSchema = z.object({
   cardId: z.string().uuid().optional(),
   status: z.enum(['CONFIRMED', 'UPDATED', 'NEW']),
@@ -315,77 +320,60 @@ export function createReviewRouter(
       next(error);
     }
   });
+  router.get('/client/eligibility', requireRole('CLIENT'), async (req, res, next) => {
+    try {
+      const input = parse(z.object({ intendedReportDate: z.coerce.date() }), req.query);
+      res.json({
+        eligibility: await checkReportEligibility(
+          prisma,
+          req.auth!.clientId!,
+          input.intendedReportDate,
+        ),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
   router.post('/client', requireRole('CLIENT'), async (req, res, next) => {
     try {
       const input = parse(startSchema, req.body);
-      const clientId = req.auth!.clientId!;
-      const review = await prisma.$transaction(async (tx) => {
-        const active = await tx.creditReview.findFirst({
-          where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
-        });
-        if (active)
-          throw new AppError(
-            'REVIEW_ALREADY_ACTIVE',
-            409,
-            'A Credit Profile Review is already active',
-          );
-        const purchaseId: string | null = input.purchaseId ?? null;
-        if (purchaseId) {
-          const purchase = await tx.servicePurchase.findFirst({
-            where: {
-              id: purchaseId,
-              clientId,
-              serviceType: 'CREDIT_PROFILE_REVIEW',
-              status: 'PAID',
-              creditReview: null,
-            },
-          });
-          if (!purchase)
-            throw new AppError(
-              'REVIEW_ENTITLEMENT_REQUIRED',
-              409,
-              'A verified unused Credit Profile Review purchase is required',
-            );
-        } else {
-          const plan = await tx.reviewPlan.findFirst({
-            where: {
-              clientId,
-              status: 'ACTIVE',
-              OR: [{ nextReviewAt: null }, { nextReviewAt: { lte: new Date() } }],
-            },
-          });
-          if (!plan)
-            throw new AppError(
-              'REVIEW_ENTITLEMENT_REQUIRED',
-              409,
-              'Purchase a Review or use an available Review plan entitlement',
-            );
-        }
-        const created = await tx.creditReview.create({
-          data: { clientId, purchaseId, status: 'INTAKE_REQUIRED', intake: { create: {} } },
-          include: includeReview,
-        });
-        await tx.workItem.create({
-          data: {
-            clientId,
-            title: 'Complete Credit Profile Review intake',
-            domain: 'CREDIT_REVIEW',
-            priority: 'HIGH',
-            suggestedNextAction: 'Upload report and confirm current information',
-          },
-        });
-        await tx.auditEvent.create({
-          data: {
-            clientId,
-            actorId: req.auth!.userId,
-            action: 'CREDIT_REVIEW_STARTED',
-            entityType: 'CreditReview',
-            entityId: created.id,
-          },
-        });
-        return created;
+      const idempotencyKey = req.get('idempotency-key');
+      if (!idempotencyKey)
+        throw new AppError('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key is required');
+      const started = await startCreditReview(prisma, {
+        clientId: req.auth!.clientId!,
+        actorId: req.auth!.userId,
+        intendedReportDate: input.intendedReportDate,
+        idempotencyKey,
       });
-      res.status(201).json({ review: present(review) });
+      const review = await prisma.creditReview.findUnique({
+        where: { id: started.result.reviewId as string },
+        include: includeReview,
+      });
+      res.status(started.replayed ? 200 : 201).json({
+        review: present(review),
+        reservation: {
+          transactionId: started.result.reservationTransactionId,
+          consumed: false,
+        },
+        replayed: started.replayed,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/client/:reviewId/cancel', requireRole('CLIENT'), async (req, res, next) => {
+    try {
+      const idempotencyKey = req.get('idempotency-key');
+      if (!idempotencyKey)
+        throw new AppError('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key is required');
+      const released = await releaseReviewReservation(prisma, {
+        clientId: req.auth!.clientId!,
+        actorId: req.auth!.userId,
+        reviewId: req.params.reviewId as string,
+        idempotencyKey,
+      });
+      res.json(released);
     } catch (error) {
       next(error);
     }

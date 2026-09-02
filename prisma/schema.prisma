@@ -875,6 +875,8 @@ model CreditReview {
   purchaseId               String?                   @unique @db.Uuid
   consultantId             String?                   @db.Uuid
   status                   CreditReviewStatus        @default(INTAKE_REQUIRED)
+  intendedReportDate       DateTime?                 @db.Date
+  reservationExpiresAt     DateTime?                 @db.Timestamptz(3)
   generalReadiness         GeneralReadiness          @default(UNDER_REVIEW)
   recommendation           ReviewRecommendation?
   readinessExpiresAt       DateTime?
@@ -896,6 +898,7 @@ model CreditReview {
   reviewCreditTransactions ReviewCreditTransaction[]
 
   @@index([clientId, status, createdAt])
+  @@index([clientId, intendedReportDate, createdAt])
   @@index([consultantId, status, updatedAt])
 }
 
