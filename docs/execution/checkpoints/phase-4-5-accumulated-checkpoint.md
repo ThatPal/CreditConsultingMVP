@@ -138,6 +138,9 @@ Regression proofs cover ADMIN existing-session verification, CONSULTANT enrollme
 - Checkpoint implementation commit: `620f481f5c42a8cb41825930c7a2b53f4cc8dcfd`
 - GitHub Actions workflow `CI`: **SUCCESS**
 - Run: `https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33579522547`
+- C03 implementation commit: `6398a66b7b3b722f14ee8dab3c084408e5c353e9`
+- C03 GitHub Actions workflow `CI`: **SUCCESS**
+- C03 run: `https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33583280625`
 
 ## Review access
 
