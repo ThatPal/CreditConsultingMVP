@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import express, { Router } from 'express';
 import { z } from 'zod';
 import type { AuthService } from '../auth/authService.js';
@@ -215,6 +215,10 @@ const includeReview = {
   },
   findings: { orderBy: { sortOrder: 'asc' as const } },
   snapshot: { include: { accounts: true } },
+  clientUpdates: {
+    where: { supersededAt: null },
+    orderBy: { createdAt: 'asc' as const },
+  },
 } as const;
 type ReviewWithDetails = Prisma.CreditReviewGetPayload<{ include: typeof includeReview }>;
 type ReviewWithOptionalClientSnapshots = ReviewWithDetails & {
@@ -566,8 +570,87 @@ export function createReviewRouter(
         ...(input.materialChangeDetails !== undefined
           ? { materialChangeDetails: input.materialChangeDetails }
           : {}),
+        ...(input.materialChanges !== undefined
+          ? {
+              noChangesConfirmedAt: input.materialChanges.includes('No material changes')
+                ? new Date()
+                : null,
+            }
+          : {}),
       };
-      await prisma.reviewIntake.update({ where: { reviewId }, data });
+      await prisma.$transaction(async (tx) => {
+        await tx.reviewIntake.update({ where: { reviewId }, data });
+        if (
+          input.accountUpdates === undefined &&
+          input.materialChangeDetails === undefined &&
+          input.recentApplications === undefined
+        )
+          return;
+        const declarations = [
+          ...(input.accountUpdates ?? []).map((update) => ({
+            category: update.changeType,
+            subject: update.creditorName,
+            details: JSON.stringify({
+              ...(update.balance !== undefined ? { balance: update.balance } : {}),
+              ...(update.creditLimit !== undefined ? { creditLimit: update.creditLimit } : {}),
+            }),
+            effectiveDate:
+              update.effectiveDate && !Number.isNaN(Date.parse(update.effectiveDate))
+                ? new Date(update.effectiveDate)
+                : null,
+            provenance: { entry: 'review-intake', field: 'accountUpdates' },
+          })),
+          ...(input.materialChangeDetails ?? []).map((change) => ({
+            category: 'OTHER' as const,
+            subject: change.type,
+            details: change.details,
+            effectiveDate: null,
+            provenance: { entry: 'review-intake', field: 'materialChangeDetails' },
+          })),
+          ...(input.recentApplications ?? []).map((application) => ({
+            category: 'RECENT_APPLICATION' as const,
+            subject: application.issuer,
+            details: JSON.stringify({
+              outcome: application.outcome,
+              scope: application.scope,
+              ...(application.approvedAmount !== undefined
+                ? { approvedAmount: application.approvedAmount }
+                : {}),
+            }),
+            effectiveDate: !Number.isNaN(Date.parse(application.date))
+              ? new Date(application.date)
+              : null,
+            provenance: { entry: 'review-intake', field: 'recentApplications' },
+          })),
+        ];
+        const keys = declarations.map((declaration) =>
+          createHash('sha256').update(JSON.stringify(declaration)).digest('hex'),
+        );
+        await tx.clientUpdate.updateMany({
+          where: {
+            reviewId,
+            source: 'CLIENT_DECLARED',
+            supersededAt: null,
+            ...(keys.length ? { sourceKey: { notIn: keys } } : {}),
+          },
+          data: { supersededAt: new Date() },
+        });
+        await Promise.all(
+          declarations.map((declaration, index) =>
+            tx.clientUpdate.upsert({
+              where: { reviewId_sourceKey: { reviewId, sourceKey: keys[index]! } },
+              create: {
+                clientId,
+                reviewId,
+                sourceKey: keys[index]!,
+                source: 'CLIENT_DECLARED',
+                ...declaration,
+              },
+              update: { ...declaration, supersededAt: null },
+            }),
+          ),
+        );
+      });
       res.status(204).send();
     } catch (error) {
       next(error);

@@ -389,6 +389,81 @@ describe('Review entitlement and report authorization characterization', () => {
       expect.objectContaining({ portfolioType: 'NON_REPORTING', reportsToBureaus: false }),
     ]);
   });
+
+  test('persists provenance-bearing changes idempotently and explicit no-changes confirmation', async () => {
+    const owner = await createClient('client-update-owner');
+    const review = await prisma.creditReview.create({
+      data: { clientId: owner.client.id, status: 'INTAKE_REQUIRED', intake: { create: {} } },
+    });
+    await prisma.clientUpdate.create({
+      data: {
+        clientId: owner.client.id,
+        reviewId: review.id,
+        sourceKey: 'platform-observed-proof',
+        category: 'FINANCIAL_RELATIONSHIP',
+        source: 'PLATFORM_OBSERVED',
+        subject: 'Business relationship recorded in platform',
+        provenance: { source: 'platform' },
+      },
+    });
+    const declaration = {
+      accountUpdates: [
+        {
+          creditorName: 'Example Bank',
+          changeType: 'LIMIT_CHANGED',
+          creditLimit: 9000,
+          effectiveDate: '2026-08-20',
+        },
+      ],
+      recentApplications: [
+        {
+          issuer: 'Another Bank',
+          date: '2026-08-21',
+          outcome: 'PENDING',
+          scope: 'PERSONAL',
+        },
+      ],
+      materialChanges: ['Income changed'],
+      materialChangeDetails: [{ type: 'Income changed', details: 'Updated income on file.' }],
+    };
+    await request(buildApp())
+      .patch(`/reviews/client/${review.id}/intake`)
+      .set('x-test-principal', owner.header)
+      .send(declaration)
+      .expect(204);
+    await request(buildApp())
+      .patch(`/reviews/client/${review.id}/intake`)
+      .set('x-test-principal', owner.header)
+      .send(declaration)
+      .expect(204);
+    await expect(
+      prisma.clientUpdate.count({ where: { reviewId: review.id, supersededAt: null } }),
+    ).resolves.toBe(4);
+    await expect(
+      prisma.clientUpdate.count({
+        where: { reviewId: review.id, source: 'PLATFORM_OBSERVED', supersededAt: null },
+      }),
+    ).resolves.toBe(1);
+
+    await request(buildApp())
+      .patch(`/reviews/client/${review.id}/intake`)
+      .set('x-test-principal', owner.header)
+      .send({
+        accountUpdates: [],
+        recentApplications: [],
+        materialChanges: ['No material changes'],
+        materialChangeDetails: [],
+      })
+      .expect(204);
+    await expect(
+      prisma.reviewIntake.findUnique({ where: { reviewId: review.id } }),
+    ).resolves.toMatchObject({ noChangesConfirmedAt: expect.any(Date) });
+    await expect(
+      prisma.clientUpdate.count({
+        where: { reviewId: review.id, source: 'CLIENT_DECLARED', supersededAt: null },
+      }),
+    ).resolves.toBe(0);
+  });
 });
 
 describe('Support, notification, and application-cycle characterization', () => {

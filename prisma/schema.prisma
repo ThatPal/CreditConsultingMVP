@@ -95,6 +95,24 @@ enum ClientCardIdentityStatus {
   UNRESOLVED
 }
 
+enum ClientUpdateCategory {
+  NEW_ACCOUNT
+  BALANCE_CHANGED
+  LIMIT_CHANGED
+  ACCOUNT_CLOSED
+  NOT_MINE
+  AUTHORIZED_USER_CHANGED
+  PROMOTIONAL_OFFER_CHANGED
+  RECENT_APPLICATION
+  FINANCIAL_RELATIONSHIP
+  OTHER
+}
+
+enum ClientUpdateSource {
+  CLIENT_DECLARED
+  PLATFORM_OBSERVED
+}
+
 enum CardApplicationOutcome {
   APPROVED
   DECLINED
@@ -623,6 +641,7 @@ model Client {
   accessGrants             ClientAccessGrant[]
   securityEvents           SecurityEvent[]
   documents                Document[]
+  clientUpdates            ClientUpdate[]
 
   @@index([assignedConsultantId, status])
 }
@@ -755,6 +774,27 @@ model ClientCard {
   @@index([clientId, accountStatus, issuer])
   @@index([clientId, portfolioType, identityStatus])
   @@index([clientId, applicationOutcome, appliedAt])
+}
+
+model ClientUpdate {
+  id            String               @id @default(uuid()) @db.Uuid
+  clientId      String               @db.Uuid
+  reviewId      String?              @db.Uuid
+  sourceKey     String
+  category      ClientUpdateCategory
+  source        ClientUpdateSource
+  subject       String?
+  details       String?
+  effectiveDate DateTime?            @db.Date
+  provenance    Json?
+  createdAt     DateTime             @default(now()) @db.Timestamptz(3)
+  supersededAt  DateTime?            @db.Timestamptz(3)
+  client        Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  review        CreditReview?        @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+
+  @@unique([reviewId, sourceKey])
+  @@index([clientId, supersededAt, effectiveDate])
+  @@index([reviewId, supersededAt])
 }
 
 model ApplicationCycle {
@@ -913,6 +953,7 @@ model CreditReview {
   snapshot                 CreditSnapshot?           @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
   snapshotId               String?                   @unique @db.Uuid
   reviewCreditTransactions ReviewCreditTransaction[]
+  clientUpdates            ClientUpdate[]
 
   @@index([clientId, status, createdAt])
   @@index([clientId, intendedReportDate, createdAt])
@@ -935,6 +976,7 @@ model ReviewIntake {
   informationRequestedAt  DateTime?
   informationResolvedAt   DateTime?
   clientConfirmedAt       DateTime?
+  noChangesConfirmedAt    DateTime?             @db.Timestamptz(3)
   submittedAt             DateTime?
   reportDocumentId        String?               @unique @db.Uuid
   createdAt               DateTime              @default(now())

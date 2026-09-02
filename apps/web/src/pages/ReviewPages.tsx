@@ -114,6 +114,15 @@ type Review = {
     }>;
   };
   findings: Array<{ id: string; label: string; severity: string; description: string | null }>;
+  clientUpdates?: Array<{
+    id: string;
+    category:
+      AccountUpdate['changeType'] | 'RECENT_APPLICATION' | 'FINANCIAL_RELATIONSHIP' | 'OTHER';
+    source: 'CLIENT_DECLARED' | 'PLATFORM_OBSERVED';
+    subject: string | null;
+    details: string | null;
+    effectiveDate: string | null;
+  }>;
   client?: {
     firstName: string;
     lastName: string;
@@ -2312,6 +2321,30 @@ export function ClientReviewPage({
       );
     if (intake.recentApplications) setApplications(intake.recentApplications);
     if (intake.accountUpdates) setAccountUpdates(intake.accountUpdates);
+    else {
+      const observed = (query.data?.review?.clientUpdates ?? []).filter(
+        (update) => update.source === 'PLATFORM_OBSERVED',
+      );
+      setAccountUpdates(
+        observed
+          .filter((update) =>
+            [
+              'NEW_ACCOUNT',
+              'BALANCE_CHANGED',
+              'LIMIT_CHANGED',
+              'ACCOUNT_CLOSED',
+              'NOT_MINE',
+              'AUTHORIZED_USER_CHANGED',
+              'PROMOTIONAL_OFFER_CHANGED',
+            ].includes(update.category),
+          )
+          .map((update) => ({
+            creditorName: update.subject ?? 'Platform-recorded account',
+            changeType: update.category as AccountUpdate['changeType'],
+            effectiveDate: update.effectiveDate?.slice(0, 10),
+          })),
+      );
+    }
     if (intake.creditAccountReviews) setCreditAccountReviews(intake.creditAccountReviews);
     const resumeStep =
       intake.creditAccountsConfirmed != null
