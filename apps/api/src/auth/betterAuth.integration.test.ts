@@ -85,6 +85,14 @@ function cookieFrom(response: Response) {
   return response.headers.get('set-cookie')?.split(';')[0] ?? '';
 }
 
+function cookiesFrom(response: Response) {
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] };
+  return (headers.getSetCookie?.() ?? [response.headers.get('set-cookie') ?? ''])
+    .map((value) => value.split(';')[0])
+    .filter(Boolean)
+    .join('; ');
+}
+
 function totp(secret: string, now = Date.now()) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let bits = '';
@@ -186,6 +194,12 @@ describe.sequential('Better Auth client authentication', () => {
       staffMfaVerified: false,
       stepUpVerified: false,
     });
+    expect(
+      deriveMfaAssurance('ADMIN', true, new Date(Date.now() - 16 * 60_000), 15),
+    ).toEqual({
+      staffMfaVerified: true,
+      stepUpVerified: false,
+    });
   });
 
   test('binds a goal-first intake to a newly registered client exactly once', async () => {
@@ -269,6 +283,20 @@ describe.sequential('Better Auth client authentication', () => {
       body: { code: totp(secret!) },
     });
     expect(verified.status).toBe(200);
+    const verifiedCookie = cookieFrom(verified) || signedIn.cookie;
+    const principal = await resolveBetterAuthPrincipal(
+      auth,
+      prisma,
+      { cookie: verifiedCookie },
+      env.MFA_STEP_UP_TTL_MINUTES,
+    );
+    expect(principal).toMatchObject({
+      userId: staff.id,
+      role: 'CONSULTANT',
+      staffMfaEnabled: true,
+      staffMfaVerified: true,
+      stepUpVerified: true,
+    });
     expect(
       await prisma.user.findUniqueOrThrow({
         where: { id: staff.id },
@@ -276,7 +304,35 @@ describe.sequential('Better Auth client authentication', () => {
       }),
     ).toMatchObject({ twoFactorEnabled: true });
 
-    await call('/api/auth/sign-out', { cookie: cookieFrom(verified) || signedIn.cookie, body: {} });
+    await call('/api/auth/sign-out', { cookie: verifiedCookie, body: {} });
+    const challengedSignIn = await signIn(staffEmail);
+    expect(challengedSignIn.response.status).toBe(200);
+    await expect(challengedSignIn.response.clone().json()).resolves.toMatchObject({
+      twoFactorRedirect: true,
+    });
+    const invalidChallenge = await call('/api/auth/two-factor/verify-totp', {
+      cookie: cookiesFrom(challengedSignIn.response),
+      body: { code: '000000' },
+    });
+    expect([400, 401]).toContain(invalidChallenge.status);
+    expect(await prisma.betterAuthSession.count({ where: { userId: staff.id } })).toBe(0);
+    const verifiedChallenge = await call('/api/auth/two-factor/verify-totp', {
+      cookie: cookiesFrom(challengedSignIn.response),
+      body: { code: totp(secret!) },
+    });
+    expect(verifiedChallenge.status).toBe(200);
+    const challengePrincipal = await resolveBetterAuthPrincipal(
+      auth,
+      prisma,
+      { cookie: cookiesFrom(verifiedChallenge) },
+      env.MFA_STEP_UP_TTL_MINUTES,
+    );
+    expect(challengePrincipal).toMatchObject({
+      userId: staff.id,
+      staffMfaVerified: true,
+      stepUpVerified: true,
+    });
+
     await resetReviewStaffMfa(prisma, [staff.id]);
     expect(await prisma.betterAuthTwoFactor.count({ where: { userId: staff.id } })).toBe(0);
     expect(await prisma.betterAuthSession.count({ where: { userId: staff.id } })).toBe(0);
@@ -323,11 +379,42 @@ describe.sequential('Better Auth client authentication', () => {
     expect(enrollment.totpURI).toMatch(/^otpauth:\/\/totp\//);
     expect(enrollment.backupCodes.length).toBeGreaterThan(0);
     const secret = new URL(enrollment.totpURI).searchParams.get('secret');
+    // Characterize an already-enrolled staff account whose current authenticated
+    // session still needs step-up assurance. Better Auth verifies this session
+    // in place rather than creating a replacement session.
+    await prisma.user.update({
+      where: { id: admin.id },
+      data: { twoFactorEnabled: true },
+    });
+    const invalid = await call('/api/auth/two-factor/verify-totp', {
+      cookie: signedIn.cookie,
+      body: { code: '000000' },
+    });
+    expect([400, 401]).toContain(invalid.status);
+    expect(
+      await prisma.betterAuthSession.findFirstOrThrow({
+        where: { userId: admin.id },
+        select: { staffMfaVerifiedAt: true },
+      }),
+    ).toEqual({ staffMfaVerifiedAt: null });
     const verified = await call('/api/auth/two-factor/verify-totp', {
       cookie: signedIn.cookie,
       body: { code: totp(secret!) },
     });
     expect(verified.status).toBe(200);
+    const principal = await resolveBetterAuthPrincipal(
+      auth,
+      prisma,
+      { cookie: cookieFrom(verified) || signedIn.cookie },
+      env.MFA_STEP_UP_TTL_MINUTES,
+    );
+    expect(principal).toMatchObject({
+      userId: admin.id,
+      role: 'ADMIN',
+      staffMfaEnabled: true,
+      staffMfaVerified: true,
+      stepUpVerified: true,
+    });
     await resetReviewStaffMfa(prisma, [admin.id]);
     expect(await prisma.betterAuthTwoFactor.count({ where: { userId: admin.id } })).toBe(0);
     expect(await prisma.betterAuthSession.count({ where: { userId: admin.id } })).toBe(0);

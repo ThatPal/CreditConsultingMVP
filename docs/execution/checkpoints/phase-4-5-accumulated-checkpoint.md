@@ -39,7 +39,7 @@ The web watcher initially retained no `VITE_API_URL` binding and therefore calle
 | B11 | **VERIFIED HEALTHY** | The shared commerce summary is currently used only in Consultant Client 360 and explicitly states the consultant’s read-only boundary. Client purchase language remains in client-only surfaces.                                                                                                                                              |
 | B12 | **FIXED**            | A shared human-readable code-label contract now drives Work Queue priority/reason/lifecycle and Admin payment status presentation. Urgency labels communicate action priority rather than exposing raw enum tokens.                                                                                                                           |
 | B13 | **FIXED**            | High-volume Documents, Work Queue, Purchase History, Active Services, and Admin Payments state is URL-backed, so filter/page state survives refresh and supports reviewable links.                                                                                                                                                            |
-| B14 | **VERIFIED HEALTHY** | Staff access redirects an enrolled-but-unverified staff session to MFA step-up and an unenrolled staff session to password-confirmed QR enrollment with a preserved `returnTo`. Auth regression coverage verifies expiration/return-path behavior; manual review confirms no redirect loop before enrollment input.                           |
+| B14 | **FIXED (C03)**      | Product-owner testing disproved the earlier smoke-only disposition: successful TOTP verification on an existing authenticated staff session did not stamp authoritative session assurance and redirected back to MFA. C03 now stamps only the successfully verified current ADMIN/CONSULTANT session, preserves enrollment versus step-up state, selects challenge mode for enrolled staff, and preserves `returnTo`. |
 | B15 | **FIXED**            | The Credit-only environment was restored and a deterministic `review:phase4-5:start` command was added with explicit database, Redis, API, web-origin, Better Auth, and Vite API bindings plus a Behfar fail-closed guard.                                                                                                                    |
 | B16 | **VERIFIED HEALTHY** | Notifications already use bounded incremental loading, unread state, read/read-all commands, and regression coverage. No destructive correction was needed.                                                                                                                                                                                   |
 | B17 | **FIXED**            | Client and Consultant support deep links now fetch the authorized case detail directly, independent of the current list page/filter. The server continues to enforce client ownership or canonical `support.manage` plus client scope.                                                                                                        |
@@ -63,6 +63,20 @@ Correction:
 ### C02 — Review runtime silently fell back to the wrong API port (**FIXED**, medium)
 
 The web process could start on `5184` while using the application’s default API port because `VITE_API_URL` was not bound in the watcher environment. This produced a visually running but unusable shell. The deterministic Credit-only start script binds the full topology and records per-process logs.
+
+### C03 — Staff MFA enrollment redirect loop (**FIXED**, checkpoint-blocking)
+
+The earlier B14 smoke test stopped at password-confirmed QR enrollment and did not prove the complete enrollment → valid TOTP → refreshed authoritative session → application-access sequence. Better Auth has two materially different successful TOTP paths: enrollment normally creates a replacement session, while verification for an already-enrolled authenticated user updates no session. The existing `databaseHooks.session.create.before` assurance stamp therefore never ran for the latter path, leaving `staffMfaVerifiedAt = null`; `/api/me` correctly reported false and `ProtectedRoute` sent the user back to MFA.
+
+Correction:
+
+- the successful `/two-factor/verify-totp` backend hook now updates only the current authenticated ADMIN/CONSULTANT session after confirming persistent MFA enrollment;
+- invalid TOTP responses cannot stamp session assurance;
+- persistent `twoFactorEnabled` remains distinct from current-session `staffMfaVerifiedAt` and step-up TTL;
+- enrollment-created replacement sessions retain the existing create-hook behavior without broadening assurance;
+- enrolled-but-unverified staff are routed to challenge mode, while unenrolled staff remain on password-confirmed QR enrollment, with the exact safe internal return path preserved.
+
+Regression proofs cover ADMIN existing-session verification, CONSULTANT enrollment and enrolled-login challenge, invalid-code denial, fresh-session non-inheritance, step-up expiry, safe return paths, and enrollment cancellation/logout.
 
 ## Accumulated requirement matrix
 
@@ -96,16 +110,18 @@ The web process could start on `5184` while using the application’s default AP
 - Documents UI: **8/8 PASS**, including deliberate document-category selection.
 - Support/App shell correction rerun: **29/29 PASS**, including a deep-linked case outside the current page and the matured Admin landing.
 - Commerce route tests: **4/4 PASS**, including bounded searched deterministic Purchase History page 2.
+- C03 Better Auth/API MFA: **12/12 PASS**, including authoritative ADMIN and CONSULTANT session assurance, invalid-code denial, fresh challenge-session isolation, and step-up TTL.
+- C03 Web MFA/routing/authorization: **37/37 PASS**, including safe saved-route recovery, enrolled-versus-unenrolled routing, and cancel/logout recovery.
 
 ### Accumulated workspace gate
 
 - `pnpm test`: **PASS**
-  - Web: 13 files, **75 tests**
+  - Web: 13 files, **76 tests**
   - Runtime: 1 file, **3 tests**
   - Shared: no tests, pass-with-no-tests contract
   - API: 33 files, **136 tests**
   - Worker: 4 files, **10 tests**
-  - Total: 51 test files, **224 tests passed**
+  - Total: 51 test files, **225 tests passed**
 - `pnpm lint`: **PASS**, zero errors/warnings.
 - `pnpm typecheck`: **PASS** across Web, Runtime, Shared, Worker, and API.
 - `pnpm build`: **PASS** for Web, Runtime, Shared, Worker, and API. Vite reported only its advisory main-chunk size warning.
@@ -115,7 +131,7 @@ The web process could start on `5184` while using the application’s default AP
 - The 47 historical events matching the confirmed C01 defect were narrowly repaired and replayed.
 - Post-replay result: authorization grant **13 PUBLISHED**, authorization revoke **13 PUBLISHED**, staff-assignment deactivate **13 PUBLISHED**, and gateway-default change **13 PUBLISHED**; no affected event remains failed.
 - Worker dependency readiness: PostgreSQL **ready**, Redis **ready**, worker **ready**.
-- Web `5184` and API `3007` respond; the staff session reaches password-confirmed QR enrollment with `returnTo=/admin` and no browser console error.
+- Web `5184` and API `3007` respond from the Credit-only review environment. C03 integration regression proves complete ADMIN and CONSULTANT enrollment/challenge session assurance and route recovery; both seeded staff accounts are reset to QR enrollment state for product-owner review.
 
 ### Repository CI
 

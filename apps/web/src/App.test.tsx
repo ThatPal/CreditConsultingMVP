@@ -316,9 +316,7 @@ describe('application shells', () => {
 
   test('staff without current MFA assurance is directed to AUTH-05', () => {
     renderAt('/crm', 'CONSULTANT', { staffMfaVerified: false });
-    expect(
-      screen.getByRole('heading', { name: /protect your staff account/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /verify it.s you/i })).toBeInTheDocument();
     expect(
       screen.queryByRole('navigation', { name: /consultant navigation/i }),
     ).not.toBeInTheDocument();

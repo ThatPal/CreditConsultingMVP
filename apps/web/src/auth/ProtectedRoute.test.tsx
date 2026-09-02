@@ -100,4 +100,38 @@ describe('ProtectedRoute authentication routing', () => {
     expect(await screen.findByText('consultant home')).toBeInTheDocument();
     expect(screen.queryByText('admin services')).not.toBeInTheDocument();
   });
+
+  test('routes enrolled staff to challenge without losing the requested app path', async () => {
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <AuthProvider
+          initialUser={{
+            userId: 'admin',
+            clientId: null,
+            email: 'admin@example.test',
+            role: 'ADMIN',
+            status: 'ACTIVE',
+            staffMfaEnabled: true,
+            staffMfaVerified: false,
+          }}
+        >
+          <MemoryRouter initialEntries={['/admin/payments?status=FAILED']}>
+            <Routes>
+              <Route path="/mfa" element={<Location />} />
+              <Route element={<ProtectedRoute roles={['ADMIN']} />}>
+                <Route path="/admin/payments" element={<div>payments</div>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
+    expect(
+      await screen.findByText(
+        '/mfa?mode=challenge&returnTo=%2Fadmin%2Fpayments%3Fstatus%3DFAILED',
+      ),
+    ).toBeInTheDocument();
+  });
 });

@@ -125,6 +125,36 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
             },
           });
         }
+        if (context.path === '/two-factor/verify-totp' && !isAPIError(context.context.returned)) {
+          const session = context.context.session?.session;
+          const user = context.context.session?.user;
+          if (session && user) {
+            const staff = await prisma.user.findFirst({
+              where: {
+                id: user.id,
+                role: { in: ['ADMIN', 'CONSULTANT'] },
+                twoFactorEnabled: true,
+              },
+              select: { id: true },
+            });
+            if (staff) {
+              const verifiedAt = new Date();
+              const updated = await prisma.betterAuthSession.updateMany({
+                where: { id: session.id, userId: staff.id },
+                data: { staffMfaVerifiedAt: verifiedAt },
+              });
+              if (updated.count > 0)
+                await prisma.securityEvent.create({
+                  data: {
+                    actorId: staff.id,
+                    eventType: 'AUTH_MFA_CHALLENGE_SUCCEEDED',
+                    category: 'MFA_CHALLENGE',
+                    metadata: { method: 'TOTP', sessionId: session.id },
+                  },
+                });
+            }
+          }
+        }
       }),
     },
     emailAndPassword: {

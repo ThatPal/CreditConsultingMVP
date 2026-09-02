@@ -19,9 +19,9 @@ export function ProtectedRoute({ roles }: { roles: Array<'CLIENT' | 'CONSULTANT'
   const returnPath = `${location.pathname}${location.search}${location.hash}`;
   if (!user) return <Navigate to="/login" state={{ from: returnPath }} replace />;
   if (!roles.includes(user.role)) return <Navigate to={homeFor(user)} replace />;
-  if (user.role !== 'CLIENT' && !user.staffMfaVerified)
-    return (
-      <Navigate to={`/mfa?mode=enroll&returnTo=${encodeURIComponent(returnPath)}`} replace />
-    );
+  if (user.role !== 'CLIENT' && !user.staffMfaVerified) {
+    const mode = user.staffMfaEnabled ? 'challenge' : 'enroll';
+    return <Navigate to={`/mfa?mode=${mode}&returnTo=${encodeURIComponent(returnPath)}`} replace />;
+  }
   return <Outlet />;
 }
