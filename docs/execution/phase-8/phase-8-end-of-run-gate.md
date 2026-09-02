@@ -24,4 +24,4 @@
 
 AI remains a non-authoritative proposal source. Only a Consultant with canonical capability, client scope and MFA step-up can publish. Published data is immutable and positively selected for the client. No Phase 9 plan execution is included. The rapid branch remains separate from `ai-enabled`.
 
-Final exact-head GitHub CI: pending this gate-report boundary.
+Accumulated GitHub CI passed on gate-report boundary `8829ad18a0646aeb1685b13c666f5f4be35a47d9` in [run 33660207629](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33660207629), including both system-seed runs, lint, typecheck, complete tests and production build. The documentation-only final report head is subject to the same exact-head CI before handoff.
