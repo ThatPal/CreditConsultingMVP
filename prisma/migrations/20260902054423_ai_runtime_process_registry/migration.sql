@@ -7,18 +7,6 @@ CREATE TYPE "AIAuthorityLevel" AS ENUM ('FACTUAL_LEVEL_1');
 -- CreateEnum
 CREATE TYPE "AIConfidence" AS ENUM ('HIGH', 'MEDIUM', 'LOW');
 
--- AlterTable
-ALTER TABLE "AnonymousGoalIntake" ALTER COLUMN "id" DROP DEFAULT;
-
--- AlterTable
-ALTER TABLE "ClientGoalRevision" ALTER COLUMN "id" DROP DEFAULT;
-
--- AlterTable
-ALTER TABLE "ClientUpdate" ALTER COLUMN "id" DROP DEFAULT;
-
--- AlterTable
-ALTER TABLE "ServiceProduct" ALTER COLUMN "updatedAt" DROP DEFAULT;
-
 -- CreateTable
 CREATE TABLE "AIProcessDefinition" (
     "id" UUID NOT NULL,
@@ -153,6 +141,3 @@ ALTER TABLE "CreditReportArtifact" ADD CONSTRAINT "CreditReportArtifact_aiJobId_
 
 -- AddForeignKey
 ALTER TABLE "CreditReportArtifact" ADD CONSTRAINT "CreditReportArtifact_aiJobOutputId_fkey" FOREIGN KEY ("aiJobOutputId") REFERENCES "AIJobOutput"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- RenameIndex
-ALTER INDEX "PaymentGatewayConfig_enabledForNewPayments_defaultForCheckout_i" RENAME TO "PaymentGatewayConfig_enabledForNewPayments_defaultForChecko_idx";
