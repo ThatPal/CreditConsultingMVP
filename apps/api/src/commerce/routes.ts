@@ -11,7 +11,7 @@ import type { AuthorizationService } from '../authorization/authorizationService
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
-import { deriveReviewCreditBalance, validateActivatableProduct } from './domain.js';
+import { validateActivatableProduct } from './domain.js';
 import type { PaymentGateway } from './paymentGateway.js';
 
 const serviceTypes = [
@@ -62,38 +62,66 @@ function versionData(body: z.infer<typeof termsInput>) {
   };
 }
 
-async function clientCommerce(prisma: PrismaClient, clientId: string) {
-  const [entitlements, transactions, purchases] = await Promise.all([
-    prisma.serviceEntitlement.findMany({
-      where: { clientId },
-      include: {
-        productVersion: { include: { serviceProduct: { select: { key: true } } } },
-        purchase: { select: { id: true, createdAt: true } },
-      },
-      orderBy: [{ grantedAt: 'desc' }, { id: 'desc' }],
-    }),
-    prisma.reviewCreditTransaction.findMany({
-      where: { clientId },
-      include: { productVersion: { select: { name: true, version: true } } },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    }),
-    prisma.servicePurchase.findMany({
-      where: { clientId },
-      include: {
-        productVersion: { include: { serviceProduct: { select: { key: true } } } },
-        entitlements: { select: { id: true, status: true, quantityGranted: true } },
-        reviewCreditTransactions: { select: { availableDelta: true } },
-        payments: {
-          select: { provider: true, providerEnvironment: true, state: true },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
+async function clientCommerce(
+  prisma: PrismaClient,
+  clientId: string,
+  options: { entitlementPage?: number; transactionPage?: number; pageSize?: number } = {},
+) {
+  const entitlementPage = options.entitlementPage ?? 1;
+  const transactionPage = options.transactionPage ?? 1;
+  const pageSize = options.pageSize ?? 20;
+  const [entitlements, transactions, purchases, entitlementTotal, transactionTotal, balanceTotals] =
+    await Promise.all([
+      prisma.serviceEntitlement.findMany({
+        where: { clientId },
+        include: {
+          productVersion: { include: { serviceProduct: { select: { key: true } } } },
+          purchase: { select: { id: true, createdAt: true } },
         },
-      },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: 100,
-    }),
-  ]);
-  const balance = deriveReviewCreditBalance(transactions);
+        orderBy: [{ grantedAt: 'desc' }, { id: 'desc' }],
+        skip: (entitlementPage - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.reviewCreditTransaction.findMany({
+        where: { clientId },
+        include: { productVersion: { select: { name: true, version: true } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (transactionPage - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.servicePurchase.findMany({
+        where: { clientId },
+        include: {
+          productVersion: { include: { serviceProduct: { select: { key: true } } } },
+          entitlements: { select: { id: true, status: true, quantityGranted: true } },
+          reviewCreditTransactions: { select: { availableDelta: true } },
+          payments: {
+            select: { provider: true, providerEnvironment: true, state: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 1,
+      }),
+      prisma.serviceEntitlement.count({ where: { clientId } }),
+      prisma.reviewCreditTransaction.count({ where: { clientId } }),
+      prisma.reviewCreditTransaction.aggregate({
+        where: { clientId },
+        _sum: {
+          availableDelta: true,
+          reservedDelta: true,
+          consumedDelta: true,
+          expiredDelta: true,
+        },
+      }),
+    ]);
+  const balance = {
+    available: balanceTotals._sum.availableDelta ?? 0,
+    reserved: balanceTotals._sum.reservedDelta ?? 0,
+    consumed: balanceTotals._sum.consumedDelta ?? 0,
+    expired: balanceTotals._sum.expiredDelta ?? 0,
+  };
   return {
     balance,
     entitlements: entitlements.map((item) => ({
@@ -124,6 +152,13 @@ async function clientCommerce(prisma: PrismaClient, clientId: string) {
       createdAt: item.createdAt,
       product: item.productVersion,
     })),
+    pagination: {
+      entitlementPage,
+      transactionPage,
+      pageSize,
+      entitlementTotal,
+      transactionTotal,
+    },
     purchases: purchases.map((item) => ({
       id: item.id,
       status: item.status,
@@ -193,15 +228,93 @@ export function createCommerceRouter(
 
   router.get('/client/services/active', requireRole('CLIENT'), async (req, res, next) => {
     try {
-      res.json(await clientCommerce(prisma, req.auth!.clientId!));
+      const input = z
+        .object({
+          entitlementPage: z.coerce.number().int().min(1).default(1),
+          transactionPage: z.coerce.number().int().min(1).default(1),
+          pageSize: z.coerce.number().int().min(1).max(50).default(20),
+        })
+        .parse(req.query);
+      res.json(await clientCommerce(prisma, req.auth!.clientId!, input));
     } catch (error) {
       next(error);
     }
   });
   router.get('/client/services/history', requireRole('CLIENT'), async (req, res, next) => {
     try {
-      const data = await clientCommerce(prisma, req.auth!.clientId!);
-      res.json({ purchases: data.purchases });
+      const input = z
+        .object({
+          search: z.string().trim().max(120).default(''),
+          status: z
+            .enum(['PENDING', 'PAID', 'FAILED', 'REFUNDED', 'CANCELLED'])
+            .or(z.literal(''))
+            .default(''),
+          page: z.coerce.number().int().min(1).default(1),
+          pageSize: z.coerce.number().int().min(1).max(50).default(20),
+        })
+        .parse(req.query);
+      const where: Prisma.ServicePurchaseWhereInput = {
+        clientId: req.auth!.clientId!,
+        ...(input.status ? { status: input.status } : {}),
+        ...(input.search
+          ? {
+              OR: [
+                { productVersion: { name: { contains: input.search, mode: 'insensitive' } } },
+                {
+                  productVersion: {
+                    serviceProduct: { key: { contains: input.search, mode: 'insensitive' } },
+                  },
+                },
+              ],
+            }
+          : {}),
+      };
+      const [purchases, total] = await Promise.all([
+        prisma.servicePurchase.findMany({
+          where,
+          include: {
+            productVersion: { include: { serviceProduct: { select: { key: true } } } },
+            entitlements: { select: { id: true, status: true, quantityGranted: true } },
+            reviewCreditTransactions: { select: { availableDelta: true } },
+            payments: {
+              select: { provider: true, providerEnvironment: true, state: true },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (input.page - 1) * input.pageSize,
+          take: input.pageSize,
+        }),
+        prisma.servicePurchase.count({ where }),
+      ]);
+      res.json({
+        purchases: purchases.map((item) => ({
+          id: item.id,
+          status: item.status,
+          amount: item.amount.toFixed(2),
+          currency: item.currency,
+          purchasedAt: item.purchasedAt,
+          createdAt: item.createdAt,
+          terms: item.termsSnapshot,
+          product: item.productVersion
+            ? {
+                key: item.productVersion.serviceProduct.key,
+                name: item.productVersion.name,
+                version: item.productVersion.version,
+              }
+            : null,
+          reviewCreditsGranted: item.reviewCreditTransactions.reduce(
+            (sum, transaction) => sum + Math.max(0, transaction.availableDelta),
+            0,
+          ),
+          payment: item.payments[0] ?? null,
+        })),
+        total,
+        page: input.page,
+        pageSize: input.pageSize,
+        hasMore: input.page * input.pageSize < total,
+      });
     } catch (error) {
       next(error);
     }

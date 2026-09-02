@@ -10,8 +10,10 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
+import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
+import { humanizeCode } from '../components/common/labels';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 
@@ -26,14 +28,23 @@ type Payment = {
   client?: { firstName: string; lastName: string };
 };
 export function AdminPaymentsPage() {
-  const [page, setPage] = useState(1);
-  const [provider, setProvider] = useState('');
-  const [state, setState] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const provider = searchParams.get('provider') ?? '';
+  const state = searchParams.get('state') ?? '';
+  const search = searchParams.get('search') ?? '';
+  const updateFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    next.set('page', '1');
+    setSearchParams(next);
+  };
   const query = useQuery({
     queryKey: ['admin-payments', page, provider, state],
     queryFn: () =>
       apiRequest<{ payments: Payment[]; total: number; pageSize: number }>(
-        `/api/v1/admin/payments?page=${page}${provider ? `&provider=${provider}` : ''}${state ? `&state=${state}` : ''}`,
+        `/api/v1/admin/payments?page=${page}&pageSize=20${provider ? `&provider=${provider}` : ''}${state ? `&state=${state}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`,
       ),
   });
   const refunds = useQuery({
@@ -64,7 +75,10 @@ export function AdminPaymentsPage() {
   if (query.isLoading) return <LinearProgress />;
   if (query.isError)
     return (
-      <Alert severity="error">Payments are unavailable or your step-up verification expired.</Alert>
+      <Alert severity="error" action={<Button onClick={() => query.refetch()}>Retry</Button>}>
+        Payments are unavailable. If retry fails, renew MFA verification and try again; no payment
+        operation was performed.
+      </Alert>
     );
   return (
     <Stack spacing={3}>
@@ -73,14 +87,25 @@ export function AdminPaymentsPage() {
         title="Payments"
         description="Provider-neutral payment, refund, dispute, and reconciliation operations."
       />
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+      <DataNavigationToolbar
+        searchLabel="Search payments"
+        searchPlaceholder="Client, product, or provider reference"
+        searchValue={search}
+        onSearchChange={(value) => updateFilter('search', value)}
+        activeFilters={[
+          ...(provider ? [`Provider: ${provider}`] : []),
+          ...(state ? [`State: ${humanizeCode(state)}`] : []),
+        ]}
+        onClearFilters={() => setSearchParams({ page: '1' })}
+        resultLabel={`${query.data!.total} payments`}
+        loading={query.isFetching}
+      >
         <TextField
           select
           label="Provider"
           value={provider}
           onChange={(event) => {
-            setProvider(event.target.value);
-            setPage(1);
+            updateFilter('provider', event.target.value);
           }}
           sx={{ minWidth: 180 }}
         >
@@ -94,8 +119,7 @@ export function AdminPaymentsPage() {
           label="State"
           value={state}
           onChange={(event) => {
-            setState(event.target.value);
-            setPage(1);
+            updateFilter('state', event.target.value);
           }}
           sx={{ minWidth: 180 }}
         >
@@ -111,11 +135,14 @@ export function AdminPaymentsPage() {
             'REFUNDED',
           ].map((value) => (
             <MenuItem key={value} value={value}>
-              {value.replaceAll('_', ' ')}
+              {humanizeCode(value)}
             </MenuItem>
           ))}
         </TextField>
-      </Stack>
+      </DataNavigationToolbar>
+      {query.data!.payments.length === 0 && (
+        <Alert severity="info">No payments match the current search and filters.</Alert>
+      )}
       {query.data!.payments.map((payment) => (
         <SectionCard key={payment.id} variant="interactive">
           <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between' }}>
@@ -131,7 +158,7 @@ export function AdminPaymentsPage() {
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1}>
-              <Chip label={payment.state.replaceAll('_', ' ')} />
+              <Chip label={humanizeCode(payment.state)} />
               <Typography>
                 {new Intl.NumberFormat(undefined, {
                   style: 'currency',
@@ -145,18 +172,18 @@ export function AdminPaymentsPage() {
           </Stack>
         </SectionCard>
       ))}
-      <Stack direction="row" spacing={1}>
-        <Button disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
-          Previous
-        </Button>
-        <Typography>Page {page}</Typography>
-        <Button
-          disabled={page * query.data!.pageSize >= query.data!.total}
-          onClick={() => setPage((value) => value + 1)}
-        >
-          Next
-        </Button>
-      </Stack>
+      <DataPagination
+        page={page}
+        pageSize={query.data!.pageSize}
+        total={query.data!.total}
+        hasMore={page * query.data!.pageSize < query.data!.total}
+        onPageChange={(nextPage) => {
+          const next = new URLSearchParams(searchParams);
+          next.set('page', String(nextPage));
+          setSearchParams(next);
+        }}
+        loading={query.isFetching}
+      />
       <SectionCard>
         <Stack spacing={1}>
           <Typography variant="h3">Recent refunds</Typography>
@@ -229,7 +256,7 @@ export function AdminPaymentDetailPage() {
       />
       <SectionCard>
         <Stack spacing={1}>
-          <Chip label={query.data!.payment.state} />
+          <Chip label={humanizeCode(query.data!.payment.state)} />
           <Typography>
             {query.data!.payment.amount} {query.data!.payment.currency}
           </Typography>
@@ -261,17 +288,17 @@ export function AdminPaymentDetailPage() {
           )}
           {query.data!.refunds.map((item) => (
             <Typography key={item.id}>
-              Refund {item.amount} {item.currency} · {item.status}
+              Refund {item.amount} {item.currency} · {humanizeCode(item.status)}
             </Typography>
           ))}
           {query.data!.disputes.map((item) => (
             <Typography key={item.id}>
-              Dispute {item.providerDisputeId} · {item.status}
+              Dispute {item.providerDisputeId} · {humanizeCode(item.status)}
             </Typography>
           ))}
           {query.data!.reconciliations.map((item) => (
             <Typography key={item.id}>
-              Reconciliation · {item.status}
+              Reconciliation · {humanizeCode(item.status)}
               {item.corrected ? ' · corrected' : ''}
             </Typography>
           ))}

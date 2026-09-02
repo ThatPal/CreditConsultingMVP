@@ -37,6 +37,13 @@ const documentType = {
   allowedExtensions: ['.pdf', '.png', '.jpg', '.jpeg'],
   maximumSizeBytes: 10 * 1024 * 1024,
 };
+const supportType = {
+  ...documentType,
+  key: 'SUPPORT_ATTACHMENT',
+  name: 'Support attachment',
+  allowedExtensions: ['.pdf'],
+  allowedMimeTypes: ['application/pdf'],
+};
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -77,19 +84,67 @@ describe('PORTAL-42 document foundation', () => {
     expect(screen.queryByText(/storageKey/i)).not.toBeInTheDocument();
   });
 
+  test('lets the client deliberately choose the upload document category', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      String(input).endsWith('/types')
+        ? json({ documentTypes: [documentType, supportType] })
+        : json({ documents: [] }),
+    );
+    renderPage();
+    expect(await screen.findByLabelText(/document category/i)).toHaveTextContent(
+      'General document',
+    );
+    fireEvent.mouseDown(screen.getByLabelText(/document category/i));
+    fireEvent.click(await screen.findByRole('option', { name: 'Support attachment' }));
+    expect(screen.getByText(/add support attachment/i)).toBeInTheDocument();
+    expect(screen.getByText(/accepted: \.pdf up to 10 mb/i)).toBeInTheDocument();
+  });
+
   test('queries bounded document search, filters, and pagination on the server', async () => {
     const urls: string[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const url = String(input); urls.push(url);
+      const url = String(input);
+      urls.push(url);
       if (url.endsWith('/types')) return json({ documentTypes: [documentType] });
-      return json({ documents: [{ id: 'document-one', originalFileName: 'statement.pdf', displayFileName: 'statement.pdf', mimeType: 'application/pdf', sizeBytes: 2048, sha256: 'a'.repeat(64), status: 'AVAILABLE', clientVisible: true, uploadedAt: '2026-08-31T00:00:00.000Z', supersededAt: null, documentType: { key: documentType.key, name: documentType.name } }], page: 1, pageSize: 20, total: 21, hasMore: true });
+      return json({
+        documents: [
+          {
+            id: 'document-one',
+            originalFileName: 'statement.pdf',
+            displayFileName: 'statement.pdf',
+            mimeType: 'application/pdf',
+            sizeBytes: 2048,
+            sha256: 'a'.repeat(64),
+            status: 'AVAILABLE',
+            clientVisible: true,
+            uploadedAt: '2026-08-31T00:00:00.000Z',
+            supersededAt: null,
+            documentType: { key: documentType.key, name: documentType.name },
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 21,
+        hasMore: true,
+      });
     });
     renderPage();
     await screen.findByText('statement.pdf');
-    fireEvent.change(screen.getByRole('textbox', { name: /search documents/i }), { target: { value: 'statement' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /search documents/i }), {
+      target: { value: 'statement' },
+    });
     fireEvent.mouseDown(screen.getByLabelText('Status'));
     fireEvent.click(await screen.findByRole('option', { name: 'Available' }));
-    await waitFor(() => expect(urls.some((url) => url.includes('pageSize=20') && url.includes('search=statement') && url.includes('status=AVAILABLE'))).toBe(true));
+    await waitFor(() =>
+      expect(
+        urls.some(
+          (url) =>
+            url.includes('pageSize=20') &&
+            url.includes('search=statement') &&
+            url.includes('status=AVAILABLE'),
+        ),
+      ).toBe(true),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(urls.some((url) => url.includes('page=2'))).toBe(true));
   });

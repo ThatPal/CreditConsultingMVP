@@ -129,13 +129,25 @@ function Sidebar({
         </ListItemIcon>
         <ListItemText
           primary={
-            <Typography sx={{ fontSize: dense ? 13.5 : 14.5, fontWeight: 700 }}>
-              {label}
-            </Typography>
+            <Typography sx={{ fontSize: dense ? 13.5 : 14.5, fontWeight: 700 }}>{label}</Typography>
           }
         />
       </ListItemButton>
     ));
+  const primaryNavigation =
+    role === 'admin'
+      ? (['Overview', 'Commerce', 'Integrations'] as const).map((group) => {
+          const groupItems = primaryItems.filter((item) => item.group === group);
+          return groupItems.length ? (
+            <Box key={group} sx={{ mt: group === 'Overview' ? 0 : 1.5 }}>
+              <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
+                {group}
+              </Typography>
+              {renderItems(groupItems)}
+            </Box>
+          ) : null;
+        })
+      : renderItems(primaryItems);
   return (
     <Box
       sx={{
@@ -154,10 +166,12 @@ function Sidebar({
         aria-label={`${role === 'client' ? 'Client' : role === 'consultant' ? 'Consultant' : 'Admin'} navigation`}
         sx={{ px: 1.5, py: 1, flex: 1, minHeight: 0, overflowY: 'auto' }}
       >
-        <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
-          {role === 'client' ? 'Plan' : role === 'consultant' ? 'Workspace' : 'Administration'}
-        </Typography>
-        {renderItems(primaryItems)}
+        {role !== 'admin' && (
+          <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
+            {role === 'client' ? 'Plan' : 'Workspace'}
+          </Typography>
+        )}
+        {primaryNavigation}
         {utilityItems.length > 0 && (
           <>
             <Divider sx={{ my: 1.5 }} />

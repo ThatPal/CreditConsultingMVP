@@ -19,15 +19,20 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { ChoiceCard } from '../components/common/ChoiceCard';
 import { MetricCard } from '../components/common/MetricCard';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
+import { humanizeCode, priorityLabel } from '../components/common/labels';
 
-const demoNotice = <Alert severity="info">Design evidence — values shown on this development-only component are not authoritative client data.</Alert>;
+const demoNotice = (
+  <Alert severity="info">
+    Preview data is illustrative and is not part of an authoritative client record.
+  </Alert>
+);
 
 export function ConsultantDashboardPage() {
   return (
@@ -35,25 +40,68 @@ export function ConsultantDashboardPage() {
       <PageHeader
         eyebrow="Consultant operations"
         title="Consultant workspace"
-        description="Use the accepted operational tools below while the full consultant dashboard remains in its owning product phase."
+        description="Open prioritized work, client reviews, and support from one secure workspace."
       />
-      <Alert severity="info">Dashboard metrics and scheduled-session summaries will appear only when their canonical workflows are implemented with authoritative data.</Alert>
-      <Grid container spacing={2}>{[
-        { title: 'Work queue', description: 'Review prioritized, API-backed attention items and claim available work.', path: '/crm/work-queue' },
-        { title: 'Client reviews', description: 'Continue accepted review work without fabricated client summaries.', path: '/crm/reviews' },
-        { title: 'Support', description: 'Respond to authorized client support cases.', path: '/crm/support' },
-      ].map(({ title, description, path }) => <Grid key={title} size={{ xs: 12, md: 4 }}><SectionCard variant="interactive"><Stack spacing={1.5}><Typography variant="h3">{title}</Typography><Typography color="text.secondary">{description}</Typography><Button component={Link} to={path} variant="outlined" endIcon={<ArrowForwardRounded />} sx={{ alignSelf: 'flex-start' }}>Open</Button></Stack></SectionCard></Grid>)}</Grid>
+      <Alert severity="info">
+        Only authoritative operational modules are shown. Illustrative metrics are intentionally
+        excluded.
+      </Alert>
+      <Grid container spacing={2}>
+        {[
+          {
+            title: 'Work queue',
+            description: 'Review prioritized, API-backed attention items and claim available work.',
+            path: '/crm/work-queue',
+          },
+          {
+            title: 'Client reviews',
+            description: 'Continue accepted review work without fabricated client summaries.',
+            path: '/crm/reviews',
+          },
+          {
+            title: 'Support',
+            description: 'Respond to authorized client support cases.',
+            path: '/crm/support',
+          },
+        ].map(({ title, description, path }) => (
+          <Grid key={title} size={{ xs: 12, md: 4 }}>
+            <SectionCard variant="interactive">
+              <Stack spacing={1.5}>
+                <Typography variant="h3">{title}</Typography>
+                <Typography color="text.secondary">{description}</Typography>
+                <Button
+                  component={Link}
+                  to={path}
+                  variant="outlined"
+                  endIcon={<ArrowForwardRounded />}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Open
+                </Button>
+              </Stack>
+            </SectionCard>
+          </Grid>
+        ))}
+      </Grid>
     </Stack>
   );
 }
 
 export function WorkQueuePage() {
   const queryClient = useQueryClient();
-  const [assignment, setAssignment] = useState('ALL');
-  const [priority, setPriority] = useState('');
-  const [status, setStatus] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const assignment = searchParams.get('assignment') ?? 'ALL';
+  const priority = searchParams.get('priority') ?? '';
+  const status = searchParams.get('status') ?? '';
+  const search = searchParams.get('search') ?? '';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const updateQueueState = (changes: Record<string, string>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(changes).forEach(([key, value]) =>
+      value && value !== 'ALL' ? next.set(key, value) : next.delete(key),
+    );
+    setSearchParams(next);
+  };
   type QueueItem = {
     id: string;
     title: string;
@@ -123,13 +171,17 @@ export function WorkQueuePage() {
             searchLabel="Search work"
             searchPlaceholder="Search client, reason, or next action"
             searchValue={search}
-            onSearchChange={(value) => { setSearch(value); setPage(1); }}
+            onSearchChange={(value) => {
+              updateQueueState({ search: value, page: '1' });
+            }}
             activeFilters={[
-              ...(assignment !== 'ALL' ? [`Assignment: ${assignment.replace('_', ' ')}`] : []),
-              ...(priority ? [`Priority: ${priority}`] : []),
-              ...(status ? [`Lifecycle: ${status.replace('_', ' ')}`] : []),
+              ...(assignment !== 'ALL' ? [`Assignment: ${humanizeCode(assignment)}`] : []),
+              ...(priority ? [`Priority: ${priorityLabel(priority)}`] : []),
+              ...(status ? [`Lifecycle: ${humanizeCode(status)}`] : []),
             ]}
-            onClearFilters={() => { setAssignment('ALL'); setPriority(''); setStatus(''); setPage(1); }}
+            onClearFilters={() => {
+              setSearchParams({ page: '1' });
+            }}
             resultLabel={`${queue.data?.total ?? 0} attention items`}
             loading={queue.isFetching}
           >
@@ -138,8 +190,7 @@ export function WorkQueuePage() {
               label="Assignment"
               value={assignment}
               onChange={(e) => {
-                setAssignment(e.target.value);
-                setPage(1);
+                updateQueueState({ assignment: e.target.value, page: '1' });
               }}
               sx={{ minWidth: 170 }}
             >
@@ -152,15 +203,14 @@ export function WorkQueuePage() {
               label="Priority"
               value={priority}
               onChange={(e) => {
-                setPriority(e.target.value);
-                setPage(1);
+                updateQueueState({ priority: e.target.value, page: '1' });
               }}
               sx={{ minWidth: 150 }}
             >
               <MenuItem value="">All priorities</MenuItem>
               {['URGENT', 'HIGH', 'NORMAL', 'LOW'].map((v) => (
                 <MenuItem key={v} value={v}>
-                  {v}
+                  {priorityLabel(v)}
                 </MenuItem>
               ))}
             </TextField>
@@ -169,15 +219,14 @@ export function WorkQueuePage() {
               label="Lifecycle"
               value={status}
               onChange={(e) => {
-                setStatus(e.target.value);
-                setPage(1);
+                updateQueueState({ status: e.target.value, page: '1' });
               }}
               sx={{ minWidth: 150 }}
             >
               <MenuItem value="">Active</MenuItem>
               {['OPEN', 'IN_PROGRESS', 'WAITING', 'COMPLETED'].map((v) => (
                 <MenuItem key={v} value={v}>
-                  {v.replace('_', ' ')}
+                  {humanizeCode(v)}
                 </MenuItem>
               ))}
             </TextField>
@@ -231,13 +280,13 @@ export function WorkQueuePage() {
                               ? 'warning'
                               : 'default'
                         }
-                        label={item.priority}
+                        label={priorityLabel(item.priority)}
                       />
                       <Typography variant="h3">{item.title}</Typography>
                     </Stack>
                     <Typography color="text.secondary">
                       {item.client.firstName} {item.client.lastName} ·{' '}
-                      {item.reasonCode?.replaceAll('_', ' ')}
+                      {humanizeCode(item.reasonCode)}
                     </Typography>
                     <Typography variant="caption">
                       Needed{' '}
@@ -267,7 +316,14 @@ export function WorkQueuePage() {
             })}
           </Stack>
           {queue.data && (
-            <DataPagination page={page} pageSize={queue.data.pageSize} total={queue.data.total} hasMore={page * queue.data.pageSize < queue.data.total} onPageChange={setPage} loading={queue.isFetching} />
+            <DataPagination
+              page={page}
+              pageSize={queue.data.pageSize}
+              total={queue.data.total}
+              hasMore={page * queue.data.pageSize < queue.data.total}
+              onPageChange={(nextPage) => updateQueueState({ page: String(nextPage) })}
+              loading={queue.isFetching}
+            />
           )}
         </Stack>
       </SectionCard>
@@ -283,7 +339,29 @@ export function ClientsPage() {
         title="Clients"
         description="Client directory and Client 360 workflows are reserved for their owning product phase."
       />
-      <SectionCard><Stack spacing={2}><Chip label="Future owner" color="info" sx={{ alignSelf: 'flex-start' }} /><Typography variant="h3">A trustworthy directory starts with governed client records</Typography><Typography color="text.secondary">No example people or financial figures are shown here. Until the accepted directory is available, use the Work Queue, Reviews, and Support areas for authorized client work.</Typography><Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}><Button component={Link} to="/crm/work-queue" variant="contained">Open work queue</Button><Button component={Link} to="/crm/reviews" variant="outlined">Open reviews</Button><Button component={Link} to="/crm/support" variant="outlined">Open support</Button></Stack></Stack></SectionCard>
+      <SectionCard>
+        <Stack spacing={2}>
+          <Chip label="Future owner" color="info" sx={{ alignSelf: 'flex-start' }} />
+          <Typography variant="h3">
+            A trustworthy directory starts with governed client records
+          </Typography>
+          <Typography color="text.secondary">
+            No example people or financial figures are shown here. Until the accepted directory is
+            available, use the Work Queue, Reviews, and Support areas for authorized client work.
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <Button component={Link} to="/crm/work-queue" variant="contained">
+              Open work queue
+            </Button>
+            <Button component={Link} to="/crm/reviews" variant="outlined">
+              Open reviews
+            </Button>
+            <Button component={Link} to="/crm/support" variant="outlined">
+              Open support
+            </Button>
+          </Stack>
+        </Stack>
+      </SectionCard>
     </Stack>
   );
 }
@@ -296,12 +374,47 @@ export function ClientOverviewPage() {
         title="Welcome back"
         description="Your secure starting point for the Phase 1–3 tools currently available."
       />
-      <Alert severity="info">Personalized progress, financial totals, and next-best-action projections will appear only when their owning product workflow supplies verified data.</Alert>
-      <Grid container spacing={2}>{[
-        { title: 'Credit Center', description: 'Review your accepted credit-profile and review workflows.', path: '/app/credit-center' },
-        { title: 'Documents', description: 'Upload, find, and securely view your files.', path: '/app/documents' },
-        { title: 'Support', description: 'Ask for help and follow your existing cases.', path: '/app/support' },
-      ].map(({ title, description, path }) => <Grid key={title} size={{ xs: 12, md: 4 }}><SectionCard variant="interactive"><Stack spacing={1.5}><Typography variant="h3">{title}</Typography><Typography color="text.secondary">{description}</Typography><Button component={Link} to={path} variant="outlined" endIcon={<ArrowForwardRounded />} sx={{ alignSelf: 'flex-start' }}>Open</Button></Stack></SectionCard></Grid>)}</Grid>
+      <Alert severity="info">
+        Personalized progress, financial totals, and next-best-action projections will appear only
+        when their owning product workflow supplies verified data.
+      </Alert>
+      <Grid container spacing={2}>
+        {[
+          {
+            title: 'Credit Center',
+            description: 'Review your accepted credit-profile and review workflows.',
+            path: '/app/credit-center',
+          },
+          {
+            title: 'Documents',
+            description: 'Upload, find, and securely view your files.',
+            path: '/app/documents',
+          },
+          {
+            title: 'Support',
+            description: 'Ask for help and follow your existing cases.',
+            path: '/app/support',
+          },
+        ].map(({ title, description, path }) => (
+          <Grid key={title} size={{ xs: 12, md: 4 }}>
+            <SectionCard variant="interactive">
+              <Stack spacing={1.5}>
+                <Typography variant="h3">{title}</Typography>
+                <Typography color="text.secondary">{description}</Typography>
+                <Button
+                  component={Link}
+                  to={path}
+                  variant="outlined"
+                  endIcon={<ArrowForwardRounded />}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Open
+                </Button>
+              </Stack>
+            </SectionCard>
+          </Grid>
+        ))}
+      </Grid>
     </Stack>
   );
 }

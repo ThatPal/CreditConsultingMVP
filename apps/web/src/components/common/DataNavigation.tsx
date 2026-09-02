@@ -117,6 +117,12 @@ export function DataPagination({
 }) {
   const first = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const last = Math.min(page * pageSize, total);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const numberedPages = Array.from(
+    new Set(
+      [1, page - 1, page, page + 1, pageCount].filter((value) => value >= 1 && value <= pageCount),
+    ),
+  );
   return (
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
@@ -126,7 +132,11 @@ export function DataPagination({
       <Typography variant="body2" color="text.secondary" aria-live="polite">
         {total === 0 ? 'No results' : `Showing ${first}–${last} of ${total}`}
       </Typography>
-      <Box sx={{ display: 'flex', gap: 1 }}>
+      <Box
+        component="nav"
+        aria-label="Pagination"
+        sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}
+      >
         <Button
           variant="outlined"
           disabled={page === 1 || loading}
@@ -134,6 +144,19 @@ export function DataPagination({
         >
           Previous
         </Button>
+        {numberedPages.map((pageNumber) => (
+          <Button
+            key={pageNumber}
+            variant={pageNumber === page ? 'contained' : 'outlined'}
+            aria-label={`Page ${pageNumber}`}
+            aria-current={pageNumber === page ? 'page' : undefined}
+            disabled={loading || pageNumber === page}
+            onClick={() => onPageChange(pageNumber)}
+            sx={{ minWidth: 40 }}
+          >
+            {pageNumber}
+          </Button>
+        ))}
         <Button
           variant="outlined"
           disabled={!hasMore || loading}

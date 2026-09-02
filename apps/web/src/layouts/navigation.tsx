@@ -25,6 +25,7 @@ export type NavigationItem = {
   section: 'primary' | 'utility';
   capability?: string;
   status: 'available' | 'foundation';
+  group?: 'Overview' | 'Commerce' | 'Integrations';
 };
 
 const registry: NavigationItem[] = [
@@ -182,6 +183,7 @@ const registry: NavigationItem[] = [
     shell: 'admin',
     section: 'primary',
     status: 'foundation',
+    group: 'Overview',
   },
   {
     id: 'admin-services',
@@ -192,6 +194,7 @@ const registry: NavigationItem[] = [
     section: 'primary',
     capability: 'commerce.manage',
     status: 'available',
+    group: 'Commerce',
   },
   {
     id: 'admin-payments',
@@ -202,6 +205,7 @@ const registry: NavigationItem[] = [
     section: 'primary',
     capability: 'payment.read',
     status: 'available',
+    group: 'Commerce',
   },
   {
     id: 'admin-paypal',
@@ -212,6 +216,7 @@ const registry: NavigationItem[] = [
     section: 'primary',
     capability: 'payment.read',
     status: 'available',
+    group: 'Integrations',
   },
   {
     id: 'admin-stripe',
@@ -222,6 +227,7 @@ const registry: NavigationItem[] = [
     section: 'primary',
     capability: 'payment.read',
     status: 'available',
+    group: 'Integrations',
   },
   {
     id: 'admin-bofa',
@@ -232,6 +238,7 @@ const registry: NavigationItem[] = [
     section: 'primary',
     capability: 'payment.read',
     status: 'available',
+    group: 'Integrations',
   },
   {
     id: 'admin-account',

@@ -8,15 +8,17 @@ import {
   Divider,
   Grid,
   LinearProgress,
+  MenuItem,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
-import { DataNavigationToolbar } from '../components/common/DataNavigation';
+import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 
@@ -59,6 +61,13 @@ export type CommerceData = {
     createdAt: string;
   }>;
   purchases: Purchase[];
+  pagination?: {
+    entitlementPage: number;
+    transactionPage: number;
+    pageSize: number;
+    entitlementTotal: number;
+    transactionTotal: number;
+  };
 };
 type Purchase = {
   id: string;
@@ -148,7 +157,12 @@ export function ServicesPage() {
     queryFn: () => apiRequest<{ services: Service[] }>('/api/v1/client/services'),
   });
   if (query.isLoading) return <LinearProgress />;
-  if (query.isError) return <Alert severity="error">Available services could not be loaded.</Alert>;
+  if (query.isError)
+    return (
+      <Alert severity="error" action={<Button onClick={() => query.refetch()}>Retry</Button>}>
+        Available services could not be loaded. No checkout was started.
+      </Alert>
+    );
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -213,13 +227,23 @@ export function ServicesPage() {
 }
 
 export function ActiveServicesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const entitlementPage = Math.max(1, Number(searchParams.get('entitlementPage')) || 1);
+  const transactionPage = Math.max(1, Number(searchParams.get('transactionPage')) || 1);
   const query = useQuery({
-    queryKey: ['active-services'],
-    queryFn: () => apiRequest<CommerceData>('/api/v1/client/services/active'),
+    queryKey: ['active-services', entitlementPage, transactionPage],
+    queryFn: () =>
+      apiRequest<CommerceData>(
+        `/api/v1/client/services/active?entitlementPage=${entitlementPage}&transactionPage=${transactionPage}&pageSize=20`,
+      ),
   });
   if (query.isLoading) return <LinearProgress />;
   if (query.isError)
-    return <Alert severity="error">Credits and active services could not be loaded.</Alert>;
+    return (
+      <Alert severity="error" action={<Button onClick={() => query.refetch()}>Retry</Button>}>
+        Credits and active services could not be loaded. Your balances were not changed.
+      </Alert>
+    );
   const data = query.data!;
   return (
     <Stack spacing={3}>
@@ -278,6 +302,20 @@ export function ActiveServicesPage() {
             ))
           )}
         </Stack>
+        {data.pagination && (
+          <DataPagination
+            page={entitlementPage}
+            pageSize={data.pagination.pageSize}
+            total={data.pagination.entitlementTotal}
+            hasMore={entitlementPage * data.pagination.pageSize < data.pagination.entitlementTotal}
+            onPageChange={(nextPage) => {
+              const next = new URLSearchParams(searchParams);
+              next.set('entitlementPage', String(nextPage));
+              setSearchParams(next);
+            }}
+            loading={query.isFetching}
+          />
+        )}
       </SectionCard>
       <SectionCard>
         <Stack spacing={2} divider={<Divider />}>
@@ -301,18 +339,47 @@ export function ActiveServicesPage() {
             ))
           )}
         </Stack>
+        {data.pagination && (
+          <DataPagination
+            page={transactionPage}
+            pageSize={data.pagination.pageSize}
+            total={data.pagination.transactionTotal}
+            hasMore={transactionPage * data.pagination.pageSize < data.pagination.transactionTotal}
+            onPageChange={(nextPage) => {
+              const next = new URLSearchParams(searchParams);
+              next.set('transactionPage', String(nextPage));
+              setSearchParams(next);
+            }}
+            loading={query.isFetching}
+          />
+        )}
       </SectionCard>
     </Stack>
   );
 }
 
 export function PurchaseHistoryPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? '';
+  const status = searchParams.get('status') ?? '';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const params = new URLSearchParams({ page: String(page), pageSize: '20' });
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
   const query = useQuery({
-    queryKey: ['purchase-history'],
-    queryFn: () => apiRequest<{ purchases: Purchase[] }>('/api/v1/client/services/history'),
+    queryKey: ['purchase-history', search, status, page],
+    queryFn: () =>
+      apiRequest<{ purchases: Purchase[]; total: number; pageSize: number; hasMore: boolean }>(
+        `/api/v1/client/services/history?${params}`,
+      ),
   });
   if (query.isLoading) return <LinearProgress />;
-  if (query.isError) return <Alert severity="error">Purchase history could not be loaded.</Alert>;
+  if (query.isError)
+    return (
+      <Alert severity="error" action={<Button onClick={() => query.refetch()}>Retry</Button>}>
+        Purchase history could not be loaded. Adjust the filters or retry.
+      </Alert>
+    );
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -329,12 +396,46 @@ export function PurchaseHistoryPage() {
         <Stack spacing={2}>
           <DataNavigationToolbar
             searchLabel="Search purchase history"
-            searchPlaceholder="Search is not needed for this review set"
-            searchValue=""
-            onSearchChange={() => undefined}
-            resultLabel={`${query.data!.purchases.length} purchases`}
+            searchPlaceholder="Service name or product key"
+            searchValue={search}
+            onSearchChange={(value) => {
+              const next = new URLSearchParams(searchParams);
+              if (value) next.set('search', value);
+              else next.delete('search');
+              next.set('page', '1');
+              setSearchParams(next);
+            }}
+            activeFilters={status ? [`Status: ${words(status)}`] : []}
+            onClearFilters={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete('status');
+              next.set('page', '1');
+              setSearchParams(next);
+            }}
+            resultLabel={`${query.data!.total} purchases`}
             loading={query.isFetching}
-          />
+          >
+            <TextField
+              select
+              label="Purchase status"
+              value={status}
+              onChange={(event) => {
+                const next = new URLSearchParams(searchParams);
+                if (event.target.value) next.set('status', event.target.value);
+                else next.delete('status');
+                next.set('page', '1');
+                setSearchParams(next);
+              }}
+              sx={{ minWidth: 180 }}
+            >
+              <MenuItem value="">All statuses</MenuItem>
+              {['PENDING', 'PAID', 'FAILED', 'REFUNDED', 'CANCELLED'].map((value) => (
+                <MenuItem key={value} value={value}>
+                  {words(value)}
+                </MenuItem>
+              ))}
+            </TextField>
+          </DataNavigationToolbar>
           <Stack spacing={1.5}>
             {query.data!.purchases.length === 0 ? (
               <Alert severity="info">No commercial purchase history yet.</Alert>
@@ -376,6 +477,18 @@ export function PurchaseHistoryPage() {
               ))
             )}
           </Stack>
+          <DataPagination
+            page={page}
+            pageSize={query.data!.pageSize}
+            total={query.data!.total}
+            hasMore={query.data!.hasMore}
+            onPageChange={(nextPage) => {
+              const next = new URLSearchParams(searchParams);
+              next.set('page', String(nextPage));
+              setSearchParams(next);
+            }}
+            loading={query.isFetching}
+          />
         </Stack>
       </SectionCard>
     </Stack>

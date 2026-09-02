@@ -39,6 +39,12 @@ function bullConnection(redisUrl: string) {
 
 export function toClientEnvelope(event: ClaimedEvent) {
   const payload = event.payload as { clientId?: unknown; domains?: unknown };
+  if (
+    event.eventType.startsWith('commerce.gateway.') &&
+    Array.isArray(payload?.domains) &&
+    payload.domains.every((domain) => typeof domain === 'string')
+  )
+    return null;
   if (typeof payload?.clientId !== 'string' || !Array.isArray(payload.domains))
     throw new Error('OUTBOX_PAYLOAD_UNSAFE');
   return {
@@ -121,6 +127,13 @@ export async function startOutboxRuntime(options: {
     for (const event of events) {
       try {
         const envelope = toClientEnvelope(event);
+        if (envelope === null) {
+          await pool.query(
+            `UPDATE "OutboxEvent" SET status = 'PUBLISHED', "publishedAt" = now(), "lastErrorCode" = NULL WHERE id = $1`,
+            [event.id],
+          );
+          continue;
+        }
         const deliveryId = (event.payload as { notificationDeliveryId?: unknown })
           .notificationDeliveryId;
         const job = await queue.add(

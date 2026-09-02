@@ -49,6 +49,7 @@ export type JourneyProjection = {
       startedAt: string;
       endedAt: string | null;
     }>;
+    historyWindow?: { limit: number; cycleTotal: number; nurturePeriodTotal: number };
   };
   foundations: {
     creditProfile: { status: string; effectiveAt?: string | null };
@@ -138,6 +139,15 @@ export function JourneySummary({
             <RouteRounded color="primary" />
             <Typography variant="h3">Current cycle</Typography>
           </Stack>
+          {data.journey.historyWindow &&
+            (data.journey.historyWindow.cycleTotal > data.journey.cycles.length ||
+              data.journey.historyWindow.nurturePeriodTotal >
+                data.journey.nurturePeriods.length) && (
+              <Alert severity="info">
+                Showing the {data.journey.historyWindow.limit} most recent journey records. Older
+                records remain preserved in the authoritative history.
+              </Alert>
+            )}
           {current.length === 0 ? (
             <Alert severity="info">
               No application cycle is active. Future steps are not inferred.

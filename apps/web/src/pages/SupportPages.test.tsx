@@ -150,6 +150,33 @@ describe('PORTAL-39/40 support', () => {
     expect(screen.getByText(/attach a new file to this request/i)).toBeInTheDocument();
   });
 
+  test('resolves an authorized deep-linked case even when it is outside the current list page', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/support-cases/case-outside-page'))
+        return json({
+          case: {
+            id: 'case-outside-page',
+            category: 'DOCUMENTS',
+            priority: 'NORMAL',
+            status: 'WAITING_ON_CLIENT',
+            subject: 'Deep-linked document question',
+            createdAt: '2026-08-31T12:00:00Z',
+            lastMessageAt: '2026-08-31T12:00:00Z',
+            attachments: [],
+            messages: [],
+          },
+        });
+      if (url.includes('/support-cases')) return json({ cases: [], total: 0, hasMore: false });
+      if (url.includes('/support-categories')) return json({ categories: [] });
+      return json({ documents: [], documentTypes: [] });
+    });
+    renderPage('client', '/app/support?case=case-outside-page');
+    expect(
+      await screen.findByRole('heading', { name: 'Deep-linked document question' }),
+    ).toBeInTheDocument();
+  });
+
   test('uploads a new support document, selects it, and preserves one ticket idempotency key', async () => {
     const createRequests: RequestInit[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -249,27 +276,61 @@ describe('PORTAL-39/40 support', () => {
     });
     expect(await screen.findByText(/could not be uploaded/i)).toBeInTheDocument();
     expect(ticketCreates).toBe(0);
-    expect(screen.getByRole('button', { name: /attach existing documents/i })).not.toHaveTextContent(
-      'support.pdf',
-    );
+    expect(
+      screen.getByRole('button', { name: /attach existing documents/i }),
+    ).not.toHaveTextContent('support.pdf');
   });
 
   test('uses a bounded searchable accessible existing-document picker', async () => {
     const requested: string[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const url = String(input); requested.push(url);
+      const url = String(input);
+      requested.push(url);
       if (url.endsWith('/support-categories')) return json({ categories: [] });
-      if (url.endsWith('/documents/types')) return json({ documentTypes: [{ key: 'SUPPORT_ATTACHMENT', name: 'Support attachment', allowedMimeTypes: ['application/pdf'], allowedExtensions: ['.pdf'], maximumSizeBytes: 1000 }] });
-      if (url.includes('/documents?')) return json({ documents: [{ id: 'doc-1', displayFileName: 'statement.pdf', sizeBytes: 2048, uploadedAt: '2026-08-31T12:00:00Z', status: 'AVAILABLE', documentType: { key: 'SUPPORT_ATTACHMENT', name: 'Support attachment' } }], hasMore: true, total: 11 });
+      if (url.endsWith('/documents/types'))
+        return json({
+          documentTypes: [
+            {
+              key: 'SUPPORT_ATTACHMENT',
+              name: 'Support attachment',
+              allowedMimeTypes: ['application/pdf'],
+              allowedExtensions: ['.pdf'],
+              maximumSizeBytes: 1000,
+            },
+          ],
+        });
+      if (url.includes('/documents?'))
+        return json({
+          documents: [
+            {
+              id: 'doc-1',
+              displayFileName: 'statement.pdf',
+              sizeBytes: 2048,
+              uploadedAt: '2026-08-31T12:00:00Z',
+              status: 'AVAILABLE',
+              documentType: { key: 'SUPPORT_ATTACHMENT', name: 'Support attachment' },
+            },
+          ],
+          hasMore: true,
+          total: 11,
+        });
       return json({ cases: [] });
     });
     renderPage('client');
     await screen.findByRole('heading', { name: /how can we help/i });
     fireEvent.click(screen.getByRole('button', { name: /create your first request/i }));
     fireEvent.click(screen.getByRole('button', { name: /attach existing documents/i }));
-    expect(await screen.findByRole('dialog', { name: /choose existing documents/i })).toBeInTheDocument();
-    fireEvent.change(screen.getByRole('textbox', { name: /search documents/i }), { target: { value: 'statement' } });
-    await waitFor(() => expect(requested.some((url) => url.includes('pageSize=10') && url.includes('search=statement'))).toBe(true));
+    expect(
+      await screen.findByRole('dialog', { name: /choose existing documents/i }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: /search documents/i }), {
+      target: { value: 'statement' },
+    });
+    await waitFor(() =>
+      expect(
+        requested.some((url) => url.includes('pageSize=10') && url.includes('search=statement')),
+      ).toBe(true),
+    );
     fireEvent.click(screen.getByRole('button', { name: /statement.pdf/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.getByText('1 selected')).toBeInTheDocument();

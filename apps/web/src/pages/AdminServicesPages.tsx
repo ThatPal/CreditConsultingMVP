@@ -431,10 +431,6 @@ export function AdminServiceDetailPage() {
           ))}
         </Stack>
       </SectionCard>
-      <Alert severity="info">
-        Provider checkout, refunds, disputes, and reconciliation are intentionally unavailable until
-        their owning sprints.
-      </Alert>
     </Stack>
   );
 }

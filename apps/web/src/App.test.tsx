@@ -102,7 +102,7 @@ describe('application shells', () => {
   test('administrator lands in a distinct shell without consultant advisory navigation', () => {
     renderAt('/admin', 'ADMIN');
     const navigation = screen.getByRole('navigation', { name: /admin navigation/i });
-    expect(screen.getByRole('heading', { name: /administration foundation/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^administration$/i })).toBeInTheDocument();
     expect(within(navigation).queryByText('Clients')).not.toBeInTheDocument();
     expect(within(navigation).queryByText('Work Queue')).not.toBeInTheDocument();
   });
@@ -371,7 +371,9 @@ describe('application shells', () => {
     });
     renderAt('/app/account/security');
     expect(await screen.findByText('Firefox on Windows computer')).toBeInTheDocument();
-    expect(screen.getByText('Chrome on Windows computer').closest('div')).toHaveTextContent('Current session');
+    expect(screen.getByText('Chrome on Windows computer').closest('div')).toHaveTextContent(
+      'Current session',
+    );
     fireEvent.click(screen.getByRole('button', { name: /revoke all other sessions/i }));
     fireEvent.click(screen.getByRole('button', { name: /revoke access/i }));
     await waitFor(() =>

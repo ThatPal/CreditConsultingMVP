@@ -45,6 +45,20 @@ describe('outbox runtime contract', () => {
     ).toThrow('OUTBOX_PAYLOAD_UNSAFE');
   });
 
+  test('acknowledges governed global gateway events without publishing a client envelope', () => {
+    expect(
+      toClientEnvelope({
+        id: crypto.randomUUID(),
+        eventType: 'commerce.gateway.default.changed',
+        aggregateId: crypto.randomUUID(),
+        payload: { provider: 'STRIPE', domains: ['admin-payments', 'services'] },
+        payloadVersion: 1,
+        createdAt: new Date(),
+        attemptCount: 0,
+      }),
+    ).toBeNull();
+  });
+
   test('retries transient failures and dead-letters the fifth failed claim', () => {
     expect(OUTBOX_MAX_CLAIMS).toBe(5);
     expect(BULLMQ_JOB_ATTEMPTS).toBe(5);

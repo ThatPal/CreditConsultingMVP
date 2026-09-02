@@ -27,8 +27,10 @@ async function projection(prisma: PrismaClient, clientId: string) {
         cycles: {
           include: { goalSnapshot: true },
           orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+          take: 25,
         },
-        nurturePeriods: { orderBy: [{ startedAt: 'desc' }, { id: 'desc' }] },
+        nurturePeriods: { orderBy: [{ startedAt: 'desc' }, { id: 'desc' }], take: 25 },
+        _count: { select: { cycles: true, nurturePeriods: true } },
       },
     }),
     prisma.clientGoal.findFirst({
@@ -86,6 +88,11 @@ async function projection(prisma: PrismaClient, clientId: string) {
             expectedEnd: period.expectedEnd,
             endedAt: period.endedAt,
           })),
+          historyWindow: {
+            limit: 25,
+            cycleTotal: journey._count.cycles,
+            nurturePeriodTotal: journey._count.nurturePeriods,
+          },
         }
       : {
           id: null,
@@ -94,6 +101,7 @@ async function projection(prisma: PrismaClient, clientId: string) {
           currentFocus: focus,
           cycles: [],
           nurturePeriods: [],
+          historyWindow: { limit: 25, cycleTotal: 0, nurturePeriodTotal: 0 },
         },
     foundations: {
       creditProfile: profileState ?? {

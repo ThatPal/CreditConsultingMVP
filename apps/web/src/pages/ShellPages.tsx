@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Grid, Paper, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { PageHeader } from '../components/common/PageHeader';
@@ -9,19 +9,60 @@ export function AdminLandingPage() {
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Admin"
-        title="Administration foundation"
-        description="A secure operations shell for capability-gated administration modules."
+        title="Administration"
+        description="Manage governed services, payments, provider health, and account security."
       />
       <Alert severity="info">
-        Operational modules will appear here only when their owning sprint and capability policy are
-        accepted.
+        Access is capability-gated. If an expected module is absent, confirm the account’s assigned
+        permissions and current MFA verification.
       </Alert>
       <SectionCard>
         <Typography variant="h3">Platform status</Typography>
         <Typography color="text.secondary" sx={{ mt: 1 }}>
-          Your Admin workspace is active. Consultant advisory tools are intentionally not included.
+          Use Services to govern product terms, Payments to review financial operations, and
+          Integrations to verify each configured gateway.
         </Typography>
       </SectionCard>
+      <Grid container spacing={2}>
+        {(
+          [
+            [
+              'Services & products',
+              'Govern product terms, versions, availability, and entitlements.',
+              '/admin/services',
+            ],
+            [
+              'Payments',
+              'Search payment operations and review refunds, disputes, and reconciliation.',
+              '/admin/payments',
+            ],
+            [
+              'Gateway integrations',
+              'Verify PayPal, Stripe, and Bank of America provider health.',
+              '/admin/integrations/paypal',
+            ],
+          ] as const
+        ).map(([title, description, path]) => (
+          <Grid key={path} size={{ xs: 12, md: 4 }}>
+            <SectionCard variant="interactive" sx={{ height: '100%' }}>
+              <Stack spacing={1.5} sx={{ height: '100%' }}>
+                <Typography variant="h3">{title}</Typography>
+                <Typography color="text.secondary" sx={{ flex: 1 }}>
+                  {description}
+                </Typography>
+                <Button
+                  component={Link}
+                  to={path}
+                  variant="outlined"
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Open
+                </Button>
+              </Stack>
+            </SectionCard>
+          </Grid>
+        ))}
+      </Grid>
     </Stack>
   );
 }
@@ -66,13 +107,18 @@ export function StaffAccountPage() {
 export function FoundationPage({ title, description }: { title: string; description: string }) {
   return (
     <Stack spacing={3}>
-      <PageHeader eyebrow="Coming in a future product phase" title={title} description={description} />
+      <PageHeader
+        eyebrow="Coming in a future product phase"
+        title={title}
+        description={description}
+      />
       <SectionCard>
         <Stack spacing={1.5}>
           <Chip label="Future owner" color="info" sx={{ alignSelf: 'flex-start' }} />
           <Typography variant="h3">No placeholder activity is shown</Typography>
           <Typography color="text.secondary">
-            This area will become available when its complete, authoritative workflow is ready. Use the navigation to continue with currently available tools.
+            This area will become available when its complete, authoritative workflow is ready. Use
+            the navigation to continue with currently available tools.
           </Typography>
         </Stack>
       </SectionCard>

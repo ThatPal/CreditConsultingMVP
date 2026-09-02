@@ -26,7 +26,11 @@ export function createAccessAdministration(prisma: PrismaClient) {
           eventKey: input.idempotencyKey,
           aggregateType: 'Client',
           aggregateId: input.clientId,
-          payload: (result) => result,
+          payload: (result) => ({
+            id: result.id,
+            clientId: input.clientId,
+            domains: ['authorization', 'client-context'],
+          }),
         },
         mutate: async (tx) => {
           const assignment = await tx.staffClientAssignment.upsert({
@@ -71,7 +75,10 @@ export function createAccessAdministration(prisma: PrismaClient) {
           eventKey: input.idempotencyKey,
           aggregateType: 'StaffClientAssignment',
           aggregateId: input.assignmentId,
-          payload: (result) => result,
+          payload: (result) => ({
+            ...result,
+            domains: ['authorization', 'client-context'],
+          }),
         },
         mutate: async (tx) => {
           const assignment = await tx.staffClientAssignment.update({
@@ -126,7 +133,12 @@ export function createAccessAdministration(prisma: PrismaClient) {
           eventKey: input.idempotencyKey,
           aggregateType: 'Client',
           aggregateId: input.clientId,
-          payload: (result) => ({ id: result.id, clientId: input.clientId, scope: input.scope }),
+          payload: (result) => ({
+            id: result.id,
+            clientId: input.clientId,
+            scope: input.scope,
+            domains: ['authorization', 'client-context', 'support'],
+          }),
         },
         mutate: async (tx) => {
           if (input.expiresAt <= input.startsAt) throw new Error('ACCESS_GRANT_EXPIRY_REQUIRED');
@@ -193,7 +205,10 @@ export function createAccessAdministration(prisma: PrismaClient) {
           eventKey: input.idempotencyKey,
           aggregateType: 'ClientAccessGrant',
           aggregateId: input.grantId,
-          payload: (result) => result,
+          payload: (result) => ({
+            ...result,
+            domains: ['authorization', 'client-context', 'support'],
+          }),
         },
         mutate: async (tx) => {
           const grant = await tx.clientAccessGrant.update({

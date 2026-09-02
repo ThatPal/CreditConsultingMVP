@@ -117,6 +117,7 @@ export function SupportPage() {
   const createIdempotencyKey = useRef(crypto.randomUUID());
   const contextType = searchParams.get('contextType') ?? 'GENERAL';
   const contextResourceId = searchParams.get('contextId');
+  const linkedCaseId = searchParams.get('case');
   const categoryQuery = useQuery({
     queryKey: ['support-categories'],
     queryFn: () =>
@@ -133,18 +134,30 @@ export function SupportPage() {
   if (caseStatus) caseParams.set('status', caseStatus);
   const query = useQuery({
     queryKey: ['support-cases', caseSearch, caseStatus, casePage],
-    queryFn: () => apiRequest<{ cases: SupportCase[]; hasMore: boolean; total: number }>(`/api/v1/client/support-cases?${caseParams}`),
+    queryFn: () =>
+      apiRequest<{ cases: SupportCase[]; hasMore: boolean; total: number }>(
+        `/api/v1/client/support-cases?${caseParams}`,
+      ),
     placeholderData: keepPreviousData,
   });
   const cases = query.data?.cases ?? [];
+  const linkedCaseQuery = useQuery({
+    queryKey: ['support-case', linkedCaseId],
+    queryFn: () =>
+      apiRequest<{ case: SupportCase }>(`/api/v1/client/support-cases/${linkedCaseId}`),
+    enabled: Boolean(linkedCaseId),
+    retry: false,
+  });
   const supportDocumentType = documentTypesQuery.data?.documentTypes?.find(
     (documentType) => documentType.key === 'SUPPORT_ATTACHMENT',
   );
-  const selected = cases.find((supportCase) => supportCase.id === selectedId) ?? null;
+  const selected =
+    (linkedCaseQuery.data?.case.id === selectedId ? linkedCaseQuery.data.case : null) ??
+    cases.find((supportCase) => supportCase.id === selectedId) ??
+    null;
   useEffect(() => {
-    const linkedCaseId = searchParams.get('case');
-    if (linkedCaseId && cases.some((item) => item.id === linkedCaseId)) setSelectedId(linkedCaseId);
-  }, [cases, searchParams]);
+    if (linkedCaseId) setSelectedId(linkedCaseId);
+  }, [linkedCaseId]);
   useEffect(() => {
     if (!isMobile && !selectedId && cases.length) setSelectedId(cases[0]!.id);
   }, [cases, isMobile, selectedId]);
@@ -221,7 +234,7 @@ export function SupportPage() {
         billing, documents, Reviews, and platform assistance.
       </Alert>
 
-      {cases.length === 0 ? (
+      {cases.length === 0 && !selected ? (
         <SectionCard>
           <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
             <SupportAgentRounded color="primary" sx={{ fontSize: 44 }} />
@@ -254,15 +267,36 @@ export function SupportPage() {
                 searchLabel="Search requests"
                 searchPlaceholder="Search by subject or category"
                 searchValue={caseSearch}
-                onSearchChange={(value) => { setCaseSearch(value); setCasePage(1); }}
-                activeFilters={caseStatus ? [`Status: ${statusLabels[caseStatus as SupportStatus]}`] : []}
-                onClearFilters={() => { setCaseStatus(''); setCasePage(1); }}
+                onSearchChange={(value) => {
+                  setCaseSearch(value);
+                  setCasePage(1);
+                }}
+                activeFilters={
+                  caseStatus ? [`Status: ${statusLabels[caseStatus as SupportStatus]}`] : []
+                }
+                onClearFilters={() => {
+                  setCaseStatus('');
+                  setCasePage(1);
+                }}
                 resultLabel={`${query.data?.total ?? 0} requests`}
                 loading={query.isFetching}
               >
-                <TextField select size="small" label="Status" value={caseStatus} onChange={(event) => { setCaseStatus(event.target.value); setCasePage(1); }}>
+                <TextField
+                  select
+                  size="small"
+                  label="Status"
+                  value={caseStatus}
+                  onChange={(event) => {
+                    setCaseStatus(event.target.value);
+                    setCasePage(1);
+                  }}
+                >
                   <MenuItem value="">All statuses</MenuItem>
-                  {Object.entries(statusLabels).map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}
+                  {Object.entries(statusLabels).map(([key, label]) => (
+                    <MenuItem key={key} value={key}>
+                      {label}
+                    </MenuItem>
+                  ))}
                 </TextField>
               </DataNavigationToolbar>
               <Stack divider={<Divider flexItem />}>
@@ -301,7 +335,14 @@ export function SupportPage() {
                   </Box>
                 ))}
               </Stack>
-              <DataPagination page={casePage} pageSize={20} total={query.data?.total ?? 0} hasMore={Boolean(query.data?.hasMore)} onPageChange={setCasePage} loading={query.isFetching} />
+              <DataPagination
+                page={casePage}
+                pageSize={20}
+                total={query.data?.total ?? 0}
+                hasMore={Boolean(query.data?.hasMore)}
+                onPageChange={setCasePage}
+                loading={query.isFetching}
+              />
             </SectionCard>
           </Grid>
           <Grid

@@ -20,17 +20,14 @@ import {
 } from '@mui/material';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import {
   DocumentUploadDropzone,
   type UploadDocumentType,
 } from '../components/common/DocumentUploadDropzone';
 import { LoadingSkeleton } from '../components/common/Feedback';
-import {
-  DataNavigationToolbar,
-  DataPagination,
-} from '../components/common/DataNavigation';
+import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { SecureReportViewer } from './ReviewPages';
@@ -55,10 +52,19 @@ function fileSize(bytes: number) {
 
 export function DocumentsPage() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [type, setType] = useState('');
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? '';
+  const type = searchParams.get('type') ?? '';
+  const status = searchParams.get('status') ?? '';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const updateListState = (changes: Record<string, string>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(changes).forEach(([key, value]) =>
+      value ? next.set(key, value) : next.delete(key),
+    );
+    setSearchParams(next);
+  };
+  const [uploadType, setUploadType] = useState('');
   const queryClient = useQueryClient();
   const theme = useTheme();
   const fullScreenViewer = useMediaQuery(theme.breakpoints.down('sm'));
@@ -68,7 +74,10 @@ export function DocumentsPage() {
   if (status) params.set('status', status);
   const query = useQuery({
     queryKey: ['client-documents', search, type, status, page],
-    queryFn: () => apiRequest<{ documents: ClientDocument[]; hasMore: boolean; total: number }>(`/api/v1/documents?${params}`),
+    queryFn: () =>
+      apiRequest<{ documents: ClientDocument[]; hasMore: boolean; total: number }>(
+        `/api/v1/documents?${params}`,
+      ),
     placeholderData: keepPreviousData,
   });
   const typesQuery = useQuery({
@@ -77,10 +86,19 @@ export function DocumentsPage() {
   });
 
   if (query.isLoading) return <LoadingSkeleton />;
-  if (query.isError) return <Alert severity="error">Unable to load your document history.</Alert>;
+  if (query.isError)
+    return (
+      <Alert severity="error" action={<Button onClick={() => query.refetch()}>Retry</Button>}>
+        Unable to load your document history. Check your connection and retry; no files were
+        changed.
+      </Alert>
+    );
 
   const documents = query.data?.documents ?? [];
   const selected = documents.find((document) => document.id === selectedDocumentId);
+  const uploadDocumentType =
+    typesQuery.data?.documentTypes.find((item) => item.key === uploadType) ??
+    typesQuery.data?.documentTypes[0];
 
   return (
     <Stack spacing={3}>
@@ -94,13 +112,29 @@ export function DocumentsPage() {
         <SectionCard>
           <Stack spacing={1.5}>
             <Typography variant="h3">Upload a document</Typography>
-            <DocumentUploadDropzone
-              documentType={typesQuery.data.documentTypes[0]!}
-              title="Add to your secure document library"
-              onUploaded={async () => {
-                await queryClient.invalidateQueries({ queryKey: ['client-documents'] });
-              }}
-            />
+            <TextField
+              select
+              label="Document category"
+              value={uploadDocumentType?.key ?? ''}
+              onChange={(event) => setUploadType(event.target.value)}
+              helperText="Choose the category that best describes this file. It controls accepted formats and handling."
+              sx={{ maxWidth: 420 }}
+            >
+              {typesQuery.data.documentTypes.map((item) => (
+                <MenuItem key={item.key} value={item.key}>
+                  {item.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            {uploadDocumentType && (
+              <DocumentUploadDropzone
+                documentType={uploadDocumentType}
+                title={`Add ${uploadDocumentType.name.toLowerCase()}`}
+                onUploaded={async () => {
+                  await queryClient.invalidateQueries({ queryKey: ['client-documents'] });
+                }}
+              />
+            )}
           </Stack>
         </SectionCard>
       ) : null}
@@ -115,7 +149,7 @@ export function DocumentsPage() {
                 Upload an allowed document to make it available in your secure library.
               </Typography>
             </Box>
-            <Button component={Link} to="/client/credit-profile" variant="contained">
+            <Button component={Link} to="/app/credit-center" variant="contained">
               Go to Credit Profile
             </Button>
           </Stack>
@@ -126,21 +160,53 @@ export function DocumentsPage() {
             searchLabel="Search documents"
             searchPlaceholder="Search file names and document types"
             searchValue={search}
-            onSearchChange={(value) => { setSearch(value); setPage(1); }}
+            onSearchChange={(value) => {
+              updateListState({ search: value, page: '1' });
+            }}
             activeFilters={[
-              ...(type ? [`Type: ${typesQuery.data?.documentTypes.find((item) => item.key === type)?.name ?? type}`] : []),
-              ...(status ? [`Status: ${status === 'AVAILABLE' ? 'Available' : 'Previous versions'}`] : []),
+              ...(type
+                ? [
+                    `Type: ${typesQuery.data?.documentTypes.find((item) => item.key === type)?.name ?? type}`,
+                  ]
+                : []),
+              ...(status
+                ? [`Status: ${status === 'AVAILABLE' ? 'Available' : 'Previous versions'}`]
+                : []),
             ]}
-            onClearFilters={() => { setType(''); setStatus(''); setPage(1); }}
+            onClearFilters={() => {
+              updateListState({ type: '', status: '', page: '1' });
+            }}
             resultLabel={`${query.data?.total ?? 0} documents`}
             loading={query.isFetching}
           >
-            <TextField select label="Document type" value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} sx={{ minWidth: 180 }}>
+            <TextField
+              select
+              label="Document type"
+              value={type}
+              onChange={(event) => {
+                updateListState({ type: event.target.value, page: '1' });
+              }}
+              sx={{ minWidth: 180 }}
+            >
               <MenuItem value="">All types</MenuItem>
-              {(typesQuery.data?.documentTypes ?? []).map((item) => <MenuItem key={item.key} value={item.key}>{item.name}</MenuItem>)}
+              {(typesQuery.data?.documentTypes ?? []).map((item) => (
+                <MenuItem key={item.key} value={item.key}>
+                  {item.name}
+                </MenuItem>
+              ))}
             </TextField>
-            <TextField select label="Status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} sx={{ minWidth: 170 }}>
-              <MenuItem value="">All statuses</MenuItem><MenuItem value="AVAILABLE">Available</MenuItem><MenuItem value="SUPERSEDED">Previous versions</MenuItem>
+            <TextField
+              select
+              label="Status"
+              value={status}
+              onChange={(event) => {
+                updateListState({ status: event.target.value, page: '1' });
+              }}
+              sx={{ minWidth: 170 }}
+            >
+              <MenuItem value="">All statuses</MenuItem>
+              <MenuItem value="AVAILABLE">Available</MenuItem>
+              <MenuItem value="SUPERSEDED">Previous versions</MenuItem>
             </TextField>
           </DataNavigationToolbar>
           <Stack divider={<Divider flexItem />}>
@@ -183,7 +249,7 @@ export function DocumentsPage() {
             pageSize={20}
             total={query.data?.total ?? 0}
             hasMore={Boolean(query.data?.hasMore)}
-            onPageChange={setPage}
+            onPageChange={(nextPage) => updateListState({ page: String(nextPage) })}
             loading={query.isFetching}
           />
         </SectionCard>

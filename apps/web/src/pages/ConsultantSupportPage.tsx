@@ -108,17 +108,29 @@ export function ConsultantSupportPage() {
   const [macroCode, setMacroCode] = useState<string | null>(null);
   const [caseSearch, setCaseSearch] = useState('');
   const [page, setPage] = useState(1);
-  const filterStatus = filter === 'WAITING_CLIENT' ? 'WAITING_ON_CLIENT' : filter === 'RESOLVED' ? 'RESOLVED' : '';
+  const linkedCaseId = searchParams.get('case');
+  const filterStatus =
+    filter === 'WAITING_CLIENT' ? 'WAITING_ON_CLIENT' : filter === 'RESOLVED' ? 'RESOLVED' : '';
   const params = new URLSearchParams({ page: String(page), pageSize: '20' });
   if (caseSearch.trim()) params.set('search', caseSearch.trim());
   if (filterStatus) params.set('status', filterStatus);
   if (filter === 'URGENT') params.set('priority', 'URGENT');
   const query = useQuery({
     queryKey: ['consultant-support-cases', filter, caseSearch, page],
-    queryFn: () => apiRequest<{ cases: ConsultantCase[]; hasMore: boolean; total: number }>(`/api/v1/consultant/support-cases?${params}`),
+    queryFn: () =>
+      apiRequest<{ cases: ConsultantCase[]; hasMore: boolean; total: number }>(
+        `/api/v1/consultant/support-cases?${params}`,
+      ),
     placeholderData: keepPreviousData,
   });
   const allCases = query.data?.cases ?? [];
+  const linkedCaseQuery = useQuery({
+    queryKey: ['consultant-support-case', linkedCaseId],
+    queryFn: () =>
+      apiRequest<{ case: ConsultantCase }>(`/api/v1/consultant/support-cases/${linkedCaseId}`),
+    enabled: Boolean(linkedCaseId),
+    retry: false,
+  });
   const cases = allCases.filter((item) => {
     if (filter === 'URGENT')
       return item.priority === 'URGENT' && !['RESOLVED', 'CLOSED'].includes(item.status);
@@ -126,12 +138,13 @@ export function ConsultantSupportPage() {
     if (filter === 'RESOLVED') return ['RESOLVED', 'CLOSED'].includes(item.status);
     return !['RESOLVED', 'CLOSED'].includes(item.status);
   });
-  const selected = allCases.find((item) => item.id === selectedId) ?? null;
+  const selected =
+    (linkedCaseQuery.data?.case.id === selectedId ? linkedCaseQuery.data.case : null) ??
+    allCases.find((item) => item.id === selectedId) ??
+    null;
   useEffect(() => {
-    const linkedCaseId = searchParams.get('case');
-    if (linkedCaseId && allCases.some((item) => item.id === linkedCaseId))
-      setSelectedId(linkedCaseId);
-  }, [allCases, searchParams]);
+    if (linkedCaseId) setSelectedId(linkedCaseId);
+  }, [linkedCaseId]);
   useEffect(() => {
     if (!isMobile && !selectedId && cases.length) setSelectedId(cases[0]!.id);
   }, [cases, isMobile, selectedId]);
@@ -216,7 +229,10 @@ export function ConsultantSupportPage() {
               searchLabel="Search support queue"
               searchPlaceholder="Search client names and request subjects"
               searchValue={caseSearch}
-              onSearchChange={(value) => { setCaseSearch(value); setPage(1); }}
+              onSearchChange={(value) => {
+                setCaseSearch(value);
+                setPage(1);
+              }}
               activeFilters={filter !== 'ACTIVE' ? [`View: ${filter.replace('_', ' ')}`] : []}
               resultLabel={`${query.data?.total ?? 0} requests`}
               loading={query.isFetching}
@@ -273,7 +289,14 @@ export function ConsultantSupportPage() {
                 </Box>
               ))}
             </Stack>
-            <DataPagination page={page} pageSize={20} total={query.data?.total ?? 0} hasMore={Boolean(query.data?.hasMore)} onPageChange={setPage} loading={query.isFetching} />
+            <DataPagination
+              page={page}
+              pageSize={20}
+              total={query.data?.total ?? 0}
+              hasMore={Boolean(query.data?.hasMore)}
+              onPageChange={setPage}
+              loading={query.isFetching}
+            />
           </SectionCard>
         </Grid>
 
