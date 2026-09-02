@@ -817,6 +817,84 @@ try {
         update: {},
       });
   }
+  let demoPlan = await prisma.plan.findFirst({
+    where: { clientId: client.id, title: 'Credit preparation plan' },
+    include: { versions: true },
+  });
+  if (!demoPlan) {
+    demoPlan = await prisma.plan.create({
+      data: {
+        clientId: client.id,
+        purpose: 'PREPARATION',
+        status: 'ACTIVE',
+        title: 'Credit preparation plan',
+        versions: {
+          create: {
+            version: 1,
+            status: 'ACTIVE',
+            sourceReviewId: publishedReview.id,
+            sourceReviewVersion: 1,
+            sourceProfileVersion: 1,
+            sourceFingerprint: 'demo-published-review-v1-profile-v1',
+            approvedById: consultant.id,
+            approvedAt: daysAgo(2),
+            activatedAt: daysAgo(2),
+            items: {
+              create: [
+                {
+                  stableKey: 'understand-profile',
+                  type: 'GUIDANCE',
+                  completionMode: 'ACKNOWLEDGEMENT',
+                  status: 'AVAILABLE',
+                  owner: 'CLIENT',
+                  clientTitle: 'Understand your published profile',
+                  clientBody: 'Review the factors and recommendations your consultant published.',
+                  consultantRationale: 'Establish shared context before outcome-bearing actions.',
+                  sortOrder: 0,
+                  manuallyProtected: true,
+                },
+                {
+                  stableKey: 'report-balance-progress',
+                  type: 'ACTION',
+                  completionMode: 'STRUCTURED_OUTCOME',
+                  status: 'LOCKED',
+                  owner: 'CLIENT',
+                  clientTitle: 'Report your balance progress',
+                  clientBody: 'Tell us what changed after your planned payment.',
+                  sortOrder: 1,
+                  outcomeSchema: { fields: [{ key: 'clientReport', type: 'text', required: true }] },
+                },
+                {
+                  stableKey: 'consultant-readiness-check',
+                  type: 'MILESTONE',
+                  completionMode: 'CONSULTANT_VERIFY',
+                  status: 'LOCKED',
+                  owner: 'CONSULTANT',
+                  clientTitle: 'Consultant verifies readiness',
+                  clientBody: 'Your consultant confirms this milestone after reviewing your progress.',
+                  sortOrder: 2,
+                },
+              ],
+            },
+          },
+        },
+      },
+      include: { versions: true },
+    });
+    const version = await prisma.planVersion.findFirstOrThrow({
+      where: { planId: demoPlan.id },
+      include: { items: true },
+    });
+    const guide = version.items.find(({ stableKey }) => stableKey === 'understand-profile')!;
+    const outcome = version.items.find(({ stableKey }) => stableKey === 'report-balance-progress')!;
+    const milestone = version.items.find(({ stableKey }) => stableKey === 'consultant-readiness-check')!;
+    await prisma.planDependency.createMany({
+      data: [
+        { prerequisiteItemId: guide.id, dependentItemId: outcome.id },
+        { prerequisiteItemId: outcome.id, dependentItemId: milestone.id },
+      ],
+    });
+  }
   console.info(
     JSON.stringify(
       {
@@ -850,6 +928,11 @@ try {
           'published client Credit Center overview, profile, report, analysis, and history',
           'consultant CRM published Credit Center projection',
           'separate active unpublished Review remains private',
+        ],
+        phase9Scenarios: [
+          'active approved preparation Plan with Guidance, structured Action, and consultant Milestone',
+          'dependency-locked progression and client-safe Plan projection',
+          'consultant Plan Builder, source reconciliation, and immutable version history',
         ],
       },
       null,

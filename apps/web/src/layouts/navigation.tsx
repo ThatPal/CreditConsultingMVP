@@ -48,6 +48,15 @@ const registry: NavigationItem[] = [
     status: 'foundation',
   },
   {
+    id: 'portal-plan',
+    label: 'Plan',
+    path: '/app/plan',
+    icon: TaskAltRounded,
+    shell: 'client',
+    section: 'primary',
+    status: 'available',
+  },
+  {
     id: 'portal-credit',
     label: 'Credit Center',
     path: '/app/credit-center',

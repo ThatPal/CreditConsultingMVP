@@ -67,7 +67,10 @@ describe('application shells', () => {
     expect(within(navigation).getByRole('link', { name: 'Support' })).toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Services' })).toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Credit Center' })).toBeInTheDocument();
-    expect(within(navigation).getByText('Plan')).toBeInTheDocument();
+    expect(within(navigation).getByRole('link', { name: 'Plan' })).toHaveAttribute(
+      'href',
+      '/app/plan',
+    );
     expect(within(navigation).getByText('Utilities')).toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Security' })).not.toBeInTheDocument();
     expect(within(navigation).queryByText('Credit Plan')).not.toBeInTheDocument();
