@@ -1058,15 +1058,44 @@ model ReviewDraft {
   version                Int
   sourceVersions         Json
   profile                Json
+  analysis               Json?
+  recommendation         Json?
+  analysisApprovedAt     DateTime? @db.Timestamptz(3)
+  recommendationApprovedAt DateTime? @db.Timestamptz(3)
+  approvedByUserId       String?  @db.Uuid
   contextVersion         String
   createdByUserId        String   @db.Uuid
   createdAt              DateTime @default(now()) @db.Timestamptz(3)
   updatedAt              DateTime @updatedAt @db.Timestamptz(3)
   review                 CreditReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   overrides              ReviewDraftOverride[]
+  findings               ReviewDraftFinding[]
 
   @@unique([reviewId, version])
   @@index([reviewId, updatedAt])
+}
+
+model ReviewDraftFinding {
+  id              String @id @default(uuid()) @db.Uuid
+  draftId         String @db.Uuid
+  code            String
+  title           String
+  clientSummary   String?
+  internalDetail  String?
+  severity        FindingSeverity
+  status          ReviewFindingStatus @default(PROPOSED)
+  origin          String
+  evidence        Json
+  aiProvenance    Json?
+  actorId         String? @db.Uuid
+  decisionReason  String?
+  version         Int @default(1)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  draft           ReviewDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, code])
+  @@index([draftId, status, severity])
 }
 
 model ReviewDraftOverride {
