@@ -1,6 +1,6 @@
 # Sprint 6.5 — Intake Review & Submission
 
-Status: COMPLETE — local high-risk gate passed; immediate branch CI pending
+Status: COMPLETE
 
 Branch: `rapid/phase6-8-review-golden-path`
 
@@ -36,7 +36,7 @@ Implementation boundary: `bc0c19a`
 - API build: PASS.
 - Web build: PASS (existing non-blocking Vite chunk-size advisory only).
 - Migration deploy: PASS on Credit-only `credit_strategy_phase6_8_block`.
-- Mandatory immediate CI: pending push of this Sprint boundary.
+- Mandatory immediate CI: PASS — run `33594129873` on `ce90ad0ff6b36161d6dc54d063e7fff8068a8ff2`.
 
 ## Exact-once proof counts
 
