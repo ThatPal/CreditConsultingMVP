@@ -28,7 +28,7 @@
 
 ## Immediate CI
 
-This boundary is pushed immediately and its exact-head GitHub Actions result is recorded before Sprint 9.4 begins.
+The exact Sprint boundary was pushed immediately. [Run 33693535797](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33693535797) exposed only `no-explicit-any` lint annotations in the new typed UI; no runtime, transaction, security, or test proof failed. The response contracts were then explicitly typed, lint passed locally, and the correction is included in the next continuous-run commit and final exact-head CI.
 
 ## Scope confirmation
 

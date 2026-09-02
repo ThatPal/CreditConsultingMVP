@@ -271,6 +271,11 @@ export async function approvePlan(prisma: PrismaClient, clientId: string, planId
       dependencies: version.items.flatMap((item) => item.prerequisites.map((edge) => ({ dependentKey: item.stableKey, prerequisiteKey: edge.prerequisiteItem.stableKey, groupKey: edge.groupKey, mode: edge.mode }))),
     };
     assertValid(input);
+    if (version.supersedesVersionId)
+      await tx.planVersion.update({
+        where: { id: version.supersedesVersionId },
+        data: { status: 'SUPERSEDED' },
+      });
     await tx.planVersion.update({ where: { id: version.id }, data: { status: 'ACTIVE', approvedById: actorId, approvedAt: new Date(), activatedAt: new Date() } });
     await tx.plan.update({ where: { id: planId }, data: { status: 'ACTIVE' } });
     const roots = version.items.filter((item) => item.prerequisites.length === 0);
@@ -278,6 +283,129 @@ export async function approvePlan(prisma: PrismaClient, clientId: string, planId
     await tx.auditEvent.create({ data: { clientId, actorId, action: 'plan.approved', entityType: 'PlanVersion', entityId: version.id } });
     await tx.outboxEvent.create({ data: { eventType: 'plan.approved', eventKey: `plan-approved:${version.id}`, aggregateType: 'Plan', aggregateId: planId, payload: { clientId, domains: ['plan', 'journey', 'home'] } } });
     return { planId, versionId: version.id, version: version.version };
+  });
+}
+
+export async function reconcilePlanSources(
+  prisma: PrismaClient,
+  input: {
+    clientId: string;
+    planId: string;
+    actorId: string;
+    sourceReviewId?: string | null;
+    sourceReviewVersion?: number | null;
+    sourceGoalRevisionId?: string | null;
+    sourceProfileVersion?: number | null;
+    material: boolean;
+    reason: string;
+  },
+) {
+  return prisma.$transaction(async (tx) => {
+    const plan = await tx.plan.findFirst({
+      where: { id: input.planId, clientId: input.clientId },
+      include: {
+        versions: {
+          where: { status: { in: ['ACTIVE', 'APPROVED', 'STALE'] } },
+          include: builderInclude,
+          orderBy: { version: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    const current = plan?.versions[0];
+    if (!plan || !current) throw new AppError('NOT_FOUND', 404, 'An active Plan was not found');
+    const nextSources = {
+      sourceReviewId: input.sourceReviewId ?? current.sourceReviewId,
+      sourceReviewVersion: input.sourceReviewVersion ?? current.sourceReviewVersion,
+      sourceGoalRevisionId: input.sourceGoalRevisionId ?? current.sourceGoalRevisionId,
+      sourceProfileVersion: input.sourceProfileVersion ?? current.sourceProfileVersion,
+    };
+    const nextFingerprint = sourceFingerprint(nextSources);
+    if (!input.material || nextFingerprint === current.sourceFingerprint)
+      return { changed: false, planId: plan.id, versionId: current.id };
+
+    const draft: PlanDraftInput = {
+      title: plan.title,
+      purpose: plan.purpose,
+      ...nextSources,
+      paths: current.paths.map((path) => ({
+        key: path.key,
+        clientLabel: path.clientLabel,
+        internalLabel: path.internalLabel,
+        status: path.status,
+        sortOrder: path.sortOrder,
+      })),
+      items: current.items.map((item) => ({
+        stableKey: item.stableKey,
+        type: item.type,
+        completionMode: item.completionMode,
+        owner: item.owner,
+        clientTitle: item.clientTitle,
+        clientBody: item.clientBody,
+        consultantRationale: item.consultantRationale,
+        sortOrder: item.sortOrder,
+        required: item.required,
+        deepLink: item.deepLink,
+        manuallyProtected: item.manuallyProtected,
+        pathKeys: item.pathMemberships.map(({ path }) => path.key),
+      })),
+      dependencies: current.items.flatMap((item) =>
+        item.prerequisites.map((edge) => ({
+          dependentKey: item.stableKey,
+          prerequisiteKey: edge.prerequisiteItem.stableKey,
+          groupKey: edge.groupKey,
+          mode: edge.mode,
+        })),
+      ),
+    };
+    const replacement = await writeVersion(tx, plan.id, current.version + 1, draft, current.id);
+    const completedKeys = current.items
+      .filter(({ status }) => status === 'COMPLETED')
+      .map(({ stableKey }) => stableKey);
+    if (completedKeys.length)
+      await tx.planItem.updateMany({
+        where: { planVersionId: replacement.id, stableKey: { in: completedKeys } },
+        data: { status: 'COMPLETED', completedAt: new Date() },
+      });
+    await tx.planVersion.update({
+      where: { id: current.id },
+      data: { status: 'STALE', staleAt: new Date(), staleReason: input.reason },
+    });
+    await tx.plan.update({ where: { id: plan.id }, data: { status: 'STALE' } });
+    await tx.auditEvent.create({
+      data: {
+        clientId: input.clientId,
+        actorId: input.actorId,
+        action: 'plan.reconciliation.proposed',
+        entityType: 'PlanVersion',
+        entityId: replacement.id,
+        metadata: { previousVersionId: current.id, reason: input.reason },
+      },
+    });
+    await tx.outboxEvent.create({
+      data: {
+        eventType: 'plan.reconciliation.proposed',
+        eventKey: `plan-reconciliation:${replacement.id}`,
+        aggregateType: 'Plan',
+        aggregateId: plan.id,
+        payload: { clientId: input.clientId, domains: ['plan', 'journey', 'home', 'work-queue'] },
+      },
+    });
+    await tx.workItem.create({
+      data: {
+        clientId: input.clientId,
+        title: 'Review Plan source changes',
+        domain: 'PLAN',
+        authority: 'ATTENTION_PROJECTION',
+        sourceType: 'PlanVersion',
+        sourceId: replacement.id,
+        reasonCode: 'PLAN_RECONCILIATION_REQUIRED',
+        dedupeKey: `plan-reconciliation:${replacement.id}`,
+        deepLink: { route: `/crm/clients/${input.clientId}/plan` },
+        neededSince: new Date(),
+      },
+    });
+    return { changed: true, planId: plan.id, previousVersionId: current.id, versionId: replacement.id, version: replacement.version };
   });
 }
 

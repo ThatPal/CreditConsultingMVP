@@ -18,6 +18,39 @@ type Item = {
   pathKeys: string[];
 };
 
+type BuilderResponse = {
+  plan: null | {
+    id: string;
+    status: string;
+    versions: Array<{
+      version: number;
+      optimisticVersion: number;
+      sourceProfileVersion: number | null;
+    }>;
+  };
+  context: { review: null | { id: string } };
+};
+
+type ClientPlanItem = {
+  id: string;
+  type: Item['type'];
+  completionMode: Item['completionMode'];
+  status: string;
+  title: string;
+  body: string | null;
+  deepLink: string | null;
+  prerequisites: Array<{ id: string; title: string; status: string }>;
+};
+
+type ClientPlanResponse = {
+  plan: null | {
+    id: string;
+    title: string;
+    status: string;
+    version: { staleAt: string | null; items: ClientPlanItem[] };
+  };
+};
+
 const starterItems: Item[] = [
   { stableKey: 'review-guidance', type: 'GUIDANCE', completionMode: 'ACKNOWLEDGEMENT', owner: 'CLIENT', clientTitle: 'Review your credit findings', clientBody: 'Read the published findings before beginning your preparation actions.', consultantRationale: 'Establish shared context.', sortOrder: 0, required: true, pathKeys: [] },
   { stableKey: 'utilization-outcome', type: 'ACTION', completionMode: 'STRUCTURED_OUTCOME', owner: 'CLIENT', clientTitle: 'Report your balance progress', clientBody: 'Record the balance change after your planned payment.', consultantRationale: 'Captures an outcome without replacing the account record.', sortOrder: 1, required: true, pathKeys: [] },
@@ -27,7 +60,7 @@ const starterItems: Item[] = [
 export function ConsultantPlanBuilderPage() {
   const { clientId = '' } = useParams();
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ['plan-builder', clientId], queryFn: () => apiRequest<any>(`/api/v1/consultant/clients/${clientId}/plan`), enabled: Boolean(clientId) });
+  const query = useQuery({ queryKey: ['plan-builder', clientId], queryFn: () => apiRequest<BuilderResponse>(`/api/v1/consultant/clients/${clientId}/plan`), enabled: Boolean(clientId) });
   const [title, setTitle] = useState('Credit preparation plan');
   const [items, setItems] = useState<Item[]>(starterItems);
   const draft = useMemo(() => ({ title, purpose: 'PREPARATION', sourceReviewId: query.data?.context.review?.id ?? null, sourceReviewVersion: 1, sourceGoalRevisionId: null, sourceProfileVersion: 1, items, dependencies: items.length > 1 ? items.slice(1).map((item, index) => ({ dependentKey: item.stableKey, prerequisiteKey: items[index]!.stableKey, mode: 'ALL' })) : [] }), [items, query.data, title]);
@@ -35,11 +68,34 @@ export function ConsultantPlanBuilderPage() {
     mutationFn: async () => {
       const plan = query.data?.plan;
       if (!plan) return apiRequest(`/api/v1/consultant/clients/${clientId}/plans`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(draft) });
-      return apiRequest(`/api/v1/consultant/clients/${clientId}/plans/${plan.id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedVersion: plan.versions[0].optimisticVersion, draft }) });
+      const version = plan.versions[0];
+      if (!version) throw new Error('Plan version is unavailable');
+      return apiRequest(`/api/v1/consultant/clients/${clientId}/plans/${plan.id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedVersion: version.optimisticVersion, draft }) });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['plan-builder', clientId] }),
   });
-  const approve = useMutation({ mutationFn: () => apiRequest(`/api/v1/consultant/clients/${clientId}/plans/${query.data.plan.id}/approve`, { method: 'POST' }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['plan-builder', clientId] }) });
+  const approve = useMutation({ mutationFn: () => {
+    const plan = query.data?.plan;
+    if (!plan) throw new Error('Plan is unavailable');
+    return apiRequest(`/api/v1/consultant/clients/${clientId}/plans/${plan.id}/approve`, { method: 'POST' });
+  }, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['plan-builder', clientId] }) });
+  const reconcile = useMutation({
+    mutationFn: () => {
+      const plan = query.data?.plan;
+      const version = plan?.versions[0];
+      if (!plan || !version) throw new Error('Plan version is unavailable');
+      return apiRequest(`/api/v1/consultant/clients/${clientId}/plans/${plan.id}/reconcile`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sourceProfileVersion: (version.sourceProfileVersion ?? 0) + 1,
+          material: true,
+          reason: 'Consultant confirmed a material source change.',
+        }),
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['plan-builder', clientId] }),
+  });
   if (query.isLoading) return <Typography>Loading Plan Builder…</Typography>;
   if (query.isError) return <Alert severity="error">The Plan Builder could not be loaded safely.</Alert>;
   return <Stack spacing={3}>
@@ -61,7 +117,7 @@ export function ConsultantPlanBuilderPage() {
       <Divider />
       <Typography variant="h6">Client-safe preview</Typography>
       {items.map((item) => <Box key={item.stableKey}><Typography sx={{ fontWeight: 700 }}>{item.clientTitle}</Typography><Typography color="text.secondary">{item.clientBody}</Typography></Box>)}
-      <Stack direction="row" spacing={2}><Button variant="contained" onClick={() => save.mutate()} disabled={save.isPending}>Save draft</Button><Button variant="contained" color="success" disabled={!query.data?.plan || approve.isPending} onClick={() => approve.mutate()}>Approve Plan</Button></Stack>
+      <Stack direction="row" spacing={2}><Button variant="contained" onClick={() => save.mutate()} disabled={save.isPending}>Save draft</Button><Button variant="contained" color="success" disabled={!query.data?.plan || approve.isPending} onClick={() => approve.mutate()}>Approve Plan</Button><Button disabled={!query.data?.plan || reconcile.isPending} onClick={() => reconcile.mutate()}>Reconcile source change</Button></Stack>
       <Typography variant="caption">Approval requires recent MFA step-up. Manual authoring remains available without AI.</Typography>
     </Stack></CardContent></Card>
   </Stack>;
@@ -69,10 +125,10 @@ export function ConsultantPlanBuilderPage() {
 
 export function ClientPlanPage() {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ['client-plan'], queryFn: () => apiRequest<any>('/api/v1/client/plan') });
+  const query = useQuery({ queryKey: ['client-plan'], queryFn: () => apiRequest<ClientPlanResponse>('/api/v1/client/plan') });
   const [outcomeText, setOutcomeText] = useState('');
   const act = useMutation({
-    mutationFn: ({ item, action }: { item: any; action: 'COMPLETE' | 'UNABLE' }) =>
+    mutationFn: ({ item, action }: { item: ClientPlanItem; action: 'COMPLETE' | 'UNABLE' }) =>
       apiRequest(`/api/v1/client/plan/items/${item.id}/outcomes`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -95,5 +151,5 @@ export function ClientPlanPage() {
   if (query.isError) return <Alert severity="error">Your Plan could not be loaded.</Alert>;
   if (!query.data?.plan) return <Stack spacing={2}><PageHeader eyebrow="Plan" title="Your next steps" description="An approved Plan will appear here when it is ready." /><Alert severity="info">No approved Plan is available yet.</Alert></Stack>;
   const plan = query.data.plan;
-  return <Stack spacing={3}><PageHeader eyebrow="PORTAL-08" title={plan.title} description="Follow the available steps. Locked milestones open only when their prerequisites are satisfied." />{plan.version.staleAt && <Alert severity="warning">This Plan is being reviewed after a source change. Completed history remains available.</Alert>}{act.isError && <Alert severity="error">That outcome was not accepted. Reload the Plan and check prerequisite or verification requirements.</Alert>}<Stack spacing={2}>{plan.version.items.map((item: any) => <Card key={item.id}><CardContent><Stack spacing={1}><Stack direction="row" sx={{ justifyContent: 'space-between' }}><Typography variant="h6">{item.title}</Typography><Chip label={item.status.replaceAll('_',' ')} /></Stack><Typography>{item.body}</Typography>{item.prerequisites.length > 0 && item.status === 'LOCKED' && <Typography color="text.secondary">Available after: {item.prerequisites.map((value: any) => value.title).join(', ')}</Typography>}{item.deepLink && <Button component={Link} to={item.deepLink}>Open related area</Button>}{item.status === 'AVAILABLE' && !['MILESTONE','CONSULTANT_VERIFY','SYSTEM_VERIFY'].includes(item.type) && <Stack spacing={1}><TextField label={item.completionMode === 'STRUCTURED_OUTCOME' ? 'What changed?' : 'Optional note'} value={outcomeText} onChange={(event) => setOutcomeText(event.target.value)} /><Stack direction="row" spacing={1}><Button variant="contained" disabled={act.isPending || (item.completionMode === 'STRUCTURED_OUTCOME' && !outcomeText)} onClick={() => act.mutate({ item, action: 'COMPLETE' })}>{item.type === 'GUIDANCE' ? 'I understand' : 'Report complete'}</Button><Button disabled={act.isPending} onClick={() => act.mutate({ item, action: 'UNABLE' })}>I need help</Button></Stack></Stack>}{item.status === 'AWAITING_VERIFICATION' && <Alert severity="info">Your update was recorded and is awaiting consultant verification.</Alert>}</Stack></CardContent></Card>)}</Stack></Stack>;
+  return <Stack spacing={3}><PageHeader eyebrow="PORTAL-08" title={plan.title} description="Follow the available steps. Locked milestones open only when their prerequisites are satisfied." />{plan.version.staleAt && <Alert severity="warning">This Plan is being reviewed after a source change. Completed history remains available.</Alert>}{act.isError && <Alert severity="error">That outcome was not accepted. Reload the Plan and check prerequisite or verification requirements.</Alert>}<Stack spacing={2}>{plan.version.items.map((item) => <Card key={item.id}><CardContent><Stack spacing={1}><Stack direction="row" sx={{ justifyContent: 'space-between' }}><Typography variant="h6">{item.title}</Typography><Chip label={item.status.replaceAll('_',' ')} /></Stack><Typography>{item.body}</Typography>{item.prerequisites.length > 0 && item.status === 'LOCKED' && <Typography color="text.secondary">Available after: {item.prerequisites.map((value) => value.title).join(', ')}</Typography>}{item.deepLink && <Button component={Link} to={item.deepLink}>Open related area</Button>}{item.status === 'AVAILABLE' && item.type !== 'MILESTONE' && <Stack spacing={1}><TextField label={item.completionMode === 'STRUCTURED_OUTCOME' ? 'What changed?' : 'Optional note'} value={outcomeText} onChange={(event) => setOutcomeText(event.target.value)} /><Stack direction="row" spacing={1}><Button variant="contained" disabled={act.isPending || (item.completionMode === 'STRUCTURED_OUTCOME' && !outcomeText)} onClick={() => act.mutate({ item, action: 'COMPLETE' })}>{item.type === 'GUIDANCE' ? 'I understand' : 'Report complete'}</Button><Button disabled={act.isPending} onClick={() => act.mutate({ item, action: 'UNABLE' })}>I need help</Button></Stack></Stack>}{item.status === 'AWAITING_VERIFICATION' && <Alert severity="info">Your update was recorded and is awaiting consultant verification.</Alert>}</Stack></CardContent></Card>)}</Stack></Stack>;
 }

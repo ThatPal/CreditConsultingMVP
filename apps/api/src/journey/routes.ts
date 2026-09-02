@@ -44,7 +44,7 @@ async function projection(prisma: PrismaClient, clientId: string) {
       select: { id: true, status: true, completedAt: true, readinessExpiresAt: true },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     }),
-    prisma.planAction.count({ where: { clientId, status: { not: 'COMPLETED' } } }),
+    prisma.plan.count({ where: { clientId, status: { in: ['APPROVED', 'ACTIVE', 'STALE'] } } }),
   ]);
   if (!client) throw new AppError('NOT_FOUND', 404, 'Client was not found');
   const activeCycle = journey?.cycles.find((cycle) => cycle.status === 'ACTIVE') ?? null;

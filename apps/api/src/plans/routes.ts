@@ -5,7 +5,7 @@ import { requireCapability, requireRole } from '../auth/middleware.js';
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
-import { approvePlan, clientSafeVersion, createPlanDraft, executePlanItem, getPlanBuilder, revisePlanDraft, verifyPlanItem } from './service.js';
+import { approvePlan, clientSafeVersion, createPlanDraft, executePlanItem, getPlanBuilder, reconcilePlanSources, revisePlanDraft, verifyPlanItem } from './service.js';
 
 const itemSchema = z.object({
   stableKey: z.string().min(1).max(80),
@@ -75,6 +75,12 @@ export function createPlanRouter(prisma: PrismaClient, authorization: Authorizat
   });
   router.post('/consultant/clients/:clientId/plan/items/:itemId/verify', requireRole('CONSULTANT'), requireCapability(authorization, 'review.publish', 'clientId', { requireStepUp: true }, recorder), async (req, res, next) => {
     try { res.json(await verifyPlanItem(prisma, req.params.clientId as string, req.params.itemId as string, req.auth!.userId)); } catch (error) { next(error); }
+  });
+  router.post('/consultant/clients/:clientId/plans/:planId/reconcile', requireRole('CONSULTANT'), requireCapability(authorization, 'review.publish', 'clientId', { requireStepUp: true }, recorder), async (req, res, next) => {
+    try {
+      const parsed = z.object({ sourceReviewId: z.string().uuid().nullable().optional(), sourceReviewVersion: z.number().int().positive().nullable().optional(), sourceGoalRevisionId: z.string().uuid().nullable().optional(), sourceProfileVersion: z.number().int().positive().nullable().optional(), material: z.boolean(), reason: z.string().min(1).max(1000) }).parse(req.body);
+      res.json(await reconcilePlanSources(prisma, { clientId: req.params.clientId as string, planId: req.params.planId as string, actorId: req.auth!.userId, ...parsed } as Parameters<typeof reconcilePlanSources>[1]));
+    } catch (error) { next(error); }
   });
   return router;
 }
