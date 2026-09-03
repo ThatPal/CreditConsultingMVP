@@ -20,6 +20,12 @@ export const liveEventDomains = [
   'services',
   'support',
   'work-queue',
+  'major-readiness',
+  'plan',
+  'strategy',
+  'appointments',
+  'live-sessions',
+  'journey',
 ] as const;
 export type LiveEventDomain = (typeof liveEventDomains)[number];
 export type LiveEventEnvelope = {

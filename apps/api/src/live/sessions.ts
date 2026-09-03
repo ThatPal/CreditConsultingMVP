@@ -6,6 +6,7 @@ import {
 } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
+import { assertNoCreditActivityRestriction } from '../majorReadiness/service.js';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const JOIN_WINDOW_MS = 30 * 60_000;
@@ -37,6 +38,7 @@ export async function startApplicationSession(
     appointment.status !== 'BOOKED'
   )
     throw new AppError('APPOINTMENT_NOT_JOINABLE', 409, 'Appointment is not joinable');
+  await assertNoCreditActivityRestriction(prisma, appointment.clientId, 'LIVE_EXECUTION');
   const now = Date.now();
   if (
     now < appointment.startsAt.getTime() - JOIN_WINDOW_MS ||

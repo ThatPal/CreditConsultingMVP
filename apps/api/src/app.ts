@@ -46,6 +46,7 @@ import { createStrategyRouter } from './strategies/routes.js';
 import type { DurableAIRuntime } from './ai/durableRuntime.js';
 import { createLiveRouter } from './live/routes.js';
 import { createPostRoundRouter } from './postRound/routes.js';
+import { createMajorReadinessRouter } from './majorReadiness/routes.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -194,6 +195,7 @@ export function createApp(
         createReadinessRouter(prisma, auth, authorization, denialRecorder),
       );
       app.use('/api/v1', createOperationsRouter(prisma, auth, {}, authorization, denialRecorder));
+      app.use('/api/v1/major-readiness-v2', createMajorReadinessRouter(prisma, authorization));
     }
   }
   app.get('/errors/test', (_req, _res, next) => next(new Error('Deliberate test error')));

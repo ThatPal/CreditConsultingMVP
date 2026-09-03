@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
+import { assertNoCreditActivityRestriction } from '../majorReadiness/service.js';
 
 export interface CalendarProvider {
   readonly configured: boolean;
@@ -178,6 +179,7 @@ export async function bookAppointment(
   },
   provider: CalendarProvider = noOpCalendarProvider,
 ) {
+  await assertNoCreditActivityRestriction(prisma, input.clientId, 'SCHEDULING');
   const slots = await availableSlots(
     prisma,
     {
@@ -326,6 +328,7 @@ export async function rescheduleAppointment(
   },
   provider: CalendarProvider = noOpCalendarProvider,
 ) {
+  await assertNoCreditActivityRestriction(prisma, input.clientId, 'SCHEDULING');
   const previous = await prisma.appointment.findFirst({
     where: { id: input.appointmentId, clientId: input.clientId, status: 'BOOKED' },
   });

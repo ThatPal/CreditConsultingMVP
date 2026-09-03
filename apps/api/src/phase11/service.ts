@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
+import { assertNoCreditActivityRestriction } from '../majorReadiness/service.js';
 
 export type Phase11ClientView = Awaited<ReturnType<typeof getPhase11ClientView>>;
 
@@ -57,6 +58,7 @@ export async function startOrResumeCycle(prisma: PrismaClient, input: { clientId
     audit: (result) => ({ action: result.resumed ? 'CREDIT_CYCLE_RESUMED' : result.existing ? 'CREDIT_CYCLE_START_REPLAYED' : 'CREDIT_CYCLE_STARTED', entityType: 'ApplicationCycle', entityId: result.cycleId, clientId: input.clientId, actorId: input.actorId, metadata: { seasonalLabel: result.displayName } }),
     outbox: { eventType: 'credit-cycle.changed', eventKey: `credit-cycle:${input.clientId}:${input.idempotencyKey}`, aggregateType: 'ApplicationCycle', aggregateId: (result) => result.cycleId, payload: (result) => ({ clientId: input.clientId, cycleId: result.cycleId, resumed: result.resumed }) },
     mutate: async (tx) => {
+      await assertNoCreditActivityRestriction(tx, input.clientId, 'CYCLE');
       const source = await authoritativeContext(tx, input.clientId);
       assertCurrentProfile(source);
       const current = await tx.applicationCycle.findFirst({ where: { clientId: input.clientId, status: { in: ['ACTIVE', 'PAUSED'] } }, include: { goalSnapshot: true }, orderBy: [{ startedAt: 'desc' }, { id: 'asc' }] });
@@ -128,6 +130,7 @@ export async function createRound(prisma: PrismaClient, input: { clientId: strin
     audit: (value) => ({ action: 'CREDIT_CARD_ROUND_STARTED', entityType: 'CreditCardRound', entityId: value.roundId, clientId: input.clientId, actorId: input.actorId, metadata: { cycleId: input.cycleId, entitlementId: value.entitlementId } }),
     outbox: { eventType: 'credit-card-round.changed', eventKey: `credit-card-round:${input.cycleId}`, aggregateType: 'CreditCardRound', aggregateId: (value) => value.roundId, payload: (value) => ({ clientId: input.clientId, cycleId: input.cycleId, roundId: value.roundId }) },
     mutate: async (tx) => {
+      await assertNoCreditActivityRestriction(tx, input.clientId, 'CYCLE');
       const existing = await tx.creditCardRound.findUnique({ where: { cycleId_clientId: { cycleId: input.cycleId, clientId: input.clientId } } });
       if (existing) return { roundId: existing.id, entitlementId: existing.serviceEntitlementId };
       const source = await authoritativeContext(tx, input.clientId);

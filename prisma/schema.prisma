@@ -2480,6 +2480,134 @@ model RoundMajorApplicationCheck {
   @@index([clientId, submittedAt])
 }
 
+enum MajorReadinessStatus {
+  INTAKE
+  ASSESSMENT
+  PREPARATION
+  COORDINATION
+  REASSESSMENT
+  COMPLETE
+}
+
+enum MajorReadinessRecommendationType {
+  PROCEED_NOW
+  PREPARE_FIRST
+  REASSESS_LATER
+}
+
+enum CoordinationDecisionType {
+  NO_RESTRICTION
+  PAUSE_CARD_ACTIVITY
+  LIMIT_CARD_ACTIVITY
+}
+
+enum CreditActivityRestrictionScope {
+  CYCLE
+  STRATEGY
+  SCHEDULING
+  LIVE_EXECUTION
+}
+
+model MajorReadinessCase {
+  id                   String               @id @default(uuid()) @db.Uuid
+  clientId             String               @db.Uuid
+  intentType           String               @db.VarChar(80)
+  targetTiming         String?              @db.VarChar(160)
+  clientContext        String?              @db.VarChar(1000)
+  status               MajorReadinessStatus @default(INTAKE)
+  version              Int                  @default(1)
+  profileStateId       String?              @db.Uuid
+  sourceReviewId       String?              @db.Uuid
+  serviceEntitlementId String?              @db.Uuid
+  sourceMajorCheckId   String?              @db.Uuid
+  preparationPlanId    String?              @db.Uuid
+  currentRecommendationId String?           @db.Uuid
+  currentDecisionId    String?              @db.Uuid
+  finalizedAt          DateTime?             @db.Timestamptz(3)
+  createdByUserId      String                @db.Uuid
+  createdAt            DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
+  recommendations      MajorReadinessRecommendation[]
+  decisions            CoordinationDecision[]
+  restrictions         ClientCreditActivityRestriction[]
+  events               MajorReadinessEvent[]
+
+  @@index([clientId, status, updatedAt])
+}
+
+model MajorReadinessRecommendation {
+  id                    String                           @id @default(uuid()) @db.Uuid
+  caseId                String                           @db.Uuid
+  version               Int
+  type                  MajorReadinessRecommendationType
+  clientSafeExplanation String                           @db.VarChar(3000)
+  internalRationale     String?                          @db.VarChar(3000)
+  sourceFingerprint     String
+  sourceSnapshot        Json
+  aiJobId               String?                          @db.Uuid
+  aiProviderMetadata    Json?
+  approvedByUserId      String?                          @db.Uuid
+  approvedAt            DateTime?                        @db.Timestamptz(3)
+  supersededAt          DateTime?                        @db.Timestamptz(3)
+  createdAt             DateTime                         @default(now()) @db.Timestamptz(3)
+  case                  MajorReadinessCase               @relation(fields: [caseId], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, version])
+  @@index([caseId, approvedAt])
+}
+
+model CoordinationDecision {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  caseId                String                   @db.Uuid
+  version               Int
+  type                  CoordinationDecisionType
+  clientSafeExplanation String                   @db.VarChar(3000)
+  internalRationale     String?                  @db.VarChar(3000)
+  sourceRecommendationId String                  @db.Uuid
+  effectiveAt           DateTime                 @default(now()) @db.Timestamptz(3)
+  supersededAt          DateTime?                @db.Timestamptz(3)
+  decidedByUserId       String                   @db.Uuid
+  createdAt             DateTime                 @default(now()) @db.Timestamptz(3)
+  case                  MajorReadinessCase       @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  restrictions          ClientCreditActivityRestriction[]
+
+  @@unique([caseId, version])
+  @@index([caseId, effectiveAt])
+}
+
+model ClientCreditActivityRestriction {
+  id             String                         @id @default(uuid()) @db.Uuid
+  clientId       String                         @db.Uuid
+  caseId         String                         @db.Uuid
+  decisionId     String                         @db.Uuid
+  scope          CreditActivityRestrictionScope
+  reasonCode     String
+  effectiveAt    DateTime                       @default(now()) @db.Timestamptz(3)
+  clearedAt      DateTime?                      @db.Timestamptz(3)
+  clearedByUserId String?                       @db.Uuid
+  clearReason    String?                        @db.VarChar(1000)
+  createdAt      DateTime                       @default(now()) @db.Timestamptz(3)
+  case           MajorReadinessCase             @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  decision       CoordinationDecision           @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+
+  @@unique([decisionId, scope])
+  @@index([clientId, scope, clearedAt])
+}
+
+model MajorReadinessEvent {
+  id          String             @id @default(uuid()) @db.Uuid
+  caseId      String             @db.Uuid
+  clientId    String             @db.Uuid
+  type        String
+  actorUserId String?            @db.Uuid
+  payload     Json
+  createdAt   DateTime           @default(now()) @db.Timestamptz(3)
+  case        MajorReadinessCase @relation(fields: [caseId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, createdAt, id])
+  @@index([clientId, createdAt])
+}
+
 model ConsultantAvailabilityRule {
   id           String   @id @default(uuid()) @db.Uuid
   consultantId String   @db.Uuid

@@ -9,6 +9,7 @@ import { AccountPage } from './pages/AccountPage';
 import { MajorApplicationCheckPage, RoundPage, SeasonalCyclePage } from './pages/Phase11Pages';
 import { ClientStrategyPage, ConsultantStrategyPage } from './pages/StrategyPages';
 import { PostRoundFollowUpPage, PostRoundPage, RoundAnalysisPage, RoundFinalizationPage } from './pages/PostRoundPages';
+import { ConsultantMajorReadinessPage, MajorReadinessPage } from './pages/MajorReadinessPages';
 import {
   AppointmentDetailPage,
   ConsultantCalendarPage,
@@ -143,6 +144,11 @@ export function App() {
           <Route path="rounds/:roundId/results" element={<PostRoundPage />} />
           <Route path="rounds/:roundId/follow-up" element={<PostRoundFollowUpPage />} />
           <Route path="rounds/:roundId/analysis" element={<RoundAnalysisPage />} />
+          <Route path="major-readiness" element={<MajorReadinessPage />} />
+          <Route path="major-readiness/readiness" element={<MajorReadinessPage view="readiness" />} />
+          <Route path="major-readiness/preparation" element={<MajorReadinessPage view="preparation" />} />
+          <Route path="major-readiness/coordination" element={<MajorReadinessPage view="coordination" />} />
+          <Route path="major-readiness/timeline" element={<MajorReadinessPage view="timeline" />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/active" element={<ActiveServicesPage />} />
@@ -180,6 +186,7 @@ export function App() {
           <Route path="clients/:clientId/rounds/:roundId/results" element={<PostRoundPage consultant />} />
           <Route path="clients/:clientId/rounds/:roundId/analysis" element={<RoundAnalysisPage consultant />} />
           <Route path="clients/:clientId/rounds/:roundId/finalize" element={<RoundFinalizationPage />} />
+          <Route path="clients/:clientId/major-readiness/:caseId" element={<ConsultantMajorReadinessPage />} />
           <Route
             path="clients/:clientId/credit-center"
             element={<ConsultantClientCreditCenterPage />}

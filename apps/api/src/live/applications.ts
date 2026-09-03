@@ -6,6 +6,7 @@ import {
 } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
+import { assertNoCreditActivityRestriction } from '../majorReadiness/service.js';
 import { assertCurrentPreLiveConfirmation } from './confirmations.js';
 
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -53,6 +54,7 @@ export async function releaseApplication(
     where: { id: input.sessionId, consultantId: input.consultantId },
   });
   if (!session) throw new AppError('FORBIDDEN', 403, 'Session supervision is not permitted');
+  await assertNoCreditActivityRestriction(prisma, session.clientId, 'LIVE_EXECUTION');
   return executeConsequentialCommand(prisma, {
     idempotency: {
       scope: 'session',

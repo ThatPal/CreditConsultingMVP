@@ -5,6 +5,7 @@ import { executeConsequentialCommand } from '../transactions/consequentialComman
 import type { DurableAIRuntime } from '../ai/durableRuntime.js';
 import { AIProviderError } from '../ai/runtime.js';
 import { registerStrategyProcess, STRATEGY_PREPARE_PROCESS } from './ai.js';
+import { assertNoCreditActivityRestriction } from '../majorReadiness/service.js';
 
 const json = (value: unknown) => value as Prisma.InputJsonValue;
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -133,6 +134,7 @@ export async function createStrategyDraft(
   input: { roundId: string; clientId: string; actorId: string },
   runtime?: DurableAIRuntime,
 ) {
+  await assertNoCreditActivityRestriction(prisma, input.clientId, 'STRATEGY');
   const source = await strategySource(prisma, input.roundId, input.clientId);
   const strategy = await prisma.roundStrategy.upsert({
     where: { roundId: input.roundId },
@@ -690,6 +692,7 @@ export async function approveStrategy(
     failAfterMutation?: boolean;
   },
 ) {
+  await assertNoCreditActivityRestriction(prisma, input.clientId, 'STRATEGY');
   const requestHash = hash({
     expectedStrategyVersion: input.expectedStrategyVersion,
     approvalNote: input.approvalNote,
