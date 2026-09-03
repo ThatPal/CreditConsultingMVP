@@ -11,7 +11,6 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
   let userId = '';
   let clientId = '';
   let goalId = '';
-  let reviewId = '';
   let profileId = '';
   let planItemId = '';
   let entitlementId = '';
@@ -26,7 +25,6 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
     const goal = await prisma.clientGoal.create({ data: { clientId, goalType: 'TOTAL_AVAILABLE_CREDIT', scope: 'PERSONAL', targetAmount: '50000', priority: 'PRIMARY', status: 'ACTIVE', revisions: { create: { clientId, version: 1, goalType: 'TOTAL_AVAILABLE_CREDIT', scope: 'PERSONAL', targetAmount: '50000', allowAnnualFee: false, priority: 'PRIMARY', status: 'ACTIVE' } } } });
     goalId = goal.id;
     const review = await prisma.creditReview.create({ data: { clientId, status: 'COMPLETE', completedAt: new Date() } });
-    reviewId = review.id;
     profileId = (await prisma.creditProfileState.create({ data: { clientId, status: 'CURRENT', sourceReviewId: review.id, effectiveAt: new Date() } })).id;
     const plan = await prisma.plan.create({ data: { clientId, purpose: 'PREPARATION', status: 'ACTIVE', title: 'Round preparation', versions: { create: { version: 1, status: 'ACTIVE', sourceReviewId: review.id, sourceReviewVersion: 1, sourceProfileVersion: 1, sourceFingerprint: `plan-${marker}`, items: { create: { stableKey: 'prepare', type: 'ACTION', completionMode: 'ACKNOWLEDGEMENT', status: 'AVAILABLE', owner: 'CLIENT', clientTitle: 'Confirm application preparation' } } } } }, include: { versions: { include: { items: true } } } });
     planItemId = plan.versions[0]!.items[0]!.id;

@@ -895,6 +895,17 @@ try {
       ],
     });
   }
+  await prisma.serviceEntitlement.upsert({
+    where: { sourceKey: 'demo-phase11-credit-card-round' },
+    create: {
+      clientId: client.id,
+      sourceKey: 'demo-phase11-credit-card-round',
+      serviceType: 'CREDIT_CARD_ROUND',
+      quantityGranted: 1,
+      status: 'ACTIVE',
+    },
+    update: {},
+  });
   const catalogSeeds = [
     { issuer: 'Northstar Bank', issuerSlug: 'northstar-bank', slug: 'northstar-everyday', name: 'Northstar Everyday', audience: 'PERSONAL' as const, portfolioType: 'PERSONAL_CREDIT' as const, secured: false, reports: true, facts: { annualFee: 0, purchaseApr: { min: 18.99, max: 28.99 }, welcomeOffer: 'Earn 20,000 points after qualifying spend' }, tags: ['rewards', 'no-annual-fee'] },
     { issuer: 'Northstar Bank', issuerSlug: 'northstar-bank', slug: 'northstar-business', name: 'Northstar Business Builder', audience: 'BUSINESS' as const, portfolioType: 'BUSINESS_CREDIT' as const, secured: false, reports: false, facts: { annualFee: 95, purchaseApr: { min: 19.99, max: 29.99 } }, tags: ['business'] },
@@ -963,6 +974,12 @@ try {
           'immutable offer versions with one intentionally stale promotion',
           'approved-source catalog governance fixture',
           'AI-prepared CardInsight awaiting authorized human approval',
+        ],
+        phase11Scenarios: [
+          'current published Profile and primary Goal eligible for a seasonal Cycle',
+          'active shared preparation Plan with dependency-locked actions',
+          'one verified Credit Card Round entitlement for rollback/idempotency review',
+          'PORTAL-25 Round and PORTAL-26 major-application check available after Cycle start',
         ],
       },
       null,
