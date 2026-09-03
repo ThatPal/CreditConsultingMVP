@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import express from 'express';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import type { AuthorizationService } from '../authorization/authorizationService.js';
 import { createPrisma } from '../lib/prisma.js';
+import { createPhase11Router } from './routes.js';
 import { createRound, getPhase11ClientView, getRoundClientView, pauseCycle, seasonalPeriod, startOrResumeCycle, submitMajorApplicationCheck } from './service.js';
 
 describe('Phase 11 seasonal cycle, paid round, and major application contract', () => {
@@ -118,5 +122,20 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
 
   test('cross-client read fails closed', async () => {
     await expect(getRoundClientView(prisma, roundId, randomUUID())).rejects.toMatchObject({ code: 'ROUND_NOT_FOUND' });
+  });
+
+  test('authenticated seasonal-cycle application route is registered and returns useful seeded-style context', async () => {
+    const app = express();
+    app.use((req, _res, next) => {
+      req.auth = { userId, email: `phase11-${marker}@example.test`, role: 'CLIENT', status: 'ACTIVE', clientId };
+      next();
+    });
+    app.use('/api/v1', createPhase11Router(prisma, {} as AuthorizationService));
+
+    const response = await request(app).get('/api/v1/client/seasonal-cycle').expect(200);
+    expect(response.body.currentGoal.id).toBe(goalId);
+    expect(response.body.profileState.id).toBe(profileId);
+    expect(response.body.cycle.id).toBe(cycleId);
+    expect(response.body.cycle.creditCardRounds[0].id).toBe(roundId);
   });
 });
