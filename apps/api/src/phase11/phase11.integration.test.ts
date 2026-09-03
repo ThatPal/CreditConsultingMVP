@@ -108,6 +108,7 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
     expect(no.view.readiness.strategyReady).toBe(true);
     const yes = await submitMajorApplicationCheck(prisma, { clientId, actorId: userId, roundId, choice: 'MORTGAGE', intendedTiming: 'Within six months', clientContext: 'Exploring timing only', idempotencyKey: `${marker}-major-yes` });
     expect(yes.view.readiness.coordinationRequired).toBe(true);
+    expect(yes.view.readiness.sourceCurrent).toBe(true);
     const replay = await submitMajorApplicationCheck(prisma, { clientId, actorId: userId, roundId, choice: 'MORTGAGE', intendedTiming: 'Within six months', clientContext: 'Exploring timing only', idempotencyKey: `${marker}-major-yes` });
     expect(replay.replayed).toBe(true);
     await submitMajorApplicationCheck(prisma, { clientId, actorId: userId, roundId, choice: 'NOT_SURE', intendedTiming: 'Next year', idempotencyKey: `${marker}-major-unsure` });

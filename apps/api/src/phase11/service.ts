@@ -108,7 +108,8 @@ async function roundProjection(prisma: PrismaClient, roundId: string, clientId: 
   const preparationComplete = requiredItems.every((item) => item.status === 'COMPLETED');
   const profileCurrent = current.profile?.status === 'CURRENT' && current.profile.id === round.profileStateId;
   const goalCurrent = current.goal?.id === round.goalSnapshot.sourceGoalId && current.goal.version === round.goalSnapshot.sourceGoalVersion;
-  const sourceCurrent = current.fingerprint === round.sourceFingerprint;
+  const captured = round.sourceContext as Record<string, unknown>;
+  const sourceCurrent = ['planVersionId', 'planFingerprint', 'cardCount', 'cardsUpdatedAt', 'recentApplicationId'].every((key) => (current.context as Record<string, unknown>)[key] === captured[key]);
   const majorCheck = round.majorApplicationChecks[0] ?? null;
   const blockers = [!profileCurrent && 'CURRENT_REVIEW_REQUIRED', !goalCurrent && 'GOAL_CHANGED', !sourceCurrent && 'SOURCE_CONTEXT_CHANGED', !preparationComplete && 'PREPARATION_INCOMPLETE', !majorCheck && 'MAJOR_CHECK_REQUIRED'].filter(Boolean) as string[];
   const coordinationRequired = majorCheck ? majorCheck.choice !== 'NO' : false;
@@ -160,6 +161,7 @@ export async function submitMajorApplicationCheck(prisma: PrismaClient, input: {
     audit: (value) => ({ action: 'ROUND_MAJOR_APPLICATION_CHECK_SUBMITTED', entityType: 'RoundMajorApplicationCheck', entityId: value.checkId, clientId: input.clientId, actorId: input.actorId, metadata: { roundId: input.roundId, choice: input.choice, version: value.version } }),
     outbox: { eventType: 'round-major-application-check.changed', eventKey: `round-major-check:${input.roundId}:${input.idempotencyKey}`, aggregateType: 'CreditCardRound', aggregateId: input.roundId, payload: (value) => ({ clientId: input.clientId, roundId: input.roundId, checkId: value.checkId, coordinationRequired: input.choice !== 'NO' }) },
     mutate: async (tx) => {
+      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${`phase11-major:${input.roundId}`})) IS NULL AS acquired`);
       const round = await tx.creditCardRound.findFirst({ where: { id: input.roundId, clientId: input.clientId, status: { in: ['PREPARATION', 'READY_FOR_STRATEGY', 'BLOCKED'] } } });
       if (!round) throw new AppError('ROUND_NOT_FOUND', 404, 'Credit card round was not found');
       const latest = await tx.roundMajorApplicationCheck.findFirst({ where: { roundId: round.id }, orderBy: { version: 'desc' } });
