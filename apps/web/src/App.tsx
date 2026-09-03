@@ -8,8 +8,20 @@ import { ConsultantAppShell } from './layouts/ConsultantAppShell';
 import { AccountPage } from './pages/AccountPage';
 import { MajorApplicationCheckPage, RoundPage, SeasonalCyclePage } from './pages/Phase11Pages';
 import { ClientStrategyPage, ConsultantStrategyPage } from './pages/StrategyPages';
+import {
+  AppointmentDetailPage,
+  ConsultantCalendarPage,
+  ScheduleRoundPage,
+} from './pages/LivePages';
 import { CardsPage } from './pages/CardsPage';
-import { CardDetailPage, CardWishlistPage, CatalogOperationsPage, ConsultantClientCardsPage, ExploreCardsPage, InsightOperationsPage } from './pages/CardCatalogPages';
+import {
+  CardDetailPage,
+  CardWishlistPage,
+  CatalogOperationsPage,
+  ConsultantClientCardsPage,
+  ExploreCardsPage,
+  InsightOperationsPage,
+} from './pages/CardCatalogPages';
 import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -123,6 +135,7 @@ export function App() {
           <Route path="rounds/:roundId" element={<RoundPage />} />
           <Route path="rounds/:roundId/major-check" element={<MajorApplicationCheckPage />} />
           <Route path="rounds/:roundId/strategy" element={<ClientStrategyPage />} />
+          <Route path="rounds/:roundId/schedule" element={<ScheduleRoundPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/active" element={<ActiveServicesPage />} />
@@ -153,7 +166,10 @@ export function App() {
           <Route path="clients/:clientId" element={<Client360Page />} />
           <Route path="clients/:clientId/plan" element={<ConsultantPlanBuilderPage />} />
           <Route path="clients/:clientId/cards" element={<ConsultantClientCardsPage />} />
-          <Route path="clients/:clientId/rounds/:roundId/strategy" element={<ConsultantStrategyPage />} />
+          <Route
+            path="clients/:clientId/rounds/:roundId/strategy"
+            element={<ConsultantStrategyPage />}
+          />
           <Route
             path="clients/:clientId/credit-center"
             element={<ConsultantClientCreditCenterPage />}
@@ -177,14 +193,10 @@ export function App() {
               />
             }
           />
+          <Route path="calendar" element={<ConsultantCalendarPage />} />
           <Route
-            path="calendar"
-            element={
-              <FoundationPage
-                title="Calendar"
-                description="Calendar scheduling is not available yet. No example appointments are displayed."
-              />
-            }
+            path="clients/:clientId/appointments/:appointmentId"
+            element={<AppointmentDetailPage />}
           />
           <Route path="account" element={<StaffAccountPage />} />
           <Route path="account/security" element={<SecurityPage />} />

@@ -44,6 +44,7 @@ import { createCardRouter } from './cards/routes.js';
 import { createPhase11Router } from './phase11/routes.js';
 import { createStrategyRouter } from './strategies/routes.js';
 import type { DurableAIRuntime } from './ai/durableRuntime.js';
+import { createLiveRouter } from './live/routes.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -148,6 +149,7 @@ export function createApp(
       app.use('/api/v1', createCardRouter(prisma, authorization, denialRecorder));
       app.use('/api/v1', createPhase11Router(prisma, authorization));
       app.use('/api/v1', createStrategyRouter(prisma, authorization, denialRecorder, aiRuntime));
+      app.use('/api/v1', createLiveRouter(prisma, authorization, denialRecorder));
       app.use(
         '/api/v1',
         createCommerceRouter(prisma, authorization, denialRecorder, paymentGateways.getDefault()),

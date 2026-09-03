@@ -207,6 +207,19 @@ enum StrategyApplicationRole {
   CONDITIONAL
 }
 
+enum AppointmentStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+}
+
+enum CalendarSyncStatus {
+  NOT_CONFIGURED
+  PENDING
+  SYNCED
+  RETRY_REQUIRED
+}
+
 enum ApplicationCycleReadiness {
   READY
   ACTION_REQUIRED
@@ -916,42 +929,42 @@ model ClientCard {
 }
 
 model CardIssuer {
-  id          String               @id @default(uuid()) @db.Uuid
-  slug        String               @unique
+  id          String        @id @default(uuid()) @db.Uuid
+  slug        String        @unique
   name        String
   domain      String?
-  logoAssetId String?              @db.Uuid
+  logoAssetId String?       @db.Uuid
   aliases     String[]
-  active      Boolean              @default(true)
-  createdAt   DateTime             @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime             @updatedAt @db.Timestamptz(3)
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
   products    CardProduct[]
 }
 
 model CardProduct {
-  id                      String                @id @default(uuid()) @db.Uuid
-  issuerId                String                @db.Uuid
-  slug                    String                @unique
+  id                      String                   @id @default(uuid()) @db.Uuid
+  issuerId                String                   @db.Uuid
+  slug                    String                   @unique
   canonicalName           String
   displayName             String
   aliases                 String[]
   audience                ClientCardScope
   portfolioType           ClientCardPortfolioType
-  secured                 Boolean               @default(false)
+  secured                 Boolean                  @default(false)
   reportsToBureaus        Boolean?
   features                Json
   tags                    String[]
-  lifecycle               CardProductLifecycle  @default(ACTIVE)
-  currentOfferVersionId   String?                @unique @db.Uuid
-  currentInsightVersionId String?                @unique @db.Uuid
-  createdAt               DateTime               @default(now()) @db.Timestamptz(3)
-  updatedAt               DateTime               @updatedAt @db.Timestamptz(3)
-  retiredAt               DateTime?              @db.Timestamptz(3)
-  issuer                  CardIssuer             @relation(fields: [issuerId], references: [id], onDelete: Restrict)
-  offerVersions           CardOfferVersion[]     @relation("ProductOfferVersions")
-  currentOfferVersion     CardOfferVersion?      @relation("CurrentCardOffer", fields: [currentOfferVersionId], references: [id], onDelete: SetNull)
-  insightVersions         CardInsightVersion[]   @relation("ProductInsightVersions")
-  currentInsightVersion   CardInsightVersion?    @relation("CurrentCardInsight", fields: [currentInsightVersionId], references: [id], onDelete: SetNull)
+  lifecycle               CardProductLifecycle     @default(ACTIVE)
+  currentOfferVersionId   String?                  @unique @db.Uuid
+  currentInsightVersionId String?                  @unique @db.Uuid
+  createdAt               DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime                 @updatedAt @db.Timestamptz(3)
+  retiredAt               DateTime?                @db.Timestamptz(3)
+  issuer                  CardIssuer               @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  offerVersions           CardOfferVersion[]       @relation("ProductOfferVersions")
+  currentOfferVersion     CardOfferVersion?        @relation("CurrentCardOffer", fields: [currentOfferVersionId], references: [id], onDelete: SetNull)
+  insightVersions         CardInsightVersion[]     @relation("ProductInsightVersions")
+  currentInsightVersion   CardInsightVersion?      @relation("CurrentCardInsight", fields: [currentInsightVersionId], references: [id], onDelete: SetNull)
   clientCards             ClientCard[]
   clientCardIdentityLinks ClientCardIdentityLink[]
   wishlists               ClientCardWishlist[]
@@ -963,21 +976,21 @@ model CardProduct {
 }
 
 model CardOfferVersion {
-  id                  String          @id @default(uuid()) @db.Uuid
-  productId           String          @db.Uuid
+  id                  String               @id @default(uuid()) @db.Uuid
+  productId           String               @db.Uuid
   version             Int
-  status              CardOfferStatus @default(CURRENT)
+  status              CardOfferStatus      @default(CURRENT)
   facts               Json
   materialFingerprint String
   sourceEvidence      Json
-  effectiveFrom       DateTime?       @db.Timestamptz(3)
-  publishedAt         DateTime        @default(now()) @db.Timestamptz(3)
-  freshUntil          DateTime?       @db.Timestamptz(3)
-  staleAt             DateTime?       @db.Timestamptz(3)
-  supersededAt        DateTime?       @db.Timestamptz(3)
-  createdAt           DateTime        @default(now()) @db.Timestamptz(3)
-  product             CardProduct     @relation("ProductOfferVersions", fields: [productId], references: [id], onDelete: Restrict)
-  currentForProduct   CardProduct?    @relation("CurrentCardOffer")
+  effectiveFrom       DateTime?            @db.Timestamptz(3)
+  publishedAt         DateTime             @default(now()) @db.Timestamptz(3)
+  freshUntil          DateTime?            @db.Timestamptz(3)
+  staleAt             DateTime?            @db.Timestamptz(3)
+  supersededAt        DateTime?            @db.Timestamptz(3)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  product             CardProduct          @relation("ProductOfferVersions", fields: [productId], references: [id], onDelete: Restrict)
+  currentForProduct   CardProduct?         @relation("CurrentCardOffer")
   insightVersions     CardInsightVersion[]
 
   @@unique([productId, version])
@@ -985,14 +998,14 @@ model CardOfferVersion {
 }
 
 model ClientCardIdentityLink {
-  id           String     @id @default(uuid()) @db.Uuid
-  clientCardId String     @db.Uuid
-  productId    String?    @db.Uuid
+  id           String       @id @default(uuid()) @db.Uuid
+  clientCardId String       @db.Uuid
+  productId    String?      @db.Uuid
   evidence     Json
-  actorId      String?    @db.Uuid
-  linkedAt     DateTime   @default(now()) @db.Timestamptz(3)
-  unlinkedAt   DateTime?  @db.Timestamptz(3)
-  clientCard   ClientCard @relation(fields: [clientCardId], references: [id], onDelete: Restrict)
+  actorId      String?      @db.Uuid
+  linkedAt     DateTime     @default(now()) @db.Timestamptz(3)
+  unlinkedAt   DateTime?    @db.Timestamptz(3)
+  clientCard   ClientCard   @relation(fields: [clientCardId], references: [id], onDelete: Restrict)
   product      CardProduct? @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([clientCardId, linkedAt])
@@ -1013,62 +1026,62 @@ model ClientCardWishlist {
 }
 
 model CardSource {
-  id            String   @id @default(uuid()) @db.Uuid
-  key           String   @unique
-  name          String
-  baseUrl       String
-  allowedHosts  String[]
-  official      Boolean  @default(false)
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
-  mappings      CardSourceMapping[]
-  candidates    CardCatalogCandidate[]
+  id           String                 @id @default(uuid()) @db.Uuid
+  key          String                 @unique
+  name         String
+  baseUrl      String
+  allowedHosts String[]
+  official     Boolean                @default(false)
+  active       Boolean                @default(true)
+  createdAt    DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime               @updatedAt @db.Timestamptz(3)
+  mappings     CardSourceMapping[]
+  candidates   CardCatalogCandidate[]
 }
 
 model CardSourceMapping {
-  id               String      @id @default(uuid()) @db.Uuid
-  sourceId         String      @db.Uuid
-  externalId       String
-  productId        String      @db.Uuid
-  evidence         Json
-  createdAt        DateTime    @default(now()) @db.Timestamptz(3)
-  source           CardSource  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
-  product          CardProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+  id         String      @id @default(uuid()) @db.Uuid
+  sourceId   String      @db.Uuid
+  externalId String
+  productId  String      @db.Uuid
+  evidence   Json
+  createdAt  DateTime    @default(now()) @db.Timestamptz(3)
+  source     CardSource  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  product    CardProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@unique([sourceId, externalId])
 }
 
 model CardCatalogCandidate {
-  id                 String                     @id @default(uuid()) @db.Uuid
-  sourceId           String                     @db.Uuid
-  sourceIdentity     String
-  kind               CardCatalogCandidateKind
-  status             CardCatalogCandidateStatus @default(PENDING)
-  matchedProductId   String?                    @db.Uuid
-  normalizedPayload  Json
-  evidence           Json
-  conflicts          Json
-  materialConflict   Boolean                    @default(false)
-  version            Int                        @default(1)
-  reviewedById       String?                    @db.Uuid
-  reviewReason       String?
-  reviewedAt         DateTime?                  @db.Timestamptz(3)
-  createdAt          DateTime                   @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime                   @updatedAt @db.Timestamptz(3)
-  source             CardSource                 @relation(fields: [sourceId], references: [id], onDelete: Restrict)
-  matchedProduct     CardProduct?                @relation(fields: [matchedProductId], references: [id], onDelete: Restrict)
+  id                String                     @id @default(uuid()) @db.Uuid
+  sourceId          String                     @db.Uuid
+  sourceIdentity    String
+  kind              CardCatalogCandidateKind
+  status            CardCatalogCandidateStatus @default(PENDING)
+  matchedProductId  String?                    @db.Uuid
+  normalizedPayload Json
+  evidence          Json
+  conflicts         Json
+  materialConflict  Boolean                    @default(false)
+  version           Int                        @default(1)
+  reviewedById      String?                    @db.Uuid
+  reviewReason      String?
+  reviewedAt        DateTime?                  @db.Timestamptz(3)
+  createdAt         DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                   @updatedAt @db.Timestamptz(3)
+  source            CardSource                 @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  matchedProduct    CardProduct?               @relation(fields: [matchedProductId], references: [id], onDelete: Restrict)
 
   @@unique([sourceId, sourceIdentity])
   @@index([status, materialConflict, createdAt])
 }
 
 model CardInsightVersion {
-  id                  String            @id @default(uuid()) @db.Uuid
-  productId           String            @db.Uuid
-  offerVersionId      String            @db.Uuid
+  id                  String               @id @default(uuid()) @db.Uuid
+  productId           String               @db.Uuid
+  offerVersionId      String               @db.Uuid
   version             Int
-  status              CardInsightStatus @default(PREPARED)
+  status              CardInsightStatus    @default(PREPARED)
   clientSafeSummary   String
   internalRationale   String?
   strengths           Json
@@ -1076,19 +1089,19 @@ model CardInsightVersion {
   confidence          AIConfidence?
   processKey          String?
   processVersion      Int?
-  processDefinitionId String?           @db.Uuid
+  processDefinitionId String?              @db.Uuid
   modelProvenance     Json?
   evidence            Json
   proposedPayload     Json?
-  approvedById        String?           @db.Uuid
+  approvedById        String?              @db.Uuid
   approvalNote        String?
-  approvedAt          DateTime?         @db.Timestamptz(3)
-  staleAt             DateTime?         @db.Timestamptz(3)
-  supersededAt        DateTime?         @db.Timestamptz(3)
-  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
-  product             CardProduct       @relation("ProductInsightVersions", fields: [productId], references: [id], onDelete: Restrict)
-  currentForProduct   CardProduct?      @relation("CurrentCardInsight")
-  offerVersion        CardOfferVersion  @relation(fields: [offerVersionId], references: [id], onDelete: Restrict)
+  approvedAt          DateTime?            @db.Timestamptz(3)
+  staleAt             DateTime?            @db.Timestamptz(3)
+  supersededAt        DateTime?            @db.Timestamptz(3)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  product             CardProduct          @relation("ProductInsightVersions", fields: [productId], references: [id], onDelete: Restrict)
+  currentForProduct   CardProduct?         @relation("CurrentCardInsight")
+  offerVersion        CardOfferVersion     @relation(fields: [offerVersionId], references: [id], onDelete: Restrict)
   processDefinition   AIProcessDefinition? @relation(fields: [processDefinitionId], references: [id], onDelete: Restrict)
 
   @@unique([productId, version])
@@ -1480,11 +1493,11 @@ model ReviewVerificationException {
 }
 
 model AIProcessDefinition {
-  id                  String           @id @default(uuid()) @db.Uuid
+  id                  String               @id @default(uuid()) @db.Uuid
   processKey          String
   processVersion      Int
-  authorityLevel      AIAuthorityLevel @default(FACTUAL_LEVEL_1)
-  enabled             Boolean          @default(true)
+  authorityLevel      AIAuthorityLevel     @default(FACTUAL_LEVEL_1)
+  enabled             Boolean              @default(true)
   modelProfile        String
   inputSchemaVersion  Int
   outputSchemaVersion Int
@@ -1494,8 +1507,8 @@ model AIProcessDefinition {
   dataClassification  String
   allowedContext      Json
   domainConsumer      String
-  createdAt           DateTime         @default(now()) @db.Timestamptz(3)
-  retiredAt           DateTime?        @db.Timestamptz(3)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  retiredAt           DateTime?            @db.Timestamptz(3)
   jobs                AIJob[]
   cardInsights        CardInsightVersion[]
 
@@ -2250,30 +2263,30 @@ model ServiceEntitlement {
 }
 
 model CreditCardRound {
-  id                    String                @id @default(uuid()) @db.Uuid
-  clientId              String                @db.Uuid
-  cycleId               String                @db.Uuid
-  goalSnapshotId        String                @db.Uuid
-  profileStateId        String                @db.Uuid
-  sourceReviewId        String?               @db.Uuid
-  preparationPlanVersionId String?            @db.Uuid
-  serviceEntitlementId  String                @unique @db.Uuid
-  status                CreditCardRoundStatus @default(PREPARATION)
-  sourceFingerprint     String
-  sourceContext         Json
-  startedAt             DateTime              @default(now()) @db.Timestamptz(3)
-  blockedAt             DateTime?             @db.Timestamptz(3)
-  blockedReason         String?
-  completedAt           DateTime?             @db.Timestamptz(3)
-  createdAt             DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime              @updatedAt @db.Timestamptz(3)
-  client                Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  cycle                 ApplicationCycle      @relation(fields: [cycleId], references: [id], onDelete: Restrict)
-  goalSnapshot          CycleGoalSnapshot     @relation(fields: [goalSnapshotId], references: [id], onDelete: Restrict)
-  preparationPlanVersion PlanVersion?         @relation(fields: [preparationPlanVersionId], references: [id], onDelete: Restrict)
-  serviceEntitlement    ServiceEntitlement    @relation(fields: [serviceEntitlementId], references: [id], onDelete: Restrict)
-  majorApplicationChecks RoundMajorApplicationCheck[]
-  strategy              RoundStrategy?
+  id                       String                       @id @default(uuid()) @db.Uuid
+  clientId                 String                       @db.Uuid
+  cycleId                  String                       @db.Uuid
+  goalSnapshotId           String                       @db.Uuid
+  profileStateId           String                       @db.Uuid
+  sourceReviewId           String?                      @db.Uuid
+  preparationPlanVersionId String?                      @db.Uuid
+  serviceEntitlementId     String                       @unique @db.Uuid
+  status                   CreditCardRoundStatus        @default(PREPARATION)
+  sourceFingerprint        String
+  sourceContext            Json
+  startedAt                DateTime                     @default(now()) @db.Timestamptz(3)
+  blockedAt                DateTime?                    @db.Timestamptz(3)
+  blockedReason            String?
+  completedAt              DateTime?                    @db.Timestamptz(3)
+  createdAt                DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime                     @updatedAt @db.Timestamptz(3)
+  client                   Client                       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  cycle                    ApplicationCycle             @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  goalSnapshot             CycleGoalSnapshot            @relation(fields: [goalSnapshotId], references: [id], onDelete: Restrict)
+  preparationPlanVersion   PlanVersion?                 @relation(fields: [preparationPlanVersionId], references: [id], onDelete: Restrict)
+  serviceEntitlement       ServiceEntitlement           @relation(fields: [serviceEntitlementId], references: [id], onDelete: Restrict)
+  majorApplicationChecks   RoundMajorApplicationCheck[]
+  strategy                 RoundStrategy?
 
   @@unique([cycleId, clientId])
   @@index([clientId, status, startedAt])
@@ -2282,48 +2295,48 @@ model CreditCardRound {
 }
 
 model RoundStrategy {
-  id                    String              @id @default(uuid()) @db.Uuid
-  roundId               String              @unique @db.Uuid
-  clientId              String              @db.Uuid
-  status                RoundStrategyStatus @default(DRAFT)
-  version               Int                 @default(1)
-  approvedVersionId     String?             @unique @db.Uuid
-  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime            @updatedAt @db.Timestamptz(3)
-  round                 CreditCardRound     @relation(fields: [roundId], references: [id], onDelete: Restrict)
-  versions              StrategyVersion[]   @relation("StrategyVersions")
-  approvedVersion       StrategyVersion?    @relation("ApprovedStrategyVersion", fields: [approvedVersionId], references: [id], onDelete: Restrict)
+  id                String              @id @default(uuid()) @db.Uuid
+  roundId           String              @unique @db.Uuid
+  clientId          String              @db.Uuid
+  status            RoundStrategyStatus @default(DRAFT)
+  version           Int                 @default(1)
+  approvedVersionId String?             @unique @db.Uuid
+  createdAt         DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
+  round             CreditCardRound     @relation(fields: [roundId], references: [id], onDelete: Restrict)
+  versions          StrategyVersion[]   @relation("StrategyVersions")
+  approvedVersion   StrategyVersion?    @relation("ApprovedStrategyVersion", fields: [approvedVersionId], references: [id], onDelete: Restrict)
 
   @@index([clientId, status, updatedAt])
 }
 
 model StrategyVersion {
-  id                    String                @id @default(uuid()) @db.Uuid
-  strategyId            String                @db.Uuid
-  version               Int
-  status                StrategyVersionStatus @default(DRAFT)
-  sourceFingerprint     String
-  sourceContext         Json
-  aiJobId               String?               @db.Uuid
-  aiJobOutputId         String?               @db.Uuid
-  aiProposal            Json?
-  brief                  Json
-  rules                  Json
-  validation             Json?
-  createdByUserId       String                @db.Uuid
-  approvedByUserId      String?               @db.Uuid
-  approvalNote          String?               @db.VarChar(1000)
-  approvedAt            DateTime?             @db.Timestamptz(3)
-  staleAt               DateTime?             @db.Timestamptz(3)
-  supersededAt          DateTime?             @db.Timestamptz(3)
-  createdAt             DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime              @updatedAt @db.Timestamptz(3)
-  strategy              RoundStrategy         @relation("StrategyVersions", fields: [strategyId], references: [id], onDelete: Restrict)
-  aiJob                 AIJob?                 @relation("StrategyAIJob", fields: [aiJobId], references: [id], onDelete: Restrict)
-  aiJobOutput           AIJobOutput?           @relation("StrategyAIOutput", fields: [aiJobOutputId], references: [id], onDelete: Restrict)
-  approvedForStrategy   RoundStrategy?         @relation("ApprovedStrategyVersion")
-  candidates            StrategyCandidate[]
-  applications          StrategyApplication[]
+  id                  String                @id @default(uuid()) @db.Uuid
+  strategyId          String                @db.Uuid
+  version             Int
+  status              StrategyVersionStatus @default(DRAFT)
+  sourceFingerprint   String
+  sourceContext       Json
+  aiJobId             String?               @db.Uuid
+  aiJobOutputId       String?               @db.Uuid
+  aiProposal          Json?
+  brief               Json
+  rules               Json
+  validation          Json?
+  createdByUserId     String                @db.Uuid
+  approvedByUserId    String?               @db.Uuid
+  approvalNote        String?               @db.VarChar(1000)
+  approvedAt          DateTime?             @db.Timestamptz(3)
+  staleAt             DateTime?             @db.Timestamptz(3)
+  supersededAt        DateTime?             @db.Timestamptz(3)
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+  strategy            RoundStrategy         @relation("StrategyVersions", fields: [strategyId], references: [id], onDelete: Restrict)
+  aiJob               AIJob?                @relation("StrategyAIJob", fields: [aiJobId], references: [id], onDelete: Restrict)
+  aiJobOutput         AIJobOutput?          @relation("StrategyAIOutput", fields: [aiJobOutputId], references: [id], onDelete: Restrict)
+  approvedForStrategy RoundStrategy?        @relation("ApprovedStrategyVersion")
+  candidates          StrategyCandidate[]
+  applications        StrategyApplication[]
 
   @@unique([strategyId, version])
   @@index([strategyId, status, createdAt])
@@ -2331,64 +2344,112 @@ model StrategyVersion {
 }
 
 model StrategyCandidate {
-  id                    String                       @id @default(uuid()) @db.Uuid
-  strategyVersionId     String                       @db.Uuid
-  productId             String                       @db.Uuid
-  offerVersionId        String                       @db.Uuid
-  insightVersionId      String?                      @db.Uuid
-  disposition           StrategyCandidateDisposition
-  role                  StrategyApplicationRole?
-  internalRationale     String?                      @db.VarChar(2000)
-  clientSafeReason      String?                      @db.VarChar(1000)
-  sortOrder             Int                          @default(0)
-  createdAt             DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime                     @updatedAt @db.Timestamptz(3)
-  strategyVersion       StrategyVersion              @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
-  applications          StrategyApplication[]
+  id                String                       @id @default(uuid()) @db.Uuid
+  strategyVersionId String                       @db.Uuid
+  productId         String                       @db.Uuid
+  offerVersionId    String                       @db.Uuid
+  insightVersionId  String?                      @db.Uuid
+  disposition       StrategyCandidateDisposition
+  role              StrategyApplicationRole?
+  internalRationale String?                      @db.VarChar(2000)
+  clientSafeReason  String?                      @db.VarChar(1000)
+  sortOrder         Int                          @default(0)
+  createdAt         DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                     @updatedAt @db.Timestamptz(3)
+  strategyVersion   StrategyVersion              @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
+  applications      StrategyApplication[]
 
   @@unique([strategyVersionId, productId])
   @@index([strategyVersionId, disposition, sortOrder, id])
 }
 
 model StrategyApplication {
-  id                    String                  @id @default(uuid()) @db.Uuid
-  strategyVersionId     String                  @db.Uuid
-  candidateId           String                  @db.Uuid
-  sequence              Int
-  role                  StrategyApplicationRole
-  timingRule            Json
-  dependencyRule        Json
-  stopRule              Json
-  reconsiderationRule   Json
-  internalRationale     String                  @db.VarChar(2000)
-  clientSafeReason      String                  @db.VarChar(1000)
-  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
-  strategyVersion       StrategyVersion         @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
-  candidate             StrategyCandidate       @relation(fields: [candidateId], references: [id], onDelete: Restrict)
+  id                  String                  @id @default(uuid()) @db.Uuid
+  strategyVersionId   String                  @db.Uuid
+  candidateId         String                  @db.Uuid
+  sequence            Int
+  role                StrategyApplicationRole
+  timingRule          Json
+  dependencyRule      Json
+  stopRule            Json
+  reconsiderationRule Json
+  internalRationale   String                  @db.VarChar(2000)
+  clientSafeReason    String                  @db.VarChar(1000)
+  createdAt           DateTime                @default(now()) @db.Timestamptz(3)
+  strategyVersion     StrategyVersion         @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
+  candidate           StrategyCandidate       @relation(fields: [candidateId], references: [id], onDelete: Restrict)
 
   @@unique([strategyVersionId, sequence])
   @@unique([strategyVersionId, candidateId])
 }
 
 model RoundMajorApplicationCheck {
-  id                    String                      @id @default(uuid()) @db.Uuid
-  roundId               String                      @db.Uuid
-  clientId              String                      @db.Uuid
-  version               Int
-  choice                RoundMajorApplicationChoice
-  intendedTiming        String?                     @db.VarChar(160)
-  clientContext         String?                     @db.VarChar(1000)
-  sourceMajorContextId  String?                     @db.Uuid
-  submittedByUserId     String                      @db.Uuid
-  sourceFingerprint     String
-  submittedAt           DateTime                    @default(now()) @db.Timestamptz(3)
-  createdAt             DateTime                    @default(now()) @db.Timestamptz(3)
-  round                 CreditCardRound             @relation(fields: [roundId], references: [id], onDelete: Restrict)
-  client                Client                      @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  id                   String                      @id @default(uuid()) @db.Uuid
+  roundId              String                      @db.Uuid
+  clientId             String                      @db.Uuid
+  version              Int
+  choice               RoundMajorApplicationChoice
+  intendedTiming       String?                     @db.VarChar(160)
+  clientContext        String?                     @db.VarChar(1000)
+  sourceMajorContextId String?                     @db.Uuid
+  submittedByUserId    String                      @db.Uuid
+  sourceFingerprint    String
+  submittedAt          DateTime                    @default(now()) @db.Timestamptz(3)
+  createdAt            DateTime                    @default(now()) @db.Timestamptz(3)
+  round                CreditCardRound             @relation(fields: [roundId], references: [id], onDelete: Restrict)
+  client               Client                      @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
   @@unique([roundId, version])
   @@index([roundId, submittedAt])
   @@index([clientId, submittedAt])
+}
+
+model ConsultantAvailabilityRule {
+  id           String   @id @default(uuid()) @db.Uuid
+  consultantId String   @db.Uuid
+  weekday      Int
+  startMinute  Int
+  endMinute    Int
+  timezone     String   @default("America/New_York")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([consultantId, active, weekday])
+}
+
+model ConsultantAvailabilityException {
+  id           String   @id @default(uuid()) @db.Uuid
+  consultantId String   @db.Uuid
+  startsAt     DateTime @db.Timestamptz(3)
+  endsAt       DateTime @db.Timestamptz(3)
+  available    Boolean  @default(false)
+  note         String?  @db.VarChar(240)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([consultantId, startsAt, endsAt])
+}
+
+model Appointment {
+  id                 String             @id @default(uuid()) @db.Uuid
+  clientId           String             @db.Uuid
+  consultantId       String             @db.Uuid
+  roundId            String             @db.Uuid
+  strategyVersionId  String             @db.Uuid
+  appointmentType    String             @default("GUIDED_APPLICATION_SESSION")
+  startsAt           DateTime           @db.Timestamptz(3)
+  endsAt             DateTime           @db.Timestamptz(3)
+  timezone           String
+  status             AppointmentStatus  @default(BOOKED)
+  rescheduledFromId  String?            @db.Uuid
+  cancellationReason String?            @db.VarChar(500)
+  externalSyncStatus CalendarSyncStatus @default(NOT_CONFIGURED)
+  externalReference  String?
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
+
+  @@index([consultantId, startsAt, endsAt, status])
+  @@index([clientId, startsAt, status])
 }
 
 model ReviewCreditTransaction {
