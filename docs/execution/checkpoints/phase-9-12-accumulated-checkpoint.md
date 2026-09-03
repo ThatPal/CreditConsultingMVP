@@ -38,7 +38,7 @@ The audit and contract matrix was created before product-code changes. Full C912
 - Plan: `http://localhost:5184/app/plan`
 - Cards: `http://localhost:5184/app/cards`
 - Rounds: `http://localhost:5184/app/application-rounds`
-- CRM Strategy: `http://localhost:5184/crm/clients/27f970a1-529a-4afb-896c-dde8392519d4/strategy`
+- CRM Strategy: `http://localhost:5184/crm/clients/3ff6fd53-5928-4f58-bc32-66025d2661f6/strategy`
 - API health: `http://localhost:3007/api/health/live`
 
 The restored review environment uses only persistent database `credit_phase9_12_block`. The branch remains separate from `ai-enabled`; Phase 13 was not started. Final pushed SHA and exact-head CI are supplied in the handoff.
