@@ -1,7 +1,7 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
 
 export const roleCapabilityPolicy = {
-  CLIENT: ['client.read', 'review.read', 'support.read', 'document.read', 'document.manage'],
+  CLIENT: ['client.read', 'review.read', 'support.read', 'document.read', 'document.manage', 'catalog.read'],
   CONSULTANT: [
     'client.read',
     'client.manage',
@@ -11,6 +11,8 @@ export const roleCapabilityPolicy = {
     'support.manage',
     'document.read',
     'document.manage',
+    'catalog.read',
+    'catalog.manage',
   ],
   ADMIN: [
     'settings.manage',
@@ -20,6 +22,8 @@ export const roleCapabilityPolicy = {
     'audit.read_platform',
     'support.manage',
     'document.read',
+    'catalog.read',
+    'catalog.manage',
   ],
 } as const;
 

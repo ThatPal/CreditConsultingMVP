@@ -895,6 +895,21 @@ try {
       ],
     });
   }
+  const catalogSeeds = [
+    { issuer: 'Northstar Bank', issuerSlug: 'northstar-bank', slug: 'northstar-everyday', name: 'Northstar Everyday', audience: 'PERSONAL' as const, portfolioType: 'PERSONAL_CREDIT' as const, secured: false, reports: true, facts: { annualFee: 0, purchaseApr: { min: 18.99, max: 28.99 }, welcomeOffer: 'Earn 20,000 points after qualifying spend' }, tags: ['rewards', 'no-annual-fee'] },
+    { issuer: 'Northstar Bank', issuerSlug: 'northstar-bank', slug: 'northstar-business', name: 'Northstar Business Builder', audience: 'BUSINESS' as const, portfolioType: 'BUSINESS_CREDIT' as const, secured: false, reports: false, facts: { annualFee: 95, purchaseApr: { min: 19.99, max: 29.99 } }, tags: ['business'] },
+    { issuer: 'Harbor Community Bank', issuerSlug: 'harbor-community', slug: 'harbor-secured', name: 'Harbor Secured Card', audience: 'PERSONAL' as const, portfolioType: 'SECURED' as const, secured: true, reports: true, facts: { annualFee: 0, securityDepositMinimum: 300, purchaseApr: 24.99 }, tags: ['secured', 'credit-building'] },
+    { issuer: 'LedgerWorks', issuerSlug: 'ledgerworks', slug: 'ledgerworks-expense', name: 'LedgerWorks Expense Card', audience: 'BUSINESS' as const, portfolioType: 'NON_REPORTING' as const, secured: false, reports: false, facts: { annualFee: 0, reporting: 'Does not report as a revolving consumer account' }, tags: ['business', 'non-reporting'] },
+  ];
+  for (const seed of catalogSeeds) {
+    const issuer = await prisma.cardIssuer.upsert({ where: { slug: seed.issuerSlug }, create: { slug: seed.issuerSlug, name: seed.issuer, domain: `${seed.issuerSlug}.example`, aliases: [] }, update: { name: seed.issuer } });
+    const product = await prisma.cardProduct.upsert({ where: { slug: seed.slug }, create: { issuerId: issuer.id, slug: seed.slug, canonicalName: seed.name, displayName: seed.name, aliases: [], audience: seed.audience, portfolioType: seed.portfolioType, secured: seed.secured, reportsToBureaus: seed.reports, features: seed.tags, tags: seed.tags }, update: { lifecycle: 'ACTIVE' } });
+    if (!product.currentOfferVersionId) {
+      const offer = await prisma.cardOfferVersion.create({ data: { productId: product.id, version: 1, facts: seed.facts, materialFingerprint: createHash('sha256').update(JSON.stringify(seed.facts)).digest('hex'), sourceEvidence: { source: 'DETERMINISTIC_DEMO_FIXTURE', reviewed: true }, effectiveFrom: daysAgo(30), freshUntil: seed.slug === 'northstar-everyday' ? daysAgo(1) : new Date(Date.now() + 90 * 86_400_000) } });
+      await prisma.cardProduct.update({ where: { id: product.id }, data: { currentOfferVersionId: offer.id } });
+    }
+  }
+  await prisma.cardSource.upsert({ where: { key: 'northstar-official' }, create: { key: 'northstar-official', name: 'Northstar official product pages', baseUrl: 'https://northstar-bank.example/cards', allowedHosts: ['northstar-bank.example'], official: true }, update: { active: true } });
   console.info(
     JSON.stringify(
       {
@@ -933,6 +948,11 @@ try {
           'active approved preparation Plan with Guidance, structured Action, and consultant Milestone',
           'dependency-locked progression and client-safe Plan projection',
           'consultant Plan Builder, source reconciliation, and immutable version history',
+        ],
+        phase10Scenarios: [
+          'personal, business, secured, and non-reporting canonical products',
+          'immutable offer versions with one intentionally stale promotion',
+          'approved-source catalog governance fixture',
         ],
       },
       null,

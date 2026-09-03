@@ -15,6 +15,8 @@ export const canonicalCapabilities = [
   'commerce.manage',
   'payment.read',
   'payment.manage',
+  'catalog.read',
+  'catalog.manage',
   'audit.read_platform',
 ] as const;
 
@@ -52,6 +54,7 @@ const clientSelfCapabilities = new Set<Capability>([
   'support.read',
   'document.read',
   'document.manage',
+  'catalog.read',
 ]);
 const platformCapabilities = new Set<Capability>([
   'settings.manage',
@@ -59,6 +62,8 @@ const platformCapabilities = new Set<Capability>([
   'payment.read',
   'payment.manage',
   'audit.read_platform',
+  'catalog.read',
+  'catalog.manage',
 ]);
 
 export function createAuthorizationService(store: AuthorizationAccessStore): AuthorizationService {

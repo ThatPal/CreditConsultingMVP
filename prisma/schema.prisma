@@ -95,6 +95,39 @@ enum ClientCardIdentityStatus {
   UNRESOLVED
 }
 
+enum CardProductLifecycle {
+  ACTIVE
+  RETIRED
+}
+
+enum CardOfferStatus {
+  CURRENT
+  SUPERSEDED
+  STALE
+}
+
+enum CardCatalogCandidateStatus {
+  PENDING
+  CONFLICT
+  APPROVED
+  REJECTED
+  MERGED
+}
+
+enum CardCatalogCandidateKind {
+  NEW_PRODUCT
+  OFFER_CHANGE
+}
+
+enum CardInsightStatus {
+  PREPARED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  STALE
+  SUPERSEDED
+}
+
 enum ClientUpdateCategory {
   NEW_ACCOUNT
   BALANCE_CHANGED
@@ -682,6 +715,7 @@ model Client {
   supportCases             SupportCase[]
   notifications            Notification[]
   cards                    ClientCard[]
+  cardWishlist             ClientCardWishlist[]
   applicationCycles        ApplicationCycle[]
   creditJourney            CreditJourney?
   nurturePeriods           NurturePeriod[]
@@ -825,10 +859,192 @@ model ClientCard {
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   client             Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  cardProductId      String?                  @db.Uuid
+  cardProduct        CardProduct?             @relation(fields: [cardProductId], references: [id], onDelete: SetNull)
+  identityLinks      ClientCardIdentityLink[]
 
   @@index([clientId, accountStatus, issuer])
   @@index([clientId, portfolioType, identityStatus])
   @@index([clientId, applicationOutcome, appliedAt])
+  @@index([cardProductId, identityStatus])
+}
+
+model CardIssuer {
+  id          String               @id @default(uuid()) @db.Uuid
+  slug        String               @unique
+  name        String
+  domain      String?
+  logoAssetId String?              @db.Uuid
+  aliases     String[]
+  active      Boolean              @default(true)
+  createdAt   DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime             @updatedAt @db.Timestamptz(3)
+  products    CardProduct[]
+}
+
+model CardProduct {
+  id                      String                @id @default(uuid()) @db.Uuid
+  issuerId                String                @db.Uuid
+  slug                    String                @unique
+  canonicalName           String
+  displayName             String
+  aliases                 String[]
+  audience                ClientCardScope
+  portfolioType           ClientCardPortfolioType
+  secured                 Boolean               @default(false)
+  reportsToBureaus        Boolean?
+  features                Json
+  tags                    String[]
+  lifecycle               CardProductLifecycle  @default(ACTIVE)
+  currentOfferVersionId   String?                @unique @db.Uuid
+  currentInsightVersionId String?                @unique @db.Uuid
+  createdAt               DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime               @updatedAt @db.Timestamptz(3)
+  retiredAt               DateTime?              @db.Timestamptz(3)
+  issuer                  CardIssuer             @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  offerVersions           CardOfferVersion[]     @relation("ProductOfferVersions")
+  currentOfferVersion     CardOfferVersion?      @relation("CurrentCardOffer", fields: [currentOfferVersionId], references: [id], onDelete: SetNull)
+  insightVersions         CardInsightVersion[]   @relation("ProductInsightVersions")
+  currentInsightVersion   CardInsightVersion?    @relation("CurrentCardInsight", fields: [currentInsightVersionId], references: [id], onDelete: SetNull)
+  clientCards             ClientCard[]
+  clientCardIdentityLinks ClientCardIdentityLink[]
+  wishlists               ClientCardWishlist[]
+  sourceMappings          CardSourceMapping[]
+  candidates              CardCatalogCandidate[]
+
+  @@unique([issuerId, canonicalName])
+  @@index([lifecycle, audience, portfolioType])
+}
+
+model CardOfferVersion {
+  id                  String          @id @default(uuid()) @db.Uuid
+  productId           String          @db.Uuid
+  version             Int
+  status              CardOfferStatus @default(CURRENT)
+  facts               Json
+  materialFingerprint String
+  sourceEvidence      Json
+  effectiveFrom       DateTime?       @db.Timestamptz(3)
+  publishedAt         DateTime        @default(now()) @db.Timestamptz(3)
+  freshUntil          DateTime?       @db.Timestamptz(3)
+  staleAt             DateTime?       @db.Timestamptz(3)
+  supersededAt        DateTime?       @db.Timestamptz(3)
+  createdAt           DateTime        @default(now()) @db.Timestamptz(3)
+  product             CardProduct     @relation("ProductOfferVersions", fields: [productId], references: [id], onDelete: Restrict)
+  currentForProduct   CardProduct?    @relation("CurrentCardOffer")
+  insightVersions     CardInsightVersion[]
+
+  @@unique([productId, version])
+  @@index([productId, status, publishedAt])
+}
+
+model ClientCardIdentityLink {
+  id           String     @id @default(uuid()) @db.Uuid
+  clientCardId String     @db.Uuid
+  productId    String?    @db.Uuid
+  evidence     Json
+  actorId      String?    @db.Uuid
+  linkedAt     DateTime   @default(now()) @db.Timestamptz(3)
+  unlinkedAt   DateTime?  @db.Timestamptz(3)
+  clientCard   ClientCard @relation(fields: [clientCardId], references: [id], onDelete: Restrict)
+  product      CardProduct? @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([clientCardId, linkedAt])
+}
+
+model ClientCardWishlist {
+  id        String      @id @default(uuid()) @db.Uuid
+  clientId  String      @db.Uuid
+  productId String      @db.Uuid
+  note      String?
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @db.Timestamptz(3)
+  client    Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  product   CardProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([clientId, productId])
+  @@index([clientId, createdAt])
+}
+
+model CardSource {
+  id            String   @id @default(uuid()) @db.Uuid
+  key           String   @unique
+  name          String
+  baseUrl       String
+  allowedHosts  String[]
+  official      Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+  mappings      CardSourceMapping[]
+  candidates    CardCatalogCandidate[]
+}
+
+model CardSourceMapping {
+  id               String      @id @default(uuid()) @db.Uuid
+  sourceId         String      @db.Uuid
+  externalId       String
+  productId        String      @db.Uuid
+  evidence         Json
+  createdAt        DateTime    @default(now()) @db.Timestamptz(3)
+  source           CardSource  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  product          CardProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceId, externalId])
+}
+
+model CardCatalogCandidate {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  sourceId           String                     @db.Uuid
+  sourceIdentity     String
+  kind               CardCatalogCandidateKind
+  status             CardCatalogCandidateStatus @default(PENDING)
+  matchedProductId   String?                    @db.Uuid
+  normalizedPayload  Json
+  evidence           Json
+  conflicts          Json
+  materialConflict   Boolean                    @default(false)
+  version            Int                        @default(1)
+  reviewedById       String?                    @db.Uuid
+  reviewReason       String?
+  reviewedAt         DateTime?                  @db.Timestamptz(3)
+  createdAt          DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                   @updatedAt @db.Timestamptz(3)
+  source             CardSource                 @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  matchedProduct     CardProduct?                @relation(fields: [matchedProductId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceId, sourceIdentity])
+  @@index([status, materialConflict, createdAt])
+}
+
+model CardInsightVersion {
+  id                  String            @id @default(uuid()) @db.Uuid
+  productId           String            @db.Uuid
+  offerVersionId      String            @db.Uuid
+  version             Int
+  status              CardInsightStatus @default(PREPARED)
+  clientSafeSummary   String
+  internalRationale   String?
+  strengths           Json
+  cautions            Json
+  confidence          AIConfidence?
+  processKey          String?
+  processVersion      Int?
+  modelProvenance     Json?
+  evidence            Json
+  proposedPayload     Json?
+  approvedById        String?           @db.Uuid
+  approvalNote        String?
+  approvedAt          DateTime?         @db.Timestamptz(3)
+  staleAt             DateTime?         @db.Timestamptz(3)
+  supersededAt        DateTime?         @db.Timestamptz(3)
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  product             CardProduct       @relation("ProductInsightVersions", fields: [productId], references: [id], onDelete: Restrict)
+  currentForProduct   CardProduct?      @relation("CurrentCardInsight")
+  offerVersion        CardOfferVersion  @relation(fields: [offerVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, version])
+  @@index([status, createdAt])
 }
 
 enum AIJobStatus {
