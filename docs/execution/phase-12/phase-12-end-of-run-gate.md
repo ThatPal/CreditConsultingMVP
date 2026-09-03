@@ -19,7 +19,7 @@ Phase 12 delivers a versioned, source-frozen, consultant-authorized Round strate
 - Worker regression: 5 files / 12 tests passed on the isolated clean database. Runtime: 1 file / 3 tests passed. Shared package correctly has no test files.
 - Security/concurrency/rollback/retry proof: passed, including the focused six-test Phase 11/12 real-database suite.
 - Repository lint, all-workspace typecheck, and all-workspace build: passed. The existing Vite large-chunk advisory remains non-blocking.
-- Exact-final-head GitHub CI: pending explicit authorization to push this non-`ai-enabled` rapid branch.
+- GitHub CI run `33715301532` passed on implementation/gate head `a8aebf80b50a3c58f61982fc5d2bbb059f50bc5a`; the report-only finalization commit is subject to the same exact-head workflow before handoff.
 - Live browser review: passed after final environment restart. The seeded client Round renders current entitlement/profile/preparation state and the new strategy route renders an honest pre-approval state with no recommendation leakage.
 
 The branch remains separate from `ai-enabled`. Phase 13 was not started.
