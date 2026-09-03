@@ -6,7 +6,7 @@ import { AdminAppShell } from './layouts/AdminAppShell';
 import { ClientAppShell } from './layouts/ClientAppShell';
 import { ConsultantAppShell } from './layouts/ConsultantAppShell';
 import { AccountPage } from './pages/AccountPage';
-import { ApplicationCyclesPage } from './pages/ApplicationCyclesPage';
+import { MajorApplicationCheckPage, RoundPage, SeasonalCyclePage } from './pages/Phase11Pages';
 import { CardsPage } from './pages/CardsPage';
 import { CardDetailPage, CardWishlistPage, CatalogOperationsPage, ConsultantClientCardsPage, ExploreCardsPage, InsightOperationsPage } from './pages/CardCatalogPages';
 import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
@@ -118,7 +118,9 @@ export function App() {
           <Route path="cards/explore" element={<ExploreCardsPage />} />
           <Route path="cards/wishlist" element={<CardWishlistPage />} />
           <Route path="cards/:productId" element={<CardDetailPage />} />
-          <Route path="application-rounds" element={<ApplicationCyclesPage />} />
+          <Route path="application-rounds" element={<SeasonalCyclePage />} />
+          <Route path="rounds/:roundId" element={<RoundPage />} />
+          <Route path="rounds/:roundId/major-check" element={<MajorApplicationCheckPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/active" element={<ActiveServicesPage />} />

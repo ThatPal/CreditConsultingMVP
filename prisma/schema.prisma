@@ -159,8 +159,26 @@ enum CardApplicationSource {
 
 enum ApplicationCycleStatus {
   ACTIVE
+  PAUSED
   COMPLETE
   CANCELLED
+}
+
+enum CreditCardRoundStatus {
+  PREPARATION
+  READY_FOR_STRATEGY
+  BLOCKED
+  COMPLETE
+  CANCELLED
+}
+
+enum RoundMajorApplicationChoice {
+  NO
+  MORTGAGE
+  AUTO
+  STUDENT
+  OTHER_MAJOR_FINANCING
+  NOT_SURE
 }
 
 enum ApplicationCycleReadiness {
@@ -717,6 +735,8 @@ model Client {
   cards                    ClientCard[]
   cardWishlist             ClientCardWishlist[]
   applicationCycles        ApplicationCycle[]
+  creditCardRounds         CreditCardRound[]
+  roundMajorChecks         RoundMajorApplicationCheck[]
   creditJourney            CreditJourney?
   nurturePeriods           NurturePeriod[]
   creditProfileState       CreditProfileState?
@@ -1117,6 +1137,9 @@ model ApplicationCycle {
   madeItToApplications Boolean                    @default(false)
   finalResult          String?
   startedAt            DateTime                   @default(now())
+  pausedAt             DateTime?                  @db.Timestamptz(3)
+  resumedAt            DateTime?                  @db.Timestamptz(3)
+  goalConfirmedAt      DateTime?                  @db.Timestamptz(3)
   closedAt             DateTime?
   createdAt            DateTime                   @default(now())
   updatedAt            DateTime                   @updatedAt
@@ -1125,6 +1148,7 @@ model ApplicationCycle {
   goalSnapshot         CycleGoalSnapshot?
   steps                ApplicationCycleStep[]
   applications         CycleApplication[]
+  creditCardRounds     CreditCardRound[]
 
   @@unique([clientId, cycleNumber])
   @@index([clientId, status, startedAt])
@@ -1161,6 +1185,7 @@ model CycleGoalSnapshot {
   preferenceNote     String?               @db.VarChar(500)
   capturedAt         DateTime              @default(now()) @db.Timestamptz(3)
   cycle              ApplicationCycle      @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  creditCardRounds   CreditCardRound[]
 
   @@index([sourceGoalId, capturedAt])
 }
@@ -1689,6 +1714,7 @@ model PlanVersion {
   replacements         PlanVersion[]       @relation("PlanVersionLineage")
   items                PlanItem[]
   paths                PlanPath[]
+  creditCardRounds     CreditCardRound[]
 
   @@unique([planId, version])
   @@index([planId, status, version])
@@ -2188,10 +2214,63 @@ model ServiceEntitlement {
   client           Client                 @relation(fields: [clientId], references: [id], onDelete: Restrict)
   purchase         ServicePurchase?       @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
   productVersion   ServiceProductVersion? @relation(fields: [productVersionId], references: [id], onDelete: Restrict)
+  creditCardRound  CreditCardRound?
 
   @@index([clientId, serviceType, status])
   @@index([purchaseId])
   @@index([productVersionId])
+}
+
+model CreditCardRound {
+  id                    String                @id @default(uuid()) @db.Uuid
+  clientId              String                @db.Uuid
+  cycleId               String                @db.Uuid
+  goalSnapshotId        String                @db.Uuid
+  profileStateId        String                @db.Uuid
+  sourceReviewId        String?               @db.Uuid
+  preparationPlanVersionId String?            @db.Uuid
+  serviceEntitlementId  String                @unique @db.Uuid
+  status                CreditCardRoundStatus @default(PREPARATION)
+  sourceFingerprint     String
+  sourceContext         Json
+  startedAt             DateTime              @default(now()) @db.Timestamptz(3)
+  blockedAt             DateTime?             @db.Timestamptz(3)
+  blockedReason         String?
+  completedAt           DateTime?             @db.Timestamptz(3)
+  createdAt             DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime              @updatedAt @db.Timestamptz(3)
+  client                Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  cycle                 ApplicationCycle      @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  goalSnapshot          CycleGoalSnapshot     @relation(fields: [goalSnapshotId], references: [id], onDelete: Restrict)
+  preparationPlanVersion PlanVersion?         @relation(fields: [preparationPlanVersionId], references: [id], onDelete: Restrict)
+  serviceEntitlement    ServiceEntitlement    @relation(fields: [serviceEntitlementId], references: [id], onDelete: Restrict)
+  majorApplicationChecks RoundMajorApplicationCheck[]
+
+  @@unique([cycleId, clientId])
+  @@index([clientId, status, startedAt])
+  @@index([cycleId, status])
+  @@index([sourceReviewId])
+}
+
+model RoundMajorApplicationCheck {
+  id                    String                      @id @default(uuid()) @db.Uuid
+  roundId               String                      @db.Uuid
+  clientId              String                      @db.Uuid
+  version               Int
+  choice                RoundMajorApplicationChoice
+  intendedTiming        String?                     @db.VarChar(160)
+  clientContext         String?                     @db.VarChar(1000)
+  sourceMajorContextId  String?                     @db.Uuid
+  submittedByUserId     String                      @db.Uuid
+  sourceFingerprint     String
+  submittedAt           DateTime                    @default(now()) @db.Timestamptz(3)
+  createdAt             DateTime                    @default(now()) @db.Timestamptz(3)
+  round                 CreditCardRound             @relation(fields: [roundId], references: [id], onDelete: Restrict)
+  client                Client                      @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@unique([roundId, version])
+  @@index([roundId, submittedAt])
+  @@index([clientId, submittedAt])
 }
 
 model ReviewCreditTransaction {

@@ -41,6 +41,7 @@ import { createPaymentGatewayRegistry } from './commerce/paymentGateway.js';
 import { createPaymentRouter, createPaymentWebhookRouter } from './commerce/paymentRoutes.js';
 import { createPlanRouter } from './plans/routes.js';
 import { createCardRouter } from './cards/routes.js';
+import { createPhase11Router } from './phase11/routes.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -142,6 +143,7 @@ export function createApp(
       app.use('/api/v1', createJourneyRouter(prisma, authorization, denialRecorder));
       app.use('/api/v1', createPlanRouter(prisma, authorization, denialRecorder));
       app.use('/api/v1', createCardRouter(prisma, authorization, denialRecorder));
+      app.use('/api/v1', createPhase11Router(prisma, authorization));
       app.use(
         '/api/v1',
         createCommerceRouter(prisma, authorization, denialRecorder, paymentGateways.getDefault()),
