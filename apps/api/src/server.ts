@@ -30,6 +30,7 @@ import {
   enqueueSubmittedReviewPipeline,
   recoverSubmittedReviewPipelines,
 } from './ai/submittedReviewPipeline.js';
+import { strategyValidators } from './strategies/ai.js';
 
 const env = loadEnv();
 const logger = createLogger(env);
@@ -46,12 +47,10 @@ const goals = createGoalService(createPrismaGoalStore(prisma));
 const services = createServiceCatalog(createPrismaServiceStore(prisma));
 const documentStorage = createDocumentStorageRegistry();
 const aiQueue = new BullAIJobQueue(env.REDIS_URL);
-const aiRuntime = new DurableAIRuntime(
-  prisma,
-  aiQueue,
-  new Phase7DeterministicProvider(),
-  phase7Validators,
-);
+const aiRuntime = new DurableAIRuntime(prisma, aiQueue, new Phase7DeterministicProvider(), {
+  ...phase7Validators,
+  ...strategyValidators,
+});
 const aiWorker = startDurableAIWorker(env.REDIS_URL, aiRuntime, (result) =>
   advanceDurablePhase7Pipeline(aiRuntime, result),
 );
@@ -88,6 +87,7 @@ const server = createServer(
         return null;
       }
     },
+    aiRuntime,
   ),
 );
 

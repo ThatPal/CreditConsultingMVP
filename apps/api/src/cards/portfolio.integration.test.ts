@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
-import { identifyClientCard, listClientCards, listWishlist, saveClientCard, setWishlist } from './service.js';
+import {
+  identifyClientCard,
+  listClientCards,
+  listWishlist,
+  saveClientCard,
+  setWishlist,
+} from './service.js';
 
 describe('client card portfolio and wishlist', () => {
   const url = process.env.DATABASE_URL;
@@ -16,11 +22,41 @@ describe('client card portfolio and wishlist', () => {
   let cardId = '';
   beforeAll(async () => {
     await prisma.$connect();
-    actorId = (await prisma.user.create({ data: { email: `portfolio-${marker}@example.test`, role: 'CLIENT', status: 'ACTIVE' } })).id;
-    clientId = (await prisma.client.create({ data: { firstName: marker, lastName: 'Owner', termsAcceptedAt: new Date() } })).id;
-    otherClientId = (await prisma.client.create({ data: { firstName: marker, lastName: 'Other', termsAcceptedAt: new Date() } })).id;
-    issuerId = (await prisma.cardIssuer.create({ data: { slug: `portfolio-issuer-${marker}`, name: 'Portfolio test issuer', aliases: [] } })).id;
-    productId = (await prisma.cardProduct.create({ data: { issuerId, slug: `portfolio-product-${marker}`, canonicalName: 'Portfolio test card', displayName: 'Portfolio test card', aliases: [], audience: 'PERSONAL', portfolioType: 'PERSONAL_CREDIT', features: [], tags: [] } })).id;
+    actorId = (
+      await prisma.user.create({
+        data: { email: `portfolio-${marker}@example.test`, role: 'CLIENT', status: 'ACTIVE' },
+      })
+    ).id;
+    clientId = (
+      await prisma.client.create({
+        data: { firstName: marker, lastName: 'Owner', termsAcceptedAt: new Date() },
+      })
+    ).id;
+    otherClientId = (
+      await prisma.client.create({
+        data: { firstName: marker, lastName: 'Other', termsAcceptedAt: new Date() },
+      })
+    ).id;
+    issuerId = (
+      await prisma.cardIssuer.create({
+        data: { slug: `portfolio-issuer-${marker}`, name: 'Portfolio test issuer', aliases: [] },
+      })
+    ).id;
+    productId = (
+      await prisma.cardProduct.create({
+        data: {
+          issuerId,
+          slug: `portfolio-product-${marker}`,
+          canonicalName: 'Portfolio test card',
+          displayName: 'Portfolio test card',
+          aliases: [],
+          audience: 'PERSONAL',
+          portfolioType: 'PERSONAL_CREDIT',
+          features: [],
+          tags: [],
+        },
+      })
+    ).id;
   });
   afterAll(async () => {
     await prisma.clientCardWishlist.deleteMany({ where: { clientId } });
@@ -36,15 +72,49 @@ describe('client card portfolio and wishlist', () => {
   });
 
   test('keeps uncertain identity unresolved and preserves identity-link history', async () => {
-    const card = await saveClientCard(prisma, { clientId, actorId, cardName: 'Possible card', issuer: 'Unknown bank', scope: 'BUSINESS', portfolioType: 'NON_REPORTING', reportsToBureaus: false });
+    const card = await saveClientCard(prisma, {
+      clientId,
+      actorId,
+      cardName: 'Possible card',
+      issuer: 'Unknown bank',
+      scope: 'BUSINESS',
+      portfolioType: 'NON_REPORTING',
+      reportsToBureaus: false,
+    });
     cardId = card.id;
     expect(card.identityStatus).toBe('UNRESOLVED');
-    await identifyClientCard(prisma, { clientId, actorId, cardId, productId, evidence: { method: 'client-confirmed' } });
-    await identifyClientCard(prisma, { clientId, actorId, cardId, productId: null, evidence: { reason: 'ambiguous' } });
+    await identifyClientCard(prisma, {
+      clientId,
+      actorId,
+      cardId,
+      productId,
+      evidence: { method: 'client-confirmed' },
+    });
+    await identifyClientCard(prisma, {
+      clientId,
+      actorId,
+      cardId,
+      productId: null,
+      evidence: { reason: 'ambiguous' },
+    });
     const listed = (await listClientCards(prisma, clientId))[0]!;
     expect(listed.identityStatus).toBe('UNRESOLVED');
     expect(listed.identityLinks).toHaveLength(2);
-    await expect(saveClientCard(prisma, { clientId: otherClientId, actorId, cardId, cardName: 'IDOR', issuer: 'No', scope: 'PERSONAL', portfolioType: 'PERSONAL_CREDIT' })).rejects.toThrow();
+    const clientSafe = (await listClientCards(prisma, clientId, true))[0]!;
+    expect(clientSafe.identityStatus).toBe('UNRESOLVED');
+    expect(JSON.stringify(clientSafe)).not.toContain('identityLinks');
+    expect(JSON.stringify(clientSafe)).not.toContain('client-confirmed');
+    await expect(
+      saveClientCard(prisma, {
+        clientId: otherClientId,
+        actorId,
+        cardId,
+        cardName: 'IDOR',
+        issuer: 'No',
+        scope: 'PERSONAL',
+        portfolioType: 'PERSONAL_CREDIT',
+      }),
+    ).rejects.toThrow();
   });
 
   test('wishlist save is duplicate-safe and remains preference-only', async () => {

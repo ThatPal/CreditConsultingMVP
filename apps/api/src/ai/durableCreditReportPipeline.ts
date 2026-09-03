@@ -18,6 +18,10 @@ import {
   reconcileAccounts,
   type PortfolioCard,
 } from './creditReportReconciliation.js';
+import {
+  prepareDeterministicStrategyProposal,
+  STRATEGY_PREPARE_PROCESS,
+} from '../strategies/ai.js';
 
 export const PHASE_7_PROCESSES = [
   ['credit_report.validate', 'document_extraction'],
@@ -69,6 +73,8 @@ export class Phase7DeterministicProvider implements AIProvider {
           input.cards as PortfolioCard[],
         );
         break;
+      case STRATEGY_PREPARE_PROCESS:
+        return prepareDeterministicStrategyProposal(request);
       default:
         throw new Error('PROCESS_NOT_SUPPORTED');
     }

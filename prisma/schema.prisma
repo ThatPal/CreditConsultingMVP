@@ -1528,6 +1528,7 @@ model AIJob {
   processDefinition   AIProcessDefinition    @relation(fields: [processDefinitionId], references: [id], onDelete: Restrict)
   outputs             AIJobOutput[]
   artifacts           CreditReportArtifact[]
+  strategyVersions    StrategyVersion[]      @relation("StrategyAIJob")
 
   @@unique([processDefinitionId, sourceIdentity, correlationId])
   @@index([status, availableAt, createdAt])
@@ -1552,6 +1553,7 @@ model AIJobOutput {
   createdAt           DateTime               @default(now()) @db.Timestamptz(3)
   job                 AIJob                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
   artifacts           CreditReportArtifact[]
+  strategyVersions    StrategyVersion[]      @relation("StrategyAIOutput")
 
   @@unique([jobId, outputVersion])
   @@index([jobId, staleAt, createdAt])
@@ -2317,6 +2319,8 @@ model StrategyVersion {
   createdAt             DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime              @updatedAt @db.Timestamptz(3)
   strategy              RoundStrategy         @relation("StrategyVersions", fields: [strategyId], references: [id], onDelete: Restrict)
+  aiJob                 AIJob?                 @relation("StrategyAIJob", fields: [aiJobId], references: [id], onDelete: Restrict)
+  aiJobOutput           AIJobOutput?           @relation("StrategyAIOutput", fields: [aiJobOutputId], references: [id], onDelete: Restrict)
   approvedForStrategy   RoundStrategy?         @relation("ApprovedStrategyVersion")
   candidates            StrategyCandidate[]
   applications          StrategyApplication[]
@@ -2340,6 +2344,7 @@ model StrategyCandidate {
   createdAt             DateTime                     @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime                     @updatedAt @db.Timestamptz(3)
   strategyVersion       StrategyVersion              @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
+  applications          StrategyApplication[]
 
   @@unique([strategyVersionId, productId])
   @@index([strategyVersionId, disposition, sortOrder, id])
@@ -2359,6 +2364,7 @@ model StrategyApplication {
   clientSafeReason      String                  @db.VarChar(1000)
   createdAt             DateTime                @default(now()) @db.Timestamptz(3)
   strategyVersion       StrategyVersion         @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
+  candidate             StrategyCandidate       @relation(fields: [candidateId], references: [id], onDelete: Restrict)
 
   @@unique([strategyVersionId, sequence])
   @@unique([strategyVersionId, candidateId])

@@ -22,17 +22,21 @@ describe('database to realtime outbox pipeline', () => {
     const clientId = '22222222-2222-4222-8222-222222222222';
     const subscriber = createClient({ url: redisUrl });
     await subscriber.connect();
+    let resolveReceived!: (event: Record<string, unknown>) => void;
+    let rejectReceived!: (error: Error) => void;
     const received = new Promise<Record<string, unknown>>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error('Timed out waiting for outbox dispatch')),
-        5000,
-      );
-      void subscriber.subscribe(REALTIME_CHANNEL, (raw) => {
-        const event = JSON.parse(raw) as Record<string, unknown>;
-        if (event.id !== eventId) return;
-        clearTimeout(timer);
-        resolve(event);
-      });
+      resolveReceived = resolve;
+      rejectReceived = reject;
+    });
+    const timer = setTimeout(
+      () => rejectReceived(new Error('Timed out waiting for outbox dispatch')),
+      5000,
+    );
+    await subscriber.subscribe(REALTIME_CHANNEL, (raw) => {
+      const event = JSON.parse(raw) as Record<string, unknown>;
+      if (event.id !== eventId) return;
+      clearTimeout(timer);
+      resolveReceived(event);
     });
     await pool.query(
       `INSERT INTO "OutboxEvent"
@@ -147,11 +151,13 @@ describe('database to realtime outbox pipeline', () => {
 
     const subscriber = createClient({ url: redisUrl });
     await subscriber.connect();
+    let resolveReceived!: (event: Record<string, unknown>) => void;
     const received = new Promise<Record<string, unknown>>((resolve) => {
-      void subscriber.subscribe(REALTIME_CHANNEL, (raw) => {
-        const event = JSON.parse(raw) as Record<string, unknown>;
-        if (event.id === eventId) resolve(event);
-      });
+      resolveReceived = resolve;
+    });
+    await subscriber.subscribe(REALTIME_CHANNEL, (raw) => {
+      const event = JSON.parse(raw) as Record<string, unknown>;
+      if (event.id === eventId) resolveReceived(event);
     });
     const recovered = vi.fn(async () => undefined);
     const restarted = await startOutboxRuntime({

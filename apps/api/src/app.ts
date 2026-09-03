@@ -43,6 +43,7 @@ import { createPlanRouter } from './plans/routes.js';
 import { createCardRouter } from './cards/routes.js';
 import { createPhase11Router } from './phase11/routes.js';
 import { createStrategyRouter } from './strategies/routes.js';
+import type { DurableAIRuntime } from './ai/durableRuntime.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -61,6 +62,7 @@ export function createApp(
   documentStorageRegistry?: DocumentStorageRegistry,
   emailProvider?: EmailProvider,
   enqueueReviewProcessing?: (reviewId: string) => Promise<unknown>,
+  aiRuntime?: DurableAIRuntime,
 ) {
   const app = express();
   const paymentGateways = createPaymentGatewayRegistry();
@@ -145,7 +147,7 @@ export function createApp(
       app.use('/api/v1', createPlanRouter(prisma, authorization, denialRecorder));
       app.use('/api/v1', createCardRouter(prisma, authorization, denialRecorder));
       app.use('/api/v1', createPhase11Router(prisma, authorization));
-      app.use('/api/v1', createStrategyRouter(prisma, authorization, denialRecorder));
+      app.use('/api/v1', createStrategyRouter(prisma, authorization, denialRecorder, aiRuntime));
       app.use(
         '/api/v1',
         createCommerceRouter(prisma, authorization, denialRecorder, paymentGateways.getDefault()),
