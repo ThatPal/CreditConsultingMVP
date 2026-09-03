@@ -118,3 +118,44 @@ export async function setStrategyCandidate(prisma: PrismaClient, input: {
   });
   return strategyProjection(prisma, strategy.id, input.clientId, false);
 }
+
+export type StrategySequenceInput = {
+  candidateId: string; sequence: number; role: 'PLANNED' | 'ALTERNATIVE' | 'CONDITIONAL';
+  timingRule: Record<string, unknown>; dependencyRule: Record<string, unknown>;
+  stopRule: Record<string, unknown>; reconsiderationRule: Record<string, unknown>;
+  internalRationale: string; clientSafeReason: string;
+};
+
+export function validateStrategySequence(items: StrategySequenceInput[], shortlistedIds: Set<string>) {
+  const errors: string[] = [];
+  if (!items.some((item) => item.role === 'PLANNED')) errors.push('PLANNED_APPLICATION_REQUIRED');
+  if (new Set(items.map((item) => item.sequence)).size !== items.length) errors.push('DUPLICATE_SEQUENCE');
+  if (items.some((item) => item.sequence < 1)) errors.push('INVALID_SEQUENCE');
+  if (items.some((item) => !shortlistedIds.has(item.candidateId))) errors.push('APPLICATION_MUST_REFERENCE_SHORTLIST');
+  const outcomeKeys = ['onApproved', 'onDeclined', 'onPending', 'onSkipped', 'onNotCompleted', 'onUnexpected'];
+  for (const item of items) {
+    if (Object.keys(item.timingRule).length === 0) errors.push(`TIMING_RULE_REQUIRED:${item.candidateId}`);
+    if (Object.keys(item.dependencyRule).length === 0) errors.push(`DEPENDENCY_RULE_REQUIRED:${item.candidateId}`);
+    for (const key of outcomeKeys) if (!(key in item.stopRule) && !(key in item.reconsiderationRule)) errors.push(`OUTCOME_RULE_REQUIRED:${key}:${item.candidateId}`);
+    if (!item.internalRationale.trim()) errors.push(`INTERNAL_RATIONALE_REQUIRED:${item.candidateId}`);
+    if (!item.clientSafeReason.trim()) errors.push(`CLIENT_REASON_REQUIRED:${item.candidateId}`);
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+export async function saveStrategySequence(prisma: PrismaClient, input: { strategyId: string; clientId: string; expectedStrategyVersion: number; items: StrategySequenceInput[] }) {
+  const strategy = await prisma.roundStrategy.findFirst({ where: { id: input.strategyId, clientId: input.clientId }, include: { versions: { orderBy: { version: 'desc' }, take: 1, include: { candidates: true } } } });
+  const draft = strategy?.versions[0];
+  if (!strategy || !draft) throw new AppError('STRATEGY_NOT_FOUND', 404, 'Strategy was not found');
+  if (strategy.version !== input.expectedStrategyVersion) throw new AppError('STRATEGY_VERSION_CONFLICT', 409, 'The strategy changed; refresh before editing');
+  if (draft.status !== 'DRAFT' && draft.status !== 'READY_FOR_APPROVAL') throw new AppError('STRATEGY_IMMUTABLE', 409, 'Only the current draft can be sequenced');
+  const validation = validateStrategySequence(input.items, new Set(draft.candidates.filter((candidate) => candidate.disposition === 'SHORTLISTED').map((candidate) => candidate.id)));
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.roundStrategy.updateMany({ where: { id: strategy.id, version: input.expectedStrategyVersion }, data: { version: { increment: 1 }, status: validation.valid ? 'READY_FOR_APPROVAL' : 'DRAFT' } });
+    if (claimed.count !== 1) throw new AppError('STRATEGY_VERSION_CONFLICT', 409, 'The strategy changed; refresh before editing');
+    await tx.strategyApplication.deleteMany({ where: { strategyVersionId: draft.id } });
+    if (input.items.length) await tx.strategyApplication.createMany({ data: input.items.map((item) => ({ strategyVersionId: draft.id, candidateId: item.candidateId, sequence: item.sequence, role: item.role, timingRule: json(item.timingRule), dependencyRule: json(item.dependencyRule), stopRule: json(item.stopRule), reconsiderationRule: json(item.reconsiderationRule), internalRationale: item.internalRationale, clientSafeReason: item.clientSafeReason })) });
+    await tx.strategyVersion.update({ where: { id: draft.id }, data: { status: validation.valid ? 'READY_FOR_APPROVAL' : 'DRAFT', rules: json(input.items), validation: json(validation) } });
+  });
+  return { validation, ...(await strategyProjection(prisma, strategy.id, input.clientId, false)) };
+}
