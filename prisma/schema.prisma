@@ -181,6 +181,32 @@ enum RoundMajorApplicationChoice {
   NOT_SURE
 }
 
+enum RoundStrategyStatus {
+  DRAFT
+  READY_FOR_APPROVAL
+  APPROVED
+  STALE
+}
+
+enum StrategyVersionStatus {
+  DRAFT
+  READY_FOR_APPROVAL
+  APPROVED
+  SUPERSEDED
+  STALE
+}
+
+enum StrategyCandidateDisposition {
+  SHORTLISTED
+  EXCLUDED
+}
+
+enum StrategyApplicationRole {
+  PLANNED
+  ALTERNATIVE
+  CONDITIONAL
+}
+
 enum ApplicationCycleReadiness {
   READY
   ACTION_REQUIRED
@@ -2245,11 +2271,97 @@ model CreditCardRound {
   preparationPlanVersion PlanVersion?         @relation(fields: [preparationPlanVersionId], references: [id], onDelete: Restrict)
   serviceEntitlement    ServiceEntitlement    @relation(fields: [serviceEntitlementId], references: [id], onDelete: Restrict)
   majorApplicationChecks RoundMajorApplicationCheck[]
+  strategy              RoundStrategy?
 
   @@unique([cycleId, clientId])
   @@index([clientId, status, startedAt])
   @@index([cycleId, status])
   @@index([sourceReviewId])
+}
+
+model RoundStrategy {
+  id                    String              @id @default(uuid()) @db.Uuid
+  roundId               String              @unique @db.Uuid
+  clientId              String              @db.Uuid
+  status                RoundStrategyStatus @default(DRAFT)
+  version               Int                 @default(1)
+  approvedVersionId     String?             @unique @db.Uuid
+  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime            @updatedAt @db.Timestamptz(3)
+  round                 CreditCardRound     @relation(fields: [roundId], references: [id], onDelete: Restrict)
+  versions              StrategyVersion[]   @relation("StrategyVersions")
+  approvedVersion       StrategyVersion?    @relation("ApprovedStrategyVersion", fields: [approvedVersionId], references: [id], onDelete: Restrict)
+
+  @@index([clientId, status, updatedAt])
+}
+
+model StrategyVersion {
+  id                    String                @id @default(uuid()) @db.Uuid
+  strategyId            String                @db.Uuid
+  version               Int
+  status                StrategyVersionStatus @default(DRAFT)
+  sourceFingerprint     String
+  sourceContext         Json
+  aiJobId               String?               @db.Uuid
+  aiJobOutputId         String?               @db.Uuid
+  aiProposal            Json?
+  brief                  Json
+  rules                  Json
+  validation             Json?
+  createdByUserId       String                @db.Uuid
+  approvedByUserId      String?               @db.Uuid
+  approvalNote          String?               @db.VarChar(1000)
+  approvedAt            DateTime?             @db.Timestamptz(3)
+  staleAt               DateTime?             @db.Timestamptz(3)
+  supersededAt          DateTime?             @db.Timestamptz(3)
+  createdAt             DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime              @updatedAt @db.Timestamptz(3)
+  strategy              RoundStrategy         @relation("StrategyVersions", fields: [strategyId], references: [id], onDelete: Restrict)
+  approvedForStrategy   RoundStrategy?         @relation("ApprovedStrategyVersion")
+  candidates            StrategyCandidate[]
+  applications          StrategyApplication[]
+
+  @@unique([strategyId, version])
+  @@index([strategyId, status, createdAt])
+  @@index([aiJobId, aiJobOutputId])
+}
+
+model StrategyCandidate {
+  id                    String                       @id @default(uuid()) @db.Uuid
+  strategyVersionId     String                       @db.Uuid
+  productId             String                       @db.Uuid
+  offerVersionId        String                       @db.Uuid
+  insightVersionId      String?                      @db.Uuid
+  disposition           StrategyCandidateDisposition
+  role                  StrategyApplicationRole?
+  internalRationale     String?                      @db.VarChar(2000)
+  clientSafeReason      String?                      @db.VarChar(1000)
+  sortOrder             Int                          @default(0)
+  createdAt             DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                     @updatedAt @db.Timestamptz(3)
+  strategyVersion       StrategyVersion              @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([strategyVersionId, productId])
+  @@index([strategyVersionId, disposition, sortOrder, id])
+}
+
+model StrategyApplication {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  strategyVersionId     String                  @db.Uuid
+  candidateId           String                  @db.Uuid
+  sequence              Int
+  role                  StrategyApplicationRole
+  timingRule            Json
+  dependencyRule        Json
+  stopRule              Json
+  reconsiderationRule   Json
+  internalRationale     String                  @db.VarChar(2000)
+  clientSafeReason      String                  @db.VarChar(1000)
+  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
+  strategyVersion       StrategyVersion         @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([strategyVersionId, sequence])
+  @@unique([strategyVersionId, candidateId])
 }
 
 model RoundMajorApplicationCheck {

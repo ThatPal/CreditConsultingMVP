@@ -1,7 +1,7 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
 
 export const roleCapabilityPolicy = {
-  CLIENT: ['client.read', 'review.read', 'support.read', 'document.read', 'document.manage', 'catalog.read'],
+  CLIENT: ['client.read', 'review.read', 'support.read', 'document.read', 'document.manage', 'catalog.read', 'strategy.read'],
   CONSULTANT: [
     'client.read',
     'client.manage',
@@ -13,6 +13,8 @@ export const roleCapabilityPolicy = {
     'document.manage',
     'catalog.read',
     'catalog.manage',
+    'strategy.read',
+    'strategy.manage',
   ],
   ADMIN: [
     'settings.manage',
@@ -248,6 +250,16 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
           smtpDeploymentOptions: ['GENERIC_SMTP', 'GOOGLE_WORKSPACE_RELAY'],
         },
         secretReferences: [],
+      },
+      update: {},
+    }),
+    prisma.aIProcessDefinition.upsert({
+      where: { processKey_processVersion: { processKey: 'round_strategy.propose', processVersion: 1 } },
+      create: {
+        processKey: 'round_strategy.propose', processVersion: 1, modelProfile: 'configured-strategy-model',
+        inputSchemaVersion: 1, outputSchemaVersion: 1, instructionVersion: 'phase12-v1',
+        retryPolicy: { maxAttempts: 3 }, dataClassification: 'CLIENT_FINANCIAL_STRATEGY',
+        allowedContext: { frozenRoundSourcesOnly: true }, domainConsumer: 'ROUND_STRATEGY',
       },
       update: {},
     }),
