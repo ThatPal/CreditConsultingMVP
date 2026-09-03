@@ -8,6 +8,7 @@ import {
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
 import { assertCurrentPreLiveConfirmation } from './confirmations.js';
+import { assertSupervised } from './applications.js';
 
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 type Trigger = CreditApplicationOutcome | 'SKIPPED';
@@ -86,9 +87,10 @@ export async function evaluateLatestResult(
     orderBy: [{ sequence: 'asc' }, { id: 'asc' }],
   });
   const trigger: Trigger = event.eventType === 'SKIPPED' ? 'SKIPPED' : (event.outcome ?? 'OTHER');
+  // A frozen stop rule is authoritative when both snapshots define the same trigger.
   const rule = {
-    ...(occurrence.stopRule as object),
     ...(occurrence.reconsiderationRule as object),
+    ...(occurrence.stopRule as object),
   };
   const evaluation = evaluateFrozenRule(rule, trigger, Boolean(next));
   return executeConsequentialCommand(prisma, {
@@ -169,7 +171,28 @@ export async function transitionSession(
     where: { id: input.sessionId, consultantId: input.consultantId },
   });
   if (!session) throw new AppError('FORBIDDEN', 403, 'Session supervision is not permitted');
-  if (input.action === 'RESUME') await assertCurrentPreLiveConfirmation(prisma, session.id);
+  if (input.action === 'RESUME') {
+    await assertCurrentPreLiveConfirmation(prisma, session.id);
+    await assertSupervised(prisma, session.id);
+  }
+  if (input.action === 'END') {
+    const [unresolved, decision] = await Promise.all([
+      prisma.creditApplication.findFirst({
+        where: { sessionId: session.id, status: { in: ['RELEASED', 'OPENED'] } },
+        select: { id: true },
+      }),
+      prisma.liveExecutionDecision.findFirst({
+        where: { sessionId: session.id, current: true },
+        select: { decisionType: true },
+      }),
+    ]);
+    if (unresolved || decision?.decisionType !== 'END_SESSION_READY')
+      throw new AppError(
+        'SESSION_END_NOT_READY',
+        409,
+        'The frozen execution policy has not completed the session',
+      );
+  }
   return executeConsequentialCommand(prisma, {
     idempotency: {
       scope: 'session',

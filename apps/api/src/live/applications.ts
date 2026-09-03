@@ -20,7 +20,7 @@ export function knownApprovedAmount(
     : 0;
 }
 
-async function assertSupervised(
+export async function assertSupervised(
   prisma: PrismaClient | Prisma.TransactionClient,
   sessionId: string,
 ) {
@@ -109,7 +109,15 @@ export async function releaseApplication(
             },
           })
         : null;
-      if (!occurrence || (occurrence.role !== 'PLANNED' && !decision))
+      const priorApplication = await tx.creditApplication.findFirst({
+        where: { sessionId: session.id },
+        select: { id: true },
+      });
+      if (
+        !occurrence ||
+        (priorApplication && !decision) ||
+        (occurrence.role !== 'PLANNED' && !decision)
+      )
         throw new AppError(
           'CARD_NOT_ALLOWED',
           409,
