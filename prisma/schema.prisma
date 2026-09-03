@@ -220,6 +220,21 @@ enum CalendarSyncStatus {
   RETRY_REQUIRED
 }
 
+enum ApplicationSessionStatus {
+  SCHEDULED
+  READY
+  WAITING_FOR_CLIENT
+  WAITING_FOR_CONSULTANT
+  LIVE
+  PAUSED
+  ENDED
+}
+
+enum SessionParticipantRole {
+  CLIENT
+  CONSULTANT
+}
+
 enum ApplicationCycleReadiness {
   READY
   ACTION_REQUIRED
@@ -2450,6 +2465,56 @@ model Appointment {
 
   @@index([consultantId, startsAt, endsAt, status])
   @@index([clientId, startsAt, status])
+}
+
+model ApplicationSession {
+  id                  String                   @id @default(uuid()) @db.Uuid
+  clientId            String                   @db.Uuid
+  consultantId        String                   @db.Uuid
+  roundId             String                   @unique @db.Uuid
+  appointmentId       String                   @unique @db.Uuid
+  strategyVersionId   String                   @db.Uuid
+  sourceFingerprint   String
+  coordinationVersion String?
+  status              ApplicationSessionStatus @default(SCHEDULED)
+  pauseReason         String?                  @db.VarChar(500)
+  supervisionRequired Boolean                  @default(true)
+  startedAt           DateTime?                @db.Timestamptz(3)
+  endedAt             DateTime?                @db.Timestamptz(3)
+  version             Int                      @default(1)
+  createdAt           DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                 @updatedAt @db.Timestamptz(3)
+
+  @@index([consultantId, status, updatedAt, id])
+  @@index([clientId, status, updatedAt, id])
+}
+
+model SessionPresenceLease {
+  id           String                 @id @default(uuid()) @db.Uuid
+  sessionId    String                 @db.Uuid
+  userId       String                 @db.Uuid
+  role         SessionParticipantRole
+  connectionId String
+  expiresAt    DateTime               @db.Timestamptz(3)
+  lastSeenAt   DateTime               @default(now()) @db.Timestamptz(3)
+  createdAt    DateTime               @default(now()) @db.Timestamptz(3)
+
+  @@unique([sessionId, connectionId])
+  @@index([sessionId, role, expiresAt])
+  @@index([userId, expiresAt])
+}
+
+model SessionMessage {
+  id           String                 @id @default(uuid()) @db.Uuid
+  sessionId    String                 @db.Uuid
+  clientId     String                 @db.Uuid
+  authorUserId String                 @db.Uuid
+  authorRole   SessionParticipantRole
+  body         String                 @db.VarChar(2000)
+  createdAt    DateTime               @default(now()) @db.Timestamptz(3)
+
+  @@index([sessionId, createdAt, id])
+  @@index([clientId, createdAt])
 }
 
 model ReviewCreditTransaction {

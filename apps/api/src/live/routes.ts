@@ -15,6 +15,13 @@ import {
   currentAppointment,
   rescheduleAppointment,
 } from './appointments.js';
+import {
+  assertSessionParticipant,
+  heartbeatPresence,
+  sendSessionMessage,
+  sessionSnapshot,
+  startApplicationSession,
+} from './sessions.js';
 
 const key = z.string().min(8).max(160);
 
@@ -197,6 +204,113 @@ export function createLiveRouter(
         });
       });
       res.json({ saved: rules.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post(
+    '/consultant/appointments/:appointmentId/session',
+    requireRole('CONSULTANT'),
+    async (req, res, next) => {
+      try {
+        const allowed = await authorization.authorizeCapability(req.auth!, 'strategy.manage');
+        if (!allowed)
+          throw new AppError('FORBIDDEN', 403, 'Live session supervision is not permitted');
+        const body = z.object({ idempotencyKey: key }).parse(req.body);
+        const result = await startApplicationSession(prisma, {
+          appointmentId: req.params.appointmentId as string,
+          consultantId: req.auth!.userId,
+          actorId: req.auth!.userId,
+          ...body,
+        });
+        res.status(result.replayed ? 200 : 201).json(result);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get('/sessions/:sessionId', async (req, res, next) => {
+    try {
+      await assertSessionParticipant(prisma, req.params.sessionId as string, req.auth!);
+      res.json(await sessionSnapshot(prisma, req.params.sessionId as string));
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/sessions/:sessionId/presence', async (req, res, next) => {
+    try {
+      const session = await assertSessionParticipant(
+        prisma,
+        req.params.sessionId as string,
+        req.auth!,
+      );
+      const body = z.object({ connectionId: z.string().min(8).max(160) }).parse(req.body);
+      const role = req.auth!.role === 'CLIENT' ? 'CLIENT' : 'CONSULTANT';
+      res.json(
+        await heartbeatPresence(prisma, {
+          sessionId: session.id,
+          userId: req.auth!.userId,
+          role,
+          connectionId: body.connectionId,
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/sessions/:sessionId/messages', async (req, res, next) => {
+    try {
+      const session = await assertSessionParticipant(
+        prisma,
+        req.params.sessionId as string,
+        req.auth!,
+      );
+      const body = z
+        .object({ body: z.string().trim().min(1).max(2000), idempotencyKey: key })
+        .parse(req.body);
+      const role = req.auth!.role === 'CLIENT' ? 'CLIENT' : 'CONSULTANT';
+      res.json(
+        await sendSessionMessage(prisma, {
+          sessionId: session.id,
+          clientId: session.clientId,
+          actorId: req.auth!.userId,
+          role,
+          ...body,
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.get('/client/rounds/:roundId/session', requireRole('CLIENT'), async (req, res, next) => {
+    try {
+      const session = await prisma.applicationSession.findFirst({
+        where: { roundId: req.params.roundId as string, clientId: req.auth!.clientId! },
+        select: { id: true },
+      });
+      res.json({ sessionId: session?.id ?? null });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.get('/consultant/live-sessions', requireRole('CONSULTANT'), async (req, res, next) => {
+    try {
+      const sessions = await prisma.applicationSession.findMany({
+        where: { consultantId: req.auth!.userId },
+        select: {
+          id: true,
+          clientId: true,
+          roundId: true,
+          appointmentId: true,
+          status: true,
+          pauseReason: true,
+          startedAt: true,
+          updatedAt: true,
+        },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+        take: 200,
+      });
+      res.json({ sessions });
     } catch (error) {
       next(error);
     }

@@ -11,6 +11,8 @@ import { ClientStrategyPage, ConsultantStrategyPage } from './pages/StrategyPage
 import {
   AppointmentDetailPage,
   ConsultantCalendarPage,
+  LiveSessionPage,
+  LiveSessionsPage,
   ScheduleRoundPage,
 } from './pages/LivePages';
 import { CardsPage } from './pages/CardsPage';
@@ -136,6 +138,7 @@ export function App() {
           <Route path="rounds/:roundId/major-check" element={<MajorApplicationCheckPage />} />
           <Route path="rounds/:roundId/strategy" element={<ClientStrategyPage />} />
           <Route path="rounds/:roundId/schedule" element={<ScheduleRoundPage />} />
+          <Route path="rounds/:roundId/live" element={<LiveSessionPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/active" element={<ActiveServicesPage />} />
@@ -184,15 +187,9 @@ export function App() {
           <Route path="reviews/:clientId/:reviewId" element={<ConsultantReviewWorkspacePage />} />
           <Route path="readiness" element={<ReadinessPage consultant />} />
           <Route path="support" element={<ConsultantSupportPage />} />
-          <Route
-            path="sessions"
-            element={
-              <FoundationPage
-                title="Live Sessions"
-                description="Live session supervision is not available yet. No scheduled activity is inferred or displayed."
-              />
-            }
-          />
+          <Route path="sessions" element={<LiveSessionsPage />} />
+          <Route path="live-sessions" element={<LiveSessionsPage />} />
+          <Route path="live-sessions/:sessionId" element={<LiveSessionPage consultant />} />
           <Route path="calendar" element={<ConsultantCalendarPage />} />
           <Route
             path="clients/:clientId/appointments/:appointmentId"

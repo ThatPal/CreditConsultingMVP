@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 
@@ -203,6 +203,7 @@ export function ConsultantCalendarPage() {
 export function AppointmentDetailPage() {
   const { clientId = '', appointmentId = '' } = useParams();
   const [item, setItem] = useState<Appointment>();
+  const navigate = useNavigate();
   useEffect(() => {
     void apiRequest<{ appointment: Appointment }>(
       `/api/v1/consultant/clients/${clientId}/appointments/${appointmentId}`,
@@ -226,12 +227,221 @@ export function AppointmentDetailPage() {
               <Typography>Client timezone: {item.timezone}</Typography>
               <Typography>Status: {item.status}</Typography>
               <Typography>External sync: {item.externalSyncStatus}</Typography>
-              <Button component={Link} to={`/crm/clients/${clientId}/rounds/${item.roundId}/live`}>
-                Open live session
+              <Button
+                variant="contained"
+                onClick={() =>
+                  void apiRequest<{ result: { id: string } }>(
+                    `/api/v1/consultant/appointments/${appointmentId}/session`,
+                    {
+                      method: 'POST',
+                      body: JSON.stringify({ idempotencyKey: `start-${appointmentId}` }),
+                    },
+                  ).then((value) => navigate(`/crm/live-sessions/${value.result.id}`))
+                }
+              >
+                Start or open live session
               </Button>
             </Stack>
           </CardContent>
         </Card>
+      )}
+    </Stack>
+  );
+}
+
+type SessionSnapshot = {
+  session: {
+    id: string;
+    roundId: string;
+    status: string;
+    pauseReason?: string;
+    strategyVersionId: string;
+    version: number;
+  };
+  presence: { clientPresent: boolean; consultantPresent: boolean; supervisionSafe: boolean };
+  messages: Array<{ id: string; authorRole: string; body: string; createdAt: string }>;
+};
+
+export function LiveSessionPage({ consultant = false }: { consultant?: boolean }) {
+  const { roundId = '', sessionId: routeSessionId = '' } = useParams();
+  const [sessionId, setSessionId] = useState(routeSessionId);
+  const [snapshot, setSnapshot] = useState<SessionSnapshot>();
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const connectionId = useState(() => crypto.randomUUID())[0];
+  const load = async (id = sessionId) => {
+    if (!id) return;
+    try {
+      setSnapshot(await apiRequest<SessionSnapshot>(`/api/v1/sessions/${id}`));
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Live session unavailable.');
+    }
+  };
+  useEffect(() => {
+    if (routeSessionId) {
+      setSessionId(routeSessionId);
+      void load(routeSessionId);
+      return;
+    }
+    void apiRequest<{ sessionId: string | null }>(`/api/v1/client/rounds/${roundId}/session`).then(
+      (value) => {
+        if (value.sessionId) {
+          setSessionId(value.sessionId);
+          void load(value.sessionId);
+        }
+      },
+    );
+  }, [roundId, routeSessionId]);
+  useEffect(() => {
+    if (!sessionId) return;
+    const beat = () =>
+      void apiRequest(`/api/v1/sessions/${sessionId}/presence`, {
+        method: 'POST',
+        body: JSON.stringify({ connectionId }),
+      }).then(() => load(sessionId));
+    beat();
+    const timer = window.setInterval(beat, 30_000);
+    return () => window.clearInterval(timer);
+  }, [sessionId]);
+  const send = async () => {
+    if (!message.trim()) return;
+    await apiRequest(`/api/v1/sessions/${sessionId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body: message, idempotencyKey: crypto.randomUUID() }),
+    });
+    setMessage('');
+    await load();
+  };
+  if (!sessionId)
+    return (
+      <Stack spacing={3}>
+        <PageHeader
+          eyebrow="PORTAL-29"
+          title="Live application session"
+          description="Your consultant will start the session at the scheduled time."
+        />
+        <Alert severity="info">Waiting for your consultant to start the session.</Alert>
+      </Stack>
+    );
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow={consultant ? 'CRM-19' : 'PORTAL-29'}
+        title="Live application session"
+        description="Committed session state remains authoritative if your connection is interrupted."
+      />
+      {error && <Alert severity="error">{error}</Alert>}
+      {!snapshot ? (
+        <CircularProgress />
+      ) : (
+        <>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+            <Chip label={snapshot.session.status} />
+            <Chip
+              label={snapshot.presence.clientPresent ? 'Client present' : 'Client away'}
+              variant="outlined"
+            />
+            <Chip
+              label={snapshot.presence.consultantPresent ? 'Consultant present' : 'Consultant away'}
+              variant="outlined"
+              color={snapshot.presence.supervisionSafe ? 'success' : 'warning'}
+            />
+          </Stack>
+          {snapshot.session.status === 'PAUSED' && (
+            <Alert severity="warning">
+              Applications are safely paused. {snapshot.session.pauseReason}
+            </Alert>
+          )}
+          <Card>
+            <CardContent>
+              <Stack spacing={2}>
+                <Typography variant="h6">Session messages</Typography>
+                {snapshot.messages.length === 0 ? (
+                  <Typography color="text.secondary">No messages yet.</Typography>
+                ) : (
+                  snapshot.messages.map((item) => (
+                    <Box key={item.id}>
+                      <Typography variant="caption">
+                        {item.authorRole} · {new Date(item.createdAt).toLocaleTimeString()}
+                      </Typography>
+                      <Typography>{item.body}</Typography>
+                    </Box>
+                  ))
+                )}
+                <Stack direction="row" spacing={1}>
+                  <input
+                    aria-label="Session message"
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    style={{ flex: 1, minHeight: 44 }}
+                  />
+                  <Button variant="contained" onClick={() => void send()}>
+                    Send
+                  </Button>
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+          <Alert
+            severity={snapshot.presence.supervisionSafe ? 'success' : 'info'}
+            aria-live="polite"
+          >
+            {snapshot.presence.supervisionSafe
+              ? 'Supervised session is connected.'
+              : 'Waiting for both participants. New application releases remain blocked.'}
+          </Alert>
+        </>
+      )}
+    </Stack>
+  );
+}
+
+export function LiveSessionsPage() {
+  const [items, setItems] =
+    useState<
+      Array<{ id: string; clientId: string; roundId: string; status: string; updatedAt: string }>
+    >();
+  useEffect(() => {
+    void apiRequest<{
+      sessions: Array<{
+        id: string;
+        clientId: string;
+        roundId: string;
+        status: string;
+        updatedAt: string;
+      }>;
+    }>('/api/v1/consultant/live-sessions').then((value) => setItems(value.sessions));
+  }, []);
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="CRM-18"
+        title="Live Sessions"
+        description="Supervise active, waiting, paused, and recently completed sessions."
+      />
+      {!items ? (
+        <CircularProgress />
+      ) : items.length === 0 ? (
+        <Alert severity="info">No live sessions yet.</Alert>
+      ) : (
+        items.map((item) => (
+          <Card key={item.id}>
+            <CardContent>
+              <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="h6">Round session</Typography>
+                  <Typography>
+                    {item.status} · updated {new Date(item.updatedAt).toLocaleString()}
+                  </Typography>
+                </Box>
+                <Button component={Link} to={`/crm/live-sessions/${item.id}`}>
+                  Open console
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        ))
       )}
     </Stack>
   );
