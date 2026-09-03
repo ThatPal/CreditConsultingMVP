@@ -257,6 +257,20 @@ enum CreditApplicationOutcome {
   OTHER
 }
 
+enum PostRoundFollowUpKind {
+  PENDING_APPLICATION
+  RECONSIDERATION
+  CREDIT_LIMIT_INCREASE
+  ADDITIONAL_CARD
+}
+
+enum PostRoundFollowUpStatus {
+  OPEN
+  COMPLETE
+  UNABLE_TO_COMPLETE
+  WAIVED
+}
+
 enum LiveExecutionDecisionType {
   READY_TO_RELEASE_ALLOWED_CARD
   STOP_APPLICATION_SEQUENCE
@@ -2611,6 +2625,27 @@ model CreditApplicationEvent {
 
   @@index([applicationId, createdAt, id])
   @@index([sessionId, createdAt, id])
+}
+
+model PostRoundFollowUp {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  roundId            String                  @db.Uuid
+  clientId           String                  @db.Uuid
+  applicationId      String?                 @db.Uuid
+  clientCardId       String?                 @db.Uuid
+  planItemId         String?                 @db.Uuid
+  kind               PostRoundFollowUpKind
+  status             PostRoundFollowUpStatus @default(OPEN)
+  required           Boolean                 @default(true)
+  version            Int                     @default(1)
+  currentResult      Json?
+  completedAt        DateTime?               @db.Timestamptz(3)
+  createdAt          DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                @updatedAt @db.Timestamptz(3)
+
+  @@unique([roundId, kind, applicationId, clientCardId])
+  @@index([roundId, status, createdAt, id])
+  @@index([clientId, status])
 }
 
 model LiveExecutionDecision {
