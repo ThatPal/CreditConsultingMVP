@@ -79,6 +79,7 @@ export async function publishOffer(prisma: PrismaClient, input: { productId: str
     if (product.currentOfferVersionId) await tx.cardOfferVersion.update({ where: { id: product.currentOfferVersionId }, data: { status: 'SUPERSEDED', supersededAt: new Date() } });
     await tx.cardProduct.update({ where: { id: product.id }, data: { currentOfferVersionId: offer.id } });
     const stale = await tx.cardInsightVersion.updateMany({ where: { productId: product.id, status: 'APPROVED', offerVersionId: { not: offer.id } }, data: { status: 'STALE', staleAt: new Date() } });
+    if (stale.count) await tx.cardProduct.update({ where: { id: product.id }, data: { currentInsightVersionId: null } });
     await tx.auditEvent.create({ data: { actorId: input.actorId, action: 'CARD_OFFER_VERSION_PUBLISHED', entityType: 'CardOfferVersion', entityId: offer.id, metadata: json({ productId: product.id, version: offer.version, staleInsights: stale.count }) } });
     await tx.outboxEvent.create({ data: { eventType: 'CardOfferVersionPublished', eventKey: input.eventKey, aggregateType: 'CardProduct', aggregateId: product.id, payload: json({ productId: product.id, offerVersionId: offer.id, version: offer.version }) } });
     return offer;
@@ -180,9 +181,22 @@ export async function prepareInsight(prisma: PrismaClient, input: { productId: s
     const product = await tx.cardProduct.findUnique({ where: { id: input.productId } });
     if (!product?.currentOfferVersionId) throw new AppError('OFFER_REQUIRED', 409, 'A current offer is required');
     const latest = await tx.cardInsightVersion.aggregate({ where: { productId: product.id }, _max: { version: true } });
-    const insight = await tx.cardInsightVersion.create({ data: { productId: product.id, offerVersionId: product.currentOfferVersionId, version: (latest._max.version ?? 0) + 1, status: 'IN_REVIEW', clientSafeSummary: input.summary, ...(input.rationale !== undefined ? { internalRationale: input.rationale } : {}), strengths: json(input.strengths), cautions: json(input.cautions), ...(input.confidence ? { confidence: input.confidence } : {}), evidence: json(input.evidence), ...(input.ai ? { processKey: input.ai.processKey, processVersion: input.ai.processVersion, modelProvenance: json(input.ai.modelProvenance), proposedPayload: json(input.ai.proposedPayload) } : {}) } });
+    const process = input.ai ? await tx.aIProcessDefinition.findUnique({ where: { processKey_processVersion: { processKey: input.ai.processKey, processVersion: input.ai.processVersion } } }) : null;
+    if (input.ai && (!process?.enabled || process.domainConsumer !== 'CARD_INSIGHT')) throw new AppError('AI_PROCESS_NOT_GOVERNED', 409, 'CardInsight AI process is not enabled and governed');
+    const insight = await tx.cardInsightVersion.create({ data: { productId: product.id, offerVersionId: product.currentOfferVersionId, version: (latest._max.version ?? 0) + 1, status: 'IN_REVIEW', clientSafeSummary: input.summary, ...(input.rationale !== undefined ? { internalRationale: input.rationale } : {}), strengths: json(input.strengths), cautions: json(input.cautions), ...(input.confidence ? { confidence: input.confidence } : {}), evidence: json(input.evidence), ...(input.ai && process ? { processKey: input.ai.processKey, processVersion: input.ai.processVersion, processDefinitionId: process.id, modelProvenance: json(input.ai.modelProvenance), proposedPayload: json(input.ai.proposedPayload) } : {}) } });
     return insight;
   });
+}
+
+export async function listInsights(prisma: PrismaClient, status?: 'PREPARED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'STALE' | 'SUPERSEDED') {
+  return prisma.cardInsightVersion.findMany({ where: status ? { status } : {}, include: { product: { select: { id: true, displayName: true, issuer: { select: { name: true } } } }, offerVersion: { select: { id: true, version: true, status: true } }, processDefinition: { select: { processKey: true, processVersion: true, modelProfile: true } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 200 });
+}
+
+export async function rejectInsight(prisma: PrismaClient, input: { insightId: string; actorId: string; note: string }) {
+  const insight = await prisma.cardInsightVersion.findUnique({ where: { id: input.insightId } });
+  if (!insight) throw new AppError('NOT_FOUND', 404, 'Card insight was not found');
+  if (!['PREPARED', 'IN_REVIEW'].includes(insight.status)) throw new AppError('INVALID_STATE', 409, 'Insight cannot be returned');
+  return prisma.cardInsightVersion.update({ where: { id: insight.id }, data: { status: 'REJECTED', approvedById: input.actorId, approvalNote: input.note } });
 }
 
 export async function approveInsight(prisma: PrismaClient, input: { insightId: string; actorId: string; note: string; idempotencyKey: string; edits?: { summary?: string | undefined; rationale?: string | undefined; strengths?: unknown; cautions?: unknown } | undefined }) {

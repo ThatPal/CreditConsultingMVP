@@ -8,7 +8,7 @@ import { ConsultantAppShell } from './layouts/ConsultantAppShell';
 import { AccountPage } from './pages/AccountPage';
 import { ApplicationCyclesPage } from './pages/ApplicationCyclesPage';
 import { CardsPage } from './pages/CardsPage';
-import { CardDetailPage, CardWishlistPage, CatalogOperationsPage, ConsultantClientCardsPage, ExploreCardsPage } from './pages/CardCatalogPages';
+import { CardDetailPage, CardWishlistPage, CatalogOperationsPage, ConsultantClientCardsPage, ExploreCardsPage, InsightOperationsPage } from './pages/CardCatalogPages';
 import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -159,6 +159,7 @@ export function App() {
           />
           <Route path="reviews" element={<ConsultantReviewsPage />} />
           <Route path="card-catalog" element={<CatalogOperationsPage />} />
+          <Route path="card-insights" element={<InsightOperationsPage canApprove />} />
           <Route path="reviews/:clientId/:reviewId" element={<ConsultantReviewWorkspacePage />} />
           <Route path="readiness" element={<ReadinessPage consultant />} />
           <Route path="support" element={<ConsultantSupportPage />} />
@@ -197,6 +198,7 @@ export function App() {
       <Route element={<ProtectedRoute roles={['ADMIN']} />}>
         <Route path="/admin" element={<AdminAppShell />}>
           <Route path="card-catalog" element={<CatalogOperationsPage />} />
+          <Route path="card-insights" element={<InsightOperationsPage />} />
           <Route index element={<AdminLandingPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />

@@ -1030,6 +1030,7 @@ model CardInsightVersion {
   confidence          AIConfidence?
   processKey          String?
   processVersion      Int?
+  processDefinitionId String?           @db.Uuid
   modelProvenance     Json?
   evidence            Json
   proposedPayload     Json?
@@ -1042,6 +1043,7 @@ model CardInsightVersion {
   product             CardProduct       @relation("ProductInsightVersions", fields: [productId], references: [id], onDelete: Restrict)
   currentForProduct   CardProduct?      @relation("CurrentCardInsight")
   offerVersion        CardOfferVersion  @relation(fields: [offerVersionId], references: [id], onDelete: Restrict)
+  processDefinition   AIProcessDefinition? @relation(fields: [processDefinitionId], references: [id], onDelete: Restrict)
 
   @@unique([productId, version])
   @@index([status, createdAt])
@@ -1444,6 +1446,7 @@ model AIProcessDefinition {
   createdAt           DateTime         @default(now()) @db.Timestamptz(3)
   retiredAt           DateTime?        @db.Timestamptz(3)
   jobs                AIJob[]
+  cardInsights        CardInsightVersion[]
 
   @@unique([processKey, processVersion])
   @@index([processKey, enabled, processVersion])

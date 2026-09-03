@@ -12,9 +12,11 @@ import {
   listCandidates,
   listCatalog,
   listClientCards,
+  listInsights,
   listWishlist,
   offerHistory,
   prepareInsight,
+  rejectInsight,
   reviewCandidate,
   saveClientCard,
   setWishlist,
@@ -84,8 +86,14 @@ export function createCardRouter(prisma: PrismaClient, authorization: Authorizat
   router.post('/catalog/products/:productId/insights', requireRole('CONSULTANT'), requireCapability(authorization, 'catalog.manage', undefined, undefined, recorder), async (req, res, next) => {
     try { const body = z.object({ summary: z.string().min(1).max(2000), rationale: z.string().max(4000).optional(), strengths: z.array(z.string()), cautions: z.array(z.string()), confidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).optional(), evidence: z.array(z.unknown()), ai: z.object({ processKey: z.string(), processVersion: z.number().int().positive(), modelProvenance: z.record(z.string(), z.unknown()), proposedPayload: z.record(z.string(), z.unknown()) }).optional() }).parse(req.body); res.status(201).json(await prepareInsight(prisma, { productId: req.params.productId as string, actorId: req.auth!.userId, ...body })); } catch (error) { next(error); }
   });
+  router.get('/catalog/insights', requireCapability(authorization, 'catalog.manage', undefined, undefined, recorder), async (req, res, next) => {
+    try { const status = z.enum(['PREPARED', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'STALE', 'SUPERSEDED']).optional().parse(req.query.status); res.json({ insights: await listInsights(prisma, status) }); } catch (error) { next(error); }
+  });
   router.post('/catalog/insights/:insightId/approve', requireRole('CONSULTANT'), requireCapability(authorization, 'catalog.manage', undefined, { requireStepUp: true }, recorder), async (req, res, next) => {
     try { const body = z.object({ note: z.string().min(1).max(1000), idempotencyKey: z.string().min(8).max(160), edits: z.object({ summary: z.string().max(2000).optional(), rationale: z.string().max(4000).optional(), strengths: z.array(z.string()).optional(), cautions: z.array(z.string()).optional() }).optional() }).parse(req.body); res.json(await approveInsight(prisma, { insightId: req.params.insightId as string, actorId: req.auth!.userId, ...body })); } catch (error) { next(error); }
+  });
+  router.post('/catalog/insights/:insightId/reject', requireRole('CONSULTANT'), requireCapability(authorization, 'catalog.manage', undefined, { requireStepUp: true }, recorder), async (req, res, next) => {
+    try { const body = z.object({ note: z.string().min(1).max(1000) }).parse(req.body); res.json(await rejectInsight(prisma, { insightId: req.params.insightId as string, actorId: req.auth!.userId, note: body.note })); } catch (error) { next(error); }
   });
   return router;
 }

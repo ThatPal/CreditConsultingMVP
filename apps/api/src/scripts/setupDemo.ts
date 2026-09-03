@@ -910,6 +910,15 @@ try {
     }
   }
   await prisma.cardSource.upsert({ where: { key: 'northstar-official' }, create: { key: 'northstar-official', name: 'Northstar official product pages', baseUrl: 'https://northstar-bank.example/cards', allowedHosts: ['northstar-bank.example'], official: true }, update: { active: true } });
+  const insightProcess = await prisma.aIProcessDefinition.upsert({
+    where: { processKey_processVersion: { processKey: 'card-insight-preparation', processVersion: 1 } },
+    create: { processKey: 'card-insight-preparation', processVersion: 1, modelProfile: 'configured-card-insight-model', inputSchemaVersion: 1, outputSchemaVersion: 1, instructionVersion: 'phase-10-v1', retryPolicy: { maxAttempts: 3 }, dataClassification: 'INTERNAL_CATALOG', allowedContext: { offerFacts: true, approvedEvidence: true }, domainConsumer: 'CARD_INSIGHT' },
+    update: { enabled: true },
+  });
+  const insightProduct = await prisma.cardProduct.findUniqueOrThrow({ where: { slug: 'northstar-everyday' } });
+  if (insightProduct.currentOfferVersionId && !(await prisma.cardInsightVersion.findFirst({ where: { productId: insightProduct.id } }))) {
+    await prisma.cardInsightVersion.create({ data: { productId: insightProduct.id, offerVersionId: insightProduct.currentOfferVersionId, version: 1, status: 'IN_REVIEW', clientSafeSummary: 'A no-annual-fee rewards product whose promotional value should be reviewed against current source freshness.', internalRationale: 'Prepared demonstration awaiting professional authority.', strengths: ['No annual fee'], cautions: ['Promotional terms require refreshed source evidence'], confidence: 'MEDIUM', processKey: insightProcess.processKey, processVersion: insightProcess.processVersion, processDefinitionId: insightProcess.id, modelProvenance: { profile: insightProcess.modelProfile, provider: 'CONFIGURATION_DRIVEN' }, proposedPayload: { summary: 'AI-prepared, not canonical' }, evidence: [{ offerVersionId: insightProduct.currentOfferVersionId }] } });
+  }
   console.info(
     JSON.stringify(
       {
@@ -953,6 +962,7 @@ try {
           'personal, business, secured, and non-reporting canonical products',
           'immutable offer versions with one intentionally stale promotion',
           'approved-source catalog governance fixture',
+          'AI-prepared CardInsight awaiting authorized human approval',
         ],
       },
       null,
