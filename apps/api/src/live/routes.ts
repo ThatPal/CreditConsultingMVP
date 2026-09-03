@@ -32,6 +32,7 @@ import {
   recordApplicationResult,
   releaseApplication,
 } from './applications.js';
+import { evaluateLatestResult, transitionSession } from './decisions.js';
 
 const key = z.string().min(8).max(160);
 
@@ -428,6 +429,49 @@ export function createLiveRouter(
             applicationId: req.params.applicationId as string,
             clientId: req.auth!.clientId!,
             actorId: req.auth!.userId,
+            ...body,
+          }),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.post(
+    '/consultant/sessions/:sessionId/evaluate',
+    requireRole('CONSULTANT'),
+    async (req, res, next) => {
+      try {
+        const body = z.object({ idempotencyKey: key }).parse(req.body);
+        res.json(
+          await evaluateLatestResult(prisma, {
+            sessionId: req.params.sessionId as string,
+            consultantId: req.auth!.userId,
+            ...body,
+          }),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.post(
+    '/consultant/sessions/:sessionId/transition',
+    requireRole('CONSULTANT'),
+    async (req, res, next) => {
+      try {
+        const body = z
+          .object({
+            action: z.enum(['PAUSE', 'RESUME', 'STOP', 'END']),
+            reason: z.string().trim().max(500).optional(),
+            expectedVersion: z.number().int().positive(),
+            idempotencyKey: key,
+          })
+          .parse(req.body);
+        res.json(
+          await transitionSession(prisma, {
+            sessionId: req.params.sessionId as string,
+            consultantId: req.auth!.userId,
             ...body,
           }),
         );

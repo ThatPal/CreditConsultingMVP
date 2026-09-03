@@ -44,6 +44,7 @@ describe('live session authorization and presence projection', () => {
           { role: 'CONSULTANT', _count: 2 },
         ]),
       },
+      liveExecutionDecision: { findFirst: vi.fn().mockResolvedValue(null) },
     } as never;
     const value = await sessionSnapshot(prisma, 'session');
     expect(value.presence).toEqual({

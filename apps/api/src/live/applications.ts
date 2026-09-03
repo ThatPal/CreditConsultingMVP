@@ -99,29 +99,42 @@ export async function releaseApplication(
         where: { id: input.strategyApplicationId, strategyVersionId: session.strategyVersionId },
         include: { candidate: true },
       });
-      if (!occurrence || occurrence.role !== 'PLANNED')
+      const decision = occurrence
+        ? await tx.liveExecutionDecision.findFirst({
+            where: {
+              sessionId: session.id,
+              current: true,
+              decisionType: 'READY_TO_RELEASE_ALLOWED_CARD',
+              strategyApplicationId: occurrence.id,
+            },
+          })
+        : null;
+      if (!occurrence || (occurrence.role !== 'PLANNED' && !decision))
         throw new AppError(
           'CARD_NOT_ALLOWED',
           409,
           'Card occurrence is not an allowed current Strategy card',
         );
-      const earlier = await tx.strategyApplication.findFirst({
-        where: {
-          strategyVersionId: session.strategyVersionId,
-          role: 'PLANNED',
-          sequence: { lt: occurrence.sequence },
-          NOT: {
-            id: {
-              in: (
-                await tx.creditApplication.findMany({
-                  where: { sessionId: session.id },
-                  select: { strategyApplicationId: true },
-                })
-              ).map((item) => item.strategyApplicationId),
-            },
-          },
-        },
-      });
+      const earlier =
+        occurrence.role === 'PLANNED'
+          ? await tx.strategyApplication.findFirst({
+              where: {
+                strategyVersionId: session.strategyVersionId,
+                role: 'PLANNED',
+                sequence: { lt: occurrence.sequence },
+                NOT: {
+                  id: {
+                    in: (
+                      await tx.creditApplication.findMany({
+                        where: { sessionId: session.id },
+                        select: { strategyApplicationId: true },
+                      })
+                    ).map((item) => item.strategyApplicationId),
+                  },
+                },
+              },
+            })
+          : null;
       if (earlier)
         throw new AppError(
           'CARD_OUT_OF_SEQUENCE',
@@ -148,6 +161,11 @@ export async function releaseApplication(
           payload: {},
         },
       });
+      if (decision)
+        await tx.liveExecutionDecision.update({
+          where: { id: decision.id },
+          data: { current: false, supersededAt: new Date() },
+        });
       return { id: application.id, status: application.status } as Prisma.InputJsonObject;
     },
   });

@@ -257,6 +257,15 @@ enum CreditApplicationOutcome {
   OTHER
 }
 
+enum LiveExecutionDecisionType {
+  READY_TO_RELEASE_ALLOWED_CARD
+  STOP_APPLICATION_SEQUENCE
+  PAUSE_FOR_CONSULTANT
+  WAIT_FOR_CLIENT_RESULT
+  END_SESSION_READY
+  INTERVENTION_REQUIRED
+}
+
 enum ApplicationCycleReadiness {
   READY
   ACTION_REQUIRED
@@ -2602,6 +2611,24 @@ model CreditApplicationEvent {
 
   @@index([applicationId, createdAt, id])
   @@index([sessionId, createdAt, id])
+}
+
+model LiveExecutionDecision {
+  id                    String                    @id @default(uuid()) @db.Uuid
+  sessionId             String                    @db.Uuid
+  sourceApplicationId   String?                   @db.Uuid
+  sourceEventId         String?                   @db.Uuid
+  strategyApplicationId String?                   @db.Uuid
+  decisionType          LiveExecutionDecisionType
+  reasonCode            String
+  policySnapshot        Json
+  current               Boolean                   @default(true)
+  decidedByUserId       String?                   @db.Uuid
+  createdAt             DateTime                  @default(now()) @db.Timestamptz(3)
+  supersededAt          DateTime?                 @db.Timestamptz(3)
+
+  @@index([sessionId, current, createdAt, id])
+  @@index([sourceEventId])
 }
 
 model ReviewCreditTransaction {

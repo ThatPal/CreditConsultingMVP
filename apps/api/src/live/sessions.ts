@@ -158,7 +158,7 @@ export async function sessionSnapshot(prisma: PrismaClient, sessionId: string) {
   const session = await prisma.applicationSession.findUnique({ where: { id: sessionId } });
   if (!session) throw new AppError('SESSION_NOT_FOUND', 404, 'Live session was not found');
   const now = new Date();
-  const [messages, active] = await Promise.all([
+  const [messages, active, decision] = await Promise.all([
     prisma.sessionMessage.findMany({
       where: { sessionId },
       select: { id: true, authorRole: true, body: true, createdAt: true },
@@ -169,6 +169,11 @@ export async function sessionSnapshot(prisma: PrismaClient, sessionId: string) {
       by: ['role'],
       where: { sessionId, expiresAt: { gt: now } },
       _count: true,
+    }),
+    prisma.liveExecutionDecision.findFirst({
+      where: { sessionId, current: true },
+      select: { decisionType: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     }),
   ]);
   const clientPresent = active.some((item) => item.role === 'CLIENT' && item._count > 0);
@@ -191,6 +196,7 @@ export async function sessionSnapshot(prisma: PrismaClient, sessionId: string) {
       supervisionSafe: clientPresent && consultantPresent,
     },
     messages,
+    execution: decision,
   };
 }
 

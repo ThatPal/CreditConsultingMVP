@@ -262,6 +262,7 @@ type SessionSnapshot = {
   };
   presence: { clientPresent: boolean; consultantPresent: boolean; supervisionSafe: boolean };
   messages: Array<{ id: string; authorRole: string; body: string; createdAt: string }>;
+  execution: { decisionType: string } | null;
 };
 type ReleasedApplication = {
   id: string;
@@ -371,6 +372,23 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
     setApplication(null);
     await load();
   };
+  const consultantCommand = async (action: 'EVALUATE' | 'PAUSE' | 'RESUME' | 'END') => {
+    if (!snapshot) return;
+    const path = action === 'EVALUATE' ? 'evaluate' : 'transition';
+    const body =
+      action === 'EVALUATE'
+        ? { idempotencyKey: crypto.randomUUID() }
+        : {
+            action,
+            expectedVersion: snapshot.session.version,
+            idempotencyKey: crypto.randomUUID(),
+          };
+    await apiRequest(`/api/v1/consultant/sessions/${sessionId}/${path}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    await load();
+  };
   if (!sessionId)
     return (
       <Stack spacing={3}>
@@ -410,6 +428,50 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
             <Alert severity="warning">
               Applications are safely paused. {snapshot.session.pauseReason}
             </Alert>
+          )}
+          {snapshot.execution && (
+            <Alert
+              severity={
+                snapshot.execution.decisionType === 'INTERVENTION_REQUIRED' ? 'warning' : 'info'
+              }
+              aria-live="polite"
+            >
+              Next session state:{' '}
+              {snapshot.execution.decisionType.replaceAll('_', ' ').toLowerCase()}
+            </Alert>
+          )}
+          {consultant && (
+            <Card>
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="h6">Governed session controls</Typography>
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                    <Button variant="contained" onClick={() => void consultantCommand('EVALUATE')}>
+                      Evaluate latest result
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() =>
+                        void consultantCommand(
+                          snapshot.session.status === 'PAUSED' ? 'RESUME' : 'PAUSE',
+                        )
+                      }
+                    >
+                      {snapshot.session.status === 'PAUSED'
+                        ? 'Resume after revalidation'
+                        : 'Pause safely'}
+                    </Button>
+                    <Button
+                      color="error"
+                      variant="outlined"
+                      onClick={() => void consultantCommand('END')}
+                    >
+                      End live session
+                    </Button>
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
           )}
           {!consultant && application && (
             <Card>
