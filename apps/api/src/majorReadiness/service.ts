@@ -2,10 +2,16 @@ import { createHash } from 'node:crypto';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
+import type { DurableAIRuntime } from '../ai/durableRuntime.js';
 
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const json = (value: unknown) => value as Prisma.InputJsonValue;
 export const restrictionScopes = ['CYCLE', 'STRATEGY', 'SCHEDULING', 'LIVE_EXECUTION'] as const;
+
+export async function enqueueRecommendationPreparation(runtime: DurableAIRuntime, input: { caseId: string; clientId: string; caseVersion: number; profileStateId: string | null }) {
+  await runtime.registerProcess({ processKey: 'major-readiness.recommendation-draft', processVersion: 1, authorityLevel: 'FACTUAL_LEVEL_1', enabled: true, modelProfile: 'bounded-advisory-preparation', inputSchemaVersion: 1, outputSchemaVersion: 1, maxAttempts: 3, dataClassification: 'SENSITIVE', instructionVersion: 'phase15-v1', domainConsumer: 'major-readiness', allowedContext: ['intentType', 'targetTiming', 'published-profile'] });
+  return runtime.createAndEnqueue({ processKey: 'major-readiness.recommendation-draft', processVersion: 1, clientId: input.clientId, correlationId: input.caseId, relatedEntityType: 'MajorReadinessCase', relatedEntityId: input.caseId, sourceIdentity: `major-readiness:${input.caseId}:v${input.caseVersion}`, sourceVersions: { caseVersion: String(input.caseVersion), profileStateId: input.profileStateId ?? 'none' }, input: { caseId: input.caseId, caseVersion: input.caseVersion, profileStateId: input.profileStateId, authority: 'DRAFT_ONLY', prohibited: ['approve', 'finalize', 'predict-lender-approval'] } });
+}
 
 export async function assertNoCreditActivityRestriction(
   prisma: PrismaClient | Prisma.TransactionClient,

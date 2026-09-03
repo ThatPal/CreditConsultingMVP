@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireRole } from '../auth/middleware.js';
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
+import type { DurableAIRuntime } from '../ai/durableRuntime.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate } from '../liveUpdates.js';
 import {
@@ -10,6 +11,7 @@ import {
   approveRecommendation,
   clearRestrictions,
   draftRecommendation,
+  enqueueRecommendationPreparation,
   finalizeCase,
   getCase,
   startCase,
@@ -31,6 +33,7 @@ const details = z.object({
 export function createMajorReadinessRouter(
   prisma: PrismaClient,
   authorization: AuthorizationService,
+  aiRuntime?: DurableAIRuntime,
 ) {
   const router = Router();
   router.get('/client/case', requireRole('CLIENT'), async (req, res, next) => {
@@ -104,6 +107,20 @@ export function createMajorReadinessRouter(
       } catch (e) {
         next(e);
       }
+    },
+  );
+  router.post(
+    '/consultant/clients/:clientId/cases/:caseId/prepare-ai',
+    requireRole('CONSULTANT'),
+    async (req, res, next) => {
+      try {
+        if (!aiRuntime) throw new AppError('AI_UNAVAILABLE', 503, 'AI preparation is unavailable; use the manual recommendation path');
+        const clientId = await guard(req, 'client.manage');
+        const view = await getCase(prisma, clientId, req.params.caseId as string, true);
+        if (!view.case) throw new AppError('MAJOR_READINESS_CASE_NOT_FOUND', 404, 'Case not found');
+        const job = await enqueueRecommendationPreparation(aiRuntime, { caseId: view.case.id, clientId, caseVersion: view.case.version, profileStateId: view.case.profileStateId });
+        res.status(202).json({ jobId: job.id, status: job.status, authority: 'DRAFT_ONLY' });
+      } catch (e) { next(e); }
     },
   );
   router.post(

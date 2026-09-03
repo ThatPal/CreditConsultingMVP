@@ -195,7 +195,7 @@ export function createApp(
         createReadinessRouter(prisma, auth, authorization, denialRecorder),
       );
       app.use('/api/v1', createOperationsRouter(prisma, auth, {}, authorization, denialRecorder));
-      app.use('/api/v1/major-readiness-v2', createMajorReadinessRouter(prisma, authorization));
+      app.use('/api/v1/major-readiness-v2', createMajorReadinessRouter(prisma, authorization, aiRuntime));
     }
   }
   app.get('/errors/test', (_req, _res, next) => next(new Error('Deliberate test error')));
