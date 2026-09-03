@@ -136,5 +136,6 @@ This section supersedes the initial audit dispositions above. C912-01 through C9
 - C912-22: `NOT APPLICABLE`; the Strategy aggregate owns approval. `READY_FOR_STRATEGY` is the Round's strategy-capable lifecycle state and the enum has no duplicate Strategy-approved state.
 - C912-23: fixed operationally; all checkpoint commands bind an explicit Credit-only database and runtime guards reject non-Credit names. No Behfar database was used.
 - C912-24: fixed; the client Cards route uses a positive safe selection and excludes identity-link evidence.
+- C912-25: fixed; the review launcher now sets `apps/web` as Vite's root. The prior launcher could report a healthy API and listening web port while all browser routes returned 404.
 
 Final cross-cutting result: green Plan-to-Strategy application path; authorization/privacy; rollback/replay/idempotency/exact-effect counts; concurrency; durable AI and worker recovery; fresh 50-migration chain; double system and demo seeds; 87 web, 213 API, 12 worker, and 3 runtime tests; typecheck/lint/build; and Credit-only browser review. Exact-head CI is recorded in the completion report and handoff.

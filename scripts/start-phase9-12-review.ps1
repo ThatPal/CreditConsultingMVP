@@ -52,7 +52,7 @@ try {
   $processes = @(
     @{ Name = 'api'; FilePath = 'node'; Arguments = @('apps/api/dist/server.js') },
     @{ Name = 'worker'; FilePath = 'node'; Arguments = @('apps/worker/dist/server.js') },
-    @{ Name = 'web'; FilePath = 'node'; Arguments = @('apps/web/node_modules/vite/bin/vite.js', '--host', '0.0.0.0', '--port', '5184') }
+    @{ Name = 'web'; FilePath = 'node'; Arguments = @('apps/web/node_modules/vite/bin/vite.js', 'apps/web', '--host', '0.0.0.0', '--port', '5184') }
   )
   foreach ($process in $processes) {
     $started = Start-Process -FilePath $process.FilePath `

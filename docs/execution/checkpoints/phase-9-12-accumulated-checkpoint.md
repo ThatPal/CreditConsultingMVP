@@ -18,6 +18,7 @@ The audit and contract matrix was created before product-code changes. Full C912
 - Added positive client-safe Strategy and Cards DTOs, excluding consultant evidence, internal rationale, AI metadata, and internal execution rules.
 - Completed CRM Strategy source, comparison, authoring, validation, ordering, rules, and explicit confirmation UX.
 - Made outbox tests await Redis subscription readiness; isolated worker evidence avoids retained jobs from the live review worker.
+- Corrected the review launcher to use `apps/web` as the Vite root, eliminating a browser-visible all-routes 404 despite a listening port.
 
 ## Verification
 
