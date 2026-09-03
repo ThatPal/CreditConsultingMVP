@@ -271,6 +271,18 @@ enum PostRoundFollowUpStatus {
   WAIVED
 }
 
+enum RoundAnalysisKind {
+  INITIAL
+  UPDATED
+  FINAL
+}
+
+enum RoundAnalysisStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED
+}
+
 enum LiveExecutionDecisionType {
   READY_TO_RELEASE_ALLOWED_CARD
   STOP_APPLICATION_SEQUENCE
@@ -2646,6 +2658,30 @@ model PostRoundFollowUp {
   @@unique([roundId, kind, applicationId, clientCardId])
   @@index([roundId, status, createdAt, id])
   @@index([clientId, status])
+}
+
+model RoundAnalysis {
+  id                 String              @id @default(uuid()) @db.Uuid
+  roundId            String              @db.Uuid
+  clientId           String              @db.Uuid
+  version            Int
+  kind               RoundAnalysisKind
+  status             RoundAnalysisStatus @default(DRAFT)
+  sourceFingerprint  String
+  sourceSnapshot     Json
+  deterministicFacts Json
+  clientSafeContent  Json
+  internalContent    Json?
+  preparedBy         String              @default("DETERMINISTIC")
+  approvedByUserId   String?             @db.Uuid
+  approvedAt         DateTime?           @db.Timestamptz(3)
+  supersededAt       DateTime?           @db.Timestamptz(3)
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@unique([roundId, version])
+  @@index([roundId, status, version])
+  @@index([clientId, status, updatedAt])
 }
 
 model LiveExecutionDecision {
