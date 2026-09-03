@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
+import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
 
 const json = (value: unknown) => value as Prisma.InputJsonValue;
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
-export async function strategySource(prisma: PrismaClient, roundId: string, clientId: string) {
+export async function strategySource(prisma: PrismaClient | Prisma.TransactionClient, roundId: string, clientId: string) {
   const round = await prisma.creditCardRound.findFirst({
     where: { id: roundId, clientId },
     include: { goalSnapshot: true, preparationPlanVersion: true, majorApplicationChecks: { orderBy: { version: 'desc' }, take: 1 } },
@@ -158,4 +159,34 @@ export async function saveStrategySequence(prisma: PrismaClient, input: { strate
     await tx.strategyVersion.update({ where: { id: draft.id }, data: { status: validation.valid ? 'READY_FOR_APPROVAL' : 'DRAFT', rules: json(input.items), validation: json(validation) } });
   });
   return { validation, ...(await strategyProjection(prisma, strategy.id, input.clientId, false)) };
+}
+
+export async function approveStrategy(prisma: PrismaClient, input: { strategyId: string; clientId: string; actorId: string; expectedStrategyVersion: number; approvalNote: string; idempotencyKey: string; failAfterMutation?: boolean }) {
+  const requestHash = hash({ expectedStrategyVersion: input.expectedStrategyVersion, approvalNote: input.approvalNote });
+  return executeConsequentialCommand<{ strategyId: string; versionId: string; version: number }>(prisma, {
+    idempotency: { scope: 'round-strategy-approval', subjectId: input.clientId, operation: `approve:${input.strategyId}`, key: input.idempotencyKey, requestHash },
+    audit: (result) => ({ action: 'ROUND_STRATEGY_APPROVED', entityType: 'StrategyVersion', entityId: result.versionId, clientId: input.clientId, actorId: input.actorId, metadata: { strategyId: result.strategyId, version: result.version } }),
+    outbox: { eventType: 'round-strategy.approved', eventKey: `round-strategy-approved:${input.strategyId}:${input.idempotencyKey}`, aggregateType: 'RoundStrategy', aggregateId: input.strategyId, payload: (result) => ({ clientId: input.clientId, strategyId: result.strategyId, versionId: result.versionId, version: result.version }) },
+    mutate: async (tx) => {
+      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${`strategy-approve:${input.strategyId}`})) IS NULL AS acquired`);
+      const strategy = await tx.roundStrategy.findFirst({ where: { id: input.strategyId, clientId: input.clientId }, include: { round: true, versions: { orderBy: { version: 'desc' }, take: 1, include: { candidates: true, applications: true } } } });
+      const version = strategy?.versions[0];
+      if (!strategy || !version) throw new AppError('STRATEGY_NOT_FOUND', 404, 'Strategy was not found');
+      if (strategy.approvedVersionId) throw new AppError('STRATEGY_ALREADY_APPROVED', 409, 'This strategy version is already approved');
+      if (strategy.version !== input.expectedStrategyVersion) throw new AppError('STRATEGY_VERSION_CONFLICT', 409, 'The strategy changed; refresh before approval');
+      if (version.status !== 'READY_FOR_APPROVAL') throw new AppError('STRATEGY_NOT_READY', 409, 'Resolve all strategy validation issues before approval');
+      const currentSource = await strategySource(tx, strategy.roundId, input.clientId);
+      if (currentSource.fingerprint !== version.sourceFingerprint) throw new AppError('STRATEGY_SOURCE_STALE', 409, 'Authoritative source data changed; prepare a new strategy version');
+      const validation = validateStrategySequence(version.applications.map((item) => ({ candidateId: item.candidateId, sequence: item.sequence, role: item.role, timingRule: item.timingRule as Record<string, unknown>, dependencyRule: item.dependencyRule as Record<string, unknown>, stopRule: item.stopRule as Record<string, unknown>, reconsiderationRule: item.reconsiderationRule as Record<string, unknown>, internalRationale: item.internalRationale, clientSafeReason: item.clientSafeReason })), new Set(version.candidates.filter((candidate) => candidate.disposition === 'SHORTLISTED').map((candidate) => candidate.id)));
+      if (!validation.valid) throw new AppError('STRATEGY_NOT_READY', 409, 'Strategy validation failed');
+      const approvedAt = new Date();
+      await tx.strategyVersion.update({ where: { id: version.id }, data: { status: 'APPROVED', approvedByUserId: input.actorId, approvalNote: input.approvalNote, approvedAt, validation: json(validation) } });
+      await tx.roundStrategy.update({ where: { id: strategy.id }, data: { status: 'APPROVED', approvedVersionId: version.id, version: { increment: 1 } } });
+      await tx.creditCardRound.update({ where: { id: strategy.roundId }, data: { status: 'READY_FOR_STRATEGY' } });
+      const client = await tx.client.findUnique({ where: { id: input.clientId }, select: { userId: true } });
+      if (client?.userId) await tx.notification.upsert({ where: { userId_semanticKey: { userId: client.userId, semanticKey: `round-strategy-approved:${strategy.id}:${version.id}` } }, create: { userId: client.userId, clientId: input.clientId, semanticKey: `round-strategy-approved:${strategy.id}:${version.id}`, type: 'ROUND_STRATEGY_APPROVED', category: 'OPERATIONAL', title: 'Your card strategy is ready', body: 'Your consultant approved a strategy for this Round.', link: `/app/rounds/${strategy.roundId}/strategy`, safePayload: { strategyId: strategy.id, roundId: strategy.roundId, version: version.version } }, update: {} });
+      if (input.failAfterMutation) throw new Error('PHASE12_APPROVAL_FAILURE_INJECTION');
+      return { strategyId: strategy.id, versionId: version.id, version: version.version };
+    },
+  });
 }

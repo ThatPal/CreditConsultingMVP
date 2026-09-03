@@ -6,6 +6,7 @@ import type { AuthorizationService } from '../authorization/authorizationService
 import { createPrisma } from '../lib/prisma.js';
 import { createPhase11Router } from './routes.js';
 import { createRound, getPhase11ClientView, getRoundClientView, pauseCycle, seasonalPeriod, startOrResumeCycle, submitMajorApplicationCheck } from './service.js';
+import { approveStrategy, createStrategyDraft, saveStrategySequence, setStrategyCandidate } from '../strategies/service.js';
 
 describe('Phase 11 seasonal cycle, paid round, and major application contract', () => {
   const databaseUrl = process.env.DATABASE_URL;
@@ -20,6 +21,7 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
   let entitlementId = '';
   let cycleId = '';
   let roundId = '';
+  let productId = '';
 
   beforeAll(async () => {
     await prisma.$connect();
@@ -33,9 +35,19 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
     const plan = await prisma.plan.create({ data: { clientId, purpose: 'PREPARATION', status: 'ACTIVE', title: 'Round preparation', versions: { create: { version: 1, status: 'ACTIVE', sourceReviewId: review.id, sourceReviewVersion: 1, sourceProfileVersion: 1, sourceFingerprint: `plan-${marker}`, items: { create: { stableKey: 'prepare', type: 'ACTION', completionMode: 'ACKNOWLEDGEMENT', status: 'AVAILABLE', owner: 'CLIENT', clientTitle: 'Confirm application preparation' } } } } }, include: { versions: { include: { items: true } } } });
     planItemId = plan.versions[0]!.items[0]!.id;
     entitlementId = (await prisma.serviceEntitlement.create({ data: { clientId, sourceKey: `phase11-${marker}`, serviceType: 'CREDIT_CARD_ROUND' } })).id;
+    const issuer = await prisma.cardIssuer.create({ data: { slug: `phase12-${marker}`, name: 'Phase 12 Bank', aliases: [] } });
+    const product = await prisma.cardProduct.create({ data: { issuerId: issuer.id, slug: `phase12-card-${marker}`, canonicalName: 'Phase 12 Card', displayName: 'Phase 12 Card', aliases: [], audience: 'PERSONAL', portfolioType: 'PERSONAL_CREDIT', features: {}, tags: [] } });
+    const offer = await prisma.cardOfferVersion.create({ data: { productId: product.id, version: 1, facts: { annualFee: 0 }, materialFingerprint: marker, sourceEvidence: { source: 'test' } } });
+    await prisma.cardProduct.update({ where: { id: product.id }, data: { currentOfferVersionId: offer.id } });
+    productId = product.id;
   });
 
   afterAll(async () => {
+    await prisma.strategyApplication.deleteMany({ where: { strategyVersion: { strategy: { clientId } } } });
+    await prisma.strategyCandidate.deleteMany({ where: { strategyVersion: { strategy: { clientId } } } });
+    await prisma.roundStrategy.updateMany({ where: { clientId }, data: { approvedVersionId: null } });
+    await prisma.strategyVersion.deleteMany({ where: { strategy: { clientId } } });
+    await prisma.roundStrategy.deleteMany({ where: { clientId } });
     await prisma.workItem.deleteMany({ where: { clientId } });
     await prisma.roundMajorApplicationCheck.deleteMany({ where: { clientId } });
     await prisma.creditCardRound.deleteMany({ where: { clientId } });
@@ -60,6 +72,12 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
     await prisma.idempotencyRecord.deleteMany({ where: { subjectId: clientId } });
     await prisma.auditEvent.deleteMany({ where: { clientId } });
     await prisma.outboxEvent.deleteMany({ where: { payload: { path: ['clientId'], equals: clientId } } });
+    await prisma.notification.deleteMany({ where: { clientId } });
+    const phase12Product = await prisma.cardProduct.findUnique({ where: { id: productId }, select: { issuerId: true } });
+    await prisma.cardProduct.update({ where: { id: productId }, data: { currentOfferVersionId: null } });
+    await prisma.cardOfferVersion.deleteMany({ where: { productId } });
+    await prisma.cardProduct.delete({ where: { id: productId } });
+    if (phase12Product) await prisma.cardIssuer.delete({ where: { id: phase12Product.issuerId } });
     await prisma.client.delete({ where: { id: clientId } });
     await prisma.user.delete({ where: { id: userId } });
     await prisma.$disconnect();
@@ -137,5 +155,28 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
     expect(response.body.profileState.id).toBe(profileId);
     expect(response.body.cycle.id).toBe(cycleId);
     expect(response.body.cycle.creditCardRounds[0].id).toBe(roundId);
+  });
+
+  test('12.1-12.4 freezes sources and approves audit/outbox/notification exactly once with rollback and retry', async () => {
+    const draftView = await createStrategyDraft(prisma, { roundId, clientId, actorId: userId });
+    const strategy = draftView.strategy;
+    expect(strategy.versions).toHaveLength(1);
+    const selected = await setStrategyCandidate(prisma, { strategyId: strategy.id, clientId, productId, actorId: userId, expectedStrategyVersion: 1, disposition: 'SHORTLISTED', role: 'PLANNED', internalRationale: 'Test rationale', clientSafeReason: 'Supports your reviewed goal.' });
+    const candidateId = selected.current!.candidates[0]!.id;
+    const outcomeRules = { onApproved: 'pause', onDeclined: 'stop', onPending: 'wait', onSkipped: 'review', onNotCompleted: 'review', onUnexpected: 'stop' };
+    const sequenced = await saveStrategySequence(prisma, { strategyId: strategy.id, clientId, expectedStrategyVersion: 2, items: [{ candidateId, sequence: 1, role: 'PLANNED', timingRule: { instruction: 'confirm offer' }, dependencyRule: { ready: true }, stopRule: outcomeRules, reconsiderationRule: outcomeRules, internalRationale: 'Exact governed offer.', clientSafeReason: 'Apply only after your consultant confirms the current offer.' }] });
+    expect(sequenced.validation).toEqual({ valid: true, errors: [] });
+    await expect(approveStrategy(prisma, { strategyId: strategy.id, clientId, actorId: userId, expectedStrategyVersion: 3, approvalNote: 'Test approval', idempotencyKey: `${marker}-strategy-approval`, failAfterMutation: true })).rejects.toThrow('PHASE12_APPROVAL_FAILURE_INJECTION');
+    expect(await prisma.roundStrategy.findUniqueOrThrow({ where: { id: strategy.id } })).toMatchObject({ status: 'READY_FOR_APPROVAL', approvedVersionId: null });
+    expect(await prisma.auditEvent.count({ where: { action: 'ROUND_STRATEGY_APPROVED', entityId: sequenced.current!.id } })).toBe(0);
+    expect(await prisma.notification.count({ where: { clientId, type: 'ROUND_STRATEGY_APPROVED' } })).toBe(0);
+    const approved = await approveStrategy(prisma, { strategyId: strategy.id, clientId, actorId: userId, expectedStrategyVersion: 3, approvalNote: 'Test approval', idempotencyKey: `${marker}-strategy-approval` });
+    const replay = await approveStrategy(prisma, { strategyId: strategy.id, clientId, actorId: userId, expectedStrategyVersion: 3, approvalNote: 'Test approval', idempotencyKey: `${marker}-strategy-approval` });
+    expect(approved.replayed).toBe(false);
+    expect(replay.replayed).toBe(true);
+    expect(await prisma.auditEvent.count({ where: { action: 'ROUND_STRATEGY_APPROVED', entityId: approved.result.versionId } })).toBe(1);
+    expect(await prisma.outboxEvent.count({ where: { eventType: 'round-strategy.approved', aggregateId: strategy.id } })).toBe(1);
+    expect(await prisma.notification.count({ where: { clientId, type: 'ROUND_STRATEGY_APPROVED' } })).toBe(1);
+    expect(await prisma.creditCardRound.findUniqueOrThrow({ where: { id: roundId } })).toMatchObject({ status: 'READY_FOR_STRATEGY' });
   });
 });

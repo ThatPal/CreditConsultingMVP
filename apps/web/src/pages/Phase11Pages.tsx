@@ -82,6 +82,7 @@ export function RoundPage() {
     <SectionCard><Typography variant="h5">Preparation Plan</Typography><Stack spacing={1}>{round.preparationPlanVersion?.items.length ? round.preparationPlanVersion.items.map((item) => <Stack key={item.id} direction="row" sx={{ justifyContent: 'space-between' }}><Typography>{item.clientTitle}</Typography><Chip size="small" label={readable(item.status)} /></Stack>) : <Typography>No preparation actions are required by the current shared Plan.</Typography>}<Button component={Link} to="/app/plan">Open shared Plan</Button></Stack></SectionCard>
     <SectionCard><Typography variant="h5">Major Application Check</Typography><Typography>{majorCheck ? `${readable(majorCheck.choice)}${readiness.coordinationRequired ? ' · consultant coordination requested' : ''}` : 'Tell us about any upcoming mortgage, auto, student, or other major financing before strategy begins.'}</Typography></SectionCard>
     <SectionCard><Typography variant="h5">What happens next</Typography><Typography>Strategy, scheduling, applications, results, and post-round steps remain locked until their owning phase and prerequisite gates are complete.</Typography><Button sx={{ mt: 2 }} variant="contained" component={Link} to={primaryAction.path}>{primaryAction.label}</Button></SectionCard>
+    <Button component={Link} to={`/app/rounds/${round.id}/strategy`}>View card strategy</Button>
   </Stack>;
 }
 

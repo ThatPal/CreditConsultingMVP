@@ -4,7 +4,7 @@ import type { AuthorizationService } from '../authorization/authorizationService
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { z } from 'zod';
-import { createStrategyDraft, getRoundStrategy, saveStrategySequence, setStrategyCandidate, strategyCatalog } from './service.js';
+import { approveStrategy, createStrategyDraft, getRoundStrategy, saveStrategySequence, setStrategyCandidate, strategyCatalog } from './service.js';
 
 export function createStrategyRouter(prisma: PrismaClient, authorization: AuthorizationService, recorder?: AuthorizationDenialRecorder) {
   const router = Router();
@@ -31,6 +31,13 @@ export function createStrategyRouter(prisma: PrismaClient, authorization: Author
       const objectRule = z.record(z.string(), z.unknown());
       const body = z.object({ expectedStrategyVersion: z.number().int().positive(), items: z.array(z.object({ candidateId: z.string().uuid(), sequence: z.number().int().positive(), role: z.enum(['PLANNED', 'ALTERNATIVE', 'CONDITIONAL']), timingRule: objectRule, dependencyRule: objectRule, stopRule: objectRule, reconsiderationRule: objectRule, internalRationale: z.string().min(1).max(2000), clientSafeReason: z.string().min(1).max(1000) })) }).parse(req.body);
       res.json(await saveStrategySequence(prisma, { strategyId: req.params.strategyId as string, clientId: req.params.clientId as string, ...body }));
+    } catch (error) { next(error); }
+  });
+  router.post('/consultant/clients/:clientId/strategies/:strategyId/approve', requireRole('CONSULTANT'), requireCapability(authorization, 'strategy.manage', 'clientId', { requireStepUp: true }, recorder), async (req, res, next) => {
+    try {
+      const body = z.object({ expectedStrategyVersion: z.number().int().positive(), approvalNote: z.string().min(1).max(1000), idempotencyKey: z.string().min(8).max(160) }).parse(req.body);
+      const result = await approveStrategy(prisma, { strategyId: req.params.strategyId as string, clientId: req.params.clientId as string, actorId: req.auth!.userId, ...body });
+      res.status(result.replayed ? 200 : 201).json(result);
     } catch (error) { next(error); }
   });
   router.use('/admin', (_req, _res, next) => next(new AppError('FORBIDDEN', 403, 'Admin role alone does not grant strategy authority')));

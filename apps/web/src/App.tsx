@@ -7,6 +7,7 @@ import { ClientAppShell } from './layouts/ClientAppShell';
 import { ConsultantAppShell } from './layouts/ConsultantAppShell';
 import { AccountPage } from './pages/AccountPage';
 import { MajorApplicationCheckPage, RoundPage, SeasonalCyclePage } from './pages/Phase11Pages';
+import { ClientStrategyPage, ConsultantStrategyPage } from './pages/StrategyPages';
 import { CardsPage } from './pages/CardsPage';
 import { CardDetailPage, CardWishlistPage, CatalogOperationsPage, ConsultantClientCardsPage, ExploreCardsPage, InsightOperationsPage } from './pages/CardCatalogPages';
 import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
@@ -121,6 +122,7 @@ export function App() {
           <Route path="application-rounds" element={<SeasonalCyclePage />} />
           <Route path="rounds/:roundId" element={<RoundPage />} />
           <Route path="rounds/:roundId/major-check" element={<MajorApplicationCheckPage />} />
+          <Route path="rounds/:roundId/strategy" element={<ClientStrategyPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/active" element={<ActiveServicesPage />} />
@@ -151,6 +153,7 @@ export function App() {
           <Route path="clients/:clientId" element={<Client360Page />} />
           <Route path="clients/:clientId/plan" element={<ConsultantPlanBuilderPage />} />
           <Route path="clients/:clientId/cards" element={<ConsultantClientCardsPage />} />
+          <Route path="clients/:clientId/rounds/:roundId/strategy" element={<ConsultantStrategyPage />} />
           <Route
             path="clients/:clientId/credit-center"
             element={<ConsultantClientCreditCenterPage />}
