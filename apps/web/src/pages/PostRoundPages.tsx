@@ -1,12 +1,13 @@
 import { Alert, Button, Chip, LinearProgress, MenuItem, Stack, TextField, Typography as MuiTypography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import type { ElementType } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
-const Typography: any = MuiTypography;
+const Typography: ElementType = MuiTypography;
 type Summary = { round: { id: string; status: string }; sessionEnded: boolean; counts: Record<string, number>; knownApprovedAmount: number; unresolvedFollowUpCount: number; goal: null | { targetAmount: number; progressAmount: number; progressPercent: number }; applications: Array<{ id: string; productName: string; status: string; outcome: string | null; approvedLimit: string | null; approvedLimitKnown: boolean | null }> };
 const label = (value: string) => value.replaceAll('_', ' ').toLowerCase().replace(/^./, (x) => x.toUpperCase());
 export function PostRoundPage({ consultant = false }: { consultant?: boolean }) {

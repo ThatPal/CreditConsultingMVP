@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { aggregateRoundFacts } from './summary.js';
-const fact = (outcome: any, approvedLimitKnown: boolean | null = null, approvedLimit: number | null = null, status = 'RESULT_RECORDED') => ({ status, outcome, approvedLimitKnown, approvedLimit: approvedLimit === null ? null : { toString: () => String(approvedLimit) } });
+import type { CreditApplicationOutcome } from '../generated/prisma/client.js';
+const fact = (outcome: CreditApplicationOutcome | null, approvedLimitKnown: boolean | null = null, approvedLimit: number | null = null, status = 'RESULT_RECORDED') => ({ status, outcome, approvedLimitKnown, approvedLimit: approvedLimit === null ? null : { toString: () => String(approvedLimit) } });
 describe('post-round canonical aggregation', () => {
   test('counts only known positive approvals and keeps skip outside submitted applications', () => {
     const result = aggregateRoundFacts([fact('APPROVED', true, 5000), fact('APPROVED', false), fact('PENDING'), fact('DECLINED'), fact(null, null, null, 'SKIPPED'), fact('TECHNICAL_ISSUE')], 10000);
