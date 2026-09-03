@@ -25,19 +25,17 @@ describe('live session authorization and presence projection', () => {
   test('multi-tab leases keep supervision safe while one tab remains active', async () => {
     const prisma = {
       applicationSession: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({
-            id: 'session',
-            roundId: 'round',
-            appointmentId: 'appointment',
-            strategyVersionId: 'strategy',
-            status: 'LIVE',
-            pauseReason: null,
-            version: 3,
-            startedAt: new Date(),
-            endedAt: null,
-          }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'session',
+          roundId: 'round',
+          appointmentId: 'appointment',
+          strategyVersionId: 'strategy',
+          status: 'LIVE',
+          pauseReason: null,
+          version: 3,
+          startedAt: new Date(),
+          endedAt: null,
+        }),
       },
       sessionMessage: { findMany: vi.fn().mockResolvedValue([]) },
       sessionPresenceLease: {

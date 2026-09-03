@@ -6,8 +6,10 @@ import {
   Card,
   CardContent,
   Chip,
+  Checkbox,
   CircularProgress,
   Grid,
+  FormControlLabel,
   Stack,
   Typography,
 } from '@mui/material';
@@ -267,6 +269,7 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
   const [sessionId, setSessionId] = useState(routeSessionId);
   const [snapshot, setSnapshot] = useState<SessionSnapshot>();
   const [message, setMessage] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
   const [error, setError] = useState('');
   const connectionId = useState(() => crypto.randomUUID())[0];
   const load = async (id = sessionId) => {
@@ -313,6 +316,23 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
     setMessage('');
     await load();
   };
+  const confirm = async (noChanges: boolean) => {
+    if (!snapshot) return;
+    try {
+      await apiRequest(`/api/v1/sessions/${sessionId}/prelive-confirmations`, {
+        method: 'POST',
+        body: JSON.stringify({
+          noChanges,
+          categories: noChanges ? [] : categories,
+          expectedSessionVersion: snapshot.session.version,
+          idempotencyKey: crypto.randomUUID(),
+        }),
+      });
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Confirmation could not be saved.');
+    }
+  };
   if (!sessionId)
     return (
       <Stack spacing={3}>
@@ -352,6 +372,53 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
             <Alert severity="warning">
               Applications are safely paused. {snapshot.session.pauseReason}
             </Alert>
+          )}
+          {!consultant && snapshot.session.status !== 'PAUSED' && (
+            <Card>
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="h6">One final check before applications</Typography>
+                  <Typography>
+                    Has anything material changed since your Strategy was approved?
+                  </Typography>
+                  <Button variant="contained" onClick={() => void confirm(true)}>
+                    No material changes
+                  </Button>
+                  <Typography variant="subtitle2">I have new or changed information</Typography>
+                  {([
+                    ['NEW_APPLICATION', 'New application or inquiry'],
+                    ['ACCOUNT_OPENED_OR_CLOSED', 'Account opened or closed'],
+                    ['BALANCE_OR_LIMIT', 'Balance or limit changed'],
+                    ['MAJOR_APPLICATION_PLAN', 'Major application plan changed'],
+                    ['OTHER', 'Other material change'],
+                  ] as Array<[string, string]>).map(([value, label]) => (
+                    <FormControlLabel
+                      key={value}
+                      control={
+                        <Checkbox
+                          checked={categories.includes(value)}
+                          onChange={(event) =>
+                            setCategories((current) =>
+                              event.target.checked
+                                ? [...current, value]
+                                : current.filter((item) => item !== value),
+                            )
+                          }
+                        />
+                      }
+                      label={label}
+                    />
+                  ))}
+                  <Button
+                    variant="outlined"
+                    disabled={!categories.length}
+                    onClick={() => void confirm(false)}
+                  >
+                    Send changes for consultant review
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
           )}
           <Card>
             <CardContent>

@@ -235,6 +235,12 @@ enum SessionParticipantRole {
   CONSULTANT
 }
 
+enum PreLiveConfirmationDisposition {
+  CURRENT
+  MATERIAL_CHANGE_REVIEW_REQUIRED
+  SUPERSEDED
+}
+
 enum ApplicationCycleReadiness {
   READY
   ACTION_REQUIRED
@@ -2515,6 +2521,29 @@ model SessionMessage {
 
   @@index([sessionId, createdAt, id])
   @@index([clientId, createdAt])
+}
+
+model PreLiveMaterialChangeConfirmation {
+  id                  String                         @id @default(uuid()) @db.Uuid
+  sessionId           String                         @db.Uuid
+  clientId            String                         @db.Uuid
+  roundId             String                         @db.Uuid
+  strategyVersionId   String                         @db.Uuid
+  version             Int
+  sourceFingerprint   String
+  confirmationVersion Int                            @default(1)
+  submittedByUserId   String                         @db.Uuid
+  submittedAt         DateTime                       @default(now()) @db.Timestamptz(3)
+  noChanges           Boolean
+  reportedDeltas      Json
+  note                String?                        @db.VarChar(1000)
+  disposition         PreLiveConfirmationDisposition
+  supersededAt        DateTime?                      @db.Timestamptz(3)
+  createdAt           DateTime                       @default(now()) @db.Timestamptz(3)
+
+  @@unique([sessionId, version])
+  @@index([sessionId, disposition, submittedAt])
+  @@index([clientId, submittedAt])
 }
 
 model ReviewCreditTransaction {

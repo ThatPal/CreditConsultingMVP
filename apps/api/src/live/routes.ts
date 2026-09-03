@@ -22,6 +22,10 @@ import {
   sessionSnapshot,
   startApplicationSession,
 } from './sessions.js';
+import {
+  assertCurrentPreLiveConfirmation,
+  confirmPreLiveMaterialChanges,
+} from './confirmations.js';
 
 const key = z.string().min(8).max(160);
 
@@ -278,6 +282,57 @@ export function createLiveRouter(
           ...body,
         }),
       );
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post(
+    '/sessions/:sessionId/prelive-confirmations',
+    requireRole('CLIENT'),
+    async (req, res, next) => {
+      try {
+        const session = await assertSessionParticipant(
+          prisma,
+          req.params.sessionId as string,
+          req.auth!,
+        );
+        const body = z
+          .object({
+            noChanges: z.boolean(),
+            categories: z
+              .array(
+                z.enum([
+                  'NEW_APPLICATION',
+                  'ACCOUNT_OPENED_OR_CLOSED',
+                  'BALANCE_OR_LIMIT',
+                  'MAJOR_APPLICATION_PLAN',
+                  'OTHER',
+                ]),
+              )
+              .max(5),
+            note: z.string().trim().max(1000).optional(),
+            expectedSessionVersion: z.number().int().positive(),
+            idempotencyKey: key,
+          })
+          .parse(req.body);
+        res.json(
+          await confirmPreLiveMaterialChanges(prisma, {
+            sessionId: session.id,
+            clientId: session.clientId,
+            actorId: req.auth!.userId,
+            ...body,
+          }),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get('/sessions/:sessionId/release-readiness', async (req, res, next) => {
+    try {
+      await assertSessionParticipant(prisma, req.params.sessionId as string, req.auth!);
+      await assertCurrentPreLiveConfirmation(prisma, req.params.sessionId as string);
+      res.json({ ready: true });
     } catch (error) {
       next(error);
     }
