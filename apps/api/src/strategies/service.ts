@@ -85,3 +85,36 @@ export async function getRoundStrategy(prisma: PrismaClient, roundId: string, cl
   }
   return strategyProjection(prisma, strategy.id, clientId, clientSafe);
 }
+
+export async function strategyCatalog(prisma: PrismaClient, search?: string) {
+  return prisma.cardProduct.findMany({
+    where: { lifecycle: 'ACTIVE', ...(search ? { OR: [{ displayName: { contains: search, mode: 'insensitive' } }, { issuer: { name: { contains: search, mode: 'insensitive' } } }] } : {}) },
+    include: { issuer: true, currentOfferVersion: true, currentInsightVersion: true },
+    orderBy: [{ issuer: { name: 'asc' } }, { displayName: 'asc' }, { id: 'asc' }], take: 100,
+  });
+}
+
+export async function setStrategyCandidate(prisma: PrismaClient, input: {
+  strategyId: string; clientId: string; productId: string; actorId: string; expectedStrategyVersion: number;
+  disposition: 'SHORTLISTED' | 'EXCLUDED'; role?: 'PLANNED' | 'ALTERNATIVE' | 'CONDITIONAL'; internalRationale?: string; clientSafeReason?: string;
+}) {
+  const strategy = await prisma.roundStrategy.findFirst({ where: { id: input.strategyId, clientId: input.clientId }, include: { versions: { orderBy: { version: 'desc' }, take: 1 } } });
+  const draft = strategy?.versions[0];
+  if (!strategy || !draft) throw new AppError('STRATEGY_NOT_FOUND', 404, 'Strategy was not found');
+  if (strategy.version !== input.expectedStrategyVersion) throw new AppError('STRATEGY_VERSION_CONFLICT', 409, 'The strategy changed; refresh before editing');
+  if (draft.status !== 'DRAFT') throw new AppError('STRATEGY_IMMUTABLE', 409, 'Only a draft strategy can be edited');
+  const product = await prisma.cardProduct.findFirst({ where: { id: input.productId, lifecycle: 'ACTIVE' }, include: { currentOfferVersion: true, currentInsightVersion: true } });
+  if (!product?.currentOfferVersion) throw new AppError('CURRENT_OFFER_REQUIRED', 409, 'A current governed offer is required');
+  const offerVersionId = product.currentOfferVersion.id;
+  const insightVersionId = product.currentInsightVersion?.id ?? null;
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.roundStrategy.updateMany({ where: { id: strategy.id, version: input.expectedStrategyVersion }, data: { version: { increment: 1 } } });
+    if (claimed.count !== 1) throw new AppError('STRATEGY_VERSION_CONFLICT', 409, 'The strategy changed; refresh before editing');
+    await tx.strategyCandidate.upsert({ where: { strategyVersionId_productId: { strategyVersionId: draft.id, productId: product.id } }, create: {
+      strategyVersionId: draft.id, productId: product.id, offerVersionId, insightVersionId,
+      disposition: input.disposition, role: input.disposition === 'SHORTLISTED' ? (input.role ?? 'PLANNED') : null,
+      ...(input.internalRationale !== undefined ? { internalRationale: input.internalRationale } : {}), ...(input.clientSafeReason !== undefined ? { clientSafeReason: input.clientSafeReason } : {}),
+    }, update: { offerVersionId, insightVersionId, disposition: input.disposition, role: input.disposition === 'SHORTLISTED' ? (input.role ?? 'PLANNED') : null, ...(input.internalRationale !== undefined ? { internalRationale: input.internalRationale } : {}), ...(input.clientSafeReason !== undefined ? { clientSafeReason: input.clientSafeReason } : {}) } });
+  });
+  return strategyProjection(prisma, strategy.id, input.clientId, false);
+}
