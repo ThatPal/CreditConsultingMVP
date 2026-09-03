@@ -2350,6 +2350,10 @@ model CreditCardRound {
   blockedAt                DateTime?                    @db.Timestamptz(3)
   blockedReason            String?
   completedAt              DateTime?                    @db.Timestamptz(3)
+  finalAnalysisId          String?                      @db.Uuid
+  finalizedByUserId        String?                      @db.Uuid
+  finalizationVersion      Int                          @default(0)
+  nextReviewAt             DateTime?                    @db.Timestamptz(3)
   createdAt                DateTime                     @default(now()) @db.Timestamptz(3)
   updatedAt                DateTime                     @updatedAt @db.Timestamptz(3)
   client                   Client                       @relation(fields: [clientId], references: [id], onDelete: Restrict)

@@ -5,7 +5,7 @@ import { executeConsequentialCommand } from '../transactions/consequentialComman
 import { getPostRoundSummary } from './summary.js';
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
-async function source(prisma: PrismaClient | Prisma.TransactionClient, roundId: string, clientId: string) {
+export async function roundAnalysisSource(prisma: PrismaClient | Prisma.TransactionClient, roundId: string, clientId: string) {
   const applications = await prisma.creditApplication.findMany({ where: { roundId, clientId }, select: { id: true, version: true, status: true, outcome: true, approvedLimitKnown: true, approvedLimit: true, updatedAt: true }, orderBy: { id: 'asc' } });
   const followUps = await prisma.postRoundFollowUp.findMany({ where: { roundId, clientId }, select: { id: true, version: true, status: true, updatedAt: true }, orderBy: { id: 'asc' } });
   const snapshot = { applications: applications.map((x) => ({ ...x, approvedLimit: x.approvedLimit?.toString() ?? null })), followUps };
@@ -14,7 +14,7 @@ async function source(prisma: PrismaClient | Prisma.TransactionClient, roundId: 
 
 export async function prepareRoundAnalysis(prisma: PrismaClient, input: { roundId: string; clientId: string; actorId: string; kind: RoundAnalysisKind; clientSafeContent?: Prisma.InputJsonObject; idempotencyKey: string }) {
   const summary = await getPostRoundSummary(prisma, input.roundId, input.clientId, true);
-  const currentSource = await source(prisma, input.roundId, input.clientId);
+  const currentSource = await roundAnalysisSource(prisma, input.roundId, input.clientId);
   return executeConsequentialCommand(prisma, {
     idempotency: { scope: 'round-analysis', subjectId: input.roundId, operation: `prepare:${input.kind}`, key: input.idempotencyKey, requestHash: hash({ kind: input.kind, source: currentSource.fingerprint }) },
     audit: (result) => ({ action: 'ROUND_ANALYSIS_PREPARED', entityType: 'RoundAnalysis', entityId: String((result as { id: string }).id), clientId: input.clientId, actorId: input.actorId }),
@@ -31,7 +31,7 @@ export async function prepareRoundAnalysis(prisma: PrismaClient, input: { roundI
 export async function approveRoundAnalysis(prisma: PrismaClient, input: { analysisId: string; clientId: string; actorId: string; idempotencyKey: string }) {
   const analysis = await prisma.roundAnalysis.findFirst({ where: { id: input.analysisId, clientId: input.clientId } });
   if (!analysis) throw new AppError('ANALYSIS_NOT_FOUND', 404, 'Round analysis was not found');
-  const currentSource = await source(prisma, analysis.roundId, input.clientId);
+  const currentSource = await roundAnalysisSource(prisma, analysis.roundId, input.clientId);
   if (currentSource.fingerprint !== analysis.sourceFingerprint) throw new AppError('ANALYSIS_SOURCE_STALE', 409, 'Application results changed; prepare an updated analysis');
   return executeConsequentialCommand(prisma, {
     idempotency: { scope: 'round-analysis', subjectId: analysis.id, operation: 'approve', key: input.idempotencyKey },
@@ -47,7 +47,7 @@ export async function approveRoundAnalysis(prisma: PrismaClient, input: { analys
 }
 
 export async function getRoundAnalysis(prisma: PrismaClient, roundId: string, clientId: string, consultant = false) {
-  const currentSource = await source(prisma, roundId, clientId);
+  const currentSource = await roundAnalysisSource(prisma, roundId, clientId);
   const analyses = await prisma.roundAnalysis.findMany({ where: { roundId, clientId, ...(consultant ? {} : { status: 'APPROVED' }) }, orderBy: { version: 'desc' } });
   return { current: analyses[0] ? { ...analyses[0], stale: analyses[0].sourceFingerprint !== currentSource.fingerprint, ...(consultant ? {} : { internalContent: undefined, sourceSnapshot: undefined }) } : null, history: analyses.map((x) => ({ id: x.id, version: x.version, kind: x.kind, status: x.status, approvedAt: x.approvedAt })), sourceFingerprint: consultant ? currentSource.fingerprint : undefined };
 }

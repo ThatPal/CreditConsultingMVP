@@ -8,7 +8,7 @@ import { ConsultantAppShell } from './layouts/ConsultantAppShell';
 import { AccountPage } from './pages/AccountPage';
 import { MajorApplicationCheckPage, RoundPage, SeasonalCyclePage } from './pages/Phase11Pages';
 import { ClientStrategyPage, ConsultantStrategyPage } from './pages/StrategyPages';
-import { PostRoundFollowUpPage, PostRoundPage, RoundAnalysisPage } from './pages/PostRoundPages';
+import { PostRoundFollowUpPage, PostRoundPage, RoundAnalysisPage, RoundFinalizationPage } from './pages/PostRoundPages';
 import {
   AppointmentDetailPage,
   ConsultantCalendarPage,
@@ -179,6 +179,7 @@ export function App() {
           />
           <Route path="clients/:clientId/rounds/:roundId/results" element={<PostRoundPage consultant />} />
           <Route path="clients/:clientId/rounds/:roundId/analysis" element={<RoundAnalysisPage consultant />} />
+          <Route path="clients/:clientId/rounds/:roundId/finalize" element={<RoundFinalizationPage />} />
           <Route
             path="clients/:clientId/credit-center"
             element={<ConsultantClientCreditCenterPage />}
