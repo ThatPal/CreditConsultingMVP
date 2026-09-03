@@ -94,6 +94,8 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
     expect(replay.replayed).toBe(true);
     expect(await prisma.creditCardRound.count({ where: { clientId } })).toBe(1);
     expect(await prisma.serviceEntitlement.findUniqueOrThrow({ where: { id: entitlementId } })).toMatchObject({ status: 'CONSUMED', quantityUsed: 1 });
+    expect(await prisma.auditEvent.count({ where: { clientId, action: 'CREDIT_CARD_ROUND_STARTED' } })).toBe(1);
+    expect(await prisma.outboxEvent.count({ where: { aggregateId: roundId, eventType: 'credit-card-round.changed' } })).toBe(1);
     expect(first.view.readiness.strategyReady).toBe(false);
     expect(first.view.readiness.blockers).toContain('PREPARATION_INCOMPLETE');
     await prisma.planItem.update({ where: { id: planItemId }, data: { status: 'COMPLETED', completedAt: new Date() } });

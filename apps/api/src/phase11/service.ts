@@ -135,9 +135,11 @@ export async function createRound(prisma: PrismaClient, input: { clientId: strin
       if (!cycle?.goalSnapshot) throw new AppError('CYCLE_NOT_READY', 409, 'Confirm the current seasonal cycle goal before starting a round');
       if (cycle.goalSnapshot.sourceGoalId !== source.goal!.id || cycle.goalSnapshot.sourceGoalVersion !== source.goal!.version)
         throw new AppError('CYCLE_GOAL_STALE', 409, 'The current goal changed after this cycle was confirmed');
-      const entitlement = await tx.serviceEntitlement.findFirst({ where: { clientId: input.clientId, serviceType: 'CREDIT_CARD_ROUND', status: 'ACTIVE', quantityUsed: { lt: 1 }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }] });
+      const entitlements = await tx.serviceEntitlement.findMany({ where: { clientId: input.clientId, serviceType: 'CREDIT_CARD_ROUND', status: 'ACTIVE', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }] });
+      const entitlement = entitlements.find((candidate) => candidate.quantityUsed < candidate.quantityGranted);
       if (!entitlement) throw new AppError('ROUND_ENTITLEMENT_REQUIRED', 409, 'Purchase the Credit Card Round service before continuing');
-      const claimed = await tx.serviceEntitlement.updateMany({ where: { id: entitlement.id, status: 'ACTIVE', quantityUsed: entitlement.quantityUsed }, data: { status: 'CONSUMED', quantityUsed: { increment: 1 }, consumedAt: new Date() } });
+      const finalUse = entitlement.quantityUsed + 1 >= entitlement.quantityGranted;
+      const claimed = await tx.serviceEntitlement.updateMany({ where: { id: entitlement.id, status: 'ACTIVE', quantityUsed: entitlement.quantityUsed }, data: { status: finalUse ? 'CONSUMED' : 'ACTIVE', quantityUsed: { increment: 1 }, ...(finalUse ? { consumedAt: new Date() } : {}) } });
       if (claimed.count !== 1) throw new AppError('ROUND_ENTITLEMENT_ALREADY_USED', 409, 'This round entitlement is already in use');
       if (input.failAfterEntitlement) throw new Error('PHASE11_FAILURE_INJECTION');
       const created = await tx.creditCardRound.create({ data: { clientId: input.clientId, cycleId: cycle.id, goalSnapshotId: cycle.goalSnapshot.id, profileStateId: source.profile!.id, sourceReviewId: source.profile!.sourceReviewId, preparationPlanVersionId: source.planVersion?.id ?? null, serviceEntitlementId: entitlement.id, sourceFingerprint: source.fingerprint, sourceContext: source.context as Prisma.InputJsonValue } });
