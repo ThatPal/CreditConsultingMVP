@@ -15,6 +15,7 @@ import {
   listWishlist,
   offerHistory,
   prepareInsight,
+  reviewCandidate,
   saveClientCard,
   setWishlist,
 } from './service.js';
@@ -76,6 +77,9 @@ export function createCardRouter(prisma: PrismaClient, authorization: Authorizat
   });
   router.post('/catalog/candidates/:candidateId/approve', requireCapability(authorization, 'catalog.manage', undefined, { requireStepUp: true }, recorder), async (req, res, next) => {
     try { const body = z.object({ expectedVersion: z.number().int().positive(), reason: z.string().min(1).max(1000) }).parse(req.body); res.json(await approveCandidate(prisma, { candidateId: req.params.candidateId as string, actorId: req.auth!.userId, ...body })); } catch (error) { next(error); }
+  });
+  router.post('/catalog/candidates/:candidateId/review', requireCapability(authorization, 'catalog.manage', undefined, { requireStepUp: true }, recorder), async (req, res, next) => {
+    try { const body = z.object({ expectedVersion: z.number().int().positive(), action: z.enum(['REJECT', 'MERGE', 'RESOLVE_CONFLICT']), reason: z.string().min(1).max(1000), matchedProductId: z.string().uuid().optional() }).parse(req.body); res.json(await reviewCandidate(prisma, { candidateId: req.params.candidateId as string, actorId: req.auth!.userId, ...body })); } catch (error) { next(error); }
   });
   router.post('/catalog/products/:productId/insights', requireRole('CONSULTANT'), requireCapability(authorization, 'catalog.manage', undefined, undefined, recorder), async (req, res, next) => {
     try { const body = z.object({ summary: z.string().min(1).max(2000), rationale: z.string().max(4000).optional(), strengths: z.array(z.string()), cautions: z.array(z.string()), confidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).optional(), evidence: z.array(z.unknown()), ai: z.object({ processKey: z.string(), processVersion: z.number().int().positive(), modelProvenance: z.record(z.string(), z.unknown()), proposedPayload: z.record(z.string(), z.unknown()) }).optional() }).parse(req.body); res.status(201).json(await prepareInsight(prisma, { productId: req.params.productId as string, actorId: req.auth!.userId, ...body })); } catch (error) { next(error); }

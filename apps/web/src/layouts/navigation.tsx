@@ -25,7 +25,7 @@ export type NavigationItem = {
   section: 'primary' | 'utility';
   capability?: string;
   status: 'available' | 'foundation';
-  group?: 'Overview' | 'Commerce' | 'Integrations';
+  group?: 'Overview' | 'Commerce' | 'Catalog' | 'Integrations';
 };
 
 const registry: NavigationItem[] = [
@@ -157,6 +157,16 @@ const registry: NavigationItem[] = [
     status: 'foundation',
   },
   {
+    id: 'crm-card-catalog',
+    label: 'Card Catalog',
+    path: '/crm/card-catalog',
+    icon: CreditCardRounded,
+    shell: 'consultant',
+    section: 'primary',
+    capability: 'catalog.read',
+    status: 'available',
+  },
+  {
     id: 'crm-support',
     label: 'Support',
     path: '/crm/support',
@@ -226,6 +236,17 @@ const registry: NavigationItem[] = [
     capability: 'payment.read',
     status: 'available',
     group: 'Integrations',
+  },
+  {
+    id: 'admin-card-catalog',
+    label: 'Card Catalog',
+    path: '/admin/card-catalog',
+    icon: CreditCardRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'catalog.read',
+    status: 'available',
+    group: 'Catalog',
   },
   {
     id: 'admin-stripe',

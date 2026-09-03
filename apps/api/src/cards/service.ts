@@ -137,6 +137,13 @@ export async function listCandidates(prisma: PrismaClient, status?: 'PENDING' | 
   return prisma.cardCatalogCandidate.findMany({ where: status ? { status } : {}, include: { source: { select: { key: true, name: true, official: true } }, matchedProduct: { select: { id: true, displayName: true } } }, orderBy: [{ materialConflict: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }], take: 200 });
 }
 
+export async function reviewCandidate(prisma: PrismaClient, input: { candidateId: string; expectedVersion: number; actorId: string; action: 'REJECT' | 'MERGE' | 'RESOLVE_CONFLICT'; reason: string; matchedProductId?: string | undefined }) {
+  const candidate = await prisma.cardCatalogCandidate.findUnique({ where: { id: input.candidateId } });
+  if (!candidate) throw new AppError('NOT_FOUND', 404, 'Catalog candidate was not found');
+  if (candidate.version !== input.expectedVersion) throw new AppError('VERSION_CONFLICT', 409, 'Catalog candidate changed');
+  return prisma.cardCatalogCandidate.update({ where: { id: candidate.id }, data: { status: input.action === 'REJECT' ? 'REJECTED' : input.action === 'MERGE' ? 'MERGED' : 'PENDING', ...(input.action === 'RESOLVE_CONFLICT' ? { materialConflict: false, conflicts: json([]) } : {}), ...(input.matchedProductId ? { matchedProductId: input.matchedProductId } : {}), reviewedById: input.actorId, reviewReason: input.reason, reviewedAt: new Date(), version: { increment: 1 } } });
+}
+
 export async function approveCandidate(prisma: PrismaClient, input: { candidateId: string; expectedVersion: number; actorId: string; reason: string }) {
   return prisma.$transaction(async (tx) => {
     const candidate = await tx.cardCatalogCandidate.findUnique({ where: { id: input.candidateId }, include: { source: true } });
