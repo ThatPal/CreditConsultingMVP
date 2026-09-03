@@ -263,11 +263,20 @@ type SessionSnapshot = {
   presence: { clientPresent: boolean; consultantPresent: boolean; supervisionSafe: boolean };
   messages: Array<{ id: string; authorRole: string; body: string; createdAt: string }>;
 };
+type ReleasedApplication = {
+  id: string;
+  status: string;
+  product: { displayName: string; slug: string } | null;
+  offerFacts: unknown;
+  whyThisCard: string | null;
+  allowedActions: string[];
+};
 
 export function LiveSessionPage({ consultant = false }: { consultant?: boolean }) {
   const { roundId = '', sessionId: routeSessionId = '' } = useParams();
   const [sessionId, setSessionId] = useState(routeSessionId);
   const [snapshot, setSnapshot] = useState<SessionSnapshot>();
+  const [application, setApplication] = useState<ReleasedApplication | null>(null);
   const [message, setMessage] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -276,6 +285,14 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
     if (!id) return;
     try {
       setSnapshot(await apiRequest<SessionSnapshot>(`/api/v1/sessions/${id}`));
+      if (!consultant)
+        setApplication(
+          (
+            await apiRequest<{ application: ReleasedApplication | null }>(
+              `/api/v1/client/sessions/${id}/current-application`,
+            )
+          ).application,
+        );
       setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Live session unavailable.');
@@ -333,6 +350,27 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
       setError(cause instanceof Error ? cause.message : 'Confirmation could not be saved.');
     }
   };
+  const applicationAction = async (action: 'OPEN' | 'SKIP' | 'HELP') => {
+    if (!application) return;
+    await apiRequest(`/api/v1/client/applications/${application.id}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action, idempotencyKey: crypto.randomUUID() }),
+    });
+    await load();
+  };
+  const recordResult = async (outcome: string) => {
+    if (!application) return;
+    await apiRequest(`/api/v1/client/applications/${application.id}/result`, {
+      method: 'POST',
+      body: JSON.stringify({
+        outcome,
+        approvedLimitKnown: false,
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    });
+    setApplication(null);
+    await load();
+  };
   if (!sessionId)
     return (
       <Stack spacing={3}>
@@ -373,6 +411,57 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
               Applications are safely paused. {snapshot.session.pauseReason}
             </Alert>
           )}
+          {!consultant && application && (
+            <Card>
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="overline">Current approved card</Typography>
+                  <Typography variant="h5">
+                    {application.product?.displayName ?? 'Approved card'}
+                  </Typography>
+                  <Typography>{application.whyThisCard}</Typography>
+                  <Typography variant="body2">
+                    Frozen offer facts: {JSON.stringify(application.offerFacts)}
+                  </Typography>
+                  {application.status === 'RELEASED' ? (
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <Button variant="contained" onClick={() => void applicationAction('OPEN')}>
+                        Apply on issuer site
+                      </Button>
+                      <Button variant="outlined" onClick={() => void applicationAction('SKIP')}>
+                        Skip this card
+                      </Button>
+                      <Button variant="text" onClick={() => void applicationAction('HELP')}>
+                        Need help
+                      </Button>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={1}>
+                      <Typography variant="h6">What happened?</Typography>
+                      {(
+                        [
+                          ['APPROVED', 'Approved'],
+                          ['DECLINED', 'Declined'],
+                          ['PENDING', 'Pending / under review'],
+                          ['APPLICATION_NOT_COMPLETED', 'Application not completed'],
+                          ['TECHNICAL_ISSUE', 'Technical issue'],
+                          ['OTHER', 'Other / needs consultant review'],
+                        ] as Array<[string, string]>
+                      ).map(([value, label]) => (
+                        <Button
+                          key={value}
+                          variant="outlined"
+                          onClick={() => void recordResult(value)}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </Stack>
+                  )}
+                </Stack>
+              </CardContent>
+            </Card>
+          )}
           {!consultant && snapshot.session.status !== 'PAUSED' && (
             <Card>
               <CardContent>
@@ -385,13 +474,15 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
                     No material changes
                   </Button>
                   <Typography variant="subtitle2">I have new or changed information</Typography>
-                  {([
-                    ['NEW_APPLICATION', 'New application or inquiry'],
-                    ['ACCOUNT_OPENED_OR_CLOSED', 'Account opened or closed'],
-                    ['BALANCE_OR_LIMIT', 'Balance or limit changed'],
-                    ['MAJOR_APPLICATION_PLAN', 'Major application plan changed'],
-                    ['OTHER', 'Other material change'],
-                  ] as Array<[string, string]>).map(([value, label]) => (
+                  {(
+                    [
+                      ['NEW_APPLICATION', 'New application or inquiry'],
+                      ['ACCOUNT_OPENED_OR_CLOSED', 'Account opened or closed'],
+                      ['BALANCE_OR_LIMIT', 'Balance or limit changed'],
+                      ['MAJOR_APPLICATION_PLAN', 'Major application plan changed'],
+                      ['OTHER', 'Other material change'],
+                    ] as Array<[string, string]>
+                  ).map(([value, label]) => (
                     <FormControlLabel
                       key={value}
                       control={

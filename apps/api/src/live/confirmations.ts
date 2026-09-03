@@ -13,7 +13,7 @@ export async function confirmPreLiveMaterialChanges(
     actorId: string;
     noChanges: boolean;
     categories: string[];
-  note?: string | undefined;
+    note?: string | undefined;
     expectedSessionVersion: number;
     idempotencyKey: string;
   },

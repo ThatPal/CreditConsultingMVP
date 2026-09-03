@@ -26,6 +26,12 @@ import {
   assertCurrentPreLiveConfirmation,
   confirmPreLiveMaterialChanges,
 } from './confirmations.js';
+import {
+  applyApplicationAction,
+  currentReleasedApplication,
+  recordApplicationResult,
+  releaseApplication,
+} from './applications.js';
 
 const key = z.string().min(8).max(160);
 
@@ -337,6 +343,99 @@ export function createLiveRouter(
       next(error);
     }
   });
+  router.post(
+    '/consultant/sessions/:sessionId/applications/release',
+    requireRole('CONSULTANT'),
+    async (req, res, next) => {
+      try {
+        const body = z
+          .object({ strategyApplicationId: z.string().uuid(), idempotencyKey: key })
+          .parse(req.body);
+        res.json(
+          await releaseApplication(prisma, {
+            sessionId: req.params.sessionId as string,
+            consultantId: req.auth!.userId,
+            ...body,
+          }),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
+    '/client/sessions/:sessionId/current-application',
+    requireRole('CLIENT'),
+    async (req, res, next) => {
+      try {
+        const session = await assertSessionParticipant(
+          prisma,
+          req.params.sessionId as string,
+          req.auth!,
+        );
+        res.json({
+          application: await currentReleasedApplication(prisma, session.id, session.clientId),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.post(
+    '/client/applications/:applicationId/action',
+    requireRole('CLIENT'),
+    async (req, res, next) => {
+      try {
+        const body = z
+          .object({ action: z.enum(['OPEN', 'SKIP', 'HELP']), idempotencyKey: key })
+          .parse(req.body);
+        res.json(
+          await applyApplicationAction(prisma, {
+            applicationId: req.params.applicationId as string,
+            clientId: req.auth!.clientId!,
+            actorId: req.auth!.userId,
+            ...body,
+          }),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.post(
+    '/client/applications/:applicationId/result',
+    requireRole('CLIENT'),
+    async (req, res, next) => {
+      try {
+        const body = z
+          .object({
+            outcome: z.enum([
+              'APPROVED',
+              'DECLINED',
+              'PENDING',
+              'APPLICATION_NOT_COMPLETED',
+              'TECHNICAL_ISSUE',
+              'OTHER',
+            ]),
+            approvedLimitKnown: z.boolean().optional(),
+            approvedLimit: z.number().positive().optional(),
+            issuerReason: z.string().trim().max(500).optional(),
+            idempotencyKey: key,
+          })
+          .parse(req.body);
+        res.json(
+          await recordApplicationResult(prisma, {
+            applicationId: req.params.applicationId as string,
+            clientId: req.auth!.clientId!,
+            actorId: req.auth!.userId,
+            ...body,
+          }),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.get('/client/rounds/:roundId/session', requireRole('CLIENT'), async (req, res, next) => {
     try {
       const session = await prisma.applicationSession.findFirst({

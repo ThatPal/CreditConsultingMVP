@@ -4,14 +4,12 @@ import { assertCurrentPreLiveConfirmation } from './confirmations.js';
 const state = (confirmationFingerprint = 'fingerprint', roundFingerprint = 'fingerprint') =>
   ({
     applicationSession: {
-      findUnique: vi
-        .fn()
-        .mockResolvedValue({
-          id: 'session',
-          roundId: 'round',
-          strategyVersionId: 'strategy',
-          sourceFingerprint: 'fingerprint',
-        }),
+      findUnique: vi.fn().mockResolvedValue({
+        id: 'session',
+        roundId: 'round',
+        strategyVersionId: 'strategy',
+        sourceFingerprint: 'fingerprint',
+      }),
     },
     preLiveMaterialChangeConfirmation: {
       findFirst: vi
