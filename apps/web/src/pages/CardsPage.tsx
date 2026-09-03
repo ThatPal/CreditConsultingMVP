@@ -6,6 +6,7 @@ import PersonRounded from '@mui/icons-material/PersonRounded';
 import {
   Alert,
   Box,
+  Button,
   Chip,
   Stack,
   ToggleButton,
@@ -14,6 +15,7 @@ import {
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { MetricCard } from '../components/common/MetricCard';
@@ -82,6 +84,10 @@ export function CardsPage() {
         title="Your cards"
         description="One catalog for current and closed cards, application results, and how each application was submitted."
       />
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+        <Button component={RouterLink} to="/app/cards/explore" variant="contained">Explore cards</Button>
+        <Button component={RouterLink} to="/app/cards/wishlist" variant="outlined">Wishlist</Button>
+      </Stack>
       <Box
         sx={{
           display: 'grid',

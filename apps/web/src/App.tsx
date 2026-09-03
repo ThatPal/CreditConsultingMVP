@@ -8,6 +8,7 @@ import { ConsultantAppShell } from './layouts/ConsultantAppShell';
 import { AccountPage } from './pages/AccountPage';
 import { ApplicationCyclesPage } from './pages/ApplicationCyclesPage';
 import { CardsPage } from './pages/CardsPage';
+import { CardDetailPage, CardWishlistPage, ConsultantClientCardsPage, ExploreCardsPage } from './pages/CardCatalogPages';
 import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -114,6 +115,9 @@ export function App() {
           <Route path="credit-center/review" element={<ClientReviewPage />} />
           <Route path="readiness" element={<ReadinessPage />} />
           <Route path="cards" element={<CardsPage />} />
+          <Route path="cards/explore" element={<ExploreCardsPage />} />
+          <Route path="cards/wishlist" element={<CardWishlistPage />} />
+          <Route path="cards/:productId" element={<CardDetailPage />} />
           <Route path="application-rounds" element={<ApplicationCyclesPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
@@ -144,6 +148,7 @@ export function App() {
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:clientId" element={<Client360Page />} />
           <Route path="clients/:clientId/plan" element={<ConsultantPlanBuilderPage />} />
+          <Route path="clients/:clientId/cards" element={<ConsultantClientCardsPage />} />
           <Route
             path="clients/:clientId/credit-center"
             element={<ConsultantClientCreditCenterPage />}
