@@ -1,3 +1,6 @@
+DO $$
+BEGIN
+IF to_regclass('"RoundStrategy"') IS NULL THEN
 CREATE TYPE "RoundStrategyStatus" AS ENUM ('DRAFT', 'READY_FOR_APPROVAL', 'APPROVED', 'STALE');
 CREATE TYPE "StrategyVersionStatus" AS ENUM ('DRAFT', 'READY_FOR_APPROVAL', 'APPROVED', 'SUPERSEDED', 'STALE');
 CREATE TYPE "StrategyCandidateDisposition" AS ENUM ('SHORTLISTED', 'EXCLUDED');
@@ -48,3 +51,5 @@ ALTER TABLE "StrategyVersion" ADD CONSTRAINT "StrategyVersion_strategyId_fkey" F
 ALTER TABLE "StrategyCandidate" ADD CONSTRAINT "StrategyCandidate_strategyVersionId_fkey" FOREIGN KEY ("strategyVersionId") REFERENCES "StrategyVersion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "StrategyApplication" ADD CONSTRAINT "StrategyApplication_strategyVersionId_fkey" FOREIGN KEY ("strategyVersionId") REFERENCES "StrategyVersion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "RoundStrategy" ADD CONSTRAINT "RoundStrategy_approvedVersionId_fkey" FOREIGN KEY ("approvedVersionId") REFERENCES "StrategyVersion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+END IF;
+END $$;
