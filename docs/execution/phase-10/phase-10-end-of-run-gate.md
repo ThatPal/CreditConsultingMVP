@@ -45,6 +45,7 @@
 ## CI
 
 - The shared retrieval worker and shared AI job execution runtime were not changed, so neither sprint package required intermediate CI.
+- Initial phase-head run [33699968371](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33699968371) exposed one test-isolation defect: the portfolio integration test depended on optional demo catalog data even though CI correctly runs only the canonical system seed before tests. The test now creates and removes its own issuer/product fixture; focused verification is 2/2 green.
 - Exact-final-head CI: recorded after the phase gate is committed and pushed.
 
 ## Review routes and fixtures

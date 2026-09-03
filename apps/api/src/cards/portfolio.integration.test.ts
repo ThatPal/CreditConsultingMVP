@@ -11,6 +11,7 @@ describe('client card portfolio and wishlist', () => {
   let actorId = '';
   let clientId = '';
   let otherClientId = '';
+  let issuerId = '';
   let productId = '';
   let cardId = '';
   beforeAll(async () => {
@@ -18,7 +19,8 @@ describe('client card portfolio and wishlist', () => {
     actorId = (await prisma.user.create({ data: { email: `portfolio-${marker}@example.test`, role: 'CLIENT', status: 'ACTIVE' } })).id;
     clientId = (await prisma.client.create({ data: { firstName: marker, lastName: 'Owner', termsAcceptedAt: new Date() } })).id;
     otherClientId = (await prisma.client.create({ data: { firstName: marker, lastName: 'Other', termsAcceptedAt: new Date() } })).id;
-    productId = (await prisma.cardProduct.findFirstOrThrow({ where: { lifecycle: 'ACTIVE' } })).id;
+    issuerId = (await prisma.cardIssuer.create({ data: { slug: `portfolio-issuer-${marker}`, name: 'Portfolio test issuer', aliases: [] } })).id;
+    productId = (await prisma.cardProduct.create({ data: { issuerId, slug: `portfolio-product-${marker}`, canonicalName: 'Portfolio test card', displayName: 'Portfolio test card', aliases: [], audience: 'PERSONAL', portfolioType: 'PERSONAL_CREDIT', features: [], tags: [] } })).id;
   });
   afterAll(async () => {
     await prisma.clientCardWishlist.deleteMany({ where: { clientId } });
@@ -26,6 +28,8 @@ describe('client card portfolio and wishlist', () => {
     await prisma.outboxEvent.deleteMany({ where: { aggregateId: clientId } });
     await prisma.auditEvent.deleteMany({ where: { clientId } });
     await prisma.clientCard.deleteMany({ where: { clientId } });
+    await prisma.cardProduct.delete({ where: { id: productId } });
+    await prisma.cardIssuer.delete({ where: { id: issuerId } });
     await prisma.client.deleteMany({ where: { id: { in: [clientId, otherClientId] } } });
     await prisma.user.delete({ where: { id: actorId } });
     await prisma.$disconnect();
