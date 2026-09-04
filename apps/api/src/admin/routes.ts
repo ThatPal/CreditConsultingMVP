@@ -11,6 +11,7 @@ import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
 import type { DurableAIRuntime } from '../ai/durableRuntime.js';
+import { assertApprovedSourceUrl } from '../cards/service.js';
 
 const pageQuery = z.object({
   search: z.string().trim().max(120).default(''),
@@ -930,6 +931,130 @@ export function createAdminOperationsRouter(
         },
       );
       res.status(result.replayed ? 200 : 201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/sources', canRead, async (_req, res, next) => {
+    try {
+      const sources = await prisma.cardSource.findMany({
+        select: {
+          id: true,
+          key: true,
+          name: true,
+          baseUrl: true,
+          allowedHosts: true,
+          official: true,
+          active: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { mappings: true, candidates: true } },
+        },
+        orderBy: [{ active: 'desc' }, { name: 'asc' }, { id: 'asc' }],
+      });
+      res.json({ sources });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/sources', canChange, async (req, res, next) => {
+    try {
+      const input = z
+        .object({
+          key: z
+            .string()
+            .trim()
+            .regex(/^[a-z0-9._-]{2,80}$/),
+          name: z.string().trim().min(2).max(120),
+          baseUrl: z.url(),
+          allowedHosts: z
+            .array(
+              z
+                .string()
+                .trim()
+                .toLowerCase()
+                .regex(/^[a-z0-9.-]+$/),
+            )
+            .min(1)
+            .max(20),
+          official: z.boolean().default(false),
+          reason: z.string().trim().min(8).max(500),
+        })
+        .parse(req.body);
+      const normalized = assertApprovedSourceUrl(input.baseUrl, input.allowedHosts);
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string }>(prisma, {
+        idempotency: { scope: 'admin-source', subjectId: input.key, operation: 'create', key },
+        audit: (r) => ({
+          actorId: req.auth!.userId,
+          action: 'ADMIN_SOURCE_CREATED',
+          entityType: 'CardSource',
+          entityId: r.id,
+          metadata: { key: input.key, reason: input.reason },
+        }),
+        outbox: {
+          eventType: 'source.registry-changed',
+          eventKey: key,
+          aggregateType: 'CardSource',
+          payload: (r) => ({ id: r.id, domains: ['catalog', 'retrieval'] }),
+        },
+        mutate: async (tx) =>
+          tx.cardSource.create({
+            data: {
+              key: input.key,
+              name: input.name,
+              baseUrl: normalized,
+              allowedHosts: input.allowedHosts,
+              official: input.official,
+              active: false,
+            },
+            select: { id: true },
+          }),
+      });
+      res.status(result.replayed ? 200 : 201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.patch('/sources/:sourceId', canChange, async (req, res, next) => {
+    try {
+      const sourceId = req.params.sourceId as string;
+      const input = z
+        .object({
+          active: z.boolean(),
+          expectedUpdatedAt: z.coerce.date(),
+          reason: z.string().trim().min(8).max(500),
+        })
+        .parse(req.body);
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; active: boolean }>(prisma, {
+        idempotency: { scope: 'admin-source', subjectId: sourceId, operation: 'set-active', key },
+        audit: (r) => ({
+          actorId: req.auth!.userId,
+          action: r.active ? 'ADMIN_SOURCE_ACTIVATED' : 'ADMIN_SOURCE_DEACTIVATED',
+          entityType: 'CardSource',
+          entityId: r.id,
+          metadata: { reason: input.reason },
+        }),
+        outbox: {
+          eventType: 'source.registry-changed',
+          eventKey: key,
+          aggregateType: 'CardSource',
+          aggregateId: sourceId,
+          payload: { sourceId, domains: ['catalog', 'retrieval'] },
+        },
+        mutate: async (tx) => {
+          const changed = await tx.cardSource.updateMany({
+            where: { id: sourceId, updatedAt: input.expectedUpdatedAt },
+            data: { active: input.active },
+          });
+          if (changed.count !== 1)
+            throw new AppError('STALE_SOURCE', 409, 'Source changed; refresh before continuing');
+          return { id: sourceId, active: input.active };
+        },
+      });
+      res.json(result);
     } catch (error) {
       next(error);
     }

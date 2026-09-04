@@ -292,6 +292,17 @@ const registry: NavigationItem[] = [
     group: 'Overview',
   },
   {
+    id: 'admin-sources',
+    label: 'Source registry',
+    path: '/admin/sources',
+    icon: DescriptionRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Integrations',
+  },
+  {
     id: 'admin-security-events',
     label: 'Security events',
     path: '/admin/security-events',

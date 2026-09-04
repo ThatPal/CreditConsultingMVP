@@ -58,6 +58,7 @@ import {
   AdminAIJobsPage,
   AdminAIProcessesPage,
 } from './pages/AdminAIJobsPages';
+import { AdminSourcesPage } from './pages/AdminSourcesPage';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
 import {
@@ -278,6 +279,7 @@ export function App() {
           <Route path="ai/jobs" element={<AdminAIJobsPage />} />
           <Route path="ai/jobs/:jobId" element={<AdminAIJobDetailPage />} />
           <Route path="ai/processes" element={<AdminAIProcessesPage />} />
+          <Route path="sources" element={<AdminSourcesPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
