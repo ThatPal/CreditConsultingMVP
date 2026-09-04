@@ -283,6 +283,34 @@ describe('client and relationship context', () => {
       .expect(403);
   });
 
+  test('projects a bounded immutable client timeline without metadata leakage', async () => {
+    const clientId = clients[0]!.id;
+    const event = await prisma.auditEvent.create({
+      data: {
+        clientId,
+        actorId: consultant.id,
+        action: 'PLAN_APPROVED',
+        entityType: 'Plan',
+        entityId: randomUUID(),
+        metadata: { providerToken: 'must-not-leak', internalReasoning: 'private' },
+      },
+    });
+    const response = await request(app())
+      .get(`/api/v1/consultant/client-context/${clientId}/timeline?pageSize=1`)
+      .set('x-test-identity', 'consultant')
+      .expect(200);
+    expect(response.body.events[0]).toMatchObject({
+      id: event.id,
+      action: 'PLAN_APPROVED',
+      deepLink: `/crm/clients/${clientId}/plan`,
+    });
+    expect(response.body.events[0]).not.toHaveProperty('metadata');
+    await request(app())
+      .get(`/api/v1/consultant/client-context/${clientId}/timeline`)
+      .set('x-test-identity', 'outsider')
+      .expect(403);
+  });
+
   test('keeps directory and known-client detail fail closed for unauthorized staff and Admin', async () => {
     await request(app())
       .get('/api/v1/consultant/client-context')

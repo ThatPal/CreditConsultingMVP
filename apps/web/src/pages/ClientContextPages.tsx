@@ -9,12 +9,13 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
@@ -29,8 +30,9 @@ type DirectoryClient = {
   phone: string | null;
   timezone: string;
   status: string;
+  assignedConsultant: { id: string; name: string | null; email: string } | null;
   user: { email: string };
-  _count: { businesses: number; financialRelationships: number };
+  _count: { businesses: number; financialRelationships: number; workItems: number };
 };
 type DirectoryResponse = {
   clients: DirectoryClient[];
@@ -41,11 +43,21 @@ type DirectoryResponse = {
 };
 
 export function ClientsPage() {
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const params = new URLSearchParams({ search, page: String(page), pageSize: '20' });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? '';
+  const status = searchParams.get('status') ?? 'ACTIVE';
+  const sort = searchParams.get('sort') ?? 'NAME_ASC';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const update = (changes: Record<string, string>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(changes).forEach(([key, value]) =>
+      value ? next.set(key, value) : next.delete(key),
+    );
+    setSearchParams(next);
+  };
+  const params = new URLSearchParams({ search, status, sort, page: String(page), pageSize: '20' });
   const query = useQuery({
-    queryKey: ['client-directory', search, page],
+    queryKey: ['client-directory', search, status, sort, page],
     queryFn: () => apiRequest<DirectoryResponse>(`/api/v1/consultant/client-context?${params}`),
     placeholderData: (previous) => previous,
   });
@@ -63,12 +75,25 @@ export function ClientsPage() {
             searchPlaceholder="Name or email"
             searchValue={search}
             onSearchChange={(value) => {
-              setSearch(value);
-              setPage(1);
+              update({ search: value, page: '1' });
             }}
+            activeFilters={[
+              ...(status !== 'ACTIVE' ? [`Status: ${status}`] : []),
+              ...(sort !== 'NAME_ASC' ? [`Sort: ${sort.replaceAll('_', ' ')}`] : []),
+            ]}
+            onClearFilters={() => update({ status: 'ACTIVE', sort: 'NAME_ASC', page: '1' })}
             resultLabel={`${query.data?.total ?? 0} authorized clients`}
             loading={query.isFetching}
-          />
+          >
+            <TextField select size="small" label="Status" value={status} onChange={(event) => update({ status: event.target.value, page: '1' })} sx={{ minWidth: 150 }}>
+              {['ACTIVE', 'LEAD', 'PAUSED', 'CLOSED', 'ALL'].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
+            </TextField>
+            <TextField select size="small" label="Sort" value={sort} onChange={(event) => update({ sort: event.target.value, page: '1' })} sx={{ minWidth: 170 }}>
+              <MenuItem value="NAME_ASC">Name A–Z</MenuItem>
+              <MenuItem value="NAME_DESC">Name Z–A</MenuItem>
+              <MenuItem value="NEWEST">Newest clients</MenuItem>
+            </TextField>
+          </DataNavigationToolbar>
           {query.isLoading && (
             <Stack sx={{ alignItems: 'center', py: 5 }}>
               <CircularProgress aria-label="Loading client directory" />
@@ -101,7 +126,13 @@ export function ClientsPage() {
                       size="small"
                       label={`${client._count.financialRelationships} relationships`}
                     />
+                    <Chip size="small" label={`${client._count.workItems} active items`} />
                   </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    {client.assignedConsultant
+                      ? `Assigned to ${client.assignedConsultant.name ?? client.assignedConsultant.email}`
+                      : 'Access provided by governed grant'}
+                  </Typography>
                 </Box>
                 <Button
                   component={Link}
@@ -119,7 +150,7 @@ export function ClientsPage() {
               pageSize={query.data.pageSize}
               total={query.data.total}
               hasMore={query.data.hasMore}
-              onPageChange={setPage}
+              onPageChange={(nextPage) => update({ page: String(nextPage) })}
               loading={query.isFetching}
             />
           )}
@@ -158,6 +189,17 @@ type SupportSummary = {
     lastMessageAt: string;
   }>;
 };
+type TimelineResponse = {
+  events: Array<{
+    id: string;
+    action: string;
+    entityType: string;
+    source: string;
+    createdAt: string;
+    deepLink: string;
+    actor: { name: string | null } | null;
+  }>;
+};
 
 export function Client360Page() {
   const { clientId } = useParams();
@@ -183,6 +225,13 @@ export function Client360Page() {
     queryKey: ['consultant-client-support-summary', clientId],
     queryFn: () =>
       apiRequest<SupportSummary>(`/api/v1/consultant/client-context/${clientId}/support-summary`),
+    enabled: Boolean(clientId),
+    retry: false,
+  });
+  const timelineQuery = useQuery({
+    queryKey: ['consultant-client-timeline', clientId],
+    queryFn: () =>
+      apiRequest<TimelineResponse>(`/api/v1/consultant/client-context/${clientId}/timeline`),
     enabled: Boolean(clientId),
     retry: false,
   });
@@ -242,6 +291,17 @@ export function Client360Page() {
           </SectionCard>
         </Grid>
       </Grid>
+      <SectionCard>
+        <Stack spacing={1.5}>
+          <Typography variant="h3">Client workspace</Typography>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            <Button component={Link} to={`/crm/clients/${clientId}/plan`} variant="outlined">Plan</Button>
+            <Button component={Link} to={`/crm/clients/${clientId}/credit-center`} variant="outlined">Credit Center</Button>
+            <Button component={Link} to={`/crm/clients/${clientId}/cards`} variant="outlined">Cards</Button>
+            <Button component={Link} to="/crm/support" variant="outlined">Support</Button>
+          </Stack>
+        </Stack>
+      </SectionCard>
       {journeyQuery.isLoading && <CircularProgress aria-label="Loading client journey" />}
       {journeyQuery.isError && (
         <Alert severity="warning">Journey context is unavailable or access changed.</Alert>
@@ -274,6 +334,24 @@ export function Client360Page() {
               <span>{item.status.replaceAll('_', ' ')}</span>
             </Button>
           ))}
+        </Stack>
+      </SectionCard>
+      <SectionCard>
+        <Stack spacing={1.5}>
+          <Typography variant="h3">Canonical timeline</Typography>
+          {timelineQuery.isLoading && <CircularProgress aria-label="Loading client timeline" size={24} />}
+          {timelineQuery.isError && <Alert severity="warning">Timeline history is unavailable or access changed.</Alert>}
+          {timelineQuery.data?.events?.length === 0 && <Typography color="text.secondary">No recorded history yet.</Typography>}
+          <Stack divider={<Divider />}>
+            {timelineQuery.data?.events?.map((event) => (
+              <Button key={event.id} component={Link} to={event.deepLink} sx={{ justifyContent: 'space-between', py: 1.5 }}>
+                <span>{event.action.replaceAll('_', ' ')}</span>
+                <Typography component="span" variant="caption" color="text.secondary">
+                  {new Date(event.createdAt).toLocaleString()}
+                </Typography>
+              </Button>
+            ))}
+          </Stack>
         </Stack>
       </SectionCard>
       <SectionCard>

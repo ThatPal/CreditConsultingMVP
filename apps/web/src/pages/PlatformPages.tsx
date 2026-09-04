@@ -35,6 +35,21 @@ const demoNotice = (
 );
 
 export function ConsultantDashboardPage() {
+  const query = useQuery({
+    queryKey: ['consultant-dashboard'],
+    queryFn: () =>
+      apiRequest<{
+        metrics: {
+          open: number;
+          dueToday: number;
+          activeClients: number;
+          reviews: number;
+          readiness: number;
+        };
+      }>('/api/v1/consultant/dashboard'),
+    refetchInterval: 30_000,
+  });
+  const metrics = query.data?.metrics;
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -42,10 +57,21 @@ export function ConsultantDashboardPage() {
         title="Consultant workspace"
         description="Open prioritized work, client reviews, and support from one secure workspace."
       />
-      <Alert severity="info">
-        Only authoritative operational modules are shown. Illustrative metrics are intentionally
-        excluded.
-      </Alert>
+      <Alert severity="info">This dashboard monitors current work. Work Queue remains the authoritative action source.</Alert>
+      {query.isError && <Alert severity="error">Current workload metrics could not be loaded. Use the owning modules below.</Alert>}
+      <Grid container spacing={2}>
+        {[
+          { label: 'Open work', value: metrics?.open, supportingText: 'Current actionable Work Queue items' },
+          { label: 'Due today', value: metrics?.dueToday, supportingText: 'Open items due by end of today' },
+          { label: 'Active clients', value: metrics?.activeClients, supportingText: 'Clients in your authorized portfolio' },
+          { label: 'Reviews', value: metrics?.reviews, supportingText: 'Reviews awaiting consultant work' },
+          { label: 'Readiness', value: metrics?.readiness, supportingText: 'Readiness assessments in progress' },
+        ].map(({ label, value, supportingText }) => (
+          <Grid key={label} size={{ xs: 12, sm: 6, lg: 2.4 }}>
+            <MetricCard label={label} value={value ?? '—'} supportingText={supportingText} loading={query.isLoading} />
+          </Grid>
+        ))}
+      </Grid>
       <Grid container spacing={2}>
         {[
           {

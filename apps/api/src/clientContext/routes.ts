@@ -488,6 +488,8 @@ export function createClientContextRouter(
         const input = parse(
           z.object({
             search: z.string().trim().max(120).default(''),
+            status: z.enum(['ALL', 'LEAD', 'ACTIVE', 'PAUSED', 'CLOSED']).default('ACTIVE'),
+            sort: z.enum(['NAME_ASC', 'NAME_DESC', 'NEWEST']).default('NAME_ASC'),
             page: z.coerce.number().int().min(1).default(1),
             pageSize: z.coerce.number().int().min(1).max(50).default(20),
           }),
@@ -527,7 +529,16 @@ export function createClientContextRouter(
               ],
             }
           : {};
-        const where: Prisma.ClientWhereInput = { status: 'ACTIVE', AND: [access, search] };
+        const where: Prisma.ClientWhereInput = {
+          ...(input.status === 'ALL' ? {} : { status: input.status }),
+          AND: [access, search],
+        };
+        const orderBy: Prisma.ClientOrderByWithRelationInput[] =
+          input.sort === 'NAME_DESC'
+            ? [{ lastName: 'desc' }, { firstName: 'desc' }, { id: 'asc' }]
+            : input.sort === 'NEWEST'
+              ? [{ createdAt: 'desc' }, { id: 'asc' }]
+              : [{ lastName: 'asc' }, { firstName: 'asc' }, { id: 'asc' }];
         const [total, clients] = await prisma.$transaction([
           prisma.client.count({ where }),
           prisma.client.findMany({
@@ -539,21 +550,81 @@ export function createClientContextRouter(
               phone: true,
               timezone: true,
               status: true,
+              assignedConsultant: { select: { id: true, name: true, email: true } },
               user: { select: { email: true } },
               _count: {
                 select: {
                   businesses: { where: { status: 'ACTIVE' } },
                   financialRelationships: { where: { status: 'ACTIVE' } },
+                  workItems: { where: { status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] } } },
                 },
               },
             },
-            orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }, { id: 'asc' }],
+            orderBy,
             skip: (input.page - 1) * input.pageSize,
             take: input.pageSize,
           }),
         ]);
         res.json({
           clients,
+          total,
+          page: input.page,
+          pageSize: input.pageSize,
+          hasMore: input.page * input.pageSize < total,
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get(
+    '/consultant/client-context/:clientId/timeline',
+    requireAuth,
+    requireRole('CONSULTANT'),
+    requireClientAccess(authorization, 'clientId', denialRecorder),
+    requireCanonicalCapability(authorization, 'client.read', undefined, denialRecorder),
+    async (req, res, next) => {
+      try {
+        const input = parse(
+          z.object({
+            page: z.coerce.number().int().min(1).default(1),
+            pageSize: z.coerce.number().int().min(1).max(50).default(20),
+          }),
+          req.query,
+        );
+        const clientId = req.params.clientId as string;
+        const where = { clientId } satisfies Prisma.AuditEventWhereInput;
+        const [total, events] = await prisma.$transaction([
+          prisma.auditEvent.count({ where }),
+          prisma.auditEvent.findMany({
+            where,
+            select: {
+              id: true,
+              action: true,
+              entityType: true,
+              entityId: true,
+              source: true,
+              createdAt: true,
+              actor: { select: { name: true } },
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            skip: (input.page - 1) * input.pageSize,
+            take: input.pageSize,
+          }),
+        ]);
+        res.json({
+          events: events.map((event) => ({
+            ...event,
+            deepLink:
+              event.entityType === 'SupportCase' && event.entityId
+                ? `/crm/support?case=${event.entityId}`
+                : event.entityType === 'Plan'
+                  ? `/crm/clients/${clientId}/plan`
+                  : event.entityType === 'CreditReview'
+                    ? `/crm/clients/${clientId}/credit-center`
+                    : `/crm/clients/${clientId}`,
+          })),
           total,
           page: input.page,
           pageSize: input.pageSize,
