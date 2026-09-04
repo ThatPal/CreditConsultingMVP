@@ -1,6 +1,6 @@
 # Phase 16 — M9 End-of-Run Gate
 
-Status: READY FOR EXACT-HEAD CI
+Status: PASSED
 
 ## Scope
 
@@ -30,4 +30,10 @@ Accumulated Phase 16 gate for Support operations, contextual assistance, durable
 - Repository lint: PASS.
 - Repository production build (web, API, worker and packages): PASS; the web bundle retains the pre-existing size advisory.
 - Clean Credit-only database was created at `localhost:5433/credit_strategy_phase16_gate_20260904`. Local Prisma schema-engine and seed execution were prevented by the known Windows host `ENOMEM` condition; no non-Credit database was used. Fresh-chain and double-seed proofs are delegated to Linux CI.
-- Exact-head CI: pending synchronized branch push.
+- Synchronized implementation/gate head: `d484e86eb3ab00c518dcadc1a69038422a48f14c`.
+- Exact-head GitHub CI: PASS — run `33826020483` completed successfully, including clean migration chain, double system seed, test, typecheck, lint and build gates.
+- This report-finalization commit contains documentation only and is followed by a second exact-final-head CI run.
+
+## M9 decision
+
+M9 PASSED. No P0/P1 blockers or material authority deviations remain. Phase 16 is complete on the rapid branch and remains unmerged into `ai-enabled`. Phase 17 was not started.
