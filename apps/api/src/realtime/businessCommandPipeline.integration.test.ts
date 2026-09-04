@@ -159,6 +159,7 @@ describe('business command to authorized realtime refetch', () => {
       redisUrl,
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
+      queueName: `credit-outbox-${suite}-command`,
     });
     try {
       await expect(received).resolves.toMatchObject({
@@ -210,6 +211,7 @@ describe('business command to authorized realtime refetch', () => {
       redisUrl,
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
+      queueName: `credit-outbox-${suite}-restart`,
     });
     await firstWorker.close();
     await expect(
@@ -230,6 +232,7 @@ describe('business command to authorized realtime refetch', () => {
       redisUrl,
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
+      queueName: `credit-outbox-${suite}-restart`,
     });
     try {
       await expect(received).resolves.toMatchObject({ id: outbox.id, clientId: client.id });

@@ -18,6 +18,7 @@ The audit found no P0 issue. Five material P1 findings were corrected:
 - **D1316-31:** both client-visible and staff-visible Support reply paths now atomically create preference-aware canonical notifications, optional email deliveries and delivery outbox work. Exact idempotency keys yield one message, notification, delivery, delivery event and audit effect.
 - **D1316-32:** the review launcher now owns recorded PIDs, refuses occupied ports, checks native command exit codes, enforces its dedicated Credit database and verifies API plus web health before reporting success.
 - **D1316-33:** realtime authorization now checks local room sockets on every canonical event, avoiding unnecessary distributed socket-fetch latency while preserving multi-instance Redis fan-out. Immediate revocation, initial denial and authorized delivery are proven.
+- **D1316-34:** the exact-head Linux gate exposed cross-test BullMQ queue retention. Runtime queue identity is now injectable for deterministic integration isolation while production retains `credit-outbox-v1`; restart proofs deliberately reuse their suite queue.
 
 No Support or AI Support path gained Review, Strategy, execution, finalization, Major Readiness, payment, entitlement or security mutation authority.
 
@@ -34,6 +35,8 @@ No Support or AI Support path gained Review, Strategy, execution, finalization, 
 - Runtime package: 1 file / 3 tests PASS.
 - Complete API accumulated gate after correction: 63 files / 244 tests PASS.
 - Realtime authorization rerun: 1 file / 3 tests PASS, including immediate live revocation.
+- Business-command → outbox → worker → Socket.IO proof after CI correction: 1 file / 2 tests PASS.
+- Outbox retry/restart/delivery proof after CI correction: 1 file / 3 tests PASS on an isolated Credit database and Redis namespace.
 - Workspace typecheck: PASS.
 - Repository lint: PASS.
 - All workspace builds: PASS. The existing Vite chunk-size advisory remains non-blocking.

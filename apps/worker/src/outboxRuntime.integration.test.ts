@@ -53,6 +53,7 @@ describe('database to realtime outbox pipeline', () => {
       redisUrl,
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
+      queueName: `credit-outbox-test-${eventId}`,
     });
     try {
       await expect(received).resolves.toMatchObject({
@@ -88,6 +89,7 @@ describe('database to realtime outbox pipeline', () => {
       redisUrl,
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
+      queueName: `credit-outbox-test-${eventId}`,
     });
     try {
       for (let expectedClaims = 1; expectedClaims <= 5; expectedClaims += 1) {
@@ -144,6 +146,7 @@ describe('database to realtime outbox pipeline', () => {
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
       processNotificationDelivery: firstAttempt,
+      queueName: `credit-outbox-test-${eventId}`,
     });
     await firstRuntime.close();
     expect(firstAttempt).toHaveBeenCalledWith(deliveryId);
@@ -166,6 +169,7 @@ describe('database to realtime outbox pipeline', () => {
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
       processNotificationDelivery: recovered,
+      queueName: `credit-outbox-test-${eventId}`,
     });
     try {
       await expect(received).resolves.toMatchObject({

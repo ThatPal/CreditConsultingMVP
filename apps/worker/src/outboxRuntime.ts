@@ -67,19 +67,21 @@ export async function startOutboxRuntime(options: {
   logger: Logger;
   pollIntervalMs?: number;
   processNotificationDelivery?: (deliveryId: string) => Promise<void>;
+  queueName?: string;
 }) {
   const pool = new Pool({
     connectionString: assertCreditDatabaseUrl(options.databaseUrl),
     max: 4,
   });
   const connection = bullConnection(options.redisUrl);
-  const queue = new Queue(OUTBOX_QUEUE, { connection });
-  const queueEvents = new QueueEvents(OUTBOX_QUEUE, { connection });
+  const queueName = options.queueName ?? OUTBOX_QUEUE;
+  const queue = new Queue(queueName, { connection });
+  const queueEvents = new QueueEvents(queueName, { connection });
   await queueEvents.waitUntilReady();
   const redis = createClient({ url: options.redisUrl });
   await redis.connect();
   const worker = new Worker(
-    OUTBOX_QUEUE,
+    queueName,
     async (job) => {
       const deliveryId = (job.data as { notificationDeliveryId?: unknown }).notificationDeliveryId;
       if (typeof deliveryId === 'string') {
