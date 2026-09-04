@@ -361,6 +361,8 @@ describe('CRM-22/23 consultant support', () => {
             category: 'DOCUMENTS',
             priority: 'HIGH',
             status: 'OPEN',
+            assignmentVersion: 0,
+            assignedToUserId: null,
             updatedAt: '2026-08-31T12:00:00Z',
             subject: 'Review this document',
             client: {
@@ -405,6 +407,8 @@ describe('CRM-22/23 consultant support', () => {
     expect(screen.getByText('Please review this')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /reply to client/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Claim' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Escalate' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /internal note/i })).toBeInTheDocument();
   });
 });

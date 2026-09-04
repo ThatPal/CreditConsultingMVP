@@ -35,6 +35,10 @@ import {
 } from '../support/supportDomain.js';
 import { enqueueSupportAssistance } from '../support/supportAI.js';
 import {
+  createCanonicalNotificationInTransaction,
+  notificationChannelEnabled,
+} from '../notifications/notificationService.js';
+import {
   attentionClaimDecision,
   recordAttentionClaimConflict,
   reconcileSupportAttention,
@@ -55,7 +59,21 @@ const supportCaseSchema = z.object({
   priority: z.enum(['NORMAL', 'HIGH', 'URGENT']).default('NORMAL'),
   subject: z.string().trim().min(4).max(160),
   message: z.string().trim().min(10).max(5000),
-  contextType: z.enum(['GENERAL', 'DOCUMENT', 'REVIEW', 'PLAN', 'CARD', 'APPLICATION_ROUND', 'STRATEGY', 'APPOINTMENT', 'APPLICATION_SESSION', 'POST_ROUND', 'MAJOR_READINESS']).default('GENERAL'),
+  contextType: z
+    .enum([
+      'GENERAL',
+      'DOCUMENT',
+      'REVIEW',
+      'PLAN',
+      'CARD',
+      'APPLICATION_ROUND',
+      'STRATEGY',
+      'APPOINTMENT',
+      'APPLICATION_SESSION',
+      'POST_ROUND',
+      'MAJOR_READINESS',
+    ])
+    .default('GENERAL'),
   contextResourceId: z.uuid().nullish(),
   attachmentDocumentIds: z.array(z.uuid()).max(5).default([]),
 });
@@ -1068,6 +1086,21 @@ export function createOperationsRouter(
           prisma,
           supportCase.assignedToUserId ?? supportCase.client.assignedConsultantId,
         );
+        const emailPreferences = new Map(
+          await Promise.all(
+            notificationRecipients.map(
+              async (userId) =>
+                [
+                  userId,
+                  await notificationChannelEnabled(prisma, {
+                    userId,
+                    category: 'SUPPORT',
+                    channel: 'EMAIL',
+                  }),
+                ] as const,
+            ),
+          ),
+        );
         const updated = await prisma.$transaction(async (tx) => {
           await tx.supportMessage.create({
             data: {
@@ -1082,19 +1115,22 @@ export function createOperationsRouter(
             data: { status: nextStatus, resolvedAt: null, lastMessageAt: now },
           });
           await reconcileSupportAttention(tx, attentionCase);
-          if (notificationRecipients.length)
-            await tx.notification.createMany({
-              data: notificationRecipients.map((userId) => ({
+          for (const userId of notificationRecipients)
+            await createCanonicalNotificationInTransaction(
+              tx,
+              {
                 userId,
                 clientId: supportCase.clientId,
-                semanticKey: `support-client-message:${supportCase.id}:${now.getTime()}`,
+                semanticKey: `support-client-message:${supportCase.id}:${idempotencyKey}`,
                 type: 'SUPPORT_MESSAGE',
                 category: 'SUPPORT',
                 title: 'New client message',
                 body: supportCase.subject,
-                link: `/consultant/support?case=${supportCase.id}`,
-              })),
-            });
+                link: `/crm/support?case=${supportCase.id}`,
+                email: true,
+              },
+              emailPreferences.get(userId) ?? false,
+            );
           await tx.outboxEvent.create({
             data: {
               eventType: 'support.message.created',
@@ -1338,6 +1374,14 @@ export function createOperationsRouter(
         else if (supportCase.status === 'CLOSED')
           throw new AppError('SUPPORT_CASE_CLOSED', 409, 'This support request is closed');
         const now = new Date();
+        const notifyClient = !parsed.data.internal && Boolean(supportCase.client.userId);
+        const emailEnabled = notifyClient
+          ? await notificationChannelEnabled(prisma, {
+              userId: supportCase.client.userId!,
+              category: 'SUPPORT',
+              channel: 'EMAIL',
+            })
+          : false;
         await prisma.$transaction(async (tx) => {
           await tx.supportMessage.create({
             data: {
@@ -1358,19 +1402,22 @@ export function createOperationsRouter(
             },
           });
           if (!parsed.data.internal) await reconcileSupportAttention(tx, attentionCase);
-          if (!parsed.data.internal && supportCase.client.userId)
-            await tx.notification.create({
-              data: {
-                userId: supportCase.client.userId,
+          if (notifyClient)
+            await createCanonicalNotificationInTransaction(
+              tx,
+              {
+                userId: supportCase.client.userId!,
                 clientId: supportCase.clientId,
-                semanticKey: `support-staff-reply:${supportCase.id}:${now.getTime()}`,
+                semanticKey: `support-staff-reply:${supportCase.id}:${idempotencyKey}`,
                 type: 'SUPPORT_MESSAGE',
                 category: 'SUPPORT',
                 title: 'New support reply',
                 body: supportCase.subject,
                 link: `/app/support?case=${supportCase.id}`,
+                email: true,
               },
-            });
+              emailEnabled,
+            );
           await tx.outboxEvent.create({
             data: {
               eventType: 'support.message.created',
@@ -1411,20 +1458,33 @@ export function createOperationsRouter(
     requireCapability(authorization, 'support.manage', 'clientId', undefined, denialRecorder),
     async (req, res, next) => {
       try {
-        const input = z.object({
-          action: z.enum(['ASSIGN', 'REASSIGN', 'CLAIM', 'UNASSIGN', 'ESCALATE']),
-          assigneeId: z.uuid().nullish(),
-          expectedVersion: z.number().int().min(0),
-          reason: z.string().trim().max(500).optional(),
-        }).parse(req.body);
-        const supportCase = await prisma.supportCase.findUnique({ where: { id: req.params.caseId as string } });
+        const input = z
+          .object({
+            action: z.enum(['ASSIGN', 'REASSIGN', 'CLAIM', 'UNASSIGN', 'ESCALATE']),
+            assigneeId: z.uuid().nullish(),
+            expectedVersion: z.number().int().min(0),
+            reason: z.string().trim().max(500).optional(),
+          })
+          .parse(req.body);
+        const supportCase = await prisma.supportCase.findUnique({
+          where: { id: req.params.caseId as string },
+        });
         if (!supportCase) throw new AppError('NOT_FOUND', 404, 'Support request was not found');
-        const toAssigneeId: string | null = input.action === 'CLAIM' ? req.auth!.userId : input.action === 'UNASSIGN' ? null : input.assigneeId ?? null;
+        const toAssigneeId: string | null =
+          input.action === 'CLAIM'
+            ? req.auth!.userId
+            : input.action === 'UNASSIGN'
+              ? null
+              : (input.assigneeId ?? null);
         if (input.action !== 'UNASSIGN' && !toAssigneeId)
           throw new AppError('VALIDATION_ERROR', 400, 'Choose an assignee');
         if (toAssigneeId) {
-          const eligible = await prisma.user.findFirst({ where: { id: toAssigneeId, role: { in: ['CONSULTANT', 'ADMIN'] }, status: 'ACTIVE' }, select: { id: true } });
-          if (!eligible) throw new AppError('VALIDATION_ERROR', 400, 'Choose an active staff member');
+          const eligible = await prisma.user.findFirst({
+            where: { id: toAssigneeId, role: { in: ['CONSULTANT', 'ADMIN'] }, status: 'ACTIVE' },
+            select: { id: true },
+          });
+          if (!eligible)
+            throw new AppError('VALIDATION_ERROR', 400, 'Choose an active staff member');
         }
         const updated = await prisma.$transaction(async (tx) => {
           const changed = await tx.supportCase.updateMany({
@@ -1432,27 +1492,55 @@ export function createOperationsRouter(
             data: {
               assignedToUserId: toAssigneeId,
               assignmentVersion: { increment: 1 },
-              ...(input.action === 'ESCALATE' ? { escalatedAt: new Date(), priority: 'URGENT' as const } : {}),
+              ...(input.action === 'ESCALATE'
+                ? { escalatedAt: new Date(), priority: 'URGENT' as const }
+                : {}),
             },
           });
-          if (changed.count !== 1) throw new AppError('STALE_SUPPORT_ASSIGNMENT', 409, 'Assignment changed; refresh it');
+          if (changed.count !== 1)
+            throw new AppError('STALE_SUPPORT_ASSIGNMENT', 409, 'Assignment changed; refresh it');
           const current = await tx.supportCase.findUniqueOrThrow({ where: { id: supportCase.id } });
-          await tx.supportAssignmentEvent.create({ data: {
-            supportCaseId: supportCase.id,
-            actorUserId: req.auth!.userId,
-            fromAssigneeId: supportCase.assignedToUserId,
-            toAssigneeId,
-            eventType: input.action,
-            ...(input.reason ? { reason: input.reason } : {}),
-            version: current.assignmentVersion,
-          } });
-          await tx.auditEvent.create({ data: { clientId: supportCase.clientId, actorId: req.auth!.userId, action: `SUPPORT_${input.action}`, entityType: 'SupportCase', entityId: supportCase.id, metadata: { fromAssigneeId: supportCase.assignedToUserId, toAssigneeId, version: current.assignmentVersion } } });
-          await tx.outboxEvent.create({ data: { eventType: 'support.assignment.changed', eventKey: `support.assignment.changed:${supportCase.id}:${current.assignmentVersion}`, aggregateType: 'SupportCase', aggregateId: supportCase.id, payload: { clientId: supportCase.clientId, domains: ['support', 'work-queue'] } } });
+          await tx.supportAssignmentEvent.create({
+            data: {
+              supportCaseId: supportCase.id,
+              actorUserId: req.auth!.userId,
+              fromAssigneeId: supportCase.assignedToUserId,
+              toAssigneeId,
+              eventType: input.action,
+              ...(input.reason ? { reason: input.reason } : {}),
+              version: current.assignmentVersion,
+            },
+          });
+          await tx.auditEvent.create({
+            data: {
+              clientId: supportCase.clientId,
+              actorId: req.auth!.userId,
+              action: `SUPPORT_${input.action}`,
+              entityType: 'SupportCase',
+              entityId: supportCase.id,
+              metadata: {
+                fromAssigneeId: supportCase.assignedToUserId,
+                toAssigneeId,
+                version: current.assignmentVersion,
+              },
+            },
+          });
+          await tx.outboxEvent.create({
+            data: {
+              eventType: 'support.assignment.changed',
+              eventKey: `support.assignment.changed:${supportCase.id}:${current.assignmentVersion}`,
+              aggregateType: 'SupportCase',
+              aggregateId: supportCase.id,
+              payload: { clientId: supportCase.clientId, domains: ['support', 'work-queue'] },
+            },
+          });
           return current;
         });
         publishLiveUpdate(supportCase.clientId, 'support', 'work-queue');
         res.json({ case: updated });
-      } catch (error) { next(error); }
+      } catch (error) {
+        next(error);
+      }
     },
   );
   router.post(
@@ -1462,14 +1550,39 @@ export function createOperationsRouter(
     requireCapability(authorization, 'support.manage', 'clientId', undefined, denialRecorder),
     async (req, res, next) => {
       try {
-        if (!aiRuntime) throw new AppError('AI_UNAVAILABLE', 503, 'AI assistance is unavailable; continue manually');
-        const { kind } = z.object({ kind: z.enum(['classification', 'summary', 'draft']) }).parse(req.body);
-        const supportCase = await prisma.supportCase.findUnique({ where: { id: req.params.caseId as string }, select: { id: true, clientId: true } });
+        if (!aiRuntime)
+          throw new AppError(
+            'AI_UNAVAILABLE',
+            503,
+            'AI assistance is unavailable; continue manually',
+          );
+        const { kind } = z
+          .object({ kind: z.enum(['classification', 'summary', 'draft']) })
+          .parse(req.body);
+        const supportCase = await prisma.supportCase.findUnique({
+          where: { id: req.params.caseId as string },
+          select: { id: true, clientId: true },
+        });
         if (!supportCase) throw new AppError('NOT_FOUND', 404, 'Support request was not found');
-        const job = await enqueueSupportAssistance(prisma, aiRuntime, { supportCaseId: supportCase.id, clientId: supportCase.clientId, kind });
-        await prisma.auditEvent.create({ data: { clientId: supportCase.clientId, actorId: req.auth!.userId, action: 'SUPPORT_AI_ASSISTANCE_REQUESTED', entityType: 'SupportCase', entityId: supportCase.id, metadata: { kind, jobId: job.id, authority: 'ADVISORY_ONLY' } } });
+        const job = await enqueueSupportAssistance(prisma, aiRuntime, {
+          supportCaseId: supportCase.id,
+          clientId: supportCase.clientId,
+          kind,
+        });
+        await prisma.auditEvent.create({
+          data: {
+            clientId: supportCase.clientId,
+            actorId: req.auth!.userId,
+            action: 'SUPPORT_AI_ASSISTANCE_REQUESTED',
+            entityType: 'SupportCase',
+            entityId: supportCase.id,
+            metadata: { kind, jobId: job.id, authority: 'ADVISORY_ONLY' },
+          },
+        });
         res.status(202).json({ jobId: job.id, status: job.status, authority: 'ADVISORY_ONLY' });
-      } catch (error) { next(error); }
+      } catch (error) {
+        next(error);
+      }
     },
   );
   router.patch(
@@ -1479,16 +1592,53 @@ export function createOperationsRouter(
     requireCapability(authorization, 'support.manage', 'clientId', undefined, denialRecorder),
     async (req, res, next) => {
       try {
-        const input = z.object({ action: z.enum(['EDIT', 'ACCEPT']), structuredOutput: z.record(z.string(), z.unknown()).optional() }).parse(req.body);
-        const artifact = await prisma.supportAIArtifact.findFirst({ where: { id: req.params.artifactId as string, supportCaseId: req.params.caseId as string }, include: { supportCase: { select: { clientId: true } } } });
+        const input = z
+          .object({
+            action: z.enum(['EDIT', 'ACCEPT']),
+            structuredOutput: z.record(z.string(), z.unknown()).optional(),
+          })
+          .parse(req.body);
+        const artifact = await prisma.supportAIArtifact.findFirst({
+          where: {
+            id: req.params.artifactId as string,
+            supportCaseId: req.params.caseId as string,
+          },
+          include: { supportCase: { select: { clientId: true } } },
+        });
         if (!artifact) throw new AppError('NOT_FOUND', 404, 'AI proposal was not found');
-        if (artifact.status === 'SUPERSEDED' || artifact.sentMessageId) throw new AppError('STALE_AI_PROPOSAL', 409, 'Regenerate assistance from the current conversation');
-        const updated = await prisma.supportAIArtifact.update({ where: { id: artifact.id }, data: input.action === 'EDIT'
-          ? { status: 'EDITED', editedAt: new Date(), ...(input.structuredOutput ? { structuredOutput: input.structuredOutput as Prisma.InputJsonValue } : {}) }
-          : { status: 'ACCEPTED', acceptedAt: new Date() } });
-        await prisma.auditEvent.create({ data: { clientId: artifact.supportCase.clientId, actorId: req.auth!.userId, action: `SUPPORT_AI_PROPOSAL_${input.action}`, entityType: 'SupportAIArtifact', entityId: artifact.id, metadata: { kind: artifact.kind } } });
+        if (artifact.status === 'SUPERSEDED' || artifact.sentMessageId)
+          throw new AppError(
+            'STALE_AI_PROPOSAL',
+            409,
+            'Regenerate assistance from the current conversation',
+          );
+        const updated = await prisma.supportAIArtifact.update({
+          where: { id: artifact.id },
+          data:
+            input.action === 'EDIT'
+              ? {
+                  status: 'EDITED',
+                  editedAt: new Date(),
+                  ...(input.structuredOutput
+                    ? { structuredOutput: input.structuredOutput as Prisma.InputJsonValue }
+                    : {}),
+                }
+              : { status: 'ACCEPTED', acceptedAt: new Date() },
+        });
+        await prisma.auditEvent.create({
+          data: {
+            clientId: artifact.supportCase.clientId,
+            actorId: req.auth!.userId,
+            action: `SUPPORT_AI_PROPOSAL_${input.action}`,
+            entityType: 'SupportAIArtifact',
+            entityId: artifact.id,
+            metadata: { kind: artifact.kind },
+          },
+        });
         res.json({ artifact: updated });
-      } catch (error) { next(error); }
+      } catch (error) {
+        next(error);
+      }
     },
   );
   router.patch(
@@ -1551,7 +1701,10 @@ export function createOperationsRouter(
               ...(parsed.data.status === 'RESOLVED' || parsed.data.status === 'CLOSED'
                 ? { resolvedAt: new Date() }
                 : parsed.data.status
-                  ? { resolvedAt: null, ...(supportCase.status === 'RESOLVED' ? { reopenedAt: new Date() } : {}) }
+                  ? {
+                      resolvedAt: null,
+                      ...(supportCase.status === 'RESOLVED' ? { reopenedAt: new Date() } : {}),
+                    }
                   : {}),
             },
           });

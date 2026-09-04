@@ -43,6 +43,9 @@ type ConsultantCase = {
   lastMessageAt: string;
   updatedAt: string;
   unread?: boolean;
+  assignedToUserId?: string | null;
+  assignmentVersion?: number;
+  escalatedAt?: string | null;
   context?: { type: string; resourceId: string | null; summary: string };
   attachments?: Array<{
     id: string;
@@ -58,11 +61,18 @@ type ConsultantCase = {
   }>;
   aiArtifacts?: Array<{
     id: string;
+    aiJobId: string;
     kind: 'CLASSIFICATION' | 'SUMMARY' | 'DRAFT';
     status: string;
     provider: string | null;
     model: string | null;
-    structuredOutput: { summary?: string; draft?: string; category?: string; priority?: string; rationale?: string };
+    structuredOutput: {
+      summary?: string;
+      draft?: string;
+      category?: string;
+      priority?: string;
+      rationale?: string;
+    };
   }>;
 };
 
@@ -116,6 +126,7 @@ export function ConsultantSupportPage() {
   const [macroCode, setMacroCode] = useState<string | null>(null);
   const [caseSearch, setCaseSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [pendingAIJobId, setPendingAIJobId] = useState<string | null>(null);
   const linkedCaseId = searchParams.get('case');
   const filterStatus =
     filter === 'WAITING_CLIENT' ? 'WAITING_ON_CLIENT' : filter === 'RESOLVED' ? 'RESOLVED' : '';
@@ -130,6 +141,7 @@ export function ConsultantSupportPage() {
         `/api/v1/consultant/support-cases?${params}`,
       ),
     placeholderData: keepPreviousData,
+    refetchInterval: pendingAIJobId ? 1500 : false,
   });
   const allCases = query.data?.cases ?? [];
   const linkedCaseQuery = useQuery({
@@ -138,6 +150,7 @@ export function ConsultantSupportPage() {
       apiRequest<{ case: ConsultantCase }>(`/api/v1/consultant/support-cases/${linkedCaseId}`),
     enabled: Boolean(linkedCaseId),
     retry: false,
+    refetchInterval: pendingAIJobId ? 1500 : false,
   });
   const cases = allCases.filter((item) => {
     if (filter === 'URGENT')
@@ -184,15 +197,33 @@ export function ConsultantSupportPage() {
   });
   const requestAI = useMutation({
     mutationFn: (kind: 'classification' | 'summary' | 'draft') =>
-      apiRequest(`/api/v1/consultant/support-cases/${selectedId}/ai-assistance`, {
+      apiRequest<{ jobId: string }>(`/api/v1/consultant/support-cases/${selectedId}/ai-assistance`, {
         method: 'POST',
         body: JSON.stringify({ kind }),
       }),
-    onSuccess: async () => {
+    onSuccess: async (result: { jobId: string }) => {
+      setPendingAIJobId(result.jobId);
       await queryClient.invalidateQueries({ queryKey: ['consultant-support-case', linkedCaseId] });
       await refresh();
     },
   });
+  const assign = useMutation({
+    mutationFn: (body: { action: 'CLAIM' | 'UNASSIGN' | 'ESCALATE'; assigneeId?: string }) =>
+      apiRequest(`/api/v1/consultant/support-cases/${selectedId}/assignment`, {
+        method: 'POST',
+        body: JSON.stringify({ ...body, expectedVersion: selected?.assignmentVersion ?? 0 }),
+      }),
+    onSuccess: refresh,
+  });
+  useEffect(() => {
+    if (
+      pendingAIJobId &&
+      [...allCases, ...(linkedCaseQuery.data?.case ? [linkedCaseQuery.data.case] : [])].some(
+        (item) => item.aiArtifacts?.some((artifact) => artifact.aiJobId === pendingAIJobId),
+      )
+    )
+      setPendingAIJobId(null);
+  }, [allCases, linkedCaseQuery.data?.case, pendingAIJobId]);
 
   if (query.isLoading) return <LoadingSkeleton />;
   if (query.isError) return <Alert severity="error">Unable to load the support queue.</Alert>;
@@ -375,6 +406,31 @@ export function ConsultantSupportPage() {
                     <ToggleButton value="URGENT">Urgent</ToggleButton>
                   </ToggleButtonGroup>
                   <Box sx={{ flex: 1 }} />
+                  {selected.assignedToUserId === user?.userId ? (
+                    <Button
+                      disabled={assign.isPending}
+                      onClick={() => assign.mutate({ action: 'UNASSIGN' })}
+                    >
+                      Unassign
+                    </Button>
+                  ) : (
+                    <Button
+                      disabled={assign.isPending}
+                      onClick={() => assign.mutate({ action: 'CLAIM' })}
+                    >
+                      Claim
+                    </Button>
+                  )}
+                  <Button
+                    color="warning"
+                    disabled={assign.isPending || Boolean(selected.escalatedAt)}
+                    onClick={() => {
+                      const assigneeId = selected.assignedToUserId ?? user?.userId;
+                      if (assigneeId) assign.mutate({ action: 'ESCALATE', assigneeId });
+                    }}
+                  >
+                    Escalate
+                  </Button>
                   <Button
                     variant="outlined"
                     startIcon={<CheckCircleRounded />}
@@ -403,19 +459,67 @@ export function ConsultantSupportPage() {
                 <Divider />
 
                 <Stack spacing={1.25}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { sm: 'center' } }}>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1}
+                    sx={{ alignItems: { sm: 'center' } }}
+                  >
                     <Box sx={{ flex: 1 }}>
                       <Typography sx={{ fontWeight: 850 }}>AI assistance</Typography>
-                      <Typography variant="caption" color="text.secondary">Advisory drafts only. Review before using; AI cannot send or change case authority.</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Advisory drafts only. Review before using; AI cannot send or change case
+                        authority.
+                      </Typography>
                     </Box>
-                    {(['classification', 'summary', 'draft'] as const).map((kind) => <Button key={kind} size="small" variant="outlined" disabled={requestAI.isPending} onClick={() => requestAI.mutate(kind)}>{kind}</Button>)}
+                    {(['classification', 'summary', 'draft'] as const).map((kind) => (
+                      <Button
+                        key={kind}
+                        size="small"
+                        variant="outlined"
+                        disabled={requestAI.isPending}
+                        onClick={() => requestAI.mutate(kind)}
+                      >
+                        {kind}
+                      </Button>
+                    ))}
                   </Stack>
-                  {requestAI.isError && <Alert severity="warning">AI assistance is unavailable. Continue manually.</Alert>}
-                  {selected.aiArtifacts?.[0] && <Alert severity="info">
-                    <Typography sx={{ fontWeight: 800 }}>{selected.aiArtifacts[0].kind.replace('_', ' ')} proposal · human review required</Typography>
-                    <Typography variant="body2">{selected.aiArtifacts[0].structuredOutput.summary ?? selected.aiArtifacts[0].structuredOutput.draft ?? selected.aiArtifacts[0].structuredOutput.rationale}</Typography>
-                    {selected.aiArtifacts[0].kind === 'DRAFT' && selected.aiArtifacts[0].structuredOutput.draft && <Button size="small" sx={{ mt: 1 }} onClick={() => { setDraft(selected.aiArtifacts![0]!.structuredOutput.draft!); setComposerType('REPLY'); }}>Use as editable draft</Button>}
-                  </Alert>}
+                  {requestAI.isError && (
+                    <Alert severity="warning">
+                      AI assistance is unavailable. Continue manually.
+                    </Alert>
+                  )}
+                  {pendingAIJobId && (
+                    <Alert severity="info">
+                      AI assistance is processing. This case will refresh automatically when the
+                      advisory result is ready.
+                    </Alert>
+                  )}
+                  {selected.aiArtifacts?.[0] && (
+                    <Alert severity="info">
+                      <Typography sx={{ fontWeight: 800 }}>
+                        {selected.aiArtifacts[0].kind.replace('_', ' ')} proposal · human review
+                        required
+                      </Typography>
+                      <Typography variant="body2">
+                        {selected.aiArtifacts[0].structuredOutput.summary ??
+                          selected.aiArtifacts[0].structuredOutput.draft ??
+                          selected.aiArtifacts[0].structuredOutput.rationale}
+                      </Typography>
+                      {selected.aiArtifacts[0].kind === 'DRAFT' &&
+                        selected.aiArtifacts[0].structuredOutput.draft && (
+                          <Button
+                            size="small"
+                            sx={{ mt: 1 }}
+                            onClick={() => {
+                              setDraft(selected.aiArtifacts![0]!.structuredOutput.draft!);
+                              setComposerType('REPLY');
+                            }}
+                          >
+                            Use as editable draft
+                          </Button>
+                        )}
+                    </Alert>
+                  )}
                 </Stack>
                 <Divider />
 

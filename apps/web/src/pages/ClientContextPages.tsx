@@ -149,6 +149,15 @@ type ClientDetail = DirectoryClient & {
     clientBusiness: { id: string; displayName: string | null; legalName: string } | null;
   }>;
 };
+type SupportSummary = {
+  cases: Array<{
+    id: string;
+    subject: string;
+    status: string;
+    priority: string;
+    lastMessageAt: string;
+  }>;
+};
 
 export function Client360Page() {
   const { clientId } = useParams();
@@ -167,6 +176,13 @@ export function Client360Page() {
   const servicesQuery = useQuery({
     queryKey: ['consultant-client-services', clientId],
     queryFn: () => apiRequest<CommerceData>(`/api/v1/consultant/clients/${clientId}/services`),
+    enabled: Boolean(clientId),
+    retry: false,
+  });
+  const supportQuery = useQuery({
+    queryKey: ['consultant-client-support-summary', clientId],
+    queryFn: () =>
+      apiRequest<SupportSummary>(`/api/v1/consultant/client-context/${clientId}/support-summary`),
     enabled: Boolean(clientId),
     retry: false,
   });
@@ -232,6 +248,34 @@ export function Client360Page() {
       )}
       {journeyQuery.data?.journey && <JourneySummary data={journeyQuery.data} staff />}
       {servicesQuery.data?.balance && <ClientServicesSummary data={servicesQuery.data} />}
+      <SectionCard>
+        <Stack spacing={1.5}>
+          <Typography variant="h3">Support</Typography>
+          {supportQuery.isLoading && (
+            <CircularProgress aria-label="Loading client support" size={24} />
+          )}
+          {supportQuery.isError && (
+            <Typography color="text.secondary">
+              Support history is available only to staff with Support authority.
+            </Typography>
+          )}
+          {supportQuery.data?.cases.length === 0 && (
+            <Typography color="text.secondary">No recent support requests.</Typography>
+          )}
+          {supportQuery.data?.cases.map((item) => (
+            <Button
+              key={item.id}
+              component={Link}
+              to={`/crm/support?case=${item.id}`}
+              variant="outlined"
+              sx={{ justifyContent: 'space-between' }}
+            >
+              <span>{item.subject}</span>
+              <span>{item.status.replaceAll('_', ' ')}</span>
+            </Button>
+          ))}
+        </Stack>
+      </SectionCard>
       <SectionCard>
         <Stack spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>

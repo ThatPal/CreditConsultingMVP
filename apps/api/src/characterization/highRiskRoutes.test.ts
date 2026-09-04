@@ -590,7 +590,7 @@ describe('Support, notification, and application-cycle characterization', () => 
             clientId: owner.client.id,
             type: 'SUPPORT_MESSAGE',
             title: 'New client message',
-            link: `/consultant/support?case=${supportCase.id}`,
+            link: `/crm/support?case=${supportCase.id}`,
           },
         }),
         prisma.auditEvent.count({
@@ -604,6 +604,24 @@ describe('Support, notification, and application-cycle characterization', () => 
         }),
       ]),
     ).toEqual([1, 1, 1]);
+    const clientReplyNotification = await prisma.notification.findUniqueOrThrow({
+      where: {
+        userId_semanticKey: {
+          userId: consultant.user.id,
+          semanticKey: `support-client-message:${supportCase.id}:${clientKey}`,
+        },
+      },
+    });
+    expect(
+      await Promise.all([
+        prisma.notificationDelivery.count({
+          where: { notificationId: clientReplyNotification.id, channel: 'EMAIL' },
+        }),
+        prisma.outboxEvent.count({
+          where: { eventKey: `notification.created:${clientReplyNotification.id}` },
+        }),
+      ]),
+    ).toEqual([1, 1]);
 
     const staffKey = `staff-reply-${crypto.randomUUID()}`;
     await request(app)
@@ -651,6 +669,24 @@ describe('Support, notification, and application-cycle characterization', () => 
         }),
       ]),
     ).toEqual([1, 1, 1]);
+    const staffReplyNotification = await prisma.notification.findUniqueOrThrow({
+      where: {
+        userId_semanticKey: {
+          userId: owner.user.id,
+          semanticKey: `support-staff-reply:${supportCase.id}:${staffKey}`,
+        },
+      },
+    });
+    expect(
+      await Promise.all([
+        prisma.notificationDelivery.count({
+          where: { notificationId: staffReplyNotification.id, channel: 'EMAIL' },
+        }),
+        prisma.outboxEvent.count({
+          where: { eventKey: `notification.created:${staffReplyNotification.id}` },
+        }),
+      ]),
+    ).toEqual([1, 1]);
 
     const beforeInternal = await prisma.supportCase.findUniqueOrThrow({
       where: { id: supportCase.id },

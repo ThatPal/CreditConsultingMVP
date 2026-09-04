@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../generated/prisma/client.js';
+import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import type { EmailProvider } from './emailProvider.js';
 
 export type CreateNotificationInput = {
@@ -17,7 +17,7 @@ export type CreateNotificationInput = {
 
 export function validateInternalNotificationLink(link?: string) {
   if (link === undefined) return undefined;
-  if (!/^\/app(?:\/|$)/.test(link) || link.startsWith('//') || link.includes('\\'))
+  if (!/^\/(?:app|crm|admin)(?:\/|$)/.test(link) || link.startsWith('//') || link.includes('\\'))
     throw new Error('INVALID_NOTIFICATION_LINK');
   return link;
 }
@@ -44,6 +44,56 @@ function assertRecipientSafe(input: CreateNotificationInput) {
   validateInternalNotificationLink(input.link);
 }
 
+export async function createCanonicalNotificationInTransaction(
+  tx: Prisma.TransactionClient,
+  input: CreateNotificationInput,
+  emailEnabled: boolean,
+) {
+  assertRecipientSafe(input);
+  const existing = await tx.notification.findUnique({
+    where: { userId_semanticKey: { userId: input.userId, semanticKey: input.semanticKey } },
+  });
+  if (existing) return { notification: existing, created: false };
+  const notification = await tx.notification.create({
+    data: {
+      semanticKey: input.semanticKey,
+      userId: input.userId,
+      clientId: input.clientId,
+      type: input.type,
+      category: input.category,
+      title: input.title,
+      body: input.body,
+      ...(input.link ? { link: input.link } : {}),
+      ...(input.safePayload ? { safePayload: input.safePayload } : {}),
+    },
+  });
+  let deliveryId: string | undefined;
+  if (emailEnabled) {
+    const delivery = await tx.notificationDelivery.create({
+      data: {
+        notificationId: notification.id,
+        channel: 'EMAIL',
+        provider: input.emailProvider ?? 'CONSOLE',
+      },
+    });
+    deliveryId = delivery.id;
+  }
+  await tx.outboxEvent.create({
+    data: {
+      eventType: 'notification.created',
+      eventKey: `notification.created:${notification.id}`,
+      aggregateType: 'Notification',
+      aggregateId: notification.id,
+      payload: {
+        clientId: input.clientId,
+        domains: ['notifications'],
+        ...(deliveryId ? { notificationDeliveryId: deliveryId } : {}),
+      },
+    },
+  });
+  return { notification, created: true };
+}
+
 export async function createCanonicalNotification(
   prisma: PrismaClient,
   input: CreateNotificationInput,
@@ -62,46 +112,9 @@ export async function createCanonicalNotification(
     : false;
 
   try {
-    return await prisma.$transaction(async (tx) => {
-      const notification = await tx.notification.create({
-        data: {
-          semanticKey: input.semanticKey,
-          userId: input.userId,
-          clientId: input.clientId,
-          type: input.type,
-          category: input.category,
-          title: input.title,
-          body: input.body,
-          ...(input.link ? { link: input.link } : {}),
-          ...(input.safePayload ? { safePayload: input.safePayload } : {}),
-        },
-      });
-      let deliveryId: string | undefined;
-      if (emailEnabled) {
-        const delivery = await tx.notificationDelivery.create({
-          data: {
-            notificationId: notification.id,
-            channel: 'EMAIL',
-            provider: input.emailProvider ?? 'CONSOLE',
-          },
-        });
-        deliveryId = delivery.id;
-      }
-      await tx.outboxEvent.create({
-        data: {
-          eventType: 'notification.created',
-          eventKey: `notification.created:${notification.id}`,
-          aggregateType: 'Notification',
-          aggregateId: notification.id,
-          payload: {
-            clientId: input.clientId,
-            domains: ['notifications'],
-            ...(deliveryId ? { notificationDeliveryId: deliveryId } : {}),
-          },
-        },
-      });
-      return { notification, created: true };
-    });
+    return await prisma.$transaction((tx) =>
+      createCanonicalNotificationInTransaction(tx, input, emailEnabled),
+    );
   } catch (error) {
     if ((error as { code?: string }).code !== 'P2002') throw error;
     const notification = await prisma.notification.findUniqueOrThrow({
@@ -130,7 +143,10 @@ export async function processNotificationDelivery(
     where: {
       id: delivery.id,
       OR: [
-        { status: { in: ['PENDING', 'RETRY_SCHEDULED'] }, OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }] },
+        {
+          status: { in: ['PENDING', 'RETRY_SCHEDULED'] },
+          OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
+        },
         { status: 'PROCESSING', lastAttemptAt: { lt: new Date(now.getTime() - 5 * 60 * 1000) } },
       ],
     },

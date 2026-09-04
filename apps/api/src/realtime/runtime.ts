@@ -83,7 +83,15 @@ export async function startRealtimeRuntime(options: {
       return;
     }
     publishLiveUpdate(event.clientId, ...event.domains);
-    const sockets = await io.in(clientRoom(event.clientId)).fetchSockets();
+    // Every runtime instance receives the canonical event subscription and must
+    // authorize only its own connected sockets. A distributed fetch introduces
+    // an unnecessary adapter round-trip and can race consecutive revocation
+    // events while also asking this process to authorize remote socket proxies.
+    const socketIds = io.sockets.adapter.rooms.get(clientRoom(event.clientId)) ?? new Set<string>();
+    const sockets = [...socketIds].flatMap((socketId) => {
+      const socket = io.sockets.sockets.get(socketId);
+      return socket ? [socket] : [];
+    });
     await Promise.all(
       sockets.map(async (socket) => {
         const principal = await options.resolvePrincipal(socket.handshake.headers);

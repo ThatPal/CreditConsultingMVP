@@ -566,6 +566,35 @@ export function createClientContextRouter(
   );
 
   router.get(
+    '/consultant/client-context/:clientId/support-summary',
+    requireAuth,
+    requireRole('CONSULTANT'),
+    requireClientAccess(authorization, 'clientId', denialRecorder),
+    requireCanonicalCapability(authorization, 'support.manage', undefined, denialRecorder),
+    async (req, res, next) => {
+      try {
+        const clientId = req.params.clientId as string;
+        const cases = await prisma.supportCase.findMany({
+          where: { clientId },
+          select: {
+            id: true,
+            subject: true,
+            status: true,
+            priority: true,
+            lastMessageAt: true,
+            assignedToUserId: true,
+          },
+          orderBy: [{ lastMessageAt: 'desc' }, { id: 'asc' }],
+          take: 5,
+        });
+        res.json({ cases });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get(
     '/consultant/client-context/:clientId',
     requireAuth,
     requireRole('CONSULTANT'),
