@@ -1,6 +1,6 @@
 # Phase 17 — Accumulated End-of-Run Gate
 
-Status: PASS (local); exact-final-head remote CI pending push
+Status: PASS
 
 ## Boundary
 
@@ -43,3 +43,11 @@ Status: PASS (local); exact-final-head remote CI pending push
 - P0/P1 blockers: none.
 - Material deviations: none.
 - Harness note: local `tsx` required an untracked Windows username fallback in shared `node_modules` after `os.userInfo()` intermittently returned ENOMEM. This did not alter repository/product code.
+
+## Browser and remote evidence
+
+- Credit-only review environment restored and healthy at `http://localhost:5185` with API health at `http://localhost:3008`.
+- Seeded client authentication and `/app` shell were exercised in the actual review browser; the expected Plan, Journey, Credit Center, Cards, Services, Support, Documents, Notifications, and Account navigation was present with seeded client data.
+- Staff enrollment was exercised through password confirmation to the QR/manual-key/recovery-code surface, proving QR-based MFA setup is available for Consultant/Admin manual review.
+- GitHub Actions CI run `33887605221` passed for pushed implementation/report head `c883d6902adbecdb7ceab1d49dbcedf50ff4fd95`: https://github.com/ThatPal/CreditConsultingMVP/actions/runs/33887605221
+- A final documentation-only synchronization commit records this evidence; its replacement exact-final-head CI must also pass before handoff.
