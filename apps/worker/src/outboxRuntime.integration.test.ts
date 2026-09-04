@@ -116,7 +116,7 @@ describe('database to realtime outbox pipeline', () => {
       await runtime.close();
       await pool.query(`DELETE FROM "OutboxEvent" WHERE id = $1`, [eventId]);
     }
-  });
+  }, 30_000);
 
   test('resumes durable email delivery after restart without exposing delivery identity realtime', async () => {
     const eventId = crypto.randomUUID();

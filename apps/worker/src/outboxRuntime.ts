@@ -120,7 +120,8 @@ export async function startOutboxRuntime(options: {
       events = result.rows;
       if (events.length)
         await client.query(
-          `UPDATE "OutboxEvent" SET "attemptCount" = "attemptCount" + 1, "lastAttemptAt" = now()
+          `UPDATE "OutboxEvent" SET "attemptCount" = "attemptCount" + 1, "lastAttemptAt" = now(),
+             "availableAt" = now() + interval '30 seconds'
            WHERE id = ANY($1::uuid[])`,
           [events.map(({ id }) => id)],
         );
