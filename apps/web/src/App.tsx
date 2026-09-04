@@ -8,7 +8,12 @@ import { ConsultantAppShell } from './layouts/ConsultantAppShell';
 import { AccountPage } from './pages/AccountPage';
 import { MajorApplicationCheckPage, RoundPage, SeasonalCyclePage } from './pages/Phase11Pages';
 import { ClientStrategyPage, ConsultantStrategyPage } from './pages/StrategyPages';
-import { PostRoundFollowUpPage, PostRoundPage, RoundAnalysisPage, RoundFinalizationPage } from './pages/PostRoundPages';
+import {
+  PostRoundFollowUpPage,
+  PostRoundPage,
+  RoundAnalysisPage,
+  RoundFinalizationPage,
+} from './pages/PostRoundPages';
 import { ConsultantMajorReadinessPage, MajorReadinessPage } from './pages/MajorReadinessPages';
 import {
   AppointmentDetailPage,
@@ -42,6 +47,11 @@ import {
   AdminStripePage,
 } from './pages/AdminPaymentsPages';
 import { SecurityPage } from './pages/SecurityPage';
+import {
+  AdminAccessGrantsPage,
+  AdminUserDetailPage,
+  AdminUsersPage,
+} from './pages/AdminIdentityPages';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
 import {
@@ -145,9 +155,18 @@ export function App() {
           <Route path="rounds/:roundId/follow-up" element={<PostRoundFollowUpPage />} />
           <Route path="rounds/:roundId/analysis" element={<RoundAnalysisPage />} />
           <Route path="major-readiness" element={<MajorReadinessPage />} />
-          <Route path="major-readiness/readiness" element={<MajorReadinessPage view="readiness" />} />
-          <Route path="major-readiness/preparation" element={<MajorReadinessPage view="preparation" />} />
-          <Route path="major-readiness/coordination" element={<MajorReadinessPage view="coordination" />} />
+          <Route
+            path="major-readiness/readiness"
+            element={<MajorReadinessPage view="readiness" />}
+          />
+          <Route
+            path="major-readiness/preparation"
+            element={<MajorReadinessPage view="preparation" />}
+          />
+          <Route
+            path="major-readiness/coordination"
+            element={<MajorReadinessPage view="coordination" />}
+          />
           <Route path="major-readiness/timeline" element={<MajorReadinessPage view="timeline" />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="services" element={<ServicesPage />} />
@@ -183,10 +202,22 @@ export function App() {
             path="clients/:clientId/rounds/:roundId/strategy"
             element={<ConsultantStrategyPage />}
           />
-          <Route path="clients/:clientId/rounds/:roundId/results" element={<PostRoundPage consultant />} />
-          <Route path="clients/:clientId/rounds/:roundId/analysis" element={<RoundAnalysisPage consultant />} />
-          <Route path="clients/:clientId/rounds/:roundId/finalize" element={<RoundFinalizationPage />} />
-          <Route path="clients/:clientId/major-readiness/:caseId" element={<ConsultantMajorReadinessPage />} />
+          <Route
+            path="clients/:clientId/rounds/:roundId/results"
+            element={<PostRoundPage consultant />}
+          />
+          <Route
+            path="clients/:clientId/rounds/:roundId/analysis"
+            element={<RoundAnalysisPage consultant />}
+          />
+          <Route
+            path="clients/:clientId/rounds/:roundId/finalize"
+            element={<RoundFinalizationPage />}
+          />
+          <Route
+            path="clients/:clientId/major-readiness/:caseId"
+            element={<ConsultantMajorReadinessPage />}
+          />
           <Route
             path="clients/:clientId/credit-center"
             element={<ConsultantClientCreditCenterPage />}
@@ -228,6 +259,9 @@ export function App() {
           <Route path="card-catalog" element={<CatalogOperationsPage />} />
           <Route path="card-insights" element={<InsightOperationsPage />} />
           <Route index element={<AdminLandingPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="users/:userId" element={<AdminUserDetailPage />} />
+          <Route path="access-grants" element={<AdminAccessGrantsPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />

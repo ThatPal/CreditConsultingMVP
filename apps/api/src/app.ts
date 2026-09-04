@@ -47,6 +47,7 @@ import type { DurableAIRuntime } from './ai/durableRuntime.js';
 import { createLiveRouter } from './live/routes.js';
 import { createPostRoundRouter } from './postRound/routes.js';
 import { createMajorReadinessRouter } from './majorReadiness/routes.js';
+import { createAdminOperationsRouter } from './admin/routes.js';
 
 export type ReadinessChecks = {
   postgresql(): Promise<void>;
@@ -143,6 +144,7 @@ export function createApp(
     if (prisma) {
       const authorization = createPrismaAuthorizationService(prisma);
       const denialRecorder = createPrismaAuthorizationDenialRecorder(prisma);
+      app.use('/api/v1/admin', createAdminOperationsRouter(prisma, authorization, denialRecorder));
       app.use('/api/v1/notifications', createNotificationRouter(prisma));
       app.use('/api/v1/client/goal-intakes', createGoalIntakeBindingRouter(prisma));
       app.use('/api/v1', createClientContextRouter(prisma, authorization, denialRecorder));
@@ -194,8 +196,14 @@ export function createApp(
         '/api/v1/readiness',
         createReadinessRouter(prisma, auth, authorization, denialRecorder),
       );
-      app.use('/api/v1', createOperationsRouter(prisma, auth, {}, authorization, denialRecorder, aiRuntime));
-      app.use('/api/v1/major-readiness-v2', createMajorReadinessRouter(prisma, authorization, aiRuntime));
+      app.use(
+        '/api/v1',
+        createOperationsRouter(prisma, auth, {}, authorization, denialRecorder, aiRuntime),
+      );
+      app.use(
+        '/api/v1/major-readiness-v2',
+        createMajorReadinessRouter(prisma, authorization, aiRuntime),
+      );
     }
   }
   app.get('/errors/test', (_req, _res, next) => next(new Error('Deliberate test error')));

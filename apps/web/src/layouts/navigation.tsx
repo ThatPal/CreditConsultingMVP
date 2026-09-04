@@ -25,7 +25,7 @@ export type NavigationItem = {
   section: 'primary' | 'utility';
   capability?: string;
   status: 'available' | 'foundation';
-  group?: 'Overview' | 'Commerce' | 'Catalog' | 'Integrations';
+  group?: 'Overview' | 'Identity & security' | 'Commerce' | 'Catalog' | 'Integrations';
 };
 
 const registry: NavigationItem[] = [
@@ -224,6 +224,28 @@ const registry: NavigationItem[] = [
     capability: 'commerce.manage',
     status: 'available',
     group: 'Commerce',
+  },
+  {
+    id: 'admin-users',
+    label: 'Users & staff',
+    path: '/admin/users',
+    icon: GroupsRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Identity & security',
+  },
+  {
+    id: 'admin-access-grants',
+    label: 'Access grants',
+    path: '/admin/access-grants',
+    icon: AdminPanelSettingsRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Identity & security',
   },
   {
     id: 'admin-payments',
