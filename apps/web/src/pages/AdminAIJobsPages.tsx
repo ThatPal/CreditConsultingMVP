@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
 import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
@@ -217,6 +218,102 @@ export function AdminAIJobDetailPage() {
         <Box component="pre" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
           {JSON.stringify(job.sourceVersions, null, 2)}
         </Box>
+      </SectionCard>
+    </Stack>
+  );
+}
+
+export function AdminAIProcessesPage() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ['admin-ai-processes'],
+    queryFn: () =>
+      apiRequest<{
+        definitions: Array<{
+          id: string;
+          processKey: string;
+          processVersion: number;
+          enabled: boolean;
+          modelProfile: string;
+          inputSchemaVersion: number;
+          outputSchemaVersion: number;
+          instructionVersion: string;
+          dataClassification: string;
+          domainConsumer: string;
+          retiredAt: string | null;
+          _count: { jobs: number };
+        }>;
+      }>(`/api/v1/admin/ai/processes`),
+  });
+  const [processKey, setProcessKey] = useState('');
+  const [modelProfile, setModelProfile] = useState('');
+  const create = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/v1/admin/ai/processes/${encodeURIComponent(processKey)}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({
+          modelProfile,
+          inputSchemaVersion: 1,
+          outputSchemaVersion: 1,
+          instructionVersion: 'phase17-v1',
+          maxAttempts: 3,
+          dataClassification: 'SENSITIVE',
+          allowedContext: ['canonical-source-records'],
+          domainConsumer: 'operations',
+          enabled: false,
+          reason: 'Governed Admin configuration version',
+        }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-ai-processes'] }),
+  });
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        title="AI process configuration"
+        description="Versioned profile references and bounded context only. Provider credentials and professional authority are never configured here."
+      />
+      <Alert severity="info">
+        New versions default to disabled. Schema-changing versions cannot be activated directly.
+      </Alert>
+      <SectionCard>
+        <Typography variant="h6">Create reviewed draft version</Typography>
+        <Stack spacing={2} sx={{ mt: 2 }}>
+          <TextField
+            label="Process key"
+            value={processKey}
+            onChange={(e) => setProcessKey(e.target.value)}
+          />
+          <TextField
+            label="Model profile reference"
+            value={modelProfile}
+            onChange={(e) => setModelProfile(e.target.value)}
+          />
+          <Button
+            disabled={!processKey || !modelProfile || create.isPending}
+            onClick={() => create.mutate()}
+          >
+            Create disabled version
+          </Button>
+        </Stack>
+      </SectionCard>
+      <SectionCard>
+        <Stack divider={<Divider flexItem />}>
+          {query.data?.definitions.map((item) => (
+            <Stack key={item.id} sx={{ py: 2 }}>
+              <Stack direction="row" spacing={1}>
+                <Typography sx={{ fontWeight: 700 }}>
+                  {item.processKey} v{item.processVersion}
+                </Typography>
+                <Chip size="small" label={item.enabled ? 'Enabled' : 'Disabled'} />
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                {item.modelProfile} · input v{item.inputSchemaVersion} / output v
+                {item.outputSchemaVersion} · {item._count.jobs} jobs
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
       </SectionCard>
     </Stack>
   );

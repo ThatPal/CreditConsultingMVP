@@ -801,5 +801,139 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/ai/processes', canRead, async (_req, res, next) => {
+    try {
+      const definitions = await prisma.aIProcessDefinition.findMany({
+        select: {
+          id: true,
+          processKey: true,
+          processVersion: true,
+          enabled: true,
+          modelProfile: true,
+          inputSchemaVersion: true,
+          outputSchemaVersion: true,
+          instructionVersion: true,
+          retryPolicy: true,
+          dataClassification: true,
+          allowedContext: true,
+          domainConsumer: true,
+          createdAt: true,
+          retiredAt: true,
+          _count: { select: { jobs: true } },
+        },
+        orderBy: [{ processKey: 'asc' }, { processVersion: 'desc' }, { id: 'asc' }],
+      });
+      res.json({ definitions });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/ai/processes/:processKey/versions', canChange, async (req, res, next) => {
+    try {
+      const processKey = z.string().trim().min(3).max(120).parse(req.params.processKey);
+      const input = z
+        .object({
+          modelProfile: z
+            .string()
+            .trim()
+            .regex(/^[a-zA-Z0-9._-]{2,80}$/),
+          inputSchemaVersion: z.number().int().positive(),
+          outputSchemaVersion: z.number().int().positive(),
+          instructionVersion: z
+            .string()
+            .trim()
+            .regex(/^[a-zA-Z0-9._-]{2,80}$/),
+          maxAttempts: z.number().int().min(1).max(10),
+          dataClassification: z.enum(['PUBLIC', 'INTERNAL', 'SENSITIVE']),
+          allowedContext: z.array(z.string().trim().min(1).max(100)).max(50),
+          domainConsumer: z.string().trim().min(2).max(80),
+          enabled: z.boolean().default(false),
+          reason: z.string().trim().min(8).max(500),
+        })
+        .parse(req.body);
+      if (
+        sensitiveMetadataKey.test(input.modelProfile) ||
+        input.allowedContext.some((v) => sensitiveMetadataKey.test(v))
+      )
+        throw new AppError(
+          'SECRET_REFERENCE_REJECTED',
+          400,
+          'Configuration may reference profiles and fields, never secrets',
+        );
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; processVersion: number }>(
+        prisma,
+        {
+          idempotency: {
+            scope: 'admin-ai-config',
+            subjectId: processKey,
+            operation: 'create-version',
+            key,
+          },
+          audit: (r) => ({
+            actorId: req.auth!.userId,
+            action: 'ADMIN_AI_PROCESS_VERSION_CREATED',
+            entityType: 'AIProcessDefinition',
+            entityId: r.id,
+            metadata: { processKey, processVersion: r.processVersion, reason: input.reason },
+          }),
+          outbox: {
+            eventType: 'ai.process-version-created',
+            eventKey: key,
+            aggregateType: 'AIProcessDefinition',
+            payload: (r) => ({
+              id: r.id,
+              processKey,
+              processVersion: r.processVersion,
+              domains: ['ai-runtime', 'configuration'],
+            }),
+          },
+          mutate: async (tx) => {
+            const latest = await tx.aIProcessDefinition.findFirst({
+              where: { processKey },
+              orderBy: { processVersion: 'desc' },
+            });
+            if (
+              latest &&
+              (latest.inputSchemaVersion !== input.inputSchemaVersion ||
+                latest.outputSchemaVersion !== input.outputSchemaVersion) &&
+              input.enabled
+            )
+              throw new AppError(
+                'AI_SCHEMA_ACTIVATION_REQUIRES_MIGRATION',
+                409,
+                'A schema-changing version must be created disabled and reviewed before activation',
+              );
+            const created = await tx.aIProcessDefinition.create({
+              data: {
+                processKey,
+                processVersion: (latest?.processVersion ?? 0) + 1,
+                authorityLevel: 'FACTUAL_LEVEL_1',
+                enabled: input.enabled,
+                modelProfile: input.modelProfile,
+                inputSchemaVersion: input.inputSchemaVersion,
+                outputSchemaVersion: input.outputSchemaVersion,
+                instructionVersion: input.instructionVersion,
+                retryPolicy: { maxAttempts: input.maxAttempts },
+                dataClassification: input.dataClassification,
+                allowedContext: input.allowedContext,
+                domainConsumer: input.domainConsumer,
+              },
+            });
+            if (input.enabled && latest)
+              await tx.aIProcessDefinition.updateMany({
+                where: { processKey, id: { not: created.id }, enabled: true },
+                data: { enabled: false, retiredAt: new Date() },
+              });
+            return { id: created.id, processVersion: created.processVersion };
+          },
+        },
+      );
+      res.status(result.replayed ? 200 : 201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }

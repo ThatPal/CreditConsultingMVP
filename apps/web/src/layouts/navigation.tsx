@@ -281,6 +281,17 @@ const registry: NavigationItem[] = [
     group: 'Overview',
   },
   {
+    id: 'admin-ai-processes',
+    label: 'AI processes',
+    path: '/admin/ai/processes',
+    icon: AdminPanelSettingsRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Overview',
+  },
+  {
     id: 'admin-security-events',
     label: 'Security events',
     path: '/admin/security-events',
