@@ -14,6 +14,7 @@ import {
   enqueueRecommendationPreparation,
   finalizeCase,
   getCase,
+  recordMajorApplicationOutcome,
   startCase,
   updateCase,
 } from './service.js';
@@ -236,6 +237,19 @@ export function createMajorReadinessRouter(
       } catch (e) {
         next(e);
       }
+    },
+  );
+  router.post(
+    '/consultant/clients/:clientId/cases/:caseId/outcome',
+    requireRole('CONSULTANT'),
+    async (req, res, next) => {
+      try {
+        const clientId = await guard(req, 'client.manage');
+        const b = z.object({ outcome: z.string().trim().min(1).max(120), submittedAt: z.coerce.date().optional(), idempotencyKey: z.string().optional() }).parse(req.body);
+        const out = await recordMajorApplicationOutcome(prisma, { caseId: req.params.caseId as string, clientId, actorId: req.auth!.userId, outcome: b.outcome, ...(b.submittedAt ? { submittedAt: b.submittedAt } : {}), idempotencyKey: key(req, b.idempotencyKey) });
+        publishLiveUpdate(clientId, 'major-readiness', 'work-queue');
+        res.json(out);
+      } catch (e) { next(e); }
     },
   );
   router.post(

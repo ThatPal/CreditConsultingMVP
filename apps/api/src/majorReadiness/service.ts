@@ -663,6 +663,17 @@ export async function clearRestrictions(
   });
 }
 
+export async function recordMajorApplicationOutcome(prisma: PrismaClient, input: { caseId: string; clientId: string; actorId: string; outcome: string; submittedAt?: Date | undefined; idempotencyKey: string }) {
+  return executeConsequentialCommand(prisma, { idempotency: { scope: 'major-readiness', subjectId: input.caseId, operation: 'record-major-outcome', key: input.idempotencyKey, requestHash: hash({ outcome: input.outcome, submittedAt: input.submittedAt }) }, audit: { action: 'MAJOR_APPLICATION_OUTCOME_RECORDED', entityType: 'MajorReadinessCase', entityId: input.caseId, clientId: input.clientId, actorId: input.actorId }, outbox: { eventType: 'major-readiness.changed', eventKey: `major-readiness:${input.caseId}:outcome:${input.idempotencyKey}`, aggregateType: 'MajorReadinessCase', aggregateId: input.caseId, payload: { clientId: input.clientId, caseId: input.caseId, reassessmentRequired: true } }, mutate: async (tx) => {
+    const changed = await tx.majorReadinessCase.updateMany({ where: { id: input.caseId, clientId: input.clientId, status: { not: 'COMPLETE' } }, data: { majorApplicationSubmittedAt: input.submittedAt ?? new Date(), majorApplicationOutcome: input.outcome, status: 'REASSESSMENT', version: { increment: 1 } } });
+    if (changed.count !== 1) throw new AppError('CASE_NOT_CURRENT', 409, 'Case is not current');
+    await tx.majorReadinessRecommendation.updateMany({ where: { caseId: input.caseId, supersededAt: null }, data: { supersededAt: new Date() } });
+    await tx.coordinationDecision.updateMany({ where: { caseId: input.caseId, supersededAt: null }, data: { supersededAt: new Date() } });
+    await tx.majorReadinessEvent.create({ data: { caseId: input.caseId, clientId: input.clientId, actorUserId: input.actorId, type: 'MAJOR_APPLICATION_OUTCOME_RECORDED', payload: json({ outcome: input.outcome, lenderDecisionIsFactual: true, advisoryRecommendationSuperseded: true }) } });
+    return { caseId: input.caseId, status: 'REASSESSMENT', outcome: input.outcome };
+  } });
+}
+
 export async function finalizeCase(
   prisma: PrismaClient,
   input: { caseId: string; clientId: string; actorId: string; idempotencyKey: string },
