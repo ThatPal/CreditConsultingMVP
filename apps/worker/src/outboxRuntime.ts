@@ -68,6 +68,7 @@ export async function startOutboxRuntime(options: {
   pollIntervalMs?: number;
   processNotificationDelivery?: (deliveryId: string) => Promise<void>;
   queueName?: string;
+  claimEventIds?: string[];
 }) {
   const pool = new Pool({
     connectionString: assertCreditDatabaseUrl(options.databaseUrl),
@@ -111,11 +112,12 @@ export async function startOutboxRuntime(options: {
         SELECT id, "eventType", "aggregateId", payload, "payloadVersion", "createdAt", "attemptCount"
         FROM "OutboxEvent"
         WHERE status = 'PENDING' AND "availableAt" <= now()
+          AND ($2::uuid[] IS NULL OR id = ANY($2::uuid[]))
         ORDER BY "createdAt"
         FOR UPDATE SKIP LOCKED
         LIMIT $1
       `,
-        [limit],
+        [limit, options.claimEventIds ?? null],
       );
       events = result.rows;
       if (events.length)

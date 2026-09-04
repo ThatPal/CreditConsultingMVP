@@ -160,6 +160,7 @@ describe('business command to authorized realtime refetch', () => {
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
       queueName: `credit-outbox-${suite}-command`,
+      claimEventIds: [outbox.id],
     });
     try {
       await expect(received).resolves.toMatchObject({
@@ -212,6 +213,7 @@ describe('business command to authorized realtime refetch', () => {
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
       queueName: `credit-outbox-${suite}-restart`,
+      claimEventIds: [outbox.id],
     });
     await firstWorker.close();
     await expect(
@@ -233,6 +235,7 @@ describe('business command to authorized realtime refetch', () => {
       logger: pino({ enabled: false }),
       pollIntervalMs: 60_000,
       queueName: `credit-outbox-${suite}-restart`,
+      claimEventIds: [outbox.id],
     });
     try {
       await expect(received).resolves.toMatchObject({ id: outbox.id, clientId: client.id });

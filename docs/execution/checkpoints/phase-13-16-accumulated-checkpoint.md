@@ -18,7 +18,7 @@ The audit found no P0 issue. Five material P1 findings were corrected:
 - **D1316-31:** both client-visible and staff-visible Support reply paths now atomically create preference-aware canonical notifications, optional email deliveries and delivery outbox work. Exact idempotency keys yield one message, notification, delivery, delivery event and audit effect.
 - **D1316-32:** the review launcher now owns recorded PIDs, refuses occupied ports, checks native command exit codes, enforces its dedicated Credit database and verifies API plus web health before reporting success.
 - **D1316-33:** realtime authorization now checks local room sockets on every canonical event, avoiding unnecessary distributed socket-fetch latency while preserving multi-instance Redis fan-out. Immediate revocation, initial denial and authorized delivery are proven.
-- **D1316-34:** the exact-head Linux gate exposed cross-test BullMQ queue retention plus synchronous startup draining of unrelated poison events. Runtime queue identity is injectable for deterministic integration isolation while production retains `credit-outbox-v1`; startup processes the single oldest event before normal 25-event polling resumes, restart proofs deliberately reuse their suite queue, and each accumulated fixture deterministically places its owned event first without deleting foreign state.
+- **D1316-34:** the exact-head Linux gate exposed cross-test BullMQ queue retention plus unrelated pending rows crossing integration-test ownership boundaries. Runtime queue identity and an optional claimed-event allowlist are injectable for deterministic integration isolation while production retains `credit-outbox-v1` with unrestricted claims; startup processes one owned event before normal 25-event polling resumes, and restart proofs deliberately reuse their suite queue.
 - **D1316-35:** a durable claim now leases the selected outbox row through `availableAt` in the same transaction that increments its attempt count. Concurrent workers cannot reclaim an in-flight publication, while failure resets the bounded retry delay and an interrupted claim becomes recoverable after the 30-second lease.
 
 No Support or AI Support path gained Review, Strategy, execution, finalization, Major Readiness, payment, entitlement or security mutation authority.
@@ -38,6 +38,7 @@ No Support or AI Support path gained Review, Strategy, execution, finalization, 
 - Realtime authorization rerun: 1 file / 3 tests PASS, including immediate live revocation.
 - Business-command → outbox → worker → Socket.IO proof after CI correction: 1 file / 2 tests PASS.
 - Outbox retry/restart/delivery proof after CI correction: 1 file / 3 tests PASS on an isolated Credit database and Redis namespace.
+- Owned-event integration isolation rerun: business pipeline 1 file / 2 tests PASS and complete worker suite 6 files / 13 tests PASS.
 - Complete worker concurrency/recovery gate after durable claim leasing: 6 files / 13 tests PASS against fresh `credit_strategy_phase1316_workerproof_0903` after all 61 migrations.
 - Workspace typecheck: PASS.
 - Repository lint: PASS.
