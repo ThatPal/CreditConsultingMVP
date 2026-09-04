@@ -10,6 +10,7 @@ import type { AuthorizationService } from '../authorization/authorizationService
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
+import type { DurableAIRuntime } from '../ai/durableRuntime.js';
 
 const pageQuery = z.object({
   search: z.string().trim().max(120).default(''),
@@ -52,6 +53,7 @@ export function createAdminOperationsRouter(
   prisma: PrismaClient,
   authorization: AuthorizationService,
   denialRecorder?: AuthorizationDenialRecorder,
+  aiRuntime?: DurableAIRuntime,
 ) {
   const router = Router();
   const access = createAccessAdministration(prisma);
@@ -602,6 +604,196 @@ export function createAdminOperationsRouter(
         assignmentId: req.params.assignmentId as string,
         actorId: req.auth!.userId,
         idempotencyKey: idempotencyKey(req.get('Idempotency-Key')),
+      });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/ai/jobs', canRead, async (req, res, next) => {
+    try {
+      const input = z
+        .object({
+          status: z
+            .enum([
+              'QUEUED',
+              'RUNNING',
+              'SUCCEEDED',
+              'RETRYABLE_FAILURE',
+              'NON_RETRYABLE_FAILURE',
+              'SCHEMA_INVALID',
+              'STALE',
+              'CANCELLED',
+            ])
+            .optional(),
+          processKey: z.string().trim().max(100).optional(),
+          clientId: z.uuid().optional(),
+          cursor: z.uuid().optional(),
+          limit: z.coerce.number().int().min(1).max(100).default(50),
+        })
+        .parse(req.query);
+      const jobs = await prisma.aIJob.findMany({
+        where: {
+          ...(input.status ? { status: input.status } : {}),
+          ...(input.clientId ? { clientId: input.clientId } : {}),
+          ...(input.processKey ? { processDefinition: { processKey: input.processKey } } : {}),
+        },
+        select: {
+          id: true,
+          clientId: true,
+          status: true,
+          currentAttempt: true,
+          maxAttempts: true,
+          failureCategory: true,
+          failureCode: true,
+          relatedEntityType: true,
+          relatedEntityId: true,
+          createdAt: true,
+          updatedAt: true,
+          startedAt: true,
+          completedAt: true,
+          processDefinition: {
+            select: { processKey: true, processVersion: true, modelProfile: true },
+          },
+          _count: { select: { outputs: true, artifacts: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+      });
+      const hasMore = jobs.length > input.limit;
+      const page = jobs.slice(0, input.limit);
+      res.json({ jobs: page, hasMore, nextCursor: hasMore ? page.at(-1)?.id : null });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/ai/jobs/:jobId', canRead, async (req, res, next) => {
+    try {
+      const job = await prisma.aIJob.findUnique({
+        where: { id: req.params.jobId as string },
+        include: {
+          processDefinition: true,
+          outputs: {
+            select: {
+              id: true,
+              status: true,
+              confidence: true,
+              createdAt: true,
+              staleAt: true,
+              provenance: true,
+            },
+          },
+          artifacts: {
+            select: {
+              id: true,
+              artifactType: true,
+              artifactVersion: true,
+              current: true,
+              staleAt: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+      if (!job) throw new AppError('NOT_FOUND', 404, 'AI job was not found');
+      res.json({
+        job: {
+          ...job,
+          inputEnvelope: '[REDACTED]',
+          sourceVersions: redactMetadata(job.sourceVersions),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/ai/jobs/:jobId/retry', canChange, async (req, res, next) => {
+    try {
+      const jobId = req.params.jobId as string;
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; status: string }>(prisma, {
+        idempotency: { scope: 'admin-ai', subjectId: jobId, operation: 'retry', key },
+        audit: {
+          actorId: req.auth!.userId,
+          action: 'ADMIN_AI_JOB_RETRIED',
+          entityType: 'AIJob',
+          entityId: jobId,
+        },
+        outbox: {
+          eventType: 'ai.job-retry-requested',
+          eventKey: key,
+          aggregateType: 'AIJob',
+          aggregateId: jobId,
+          payload: { jobId, domains: ['ai-runtime'] },
+        },
+        mutate: async (tx) => {
+          const changed = await tx.aIJob.updateMany({
+            where: {
+              id: jobId,
+              status: {
+                in: ['RETRYABLE_FAILURE', 'NON_RETRYABLE_FAILURE', 'SCHEMA_INVALID', 'STALE'],
+              },
+            },
+            data: {
+              status: 'QUEUED',
+              availableAt: new Date(),
+              completedAt: null,
+              failureCode: null,
+              failureCategory: null,
+            },
+          });
+          if (changed.count !== 1)
+            throw new AppError(
+              'AI_JOB_NOT_RETRYABLE',
+              409,
+              'AI job is not in a retryable terminal state',
+            );
+          return { id: jobId, status: 'QUEUED' };
+        },
+      });
+      await aiRuntime?.reconstructAndEnqueue();
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/ai/jobs/:jobId/cancel', canChange, async (req, res, next) => {
+    try {
+      const jobId = req.params.jobId as string;
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; status: string }>(prisma, {
+        idempotency: { scope: 'admin-ai', subjectId: jobId, operation: 'cancel', key },
+        audit: {
+          actorId: req.auth!.userId,
+          action: 'ADMIN_AI_JOB_CANCELLED',
+          entityType: 'AIJob',
+          entityId: jobId,
+        },
+        outbox: {
+          eventType: 'ai.job-cancelled',
+          eventKey: key,
+          aggregateType: 'AIJob',
+          aggregateId: jobId,
+          payload: { jobId, domains: ['ai-runtime'] },
+        },
+        mutate: async (tx) => {
+          const changed = await tx.aIJob.updateMany({
+            where: { id: jobId, status: { in: ['QUEUED', 'RETRYABLE_FAILURE'] } },
+            data: { status: 'CANCELLED', completedAt: new Date() },
+          });
+          if (changed.count !== 1)
+            throw new AppError(
+              'AI_JOB_NOT_CANCELLABLE',
+              409,
+              'Only queued or retryable jobs may be cancelled',
+            );
+          return { id: jobId, status: 'CANCELLED' };
+        },
       });
       res.json(result);
     } catch (error) {

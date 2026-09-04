@@ -144,7 +144,10 @@ export function createApp(
     if (prisma) {
       const authorization = createPrismaAuthorizationService(prisma);
       const denialRecorder = createPrismaAuthorizationDenialRecorder(prisma);
-      app.use('/api/v1/admin', createAdminOperationsRouter(prisma, authorization, denialRecorder));
+      app.use(
+        '/api/v1/admin',
+        createAdminOperationsRouter(prisma, authorization, denialRecorder, aiRuntime),
+      );
       app.use('/api/v1/notifications', createNotificationRouter(prisma));
       app.use('/api/v1/client/goal-intakes', createGoalIntakeBindingRouter(prisma));
       app.use('/api/v1', createClientContextRouter(prisma, authorization, denialRecorder));

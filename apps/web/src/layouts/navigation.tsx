@@ -270,6 +270,17 @@ const registry: NavigationItem[] = [
     group: 'Identity & security',
   },
   {
+    id: 'admin-ai-jobs',
+    label: 'AI jobs',
+    path: '/admin/ai/jobs',
+    icon: TaskAltRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Overview',
+  },
+  {
     id: 'admin-security-events',
     label: 'Security events',
     path: '/admin/security-events',

@@ -53,6 +53,7 @@ import {
   AdminUsersPage,
 } from './pages/AdminIdentityPages';
 import { AdminEventDetailPage, AdminEventListPage } from './pages/AdminAuditPages';
+import { AdminAIJobDetailPage, AdminAIJobsPage } from './pages/AdminAIJobsPages';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
 import {
@@ -270,6 +271,8 @@ export function App() {
             path="security-events/:eventId"
             element={<AdminEventDetailPage kind="security" />}
           />
+          <Route path="ai/jobs" element={<AdminAIJobsPage />} />
+          <Route path="ai/jobs/:jobId" element={<AdminAIJobDetailPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
