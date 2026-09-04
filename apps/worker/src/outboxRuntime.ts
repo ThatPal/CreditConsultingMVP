@@ -101,19 +101,22 @@ export async function startOutboxRuntime(options: {
   await worker.waitUntilReady();
 
   let active = true;
-  const publishBatch = async () => {
+  const publishBatch = async (limit = 25) => {
     const client = await pool.connect();
     let events: ClaimedEvent[];
     try {
       await client.query('BEGIN');
-      const result = await client.query<ClaimedEvent>(`
+      const result = await client.query<ClaimedEvent>(
+        `
         SELECT id, "eventType", "aggregateId", payload, "payloadVersion", "createdAt", "attemptCount"
         FROM "OutboxEvent"
         WHERE status = 'PENDING' AND "availableAt" <= now()
         ORDER BY "createdAt"
         FOR UPDATE SKIP LOCKED
-        LIMIT 25
-      `);
+        LIMIT $1
+      `,
+        [limit],
+      );
       events = result.rows;
       if (events.length)
         await client.query(
@@ -177,7 +180,10 @@ export async function startOutboxRuntime(options: {
       void publishBatch().catch((err) => options.logger.error({ err }, 'Outbox poll failed')),
     options.pollIntervalMs ?? 1000,
   );
-  await publishBatch();
+  // Startup readiness must not be held hostage by unrelated poison events in
+  // the remainder of a bounded batch. Drain the single oldest event now; the
+  // regular poll immediately resumes normal 25-event batches.
+  await publishBatch(1);
   return {
     publishBatch,
     async close() {
