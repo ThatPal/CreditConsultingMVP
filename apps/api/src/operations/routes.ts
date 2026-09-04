@@ -27,6 +27,8 @@ import {
   authorizedSupportClientIds,
   resolveSupportAttachments,
   resolveSupportContext,
+  routeSupportCase,
+  supportContextLink,
   supportAttachmentProjection,
   supportReplyTransition,
 } from '../support/supportDomain.js';
@@ -51,7 +53,7 @@ const supportCaseSchema = z.object({
   priority: z.enum(['NORMAL', 'HIGH', 'URGENT']).default('NORMAL'),
   subject: z.string().trim().min(4).max(160),
   message: z.string().trim().min(10).max(5000),
-  contextType: z.enum(['GENERAL', 'DOCUMENT', 'REVIEW', 'APPLICATION_SESSION']).default('GENERAL'),
+  contextType: z.enum(['GENERAL', 'DOCUMENT', 'REVIEW', 'PLAN', 'CARD', 'APPLICATION_ROUND', 'STRATEGY', 'APPOINTMENT', 'APPLICATION_SESSION', 'POST_ROUND', 'MAJOR_READINESS']).default('GENERAL'),
   contextResourceId: z.uuid().nullish(),
   attachmentDocumentIds: z.array(z.uuid()).max(5).default([]),
 });
@@ -153,6 +155,8 @@ const staffSupportCaseInclude = {
   },
   categoryDefinition: { select: { key: true, name: true } },
   attachments: { select: supportAttachmentProjection },
+  assignmentEvents: { orderBy: { createdAt: 'asc' as const } },
+  aiArtifacts: { orderBy: { createdAt: 'desc' as const } },
 } as const;
 const activeSupportStatuses = ['OPEN', 'WAITING_ON_SUPPORT', 'WAITING_ON_CLIENT'] as const;
 const historicalSupportStatuses = ['RESOLVED', 'CLOSED'] as const;
@@ -187,12 +191,13 @@ async function supportContextProjection(
   },
 ) {
   try {
-    return await resolveSupportContext(prisma, {
+    const context = await resolveSupportContext(prisma, {
       clientId: item.clientId,
       category: item.category,
       contextType: item.contextType,
       contextResourceId: item.contextResourceId,
     });
+    return { ...context, link: supportContextLink(context.type, context.resourceId) };
   } catch {
     return {
       type: item.contextType,
@@ -905,6 +910,12 @@ export function createOperationsRouter(
       });
       if (!client) throw new AppError('NOT_FOUND', 404, 'Client account was not found');
       const now = new Date();
+      const routing = routeSupportCase({
+        category: parsed.data.category,
+        priority: parsed.data.priority,
+        createdAt: now,
+        assignedConsultantId: client.assignedConsultantId,
+      });
       const notificationRecipients = await getSupportNotificationRecipients(
         prisma,
         client.assignedConsultantId,
@@ -944,7 +955,9 @@ export function createOperationsRouter(
               data: {
                 clientId,
                 createdByUserId: req.auth!.userId,
-                assignedToUserId: client.assignedConsultantId,
+                assignedToUserId: routing.assigneeId,
+                routedQueue: routing.queue,
+                slaDueAt: routing.slaDueAt,
                 category: parsed.data.category,
                 priority: parsed.data.priority,
                 subject: parsed.data.subject,
@@ -964,6 +977,15 @@ export function createOperationsRouter(
                     documentId: document.id,
                     attachedByUserId: req.auth!.userId,
                   })),
+                },
+                assignmentEvents: {
+                  create: {
+                    actorUserId: req.auth!.userId,
+                    toAssigneeId: routing.assigneeId,
+                    eventType: routing.assigneeId ? 'ASSIGNED' : 'ROUTED',
+                    reason: routing.reason,
+                    version: 0,
+                  },
                 },
               },
             });
@@ -1379,6 +1401,57 @@ export function createOperationsRouter(
       }
     },
   );
+  router.post(
+    '/consultant/support-cases/:caseId/assignment',
+    requireRole('CONSULTANT'),
+    resolveSupportClient,
+    requireCapability(authorization, 'support.manage', 'clientId', undefined, denialRecorder),
+    async (req, res, next) => {
+      try {
+        const input = z.object({
+          action: z.enum(['ASSIGN', 'REASSIGN', 'CLAIM', 'UNASSIGN', 'ESCALATE']),
+          assigneeId: z.uuid().nullish(),
+          expectedVersion: z.number().int().min(0),
+          reason: z.string().trim().max(500).optional(),
+        }).parse(req.body);
+        const supportCase = await prisma.supportCase.findUnique({ where: { id: req.params.caseId as string } });
+        if (!supportCase) throw new AppError('NOT_FOUND', 404, 'Support request was not found');
+        const toAssigneeId: string | null = input.action === 'CLAIM' ? req.auth!.userId : input.action === 'UNASSIGN' ? null : input.assigneeId ?? null;
+        if (input.action !== 'UNASSIGN' && !toAssigneeId)
+          throw new AppError('VALIDATION_ERROR', 400, 'Choose an assignee');
+        if (toAssigneeId) {
+          const eligible = await prisma.user.findFirst({ where: { id: toAssigneeId, role: { in: ['CONSULTANT', 'ADMIN'] }, status: 'ACTIVE' }, select: { id: true } });
+          if (!eligible) throw new AppError('VALIDATION_ERROR', 400, 'Choose an active staff member');
+        }
+        const updated = await prisma.$transaction(async (tx) => {
+          const changed = await tx.supportCase.updateMany({
+            where: { id: supportCase.id, assignmentVersion: input.expectedVersion },
+            data: {
+              assignedToUserId: toAssigneeId,
+              assignmentVersion: { increment: 1 },
+              ...(input.action === 'ESCALATE' ? { escalatedAt: new Date(), priority: 'URGENT' as const } : {}),
+            },
+          });
+          if (changed.count !== 1) throw new AppError('STALE_SUPPORT_ASSIGNMENT', 409, 'Assignment changed; refresh it');
+          const current = await tx.supportCase.findUniqueOrThrow({ where: { id: supportCase.id } });
+          await tx.supportAssignmentEvent.create({ data: {
+            supportCaseId: supportCase.id,
+            actorUserId: req.auth!.userId,
+            fromAssigneeId: supportCase.assignedToUserId,
+            toAssigneeId,
+            eventType: input.action,
+            ...(input.reason ? { reason: input.reason } : {}),
+            version: current.assignmentVersion,
+          } });
+          await tx.auditEvent.create({ data: { clientId: supportCase.clientId, actorId: req.auth!.userId, action: `SUPPORT_${input.action}`, entityType: 'SupportCase', entityId: supportCase.id, metadata: { fromAssigneeId: supportCase.assignedToUserId, toAssigneeId, version: current.assignmentVersion } } });
+          await tx.outboxEvent.create({ data: { eventType: 'support.assignment.changed', eventKey: `support.assignment.changed:${supportCase.id}:${current.assignmentVersion}`, aggregateType: 'SupportCase', aggregateId: supportCase.id, payload: { clientId: supportCase.clientId, domains: ['support', 'work-queue'] } } });
+          return current;
+        });
+        publishLiveUpdate(supportCase.clientId, 'support', 'work-queue');
+        res.json({ case: updated });
+      } catch (error) { next(error); }
+    },
+  );
   router.patch(
     '/consultant/support-cases/:caseId',
     requireRole('CONSULTANT'),
@@ -1439,7 +1512,7 @@ export function createOperationsRouter(
               ...(parsed.data.status === 'RESOLVED' || parsed.data.status === 'CLOSED'
                 ? { resolvedAt: new Date() }
                 : parsed.data.status
-                  ? { resolvedAt: null }
+                  ? { resolvedAt: null, ...(supportCase.status === 'RESOLVED' ? { reopenedAt: new Date() } : {}) }
                   : {}),
             },
           });

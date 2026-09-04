@@ -10,6 +10,61 @@ import type { AuthorizationService } from '../authorization/authorizationService
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
+export const SUPPORT_AUTHORITY_DENYLIST = [
+  'review.mutate',
+  'profile.mutate',
+  'strategy.mutate',
+  'round.finalize',
+  'major-readiness.decide',
+  'payment.mutate',
+  'entitlement.mutate',
+  'security.mutate',
+] as const;
+
+const supportQueues: Record<SupportCategory, string> = {
+  ACCOUNT: 'ACCOUNT_ACCESS',
+  BILLING: 'COMMERCE',
+  CREDIT_REVIEW: 'CREDIT_REVIEW',
+  DOCUMENTS: 'DOCUMENTS',
+  APPLICATION_ROUND: 'APPLICATIONS',
+  MAJOR_READINESS: 'MAJOR_READINESS',
+  TECHNICAL: 'TECHNICAL',
+  OTHER: 'GENERAL',
+};
+
+export function routeSupportCase(input: {
+  category: SupportCategory;
+  priority: 'NORMAL' | 'HIGH' | 'URGENT';
+  createdAt?: Date;
+  assignedConsultantId?: string | null;
+}) {
+  const createdAt = input.createdAt ?? new Date();
+  const slaHours = input.priority === 'URGENT' ? 2 : input.priority === 'HIGH' ? 8 : 24;
+  return {
+    queue: supportQueues[input.category],
+    assigneeId: input.assignedConsultantId ?? null,
+    slaDueAt: new Date(createdAt.getTime() + slaHours * 60 * 60 * 1000),
+    reason: input.assignedConsultantId ? 'CLIENT_RELATIONSHIP' : 'QUEUE_FALLBACK',
+  };
+}
+
+export function supportContextLink(type: SupportContextType, resourceId: string | null) {
+  if (!resourceId || type === 'GENERAL') return null;
+  const links: Partial<Record<SupportContextType, string>> = {
+    DOCUMENT: '/app/documents',
+    REVIEW: `/app/credit-center/reviews/${resourceId}`,
+    PLAN: '/app/plan',
+    CARD: '/app/cards',
+    APPLICATION_ROUND: `/app/rounds/${resourceId}`,
+    STRATEGY: `/app/rounds/${resourceId}/strategy`,
+    APPOINTMENT: '/app/appointments',
+    APPLICATION_SESSION: `/app/application-sessions/${resourceId}`,
+    POST_ROUND: `/app/rounds/${resourceId}/follow-up`,
+    MAJOR_READINESS: '/app/major-readiness',
+  };
+  return links[type] ?? null;
+}
+
 export const supportTransitions: Record<SupportCaseStatus, readonly SupportCaseStatus[]> = {
   OPEN: ['WAITING_ON_SUPPORT', 'WAITING_ON_CLIENT', 'RESOLVED', 'CLOSED'],
   WAITING_ON_SUPPORT: ['WAITING_ON_CLIENT', 'RESOLVED', 'CLOSED'],
@@ -113,6 +168,46 @@ export async function resolveSupportContext(
       resourceId: review.id,
       summary: `Credit Review · ${review.status}`,
     };
+  }
+  if (contextType === 'PLAN') {
+    const plan = await db.plan.findFirst({ where: { id: input.contextResourceId, clientId: input.clientId }, select: { id: true, status: true } });
+    if (!plan) throw new Error('SUPPORT_CONTEXT_NOT_FOUND');
+    return { type: contextType, resourceId: plan.id, summary: `Credit plan · ${plan.status}` };
+  }
+  if (contextType === 'CARD') {
+    const card = await db.clientCard.findFirst({ where: { id: input.contextResourceId, clientId: input.clientId }, select: { id: true, cardName: true, accountStatus: true } });
+    if (!card) throw new Error('SUPPORT_CONTEXT_NOT_FOUND');
+    return { type: contextType, resourceId: card.id, summary: `${card.cardName} · ${card.accountStatus ?? 'Status unavailable'}` };
+  }
+  if (contextType === 'APPLICATION_ROUND') {
+    const round = await db.creditCardRound.findFirst({ where: { id: input.contextResourceId, clientId: input.clientId }, select: { id: true, status: true } });
+    if (!round) throw new Error('SUPPORT_CONTEXT_NOT_FOUND');
+    return { type: contextType, resourceId: round.id, summary: `Application round · ${round.status}` };
+  }
+  if (contextType === 'STRATEGY') {
+    const strategy = await db.roundStrategy.findFirst({ where: { id: input.contextResourceId, clientId: input.clientId }, select: { id: true, roundId: true, status: true } });
+    if (!strategy) throw new Error('SUPPORT_CONTEXT_NOT_FOUND');
+    return { type: contextType, resourceId: strategy.roundId, summary: `Application strategy · ${strategy.status}` };
+  }
+  if (contextType === 'APPOINTMENT') {
+    const appointment = await db.appointment.findFirst({ where: { id: input.contextResourceId, clientId: input.clientId }, select: { id: true, status: true, startsAt: true } });
+    if (!appointment) throw new Error('SUPPORT_CONTEXT_NOT_FOUND');
+    return { type: contextType, resourceId: appointment.id, summary: `Appointment · ${appointment.status} · ${appointment.startsAt.toISOString()}` };
+  }
+  if (contextType === 'POST_ROUND') {
+    const followUp = await db.postRoundFollowUp.findFirst({ where: { id: input.contextResourceId, clientId: input.clientId }, select: { id: true, roundId: true, status: true } });
+    if (!followUp) throw new Error('SUPPORT_CONTEXT_NOT_FOUND');
+    return { type: contextType, resourceId: followUp.roundId, summary: `Post-round follow-up · ${followUp.status}` };
+  }
+  if (contextType === 'MAJOR_READINESS') {
+    const major = await db.majorReadinessCase.findFirst({ where: { id: input.contextResourceId, clientId: input.clientId }, select: { id: true, status: true } });
+    if (!major) throw new Error('SUPPORT_CONTEXT_NOT_FOUND');
+    return { type: contextType, resourceId: major.id, summary: `Major readiness · ${major.status}` };
+  }
+  if (contextType === 'APPLICATION_SESSION') {
+    const session = await db.applicationSession.findFirst({ where: { id: input.contextResourceId, clientId: input.clientId }, select: { id: true, status: true } });
+    if (!session) throw new Error('SUPPORT_CONTEXT_NOT_FOUND');
+    return { type: contextType, resourceId: session.id, summary: `Live application session · ${session.status}` };
   }
   const cycle = await db.applicationCycle.findFirst({
     where: { id: input.contextResourceId, clientId: input.clientId },

@@ -606,7 +606,14 @@ enum SupportContextType {
   GENERAL
   DOCUMENT
   REVIEW
+  PLAN
+  CARD
+  APPLICATION_ROUND
+  STRATEGY
+  APPOINTMENT
   APPLICATION_SESSION
+  POST_ROUND
+  MAJOR_READINESS
 }
 
 enum OptionKind {
@@ -2011,6 +2018,11 @@ model SupportCase {
   clientReadAt       DateTime?
   staffReadAt        DateTime?
   resolvedAt         DateTime?
+  assignmentVersion  Int                       @default(0)
+  routedQueue        String                    @default("GENERAL")
+  slaDueAt           DateTime?                 @db.Timestamptz(3)
+  escalatedAt        DateTime?                 @db.Timestamptz(3)
+  reopenedAt         DateTime?                 @db.Timestamptz(3)
   createdAt          DateTime                  @default(now())
   updatedAt          DateTime                  @updatedAt
   client             Client                    @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -2018,10 +2030,52 @@ model SupportCase {
   assignedTo         User?                     @relation("SupportCaseAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   messages           SupportMessage[]
   attachments        SupportAttachment[]
+  assignmentEvents   SupportAssignmentEvent[]
+  aiArtifacts        SupportAIArtifact[]
   categoryDefinition SupportCategoryDefinition @relation(fields: [category], references: [key], onDelete: Restrict)
 
   @@index([clientId, status, lastMessageAt])
   @@index([assignedToUserId, status, priority, lastMessageAt])
+  @@index([routedQueue, status, priority, slaDueAt, id])
+}
+
+model SupportAssignmentEvent {
+  id              String      @id @default(uuid()) @db.Uuid
+  supportCaseId   String      @db.Uuid
+  actorUserId     String      @db.Uuid
+  fromAssigneeId  String?     @db.Uuid
+  toAssigneeId    String?     @db.Uuid
+  eventType       String
+  reason          String?
+  version         Int
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+  supportCase     SupportCase @relation(fields: [supportCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([supportCaseId, version])
+  @@index([supportCaseId, createdAt, id])
+}
+
+model SupportAIArtifact {
+  id                String      @id @default(uuid()) @db.Uuid
+  supportCaseId     String      @db.Uuid
+  kind              String
+  status            String      @default("PROPOSED")
+  aiJobId           String?     @db.Uuid
+  aiJobOutputId     String?     @db.Uuid
+  model              String?
+  provider           String?
+  promptVersion      String
+  sourceMessageCount Int
+  structuredOutput  Json
+  editedAt           DateTime?  @db.Timestamptz(3)
+  acceptedAt         DateTime?  @db.Timestamptz(3)
+  sentMessageId      String?     @db.Uuid
+  supersededAt       DateTime?  @db.Timestamptz(3)
+  createdAt          DateTime    @default(now()) @db.Timestamptz(3)
+  supportCase        SupportCase @relation(fields: [supportCaseId], references: [id], onDelete: Cascade)
+
+  @@index([supportCaseId, kind, createdAt, id])
+  @@index([aiJobId])
 }
 
 model SupportCategoryDefinition {
