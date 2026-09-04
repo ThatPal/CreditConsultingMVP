@@ -61,6 +61,7 @@ import {
 import { AdminSourcesPage } from './pages/AdminSourcesPage';
 import { AdminWorkflowPage } from './pages/AdminWorkflowPage';
 import { AdminNotificationsPage } from './pages/AdminNotificationsPage';
+import { AdminIntegrationsPage } from './pages/AdminIntegrationsPage';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
 import {
@@ -284,6 +285,7 @@ export function App() {
           <Route path="sources" element={<AdminSourcesPage />} />
           <Route path="workflow-rules" element={<AdminWorkflowPage />} />
           <Route path="notification-operations" element={<AdminNotificationsPage />} />
+          <Route path="integrations" element={<AdminIntegrationsPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />

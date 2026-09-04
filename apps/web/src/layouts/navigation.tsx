@@ -325,6 +325,17 @@ const registry: NavigationItem[] = [
     group: 'Integrations',
   },
   {
+    id: 'admin-integrations',
+    label: 'Integrations',
+    path: '/admin/integrations',
+    icon: AdminPanelSettingsRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Integrations',
+  },
+  {
     id: 'admin-security-events',
     label: 'Security events',
     path: '/admin/security-events',

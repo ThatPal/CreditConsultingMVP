@@ -1321,5 +1321,90 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/integrations', canRead, async (_req, res, next) => {
+    try {
+      const integrations = await prisma.integration.findMany({
+        select: {
+          id: true,
+          key: true,
+          type: true,
+          provider: true,
+          enabled: true,
+          status: true,
+          configurationMetadata: true,
+          secretReferences: true,
+          lastTestedAt: true,
+          lastSuccessAt: true,
+          lastErrorCategory: true,
+          updatedAt: true,
+        },
+        orderBy: [{ type: 'asc' }, { key: 'asc' }, { id: 'asc' }],
+      });
+      res.json({
+        integrations: integrations.map(({ secretReferences, ...item }) => ({
+          ...item,
+          configurationMetadata: redactMetadata(item.configurationMetadata),
+          secretConfiguration: {
+            configured: secretReferences.length > 0,
+            count: secretReferences.length,
+          },
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.patch('/integrations/:integrationId/enabled', canChange, async (req, res, next) => {
+    try {
+      const integrationId = req.params.integrationId as string;
+      const input = z
+        .object({
+          enabled: z.boolean(),
+          expectedUpdatedAt: z.coerce.date(),
+          reason: z.string().trim().min(8).max(500),
+        })
+        .parse(req.body);
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; enabled: boolean }>(prisma, {
+        idempotency: {
+          scope: 'admin-integration',
+          subjectId: integrationId,
+          operation: 'set-enabled',
+          key,
+        },
+        audit: (r) => ({
+          actorId: req.auth!.userId,
+          action: r.enabled ? 'ADMIN_INTEGRATION_ENABLED' : 'ADMIN_INTEGRATION_DISABLED',
+          entityType: 'Integration',
+          entityId: r.id,
+          metadata: { reason: input.reason },
+        }),
+        outbox: {
+          eventType: 'integration.configuration-changed',
+          eventKey: key,
+          aggregateType: 'Integration',
+          aggregateId: integrationId,
+          payload: { integrationId, domains: ['integrations', 'configuration'] },
+        },
+        mutate: async (tx) => {
+          const changed = await tx.integration.updateMany({
+            where: { id: integrationId, updatedAt: input.expectedUpdatedAt },
+            data: { enabled: input.enabled, status: input.enabled ? 'UNTESTED' : 'DISABLED' },
+          });
+          if (changed.count !== 1)
+            throw new AppError(
+              'STALE_INTEGRATION',
+              409,
+              'Integration changed; refresh before continuing',
+            );
+          return { id: integrationId, enabled: input.enabled };
+        },
+      });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }
