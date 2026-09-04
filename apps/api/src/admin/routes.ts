@@ -25,6 +25,29 @@ const idempotencyKey = (header: string | undefined) => {
   return value;
 };
 
+const sensitiveMetadataKey =
+  /(password|token|secret|authorization|cookie|card.?number|file.?content)/i;
+export function redactMetadata(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactMetadata);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      sensitiveMetadataKey.test(key) ? '[REDACTED]' : redactMetadata(item),
+    ]),
+  );
+}
+
+const eventQuery = z.object({
+  search: z.string().trim().max(120).default(''),
+  action: z.string().trim().max(100).optional(),
+  actorId: z.uuid().optional(),
+  clientId: z.uuid().optional(),
+  severity: z.enum(['INFO', 'WARNING', 'HIGH']).optional(),
+  cursor: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 export function createAdminOperationsRouter(
   prisma: PrismaClient,
   authorization: AuthorizationService,
@@ -365,6 +388,118 @@ export function createAdminOperationsRouter(
         pageSize: input.pageSize,
         hasMore: input.page * input.pageSize < total,
       });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/audit-events', canRead, async (req, res, next) => {
+    try {
+      const input = eventQuery.parse(req.query);
+      const events = await prisma.auditEvent.findMany({
+        where: {
+          ...(input.action ? { action: input.action } : {}),
+          ...(input.actorId ? { actorId: input.actorId } : {}),
+          ...(input.clientId ? { clientId: input.clientId } : {}),
+          ...(input.search
+            ? {
+                OR: [
+                  { action: { contains: input.search, mode: 'insensitive' as const } },
+                  { entityType: { contains: input.search, mode: 'insensitive' as const } },
+                  { entityId: { contains: input.search, mode: 'insensitive' as const } },
+                ],
+              }
+            : {}),
+        },
+        select: {
+          id: true,
+          action: true,
+          entityType: true,
+          entityId: true,
+          actorId: true,
+          clientId: true,
+          source: true,
+          requestId: true,
+          correlationId: true,
+          createdAt: true,
+          actor: { select: { email: true, name: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+      });
+      const hasMore = events.length > input.limit;
+      const page = events.slice(0, input.limit);
+      res.json({ events: page, hasMore, nextCursor: hasMore ? page.at(-1)?.id : null });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/audit-events/:eventId', canRead, async (req, res, next) => {
+    try {
+      const event = await prisma.auditEvent.findUnique({
+        where: { id: req.params.eventId as string },
+        include: { actor: { select: { email: true, name: true } } },
+      });
+      if (!event) throw new AppError('NOT_FOUND', 404, 'Audit event was not found');
+      res.json({ event: { ...event, metadata: redactMetadata(event.metadata) } });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/security-events', canRead, async (req, res, next) => {
+    try {
+      const input = eventQuery.parse(req.query);
+      const events = await prisma.securityEvent.findMany({
+        where: {
+          ...(input.severity ? { severity: input.severity } : {}),
+          ...(input.actorId ? { actorId: input.actorId } : {}),
+          ...(input.clientId ? { clientId: input.clientId } : {}),
+          ...(input.action ? { eventType: input.action } : {}),
+          ...(input.search
+            ? {
+                OR: [
+                  { eventType: { contains: input.search, mode: 'insensitive' as const } },
+                  { category: { contains: input.search, mode: 'insensitive' as const } },
+                  { entityType: { contains: input.search, mode: 'insensitive' as const } },
+                ],
+              }
+            : {}),
+        },
+        select: {
+          id: true,
+          eventType: true,
+          severity: true,
+          category: true,
+          entityType: true,
+          entityId: true,
+          actorId: true,
+          clientId: true,
+          createdAt: true,
+          actor: { select: { email: true, name: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+      });
+      const hasMore = events.length > input.limit;
+      const page = events.slice(0, input.limit);
+      res.json({ events: page, hasMore, nextCursor: hasMore ? page.at(-1)?.id : null });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/security-events/:eventId', canRead, async (req, res, next) => {
+    try {
+      const event = await prisma.securityEvent.findUnique({
+        where: { id: req.params.eventId as string },
+        include: { actor: { select: { email: true, name: true } } },
+      });
+      if (!event) throw new AppError('NOT_FOUND', 404, 'Security event was not found');
+      res.json({ event: { ...event, metadata: redactMetadata(event.metadata) } });
     } catch (error) {
       next(error);
     }

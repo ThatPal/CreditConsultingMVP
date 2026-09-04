@@ -52,6 +52,7 @@ import {
   AdminUserDetailPage,
   AdminUsersPage,
 } from './pages/AdminIdentityPages';
+import { AdminEventDetailPage, AdminEventListPage } from './pages/AdminAuditPages';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
 import {
@@ -262,6 +263,13 @@ export function App() {
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="users/:userId" element={<AdminUserDetailPage />} />
           <Route path="access-grants" element={<AdminAccessGrantsPage />} />
+          <Route path="audit-events" element={<AdminEventListPage kind="audit" />} />
+          <Route path="audit-events/:eventId" element={<AdminEventDetailPage kind="audit" />} />
+          <Route path="security-events" element={<AdminEventListPage kind="security" />} />
+          <Route
+            path="security-events/:eventId"
+            element={<AdminEventDetailPage kind="security" />}
+          />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />

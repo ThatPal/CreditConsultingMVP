@@ -6,7 +6,7 @@ import type { AuthPrincipal } from '../auth/types.js';
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { errorHandler } from '../http/errors.js';
-import { createAdminOperationsRouter } from './routes.js';
+import { createAdminOperationsRouter, redactMetadata } from './routes.js';
 
 const principal = (role: 'ADMIN' | 'CONSULTANT', stepUpVerified = true): AuthPrincipal => ({
   userId: crypto.randomUUID(),
@@ -20,21 +20,19 @@ const principal = (role: 'ADMIN' | 'CONSULTANT', stepUpVerified = true): AuthPri
 });
 
 function application(role: 'ADMIN' | 'CONSULTANT', stepUpVerified = true) {
-  const findMany = vi
-    .fn()
-    .mockResolvedValue([
-      {
-        id: 'u1',
-        email: 'person@credit.local',
-        name: 'Person',
-        role: 'CLIENT',
-        status: 'ACTIVE',
-        twoFactorEnabled: false,
-        lastLoginAt: null,
-        updatedAt: new Date(),
-        _count: { betterAuthSessions: 0, accessGrants: 0, staffAssignments: 0 },
-      },
-    ]);
+  const findMany = vi.fn().mockResolvedValue([
+    {
+      id: 'u1',
+      email: 'person@credit.local',
+      name: 'Person',
+      role: 'CLIENT',
+      status: 'ACTIVE',
+      twoFactorEnabled: false,
+      lastLoginAt: null,
+      updatedAt: new Date(),
+      _count: { betterAuthSessions: 0, accessGrants: 0, staffAssignments: 0 },
+    },
+  ]);
   const prisma = {
     $transaction: vi.fn(async (values: Promise<unknown>[]) => Promise.all(values)),
     user: { count: vi.fn().mockResolvedValue(1), findMany },
@@ -57,6 +55,14 @@ function application(role: 'ADMIN' | 'CONSULTANT', stepUpVerified = true) {
 }
 
 describe('ADMIN-02 identity administration', () => {
+  test('recursively redacts sensitive event metadata', () => {
+    expect(redactMetadata({ token: 'no', nested: { passwordHash: 'no', reason: 'safe' } })).toEqual(
+      {
+        token: '[REDACTED]',
+        nested: { passwordHash: '[REDACTED]', reason: 'safe' },
+      },
+    );
+  });
   test('denies Consultant access even when capability service is permissive', async () => {
     await request(application('CONSULTANT').app).get('/api/v1/admin/users').expect(403);
   });
