@@ -64,6 +64,7 @@ import { AdminNotificationsPage } from './pages/AdminNotificationsPage';
 import { AdminIntegrationsPage } from './pages/AdminIntegrationsPage';
 import { AdminScheduledJobsPage } from './pages/AdminScheduledJobsPage';
 import { AdminRetentionPage } from './pages/AdminRetentionPage';
+import { AdminReportsPage } from './pages/AdminReportsPage';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
 import {
@@ -290,6 +291,7 @@ export function App() {
           <Route path="integrations" element={<AdminIntegrationsPage />} />
           <Route path="scheduled-jobs" element={<AdminScheduledJobsPage />} />
           <Route path="retention" element={<AdminRetentionPage />} />
+          <Route path="reports" element={<AdminReportsPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />

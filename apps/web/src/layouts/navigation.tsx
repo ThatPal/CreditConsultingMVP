@@ -358,6 +358,17 @@ const registry: NavigationItem[] = [
     group: 'Overview',
   },
   {
+    id: 'admin-reports',
+    label: 'Reports',
+    path: '/admin/reports',
+    icon: DescriptionRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Overview',
+  },
+  {
     id: 'admin-security-events',
     label: 'Security events',
     path: '/admin/security-events',

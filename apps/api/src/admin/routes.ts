@@ -1578,5 +1578,64 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/reports/operations-summary', canRead, async (req, res, next) => {
+    try {
+      const input = z
+        .object({ from: z.coerce.date(), to: z.coerce.date() })
+        .refine(
+          (v) => v.to > v.from && v.to.getTime() - v.from.getTime() <= 366 * 86_400_000,
+          'Date range must be 366 days or less',
+        )
+        .parse(req.query);
+      const createdAt = { gte: input.from, lte: input.to };
+      const [payments, refunds, disputes, aiJobs, supportCases, notifications] =
+        await prisma.$transaction([
+          prisma.payment.groupBy({
+            by: ['state'],
+            where: { createdAt },
+            orderBy: { state: 'asc' },
+            _count: true,
+          }),
+          prisma.paymentRefund.groupBy({
+            by: ['status'],
+            where: { createdAt },
+            orderBy: { status: 'asc' },
+            _count: true,
+          }),
+          prisma.paymentDispute.groupBy({
+            by: ['status'],
+            where: { createdAt },
+            orderBy: { status: 'asc' },
+            _count: true,
+          }),
+          prisma.aIJob.groupBy({
+            by: ['status'],
+            where: { createdAt },
+            orderBy: { status: 'asc' },
+            _count: true,
+          }),
+          prisma.supportCase.groupBy({
+            by: ['status'],
+            where: { createdAt },
+            orderBy: { status: 'asc' },
+            _count: true,
+          }),
+          prisma.notificationDelivery.groupBy({
+            by: ['status'],
+            where: { createdAt },
+            orderBy: { status: 'asc' },
+            _count: true,
+          }),
+        ]);
+      res.json({
+        range: { from: input.from, to: input.to },
+        sections: { payments, refunds, disputes, aiJobs, supportCases, notifications },
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }
