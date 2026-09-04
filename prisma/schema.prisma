@@ -2178,6 +2178,25 @@ model NotificationTemplate {
   @@index([key, channel, enabled])
 }
 
+model WorkflowRule {
+  id              String   @id @default(uuid()) @db.Uuid
+  key             String
+  version         Int
+  trigger         String
+  conditionType   String
+  conditionConfig Json
+  actionType      String
+  actionConfig    Json
+  enabled         Boolean  @default(false)
+  reason          String
+  createdById     String   @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  retiredAt       DateTime? @db.Timestamptz(3)
+
+  @@unique([key, version])
+  @@index([trigger, enabled])
+}
+
 model NotificationPreference {
   id        String              @id @default(uuid()) @db.Uuid
   userId    String              @db.Uuid

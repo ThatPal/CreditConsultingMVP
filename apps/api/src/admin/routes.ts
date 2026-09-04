@@ -1060,5 +1060,123 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/workflow-rules', canRead, async (_req, res, next) => {
+    try {
+      res.json({
+        rules: await prisma.workflowRule.findMany({
+          orderBy: [{ key: 'asc' }, { version: 'desc' }, { id: 'asc' }],
+        }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/workflow-rules/:ruleKey/versions', canChange, async (req, res, next) => {
+    try {
+      const ruleKey = z
+        .string()
+        .trim()
+        .regex(/^[a-z0-9._-]{3,100}$/)
+        .parse(req.params.ruleKey);
+      const input = z
+        .object({
+          trigger: z.enum([
+            'SUPPORT_CASE_CREATED',
+            'DOCUMENT_UPLOADED',
+            'PAYMENT_FAILED',
+            'AI_JOB_FAILED',
+            'ROUND_COMPLETED',
+          ]),
+          condition: z.discriminatedUnion('type', [
+            z.object({ type: z.literal('ALWAYS') }),
+            z.object({
+              type: z.literal('STATUS_EQUALS'),
+              status: z.string().trim().min(1).max(50),
+            }),
+            z.object({
+              type: z.literal('AGE_EXCEEDS_MINUTES'),
+              minutes: z.number().int().min(5).max(43200),
+            }),
+          ]),
+          action: z.discriminatedUnion('type', [
+            z.object({
+              type: z.literal('CREATE_NOTIFICATION'),
+              category: z.string().trim().min(2).max(80),
+            }),
+            z.object({
+              type: z.literal('CREATE_ATTENTION_ITEM'),
+              priority: z.enum(['LOW', 'NORMAL', 'HIGH']),
+            }),
+            z.object({
+              type: z.literal('SEND_TEMPLATE'),
+              templateKey: z
+                .string()
+                .trim()
+                .regex(/^[a-z0-9._-]{2,100}$/),
+            }),
+          ]),
+          enabled: z.boolean().default(false),
+          reason: z.string().trim().min(8).max(500),
+        })
+        .parse(req.body);
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; version: number }>(prisma, {
+        idempotency: {
+          scope: 'admin-workflow',
+          subjectId: ruleKey,
+          operation: 'create-version',
+          key,
+        },
+        audit: (r) => ({
+          actorId: req.auth!.userId,
+          action: 'ADMIN_WORKFLOW_RULE_VERSION_CREATED',
+          entityType: 'WorkflowRule',
+          entityId: r.id,
+          metadata: { key: ruleKey, version: r.version, reason: input.reason },
+        }),
+        outbox: {
+          eventType: 'workflow.rule-version-created',
+          eventKey: key,
+          aggregateType: 'WorkflowRule',
+          payload: (r) => ({
+            id: r.id,
+            key: ruleKey,
+            version: r.version,
+            domains: ['workflow', 'configuration'],
+          }),
+        },
+        mutate: async (tx) => {
+          const latest = await tx.workflowRule.findFirst({
+            where: { key: ruleKey },
+            orderBy: { version: 'desc' },
+          });
+          const created = await tx.workflowRule.create({
+            data: {
+              key: ruleKey,
+              version: (latest?.version ?? 0) + 1,
+              trigger: input.trigger,
+              conditionType: input.condition.type,
+              conditionConfig: input.condition,
+              actionType: input.action.type,
+              actionConfig: input.action,
+              enabled: input.enabled,
+              reason: input.reason,
+              createdById: req.auth!.userId,
+            },
+          });
+          if (input.enabled && latest)
+            await tx.workflowRule.updateMany({
+              where: { key: ruleKey, id: { not: created.id }, enabled: true },
+              data: { enabled: false, retiredAt: new Date() },
+            });
+          return { id: created.id, version: created.version };
+        },
+      });
+      res.status(result.replayed ? 200 : 201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }
