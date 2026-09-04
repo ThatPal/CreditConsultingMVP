@@ -1469,5 +1469,114 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/retention', canRead, async (_req, res, next) => {
+    try {
+      res.json({
+        policies: await prisma.retentionPolicy.findMany({
+          include: { runs: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10 } },
+          orderBy: [{ key: 'asc' }, { id: 'asc' }],
+        }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/retention/:policyId/preview', canRead, async (req, res, next) => {
+    try {
+      const policy = await prisma.retentionPolicy.findUnique({
+        where: { id: req.params.policyId as string },
+      });
+      if (!policy) throw new AppError('NOT_FOUND', 404, 'Retention policy was not found');
+      const cutoffAt = new Date(Date.now() - policy.retainDays * 86_400_000);
+      const affectedCount =
+        policy.target === 'EXPIRED_SESSIONS'
+          ? await prisma.betterAuthSession.count({ where: { expiresAt: { lt: cutoffAt } } })
+          : 0;
+      const run = await prisma.retentionRun.create({
+        data: {
+          policyId: policy.id,
+          mode: 'PREVIEW',
+          status: 'COMPLETED',
+          cutoffAt,
+          affectedCount,
+          actorId: req.auth!.userId,
+          completedAt: new Date(),
+        },
+      });
+      await prisma.auditEvent.create({
+        data: {
+          actorId: req.auth!.userId,
+          action: 'ADMIN_RETENTION_PREVIEWED',
+          entityType: 'RetentionRun',
+          entityId: run.id,
+          metadata: { policyKey: policy.key, affectedCount },
+        },
+      });
+      res.json({ run });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/retention/:policyId/execute', canChange, async (req, res, next) => {
+    try {
+      const policyId = req.params.policyId as string;
+      const policy = await prisma.retentionPolicy.findUnique({ where: { id: policyId } });
+      if (!policy?.enabled)
+        throw new AppError('RETENTION_POLICY_DISABLED', 409, 'Retention policy is disabled');
+      if (policy.target !== 'EXPIRED_SESSIONS')
+        throw new AppError(
+          'RETENTION_TARGET_PROTECTED',
+          409,
+          'This retention target cannot be deleted',
+        );
+      const cutoffAt = new Date(Date.now() - policy.retainDays * 86_400_000);
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; affectedCount: number }>(
+        prisma,
+        {
+          idempotency: { scope: 'admin-retention', subjectId: policyId, operation: 'execute', key },
+          audit: (r) => ({
+            actorId: req.auth!.userId,
+            action: 'ADMIN_RETENTION_EXECUTED',
+            entityType: 'RetentionRun',
+            entityId: r.id,
+            metadata: { affectedCount: r.affectedCount },
+          }),
+          outbox: {
+            eventType: 'retention.completed',
+            eventKey: key,
+            aggregateType: 'RetentionPolicy',
+            aggregateId: policyId,
+            payload: (r) => ({
+              runId: r.id,
+              affectedCount: r.affectedCount,
+              domains: ['security', 'retention'],
+            }),
+          },
+          mutate: async (tx) => {
+            const deleted = await tx.betterAuthSession.deleteMany({
+              where: { expiresAt: { lt: cutoffAt } },
+            });
+            const run = await tx.retentionRun.create({
+              data: {
+                policyId,
+                mode: 'EXECUTE',
+                status: 'COMPLETED',
+                cutoffAt,
+                affectedCount: deleted.count,
+                actorId: req.auth!.userId,
+                completedAt: new Date(),
+              },
+            });
+            return { id: run.id, affectedCount: deleted.count };
+          },
+        },
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }

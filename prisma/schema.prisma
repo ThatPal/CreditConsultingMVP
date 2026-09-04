@@ -2225,6 +2225,32 @@ model ScheduledJobRun {
   @@index([status, leaseUntil])
 }
 
+model RetentionPolicy {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  target    String
+  retainDays Int
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  runs      RetentionRun[]
+}
+
+model RetentionRun {
+  id          String   @id @default(uuid()) @db.Uuid
+  policyId    String   @db.Uuid
+  mode        String
+  status      String
+  cutoffAt    DateTime @db.Timestamptz(3)
+  affectedCount Int    @default(0)
+  actorId     String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+  policy      RetentionPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+
+  @@index([policyId, createdAt])
+}
+
 model NotificationPreference {
   id        String              @id @default(uuid()) @db.Uuid
   userId    String              @db.Uuid

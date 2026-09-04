@@ -347,6 +347,17 @@ const registry: NavigationItem[] = [
     group: 'Overview',
   },
   {
+    id: 'admin-retention',
+    label: 'Retention',
+    path: '/admin/retention',
+    icon: DescriptionRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Overview',
+  },
+  {
     id: 'admin-security-events',
     label: 'Security events',
     path: '/admin/security-events',

@@ -367,6 +367,11 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
       create: { ...definition, enabled: false },
       update: {},
     });
+  await prisma.retentionPolicy.upsert({
+    where: { key: 'expired-sessions' },
+    create: { key: 'expired-sessions', target: 'EXPIRED_SESSIONS', retainDays: 30, enabled: false },
+    update: {},
+  });
   return {
     optionTemplates: systemOptionTemplates.length,
     roleCapabilities: capabilityRows.length,

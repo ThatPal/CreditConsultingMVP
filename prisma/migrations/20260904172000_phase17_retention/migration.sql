@@ -1,0 +1,5 @@
+CREATE TABLE "RetentionPolicy" ("id" UUID NOT NULL DEFAULT gen_random_uuid(),"key" TEXT NOT NULL,"target" TEXT NOT NULL,"retainDays" INTEGER NOT NULL,"enabled" BOOLEAN NOT NULL DEFAULT false,"createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMPTZ(3) NOT NULL,CONSTRAINT "RetentionPolicy_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "RetentionPolicy_key_key" ON "RetentionPolicy"("key");
+CREATE TABLE "RetentionRun" ("id" UUID NOT NULL DEFAULT gen_random_uuid(),"policyId" UUID NOT NULL,"mode" TEXT NOT NULL,"status" TEXT NOT NULL,"cutoffAt" TIMESTAMPTZ(3) NOT NULL,"affectedCount" INTEGER NOT NULL DEFAULT 0,"actorId" UUID NOT NULL,"createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"completedAt" TIMESTAMPTZ(3),CONSTRAINT "RetentionRun_pkey" PRIMARY KEY ("id"));
+CREATE INDEX "RetentionRun_policyId_createdAt_idx" ON "RetentionRun"("policyId","createdAt");
+ALTER TABLE "RetentionRun" ADD CONSTRAINT "RetentionRun_policyId_fkey" FOREIGN KEY ("policyId") REFERENCES "RetentionPolicy"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
