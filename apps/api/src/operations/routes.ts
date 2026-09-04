@@ -264,6 +264,78 @@ export function createOperationsRouter(
     }
   };
   router.use(requireAuth);
+  router.get('/admin/dashboard', requireRole('ADMIN'), async (_req, res) => {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const section = async <T>(href: string, load: () => Promise<T>) => {
+      try {
+        return { status: 'healthy' as const, href, ...(await load()) };
+      } catch {
+        return { status: 'degraded' as const, href };
+      }
+    };
+    const [commerce, ai, catalog, integrations, security, products, platform] =
+      await Promise.all([
+        section('/admin/payments', async () => ({
+          pending: await prisma.payment.count({
+            where: { state: { in: ['PENDING', 'AWAITING_CUSTOMER', 'PROCESSING'] } },
+          }),
+          failed: await prisma.payment.count({ where: { state: 'FAILED' } }),
+          disputes: await prisma.paymentDispute.count({
+            where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+          }),
+        })),
+        section('/admin/ai/jobs', async () => ({
+          queued: await prisma.aIJob.count({
+            where: { status: { in: ['QUEUED', 'RUNNING', 'RETRYABLE_FAILURE'] } },
+          }),
+          failed: await prisma.aIJob.count({
+            where: { status: { in: ['NON_RETRYABLE_FAILURE', 'SCHEMA_INVALID'] } },
+          }),
+        })),
+        section('/admin/card-catalog', async () => ({
+          pending: await prisma.cardCatalogCandidate.count({ where: { status: 'PENDING' } }),
+          conflicts: await prisma.cardCatalogCandidate.count({
+            where: { status: 'PENDING', materialConflict: true },
+          }),
+        })),
+        section('/admin/integrations', async () => ({
+          enabled: await prisma.integration.count({ where: { enabled: true } }),
+          unhealthy: await prisma.integration.count({
+            where: { enabled: true, status: { in: ['DEGRADED', 'FAILED'] } },
+          }),
+        })),
+        section('/admin/security-events', async () => ({
+          recent: await prisma.securityEvent.count({
+            where: { createdAt: { gte: since }, severity: { in: ['WARNING', 'HIGH'] } },
+          }),
+        })),
+        section('/admin/services', async () => ({
+          active: await prisma.serviceProduct.count({ where: { active: true } }),
+          inactive: await prisma.serviceProduct.count({ where: { active: false } }),
+        })),
+        section('/admin/system-health', async () => ({
+          pendingOutbox: await prisma.outboxEvent.count({ where: { status: 'PENDING' } }),
+          failedOutbox: await prisma.outboxEvent.count({ where: { status: 'FAILED' } }),
+        })),
+      ]);
+    res.json({
+      asOf: new Date().toISOString(),
+      sections: {
+        commerce,
+        ai,
+        catalog,
+        integrations,
+        scheduledJobs: {
+          status: 'unavailable',
+          href: '/admin/scheduled-jobs',
+          reason: 'Scheduled-job operations are not configured yet.',
+        },
+        security,
+        products,
+        platform,
+      },
+    });
+  });
   router.get('/live-updates', async (req, res) => {
     res.status(200);
     res.setHeader('Content-Type', 'text/event-stream');
