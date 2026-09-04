@@ -33,6 +33,7 @@ describe('canonical system seed', () => {
       supportCategories: systemSupportCategories.length,
       integrations: 1,
       serviceProducts: 3,
+      scheduledJobs: 3,
     });
     expect(second).toEqual(first);
     expect(count).toBe(systemOptionTemplates.length);

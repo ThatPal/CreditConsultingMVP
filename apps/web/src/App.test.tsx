@@ -105,7 +105,7 @@ describe('application shells', () => {
   test('administrator lands in a distinct shell without consultant advisory navigation', () => {
     renderAt('/admin', 'ADMIN');
     const navigation = screen.getByRole('navigation', { name: /admin navigation/i });
-    expect(screen.getByRole('heading', { name: /^administration$/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^operations overview$/i })).toBeInTheDocument();
     expect(within(navigation).queryByText('Clients')).not.toBeInTheDocument();
     expect(within(navigation).queryByText('Work Queue')).not.toBeInTheDocument();
   });
