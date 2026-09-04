@@ -314,6 +314,17 @@ const registry: NavigationItem[] = [
     group: 'Overview',
   },
   {
+    id: 'admin-notification-operations',
+    label: 'Notifications',
+    path: '/admin/notification-operations',
+    icon: NotificationsNoneRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Integrations',
+  },
+  {
     id: 'admin-security-events',
     label: 'Security events',
     path: '/admin/security-events',

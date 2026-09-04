@@ -1178,5 +1178,148 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/notification-templates', canRead, async (_req, res, next) => {
+    try {
+      res.json({
+        templates: await prisma.notificationTemplate.findMany({
+          orderBy: [{ key: 'asc' }, { channel: 'asc' }, { version: 'desc' }],
+        }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post(
+    '/notification-templates/:templateKey/versions',
+    canChange,
+    async (req, res, next) => {
+      try {
+        const templateKey = z
+          .string()
+          .trim()
+          .regex(/^[a-z0-9._-]{2,100}$/)
+          .parse(req.params.templateKey);
+        const input = z
+          .object({
+            channel: z.enum(['IN_APP', 'EMAIL']),
+            subject: z.string().trim().min(2).max(160).optional(),
+            body: z.string().trim().min(2).max(10000),
+            enabled: z.boolean().default(false),
+            reason: z.string().trim().min(8).max(500),
+          })
+          .parse(req.body);
+        if (input.channel === 'EMAIL' && !input.subject)
+          throw new AppError('TEMPLATE_SUBJECT_REQUIRED', 400, 'Email templates require a subject');
+        if (/{{\s*(password|token|secret|card)/i.test(`${input.subject ?? ''} ${input.body}`))
+          throw new AppError(
+            'UNSAFE_TEMPLATE_VARIABLE',
+            400,
+            'Sensitive template variables are prohibited',
+          );
+        const key = idempotencyKey(req.get('Idempotency-Key'));
+        const result = await executeConsequentialCommand<{ id: string; version: number }>(prisma, {
+          idempotency: {
+            scope: 'admin-template',
+            subjectId: `${templateKey}:${input.channel}`,
+            operation: 'create-version',
+            key,
+          },
+          audit: (r) => ({
+            actorId: req.auth!.userId,
+            action: 'ADMIN_NOTIFICATION_TEMPLATE_VERSION_CREATED',
+            entityType: 'NotificationTemplate',
+            entityId: r.id,
+            metadata: {
+              templateKey,
+              channel: input.channel,
+              version: r.version,
+              reason: input.reason,
+            },
+          }),
+          outbox: {
+            eventType: 'notification.template-version-created',
+            eventKey: key,
+            aggregateType: 'NotificationTemplate',
+            payload: (r) => ({
+              id: r.id,
+              templateKey,
+              version: r.version,
+              domains: ['notifications', 'configuration'],
+            }),
+          },
+          mutate: async (tx) => {
+            const latest = await tx.notificationTemplate.findFirst({
+              where: { key: templateKey, channel: input.channel },
+              orderBy: { version: 'desc' },
+            });
+            const created = await tx.notificationTemplate.create({
+              data: {
+                key: templateKey,
+                version: (latest?.version ?? 0) + 1,
+                channel: input.channel,
+                subject: input.subject ?? null,
+                body: input.body,
+                enabled: input.enabled,
+                safeMetadata: { reason: input.reason },
+              },
+            });
+            if (input.enabled)
+              await tx.notificationTemplate.updateMany({
+                where: {
+                  key: templateKey,
+                  channel: input.channel,
+                  id: { not: created.id },
+                  enabled: true,
+                },
+                data: { enabled: false },
+              });
+            return { id: created.id, version: created.version };
+          },
+        });
+        res.status(result.replayed ? 200 : 201).json(result);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get('/notification-deliveries', canRead, async (req, res, next) => {
+    try {
+      const input = z
+        .object({
+          status: z
+            .enum(['PENDING', 'PROCESSING', 'DELIVERED', 'RETRY_SCHEDULED', 'FAILED'])
+            .optional(),
+          cursor: z.uuid().optional(),
+          limit: z.coerce.number().int().min(1).max(100).default(50),
+        })
+        .parse(req.query);
+      const rows = await prisma.notificationDelivery.findMany({
+        where: input.status ? { status: input.status } : {},
+        select: {
+          id: true,
+          channel: true,
+          provider: true,
+          status: true,
+          attemptCount: true,
+          nextAttemptAt: true,
+          lastAttemptAt: true,
+          deliveredAt: true,
+          failureCategory: true,
+          createdAt: true,
+          notification: { select: { category: true, userId: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+      });
+      res.json({
+        deliveries: rows.slice(0, input.limit),
+        nextCursor: rows.length > input.limit ? rows[input.limit - 1]?.id : null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }

@@ -60,6 +60,7 @@ import {
 } from './pages/AdminAIJobsPages';
 import { AdminSourcesPage } from './pages/AdminSourcesPage';
 import { AdminWorkflowPage } from './pages/AdminWorkflowPage';
+import { AdminNotificationsPage } from './pages/AdminNotificationsPage';
 import { AdminLandingPage, FoundationPage, StaffAccountPage } from './pages/ShellPages';
 import { SupportPage } from './pages/SupportPage';
 import {
@@ -282,6 +283,7 @@ export function App() {
           <Route path="ai/processes" element={<AdminAIProcessesPage />} />
           <Route path="sources" element={<AdminSourcesPage />} />
           <Route path="workflow-rules" element={<AdminWorkflowPage />} />
+          <Route path="notification-operations" element={<AdminNotificationsPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="services/:serviceProductId" element={<AdminServiceDetailPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
