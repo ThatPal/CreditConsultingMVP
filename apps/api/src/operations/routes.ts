@@ -9,7 +9,8 @@ import {
   requireRole,
 } from '../auth/middleware.js';
 import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
-import type { PrismaClient, WorkItemStatus } from '../generated/prisma/client.js';
+import type { Prisma, PrismaClient, WorkItemStatus } from '../generated/prisma/client.js';
+import type { DurableAIRuntime } from '../ai/durableRuntime.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate, subscribeToLiveUpdates, type LiveUpdate } from '../liveUpdates.js';
 import {
@@ -32,6 +33,7 @@ import {
   supportAttachmentProjection,
   supportReplyTransition,
 } from '../support/supportDomain.js';
+import { enqueueSupportAssistance } from '../support/supportAI.js';
 import {
   attentionClaimDecision,
   recordAttentionClaimConflict,
@@ -226,6 +228,7 @@ export function createOperationsRouter(
   options: { heartbeatIntervalMs?: number } = {},
   authorization: AuthorizationService = createPrismaAuthorizationService(prisma),
   denialRecorder: AuthorizationDenialRecorder = createPrismaAuthorizationDenialRecorder(prisma),
+  aiRuntime?: DurableAIRuntime,
 ) {
   const router = Router();
   const realtimeAuthorization = createRealtimeAuthorizationBridge(authorization);
@@ -1449,6 +1452,42 @@ export function createOperationsRouter(
         });
         publishLiveUpdate(supportCase.clientId, 'support', 'work-queue');
         res.json({ case: updated });
+      } catch (error) { next(error); }
+    },
+  );
+  router.post(
+    '/consultant/support-cases/:caseId/ai-assistance',
+    requireRole('CONSULTANT'),
+    resolveSupportClient,
+    requireCapability(authorization, 'support.manage', 'clientId', undefined, denialRecorder),
+    async (req, res, next) => {
+      try {
+        if (!aiRuntime) throw new AppError('AI_UNAVAILABLE', 503, 'AI assistance is unavailable; continue manually');
+        const { kind } = z.object({ kind: z.enum(['classification', 'summary', 'draft']) }).parse(req.body);
+        const supportCase = await prisma.supportCase.findUnique({ where: { id: req.params.caseId as string }, select: { id: true, clientId: true } });
+        if (!supportCase) throw new AppError('NOT_FOUND', 404, 'Support request was not found');
+        const job = await enqueueSupportAssistance(prisma, aiRuntime, { supportCaseId: supportCase.id, clientId: supportCase.clientId, kind });
+        await prisma.auditEvent.create({ data: { clientId: supportCase.clientId, actorId: req.auth!.userId, action: 'SUPPORT_AI_ASSISTANCE_REQUESTED', entityType: 'SupportCase', entityId: supportCase.id, metadata: { kind, jobId: job.id, authority: 'ADVISORY_ONLY' } } });
+        res.status(202).json({ jobId: job.id, status: job.status, authority: 'ADVISORY_ONLY' });
+      } catch (error) { next(error); }
+    },
+  );
+  router.patch(
+    '/consultant/support-cases/:caseId/ai-artifacts/:artifactId',
+    requireRole('CONSULTANT'),
+    resolveSupportClient,
+    requireCapability(authorization, 'support.manage', 'clientId', undefined, denialRecorder),
+    async (req, res, next) => {
+      try {
+        const input = z.object({ action: z.enum(['EDIT', 'ACCEPT']), structuredOutput: z.record(z.string(), z.unknown()).optional() }).parse(req.body);
+        const artifact = await prisma.supportAIArtifact.findFirst({ where: { id: req.params.artifactId as string, supportCaseId: req.params.caseId as string }, include: { supportCase: { select: { clientId: true } } } });
+        if (!artifact) throw new AppError('NOT_FOUND', 404, 'AI proposal was not found');
+        if (artifact.status === 'SUPERSEDED' || artifact.sentMessageId) throw new AppError('STALE_AI_PROPOSAL', 409, 'Regenerate assistance from the current conversation');
+        const updated = await prisma.supportAIArtifact.update({ where: { id: artifact.id }, data: input.action === 'EDIT'
+          ? { status: 'EDITED', editedAt: new Date(), ...(input.structuredOutput ? { structuredOutput: input.structuredOutput as Prisma.InputJsonValue } : {}) }
+          : { status: 'ACCEPTED', acceptedAt: new Date() } });
+        await prisma.auditEvent.create({ data: { clientId: artifact.supportCase.clientId, actorId: req.auth!.userId, action: `SUPPORT_AI_PROPOSAL_${input.action}`, entityType: 'SupportAIArtifact', entityId: artifact.id, metadata: { kind: artifact.kind } } });
+        res.json({ artifact: updated });
       } catch (error) { next(error); }
     },
   );

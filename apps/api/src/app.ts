@@ -194,7 +194,7 @@ export function createApp(
         '/api/v1/readiness',
         createReadinessRouter(prisma, auth, authorization, denialRecorder),
       );
-      app.use('/api/v1', createOperationsRouter(prisma, auth, {}, authorization, denialRecorder));
+      app.use('/api/v1', createOperationsRouter(prisma, auth, {}, authorization, denialRecorder, aiRuntime));
       app.use('/api/v1/major-readiness-v2', createMajorReadinessRouter(prisma, authorization, aiRuntime));
     }
   }

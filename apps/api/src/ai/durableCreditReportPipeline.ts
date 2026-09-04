@@ -22,6 +22,7 @@ import {
   prepareDeterministicStrategyProposal,
   STRATEGY_PREPARE_PROCESS,
 } from '../strategies/ai.js';
+import { prepareDeterministicSupportAssistance, SUPPORT_AI_PROCESSES } from '../support/supportAI.js';
 
 export const PHASE_7_PROCESSES = [
   ['credit_report.validate', 'document_extraction'],
@@ -75,6 +76,10 @@ export class Phase7DeterministicProvider implements AIProvider {
         break;
       case STRATEGY_PREPARE_PROCESS:
         return prepareDeterministicStrategyProposal(request);
+      case SUPPORT_AI_PROCESSES.classification:
+      case SUPPORT_AI_PROCESSES.summary:
+      case SUPPORT_AI_PROCESSES.draft:
+        return prepareDeterministicSupportAssistance(request);
       default:
         throw new Error('PROCESS_NOT_SUPPORTED');
     }

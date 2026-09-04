@@ -31,6 +31,7 @@ import {
   recoverSubmittedReviewPipelines,
 } from './ai/submittedReviewPipeline.js';
 import { strategyValidators } from './strategies/ai.js';
+import { materializeSupportAIOutput, registerSupportAIProcesses, supportAIValidators } from './support/supportAI.js';
 
 const env = loadEnv();
 const logger = createLogger(env);
@@ -50,9 +51,13 @@ const aiQueue = new BullAIJobQueue(env.REDIS_URL);
 const aiRuntime = new DurableAIRuntime(prisma, aiQueue, new Phase7DeterministicProvider(), {
   ...phase7Validators,
   ...strategyValidators,
+  ...supportAIValidators,
 });
+await registerSupportAIProcesses(aiRuntime);
 const aiWorker = startDurableAIWorker(env.REDIS_URL, aiRuntime, (result) =>
-  advanceDurablePhase7Pipeline(aiRuntime, result),
+  result.relatedEntityType === 'SupportCase'
+    ? materializeSupportAIOutput(prisma, result)
+    : advanceDurablePhase7Pipeline(aiRuntime, result),
 );
 await aiWorker.waitUntilReady();
 await aiRuntime.reconstructAndEnqueue();
