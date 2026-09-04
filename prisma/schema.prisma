@@ -2251,6 +2251,22 @@ model RetentionRun {
   @@index([policyId, createdAt])
 }
 
+model PlatformSettingVersion {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String
+  version     Int
+  valueType   String
+  value       Json
+  active      Boolean  @default(false)
+  reason      String
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  retiredAt   DateTime? @db.Timestamptz(3)
+
+  @@unique([key, version])
+  @@index([key, active])
+}
+
 model NotificationPreference {
   id        String              @id @default(uuid()) @db.Uuid
   userId    String              @db.Uuid

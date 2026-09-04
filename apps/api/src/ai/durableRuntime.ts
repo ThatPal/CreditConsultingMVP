@@ -8,6 +8,7 @@ import type {
   SourceVersions,
 } from './runtime.js';
 import { AIProviderError } from './runtime.js';
+import { requireGovernedSwitch } from '../platform/settings.js';
 
 export interface AIJobQueue {
   add(name: string, data: { jobId: string }, options: { jobId: string }): Promise<unknown>;
@@ -73,6 +74,7 @@ export class DurableAIRuntime {
   }
 
   async createAndEnqueue(input: DurableJobInput) {
+    await requireGovernedSwitch(this.prisma, 'ai.processing.enabled');
     const process = await this.prisma.aIProcessDefinition.findUnique({
       where: {
         processKey_processVersion: {

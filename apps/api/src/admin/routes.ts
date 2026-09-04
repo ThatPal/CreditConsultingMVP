@@ -1637,5 +1637,89 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/settings', canRead, async (_req, res, next) => {
+    try {
+      res.json({
+        settings: await prisma.platformSettingVersion.findMany({
+          orderBy: [{ key: 'asc' }, { version: 'desc' }],
+        }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/settings/:settingKey/versions', canChange, async (req, res, next) => {
+    try {
+      const settingKey = z
+        .enum([
+          'commerce.purchases.enabled',
+          'ai.processing.enabled',
+          'notifications.email.enabled',
+          'workflow.execution.enabled',
+        ])
+        .parse(req.params.settingKey);
+      const input = z
+        .object({
+          value: z.boolean(),
+          activate: z.boolean().default(false),
+          reason: z.string().trim().min(8).max(500),
+        })
+        .parse(req.body);
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; version: number }>(prisma, {
+        idempotency: {
+          scope: 'admin-setting',
+          subjectId: settingKey,
+          operation: 'create-version',
+          key,
+        },
+        audit: (r) => ({
+          actorId: req.auth!.userId,
+          action: 'ADMIN_PLATFORM_SETTING_VERSION_CREATED',
+          entityType: 'PlatformSettingVersion',
+          entityId: r.id,
+          metadata: { settingKey, version: r.version, value: input.value, reason: input.reason },
+        }),
+        outbox: {
+          eventType: 'platform.setting-changed',
+          eventKey: key,
+          aggregateType: 'PlatformSettingVersion',
+          payload: (r) => ({
+            id: r.id,
+            settingKey,
+            version: r.version,
+            domains: ['configuration'],
+          }),
+        },
+        mutate: async (tx) => {
+          const latest = await tx.platformSettingVersion.findFirst({
+            where: { key: settingKey },
+            orderBy: { version: 'desc' },
+          });
+          const created = await tx.platformSettingVersion.create({
+            data: {
+              key: settingKey,
+              version: (latest?.version ?? 0) + 1,
+              valueType: 'BOOLEAN',
+              value: input.value,
+              active: input.activate,
+              reason: input.reason,
+              createdById: req.auth!.userId,
+            },
+          });
+          if (input.activate)
+            await tx.platformSettingVersion.updateMany({
+              where: { key: settingKey, id: { not: created.id }, active: true },
+              data: { active: false, retiredAt: new Date() },
+            });
+          return { id: created.id, version: created.version };
+        },
+      });
+      res.status(result.replayed ? 200 : 201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }

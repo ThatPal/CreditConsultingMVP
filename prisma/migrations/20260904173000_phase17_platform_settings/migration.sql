@@ -1,0 +1,3 @@
+CREATE TABLE "PlatformSettingVersion" ("id" UUID NOT NULL DEFAULT gen_random_uuid(),"key" TEXT NOT NULL,"version" INTEGER NOT NULL,"valueType" TEXT NOT NULL,"value" JSONB NOT NULL,"active" BOOLEAN NOT NULL DEFAULT false,"reason" TEXT NOT NULL,"createdById" UUID NOT NULL,"createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"retiredAt" TIMESTAMPTZ(3),CONSTRAINT "PlatformSettingVersion_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "PlatformSettingVersion_key_version_key" ON "PlatformSettingVersion"("key","version");
+CREATE INDEX "PlatformSettingVersion_key_active_idx" ON "PlatformSettingVersion"("key","active");

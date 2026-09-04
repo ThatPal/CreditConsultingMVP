@@ -10,6 +10,7 @@ import type { AuthorizationService } from '../authorization/authorizationService
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
+import { requireGovernedSwitch } from '../platform/settings.js';
 import { frozenTerms } from './domain.js';
 import { PaymentGatewayRegistry, type PaymentGateway } from './paymentGateway.js';
 import { applyVerifiedPaymentEvent } from './paymentService.js';
@@ -112,6 +113,7 @@ export function createPaymentRouter(
   const router = Router();
   router.post('/client/checkouts', requireRole('CLIENT'), async (req, res, next) => {
     try {
+      await requireGovernedSwitch(prisma, 'commerce.purchases.enabled');
       const parsed = z.object({ productId: z.string().uuid() }).strict().safeParse(req.body);
       if (!parsed.success)
         throw new AppError(
