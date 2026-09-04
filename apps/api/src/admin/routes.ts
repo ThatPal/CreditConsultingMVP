@@ -1406,5 +1406,68 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/scheduled-jobs', canRead, async (_req, res, next) => {
+    try {
+      res.json({
+        definitions: await prisma.scheduledJobDefinition.findMany({
+          include: { runs: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10 } },
+          orderBy: [{ key: 'asc' }, { id: 'asc' }],
+        }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/scheduled-jobs/:definitionId/run', canChange, async (req, res, next) => {
+    try {
+      const definitionId = req.params.definitionId as string;
+      const key = idempotencyKey(req.get('Idempotency-Key'));
+      const result = await executeConsequentialCommand<{ id: string; status: string }>(prisma, {
+        idempotency: {
+          scope: 'admin-scheduled-job',
+          subjectId: definitionId,
+          operation: 'manual-run',
+          key,
+        },
+        audit: (r) => ({
+          actorId: req.auth!.userId,
+          action: 'ADMIN_SCHEDULED_JOB_ENQUEUED',
+          entityType: 'ScheduledJobRun',
+          entityId: r.id,
+        }),
+        outbox: {
+          eventType: 'scheduled-job.run-requested',
+          eventKey: key,
+          aggregateType: 'ScheduledJobDefinition',
+          aggregateId: definitionId,
+          payload: (r) => ({ runId: r.id, definitionId, domains: ['scheduled-jobs'] }),
+        },
+        mutate: async (tx) => {
+          const definition = await tx.scheduledJobDefinition.findUnique({
+            where: { id: definitionId },
+          });
+          if (!definition?.enabled)
+            throw new AppError('SCHEDULED_JOB_DISABLED', 409, 'Disabled jobs cannot be run');
+          const active = await tx.scheduledJobRun.count({
+            where: { definitionId, status: 'RUNNING', leaseUntil: { gt: new Date() } },
+          });
+          if (active)
+            throw new AppError(
+              'SCHEDULED_JOB_ALREADY_RUNNING',
+              409,
+              'A leased run is already active',
+            );
+          return tx.scheduledJobRun.create({
+            data: { definitionId, status: 'QUEUED' },
+            select: { id: true, status: true },
+          });
+        },
+      });
+      res.status(result.replayed ? 200 : 202).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }

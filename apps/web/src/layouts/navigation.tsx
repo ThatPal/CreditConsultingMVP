@@ -336,6 +336,17 @@ const registry: NavigationItem[] = [
     group: 'Integrations',
   },
   {
+    id: 'admin-scheduled-jobs',
+    label: 'Scheduled jobs',
+    path: '/admin/scheduled-jobs',
+    icon: CalendarMonthRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'settings.manage',
+    status: 'available',
+    group: 'Overview',
+  },
+  {
     id: 'admin-security-events',
     label: 'Security events',
     path: '/admin/security-events',

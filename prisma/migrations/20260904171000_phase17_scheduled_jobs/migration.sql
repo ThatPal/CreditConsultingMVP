@@ -1,0 +1,6 @@
+CREATE TABLE "ScheduledJobDefinition" ("id" UUID NOT NULL DEFAULT gen_random_uuid(),"key" TEXT NOT NULL,"taskType" TEXT NOT NULL,"schedule" TEXT NOT NULL,"enabled" BOOLEAN NOT NULL DEFAULT false,"maxRuntimeSec" INTEGER NOT NULL DEFAULT 300,"createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMPTZ(3) NOT NULL,CONSTRAINT "ScheduledJobDefinition_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "ScheduledJobDefinition_key_key" ON "ScheduledJobDefinition"("key");
+CREATE TABLE "ScheduledJobRun" ("id" UUID NOT NULL DEFAULT gen_random_uuid(),"definitionId" UUID NOT NULL,"status" TEXT NOT NULL,"leaseOwner" TEXT,"leaseUntil" TIMESTAMPTZ(3),"startedAt" TIMESTAMPTZ(3),"completedAt" TIMESTAMPTZ(3),"failureCode" TEXT,"createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "ScheduledJobRun_pkey" PRIMARY KEY ("id"));
+CREATE INDEX "ScheduledJobRun_definitionId_createdAt_idx" ON "ScheduledJobRun"("definitionId","createdAt");
+CREATE INDEX "ScheduledJobRun_status_leaseUntil_idx" ON "ScheduledJobRun"("status","leaseUntil");
+ALTER TABLE "ScheduledJobRun" ADD CONSTRAINT "ScheduledJobRun_definitionId_fkey" FOREIGN KEY ("definitionId") REFERENCES "ScheduledJobDefinition"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

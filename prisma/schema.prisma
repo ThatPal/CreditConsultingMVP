@@ -2197,6 +2197,34 @@ model WorkflowRule {
   @@index([trigger, enabled])
 }
 
+model ScheduledJobDefinition {
+  id            String   @id @default(uuid()) @db.Uuid
+  key           String   @unique
+  taskType      String
+  schedule      String
+  enabled       Boolean  @default(false)
+  maxRuntimeSec Int      @default(300)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+  runs          ScheduledJobRun[]
+}
+
+model ScheduledJobRun {
+  id           String   @id @default(uuid()) @db.Uuid
+  definitionId String   @db.Uuid
+  status       String
+  leaseOwner   String?
+  leaseUntil   DateTime? @db.Timestamptz(3)
+  startedAt    DateTime? @db.Timestamptz(3)
+  completedAt  DateTime? @db.Timestamptz(3)
+  failureCode  String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  definition   ScheduledJobDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+
+  @@index([definitionId, createdAt])
+  @@index([status, leaseUntil])
+}
+
 model NotificationPreference {
   id        String              @id @default(uuid()) @db.Uuid
   userId    String              @db.Uuid

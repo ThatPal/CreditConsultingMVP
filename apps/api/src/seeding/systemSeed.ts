@@ -1,7 +1,15 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
 
 export const roleCapabilityPolicy = {
-  CLIENT: ['client.read', 'review.read', 'support.read', 'document.read', 'document.manage', 'catalog.read', 'strategy.read'],
+  CLIENT: [
+    'client.read',
+    'review.read',
+    'support.read',
+    'document.read',
+    'document.manage',
+    'catalog.read',
+    'strategy.read',
+  ],
   CONSULTANT: [
     'client.read',
     'client.manage',
@@ -59,7 +67,18 @@ export const systemSupportCategories = [
   ['BILLING', 'Billing', ['GENERAL']],
   ['CREDIT_REVIEW', 'Credit Review', ['GENERAL', 'DOCUMENT', 'REVIEW', 'PLAN', 'CARD']],
   ['DOCUMENTS', 'Documents', ['GENERAL', 'DOCUMENT']],
-  ['APPLICATION_ROUND', 'Application Round', ['GENERAL', 'APPLICATION_ROUND', 'STRATEGY', 'APPOINTMENT', 'APPLICATION_SESSION', 'POST_ROUND']],
+  [
+    'APPLICATION_ROUND',
+    'Application Round',
+    [
+      'GENERAL',
+      'APPLICATION_ROUND',
+      'STRATEGY',
+      'APPOINTMENT',
+      'APPLICATION_SESSION',
+      'POST_ROUND',
+    ],
+  ],
   ['MAJOR_READINESS', 'Credit Readiness', ['GENERAL', 'REVIEW', 'PLAN', 'MAJOR_READINESS']],
   ['TECHNICAL', 'Technical', ['GENERAL']],
   ['OTHER', 'Other', ['GENERAL']],
@@ -254,12 +273,20 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
       update: {},
     }),
     prisma.aIProcessDefinition.upsert({
-      where: { processKey_processVersion: { processKey: 'round_strategy.propose', processVersion: 1 } },
+      where: {
+        processKey_processVersion: { processKey: 'round_strategy.propose', processVersion: 1 },
+      },
       create: {
-        processKey: 'round_strategy.propose', processVersion: 1, modelProfile: 'configured-strategy-model',
-        inputSchemaVersion: 1, outputSchemaVersion: 1, instructionVersion: 'phase12-v1',
-        retryPolicy: { maxAttempts: 3 }, dataClassification: 'CLIENT_FINANCIAL_STRATEGY',
-        allowedContext: { frozenRoundSourcesOnly: true }, domainConsumer: 'ROUND_STRATEGY',
+        processKey: 'round_strategy.propose',
+        processVersion: 1,
+        modelProfile: 'configured-strategy-model',
+        inputSchemaVersion: 1,
+        outputSchemaVersion: 1,
+        instructionVersion: 'phase12-v1',
+        retryPolicy: { maxAttempts: 3 },
+        dataClassification: 'CLIENT_FINANCIAL_STRATEGY',
+        allowedContext: { frozenRoundSourcesOnly: true },
+        domainConsumer: 'ROUND_STRATEGY',
       },
       update: {},
     }),
@@ -329,6 +356,17 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
       update: {},
     });
   }
+  const scheduledJobs = [
+    { key: 'outbox-recovery', taskType: 'OUTBOX_RECOVERY', schedule: 'every-5-minutes' },
+    { key: 'notification-delivery', taskType: 'NOTIFICATION_DELIVERY', schedule: 'every-minute' },
+    { key: 'retention-preview', taskType: 'RETENTION_PREVIEW', schedule: 'daily' },
+  ];
+  for (const definition of scheduledJobs)
+    await prisma.scheduledJobDefinition.upsert({
+      where: { key: definition.key },
+      create: { ...definition, enabled: false },
+      update: {},
+    });
   return {
     optionTemplates: systemOptionTemplates.length,
     roleCapabilities: capabilityRows.length,
@@ -337,5 +375,6 @@ export async function seedSystemReferenceData(prisma: PrismaClient) {
     supportCategories: systemSupportCategories.length,
     integrations: 1,
     serviceProducts: serviceProducts.length,
+    scheduledJobs: scheduledJobs.length,
   };
 }
