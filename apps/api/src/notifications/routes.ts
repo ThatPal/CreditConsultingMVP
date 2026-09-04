@@ -4,6 +4,7 @@ import type { AuthorizationService } from '../authorization/authorizationService
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import type { EmailProvider } from './emailProvider.js';
+import { mandatoryInAppCategories } from './notificationService.js';
 
 const preferenceSchema = z.object({
   category: z.string().trim().min(1).max(80),
@@ -50,12 +51,16 @@ export function createNotificationRouter(prisma: PrismaClient) {
     try {
       if (!req.auth) throw new AppError('AUTH_REQUIRED', 401, 'Authentication is required');
       const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+      const category = typeof req.query.category === 'string' ? req.query.category.trim().slice(0, 80) : '';
+      const unreadOnly = req.query.unreadOnly === 'true';
       const cursor =
         typeof req.query.cursor === 'string' ? decodeNotificationCursor(req.query.cursor) : null;
       const [notifications, unread] = await Promise.all([
         prisma.notification.findMany({
           where: {
             userId: req.auth.userId,
+            ...(category ? { category } : {}),
+            ...(unreadOnly ? { readAt: null } : {}),
             ...(cursor
               ? {
                   OR: [
@@ -150,7 +155,7 @@ export function createNotificationRouter(prisma: PrismaClient) {
       const input = preferenceSchema.parse(req.body);
       if (
         input.channel === 'IN_APP' &&
-        ['OPERATIONAL', 'SECURITY'].includes(input.category) &&
+        mandatoryInAppCategories.has(input.category) &&
         !input.enabled
       )
         throw new AppError(

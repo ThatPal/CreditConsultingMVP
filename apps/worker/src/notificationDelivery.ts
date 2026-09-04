@@ -9,6 +9,11 @@ export interface WorkerEmailSender {
   }): Promise<{ accepted: boolean; providerMessageId?: string }>;
 }
 
+export const NOTIFICATION_MAX_ATTEMPTS = 5;
+export function notificationRetryDelaySeconds(attempt: number) {
+  return Math.min(15 * 60, 5 * 2 ** Math.max(0, attempt - 1));
+}
+
 export function createNotificationDeliveryProcessor(pool: Pool, sender: WorkerEmailSender) {
   return async (deliveryId: string) => {
     const result = await pool.query<{
@@ -32,12 +37,17 @@ export function createNotificationDeliveryProcessor(pool: Pool, sender: WorkerEm
     if (delivery.status === 'DELIVERED') return;
     if (delivery.status === 'FAILED') throw new Error('NOTIFICATION_DELIVERY_TERMINAL');
     if (delivery.provider !== sender.provider) throw new Error('EMAIL_PROVIDER_MISMATCH');
-    await pool.query(
+    const claim = await pool.query(
       `UPDATE "NotificationDelivery"
        SET status = 'PROCESSING', "attemptCount" = "attemptCount" + 1, "lastAttemptAt" = now(), "updatedAt" = now()
-       WHERE id = $1`,
+       WHERE id = $1 AND (
+         (status IN ('PENDING', 'RETRY_SCHEDULED') AND ("nextAttemptAt" IS NULL OR "nextAttemptAt" <= now()))
+         OR (status = 'PROCESSING' AND "lastAttemptAt" < now() - interval '5 minutes')
+       )
+       RETURNING id`,
       [delivery.id],
     );
+    if (claim.rowCount !== 1) return;
     try {
       const sent = await sender.send({
         to: delivery.email,
@@ -53,14 +63,16 @@ export function createNotificationDeliveryProcessor(pool: Pool, sender: WorkerEm
         [delivery.id, sent.providerMessageId ?? null],
       );
     } catch (error) {
-      const terminal = delivery.attemptCount + 1 >= 5;
+      const attempt = delivery.attemptCount + 1;
+      const terminal = attempt >= NOTIFICATION_MAX_ATTEMPTS;
+      const delaySeconds = notificationRetryDelaySeconds(attempt);
       await pool.query(
         `UPDATE "NotificationDelivery"
          SET status = $2::"NotificationDeliveryStatus", "failureCategory" = 'PROVIDER_UNAVAILABLE',
-             "nextAttemptAt" = CASE WHEN $2 = 'FAILED' THEN NULL ELSE now() + interval '5 seconds' END,
+             "nextAttemptAt" = CASE WHEN $2 = 'FAILED' THEN NULL ELSE now() + make_interval(secs => $3) END,
              "updatedAt" = now()
          WHERE id = $1`,
-        [delivery.id, terminal ? 'FAILED' : 'RETRY_SCHEDULED'],
+        [delivery.id, terminal ? 'FAILED' : 'RETRY_SCHEDULED', delaySeconds],
       );
       throw error;
     }

@@ -56,6 +56,14 @@ type ConsultantCase = {
     createdAt: string;
     author: { id: string; role: 'CLIENT' | 'CONSULTANT' | 'ADMIN' };
   }>;
+  aiArtifacts?: Array<{
+    id: string;
+    kind: 'CLASSIFICATION' | 'SUMMARY' | 'DRAFT';
+    status: string;
+    provider: string | null;
+    model: string | null;
+    structuredOutput: { summary?: string; draft?: string; category?: string; priority?: string; rationale?: string };
+  }>;
 };
 
 const statusLabels: Record<CaseStatus, string> = {
@@ -173,6 +181,17 @@ export function ConsultantSupportPage() {
         body: JSON.stringify({ ...body, expectedUpdatedAt: selected?.updatedAt }),
       }),
     onSuccess: refresh,
+  });
+  const requestAI = useMutation({
+    mutationFn: (kind: 'classification' | 'summary' | 'draft') =>
+      apiRequest(`/api/v1/consultant/support-cases/${selectedId}/ai-assistance`, {
+        method: 'POST',
+        body: JSON.stringify({ kind }),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['consultant-support-case', linkedCaseId] });
+      await refresh();
+    },
   });
 
   if (query.isLoading) return <LoadingSkeleton />;
@@ -381,6 +400,23 @@ export function ConsultantSupportPage() {
                     ))}
                   </Stack>
                 )}
+                <Divider />
+
+                <Stack spacing={1.25}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { sm: 'center' } }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontWeight: 850 }}>AI assistance</Typography>
+                      <Typography variant="caption" color="text.secondary">Advisory drafts only. Review before using; AI cannot send or change case authority.</Typography>
+                    </Box>
+                    {(['classification', 'summary', 'draft'] as const).map((kind) => <Button key={kind} size="small" variant="outlined" disabled={requestAI.isPending} onClick={() => requestAI.mutate(kind)}>{kind}</Button>)}
+                  </Stack>
+                  {requestAI.isError && <Alert severity="warning">AI assistance is unavailable. Continue manually.</Alert>}
+                  {selected.aiArtifacts?.[0] && <Alert severity="info">
+                    <Typography sx={{ fontWeight: 800 }}>{selected.aiArtifacts[0].kind.replace('_', ' ')} proposal · human review required</Typography>
+                    <Typography variant="body2">{selected.aiArtifacts[0].structuredOutput.summary ?? selected.aiArtifacts[0].structuredOutput.draft ?? selected.aiArtifacts[0].structuredOutput.rationale}</Typography>
+                    {selected.aiArtifacts[0].kind === 'DRAFT' && selected.aiArtifacts[0].structuredOutput.draft && <Button size="small" sx={{ mt: 1 }} onClick={() => { setDraft(selected.aiArtifacts![0]!.structuredOutput.draft!); setComposerType('REPLY'); }}>Use as editable draft</Button>}
+                  </Alert>}
+                </Stack>
                 <Divider />
 
                 <Stack

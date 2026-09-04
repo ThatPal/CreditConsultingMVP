@@ -5,6 +5,7 @@ import { createPrisma } from '../lib/prisma.js';
 import type { EmailProvider } from './emailProvider.js';
 import {
   createCanonicalNotification,
+  notificationChannelEnabled,
   processNotificationDelivery,
   validateInternalNotificationLink,
 } from './notificationService.js';
@@ -108,7 +109,7 @@ describe('canonical notification lifecycle', () => {
       name: 'CONSOLE',
       send: vi.fn(async () => ({ accepted: true, providerMessageId: 'safe-message-id' })),
     };
-    await processNotificationDelivery(prisma, succeeding, delivery.id);
+    await processNotificationDelivery(prisma, succeeding, delivery.id, new Date(Date.now() + 60_000));
     await processNotificationDelivery(prisma, succeeding, delivery.id);
     expect(succeeding.send).toHaveBeenCalledTimes(1);
     await expect(prisma.notification.count({ where: { userId } })).resolves.toBe(1);
@@ -129,5 +130,15 @@ describe('canonical notification lifecycle', () => {
     expect(() => validateInternalNotificationLink('//evil.example')).toThrow(
       'INVALID_NOTIFICATION_LINK',
     );
+  });
+
+  test('honors optional email preference while mandatory in-app delivery stays enabled', async () => {
+    await prisma.notificationPreference.upsert({
+      where: { userId_category_channel: { userId, category: 'SUPPORT', channel: 'EMAIL' } },
+      create: { userId, category: 'SUPPORT', channel: 'EMAIL', enabled: false },
+      update: { enabled: false },
+    });
+    await expect(notificationChannelEnabled(prisma, { userId, category: 'SUPPORT', channel: 'EMAIL' })).resolves.toBe(false);
+    await expect(notificationChannelEnabled(prisma, { userId, category: 'SECURITY', channel: 'IN_APP' })).resolves.toBe(true);
   });
 });

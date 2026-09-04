@@ -22,6 +22,20 @@ export function validateInternalNotificationLink(link?: string) {
   return link;
 }
 
+export const mandatoryInAppCategories = new Set(['OPERATIONAL', 'SECURITY', 'SUPPORT_MANDATORY']);
+
+export async function notificationChannelEnabled(
+  prisma: PrismaClient,
+  input: { userId: string; category: string; channel: 'IN_APP' | 'EMAIL' },
+) {
+  if (input.channel === 'IN_APP' && mandatoryInAppCategories.has(input.category)) return true;
+  const preference = await prisma.notificationPreference.findUnique({
+    where: { userId_category_channel: input },
+    select: { enabled: true },
+  });
+  return preference?.enabled ?? true;
+}
+
 function assertRecipientSafe(input: CreateNotificationInput) {
   if (!input.semanticKey.trim() || input.semanticKey.length > 160)
     throw new Error('INVALID_NOTIFICATION_SEMANTIC_KEY');
@@ -39,6 +53,13 @@ export async function createCanonicalNotification(
     where: { userId_semanticKey: { userId: input.userId, semanticKey: input.semanticKey } },
   });
   if (existing) return { notification: existing, created: false };
+  const emailEnabled = input.email
+    ? await notificationChannelEnabled(prisma, {
+        userId: input.userId,
+        category: input.category,
+        channel: 'EMAIL',
+      })
+    : false;
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -56,7 +77,7 @@ export async function createCanonicalNotification(
         },
       });
       let deliveryId: string | undefined;
-      if (input.email) {
+      if (emailEnabled) {
         const delivery = await tx.notificationDelivery.create({
           data: {
             notificationId: notification.id,
@@ -105,10 +126,17 @@ export async function processNotificationDelivery(
   if (delivery.status === 'FAILED') throw new Error('NOTIFICATION_DELIVERY_TERMINAL');
   if (delivery.provider !== provider.name) throw new Error('EMAIL_PROVIDER_MISMATCH');
 
-  await prisma.notificationDelivery.update({
-    where: { id: delivery.id },
+  const claim = await prisma.notificationDelivery.updateMany({
+    where: {
+      id: delivery.id,
+      OR: [
+        { status: { in: ['PENDING', 'RETRY_SCHEDULED'] }, OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }] },
+        { status: 'PROCESSING', lastAttemptAt: { lt: new Date(now.getTime() - 5 * 60 * 1000) } },
+      ],
+    },
     data: { status: 'PROCESSING', attemptCount: { increment: 1 }, lastAttemptAt: now },
   });
+  if (claim.count !== 1) return delivery;
   try {
     const result = await provider.send({
       to: delivery.notification.user.email,
@@ -133,7 +161,10 @@ export async function processNotificationDelivery(
       data: {
         status: attempts >= 5 ? 'FAILED' : 'RETRY_SCHEDULED',
         failureCategory: 'PROVIDER_UNAVAILABLE',
-        nextAttemptAt: attempts >= 5 ? null : new Date(now.getTime() + 5000),
+        nextAttemptAt:
+          attempts >= 5
+            ? null
+            : new Date(now.getTime() + Math.min(15 * 60, 5 * 2 ** (attempts - 1)) * 1000),
       },
     });
     throw error;

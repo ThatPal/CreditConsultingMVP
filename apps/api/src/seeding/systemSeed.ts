@@ -57,10 +57,10 @@ export const systemDocumentTypes = [
 export const systemSupportCategories = [
   ['ACCOUNT', 'Account', ['GENERAL']],
   ['BILLING', 'Billing', ['GENERAL']],
-  ['CREDIT_REVIEW', 'Credit Review', ['GENERAL', 'DOCUMENT', 'REVIEW']],
+  ['CREDIT_REVIEW', 'Credit Review', ['GENERAL', 'DOCUMENT', 'REVIEW', 'PLAN', 'CARD']],
   ['DOCUMENTS', 'Documents', ['GENERAL', 'DOCUMENT']],
-  ['APPLICATION_ROUND', 'Application Round', ['GENERAL', 'APPLICATION_SESSION']],
-  ['MAJOR_READINESS', 'Credit Readiness', ['GENERAL', 'REVIEW']],
+  ['APPLICATION_ROUND', 'Application Round', ['GENERAL', 'APPLICATION_ROUND', 'STRATEGY', 'APPOINTMENT', 'APPLICATION_SESSION', 'POST_ROUND']],
+  ['MAJOR_READINESS', 'Credit Readiness', ['GENERAL', 'REVIEW', 'PLAN', 'MAJOR_READINESS']],
   ['TECHNICAL', 'Technical', ['GENERAL']],
   ['OTHER', 'Other', ['GENERAL']],
 ] as const;

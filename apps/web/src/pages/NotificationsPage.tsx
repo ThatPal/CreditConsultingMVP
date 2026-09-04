@@ -3,9 +3,10 @@ import DescriptionRounded from '@mui/icons-material/DescriptionRounded';
 import NotificationsNoneRounded from '@mui/icons-material/NotificationsNoneRounded';
 import SecurityRounded from '@mui/icons-material/SecurityRounded';
 import SupportAgentRounded from '@mui/icons-material/SupportAgentRounded';
-import { Alert, Avatar, Box, Button, Chip, Divider, Stack, Typography } from '@mui/material';
+import { Alert, Avatar, Box, Button, Chip, Divider, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
@@ -51,10 +52,12 @@ function NotificationGroup({ title, items, onOpen }: { title: string; items: Por
 export function NotificationsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [filter, setFilter] = useState<'ALL' | 'UNREAD' | 'SUPPORT'>('ALL');
+  const filterQuery = filter === 'UNREAD' ? '&unreadOnly=true' : filter === 'SUPPORT' ? '&category=SUPPORT' : '';
   const query = useInfiniteQuery({
-    queryKey: ['notifications', 'history'],
+    queryKey: ['notifications', 'history', filter],
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }) => apiRequest<NotificationPage>(`/api/v1/notifications?limit=20${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ''}`),
+    queryFn: ({ pageParam }) => apiRequest<NotificationPage>(`/api/v1/notifications?limit=20${filterQuery}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ''}`),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
   const markAll = useMutation({ mutationFn: () => apiRequest<void>('/api/v1/notifications/read-all', { method: 'POST' }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }) });
@@ -70,6 +73,11 @@ export function NotificationsPage() {
   const earlier = notifications.filter((item) => item.readAt);
   return <Stack spacing={3}>
     <PageHeader eyebrow="PORTAL-41" title="Notifications" description="Important account, document, support, and security updates in one private inbox." actions={unread ? <Button variant="outlined" onClick={() => markAll.mutate()} disabled={markAll.isPending}>{markAll.isPending ? 'Updating…' : 'Mark all read'}</Button> : undefined} />
+    <ToggleButtonGroup exclusive size="small" value={filter} onChange={(_, value) => value && setFilter(value)} aria-label="Notification filter">
+      <ToggleButton value="ALL">All</ToggleButton>
+      <ToggleButton value="UNREAD">Unread</ToggleButton>
+      <ToggleButton value="SUPPORT">Support</ToggleButton>
+    </ToggleButtonGroup>
     {(markAll.isError || markOne.isError) && <Alert severity="error">The notification update failed. Your history is unchanged; please retry.</Alert>}
     {query.isError && <Alert severity="error" action={<Button onClick={() => void query.refetch()}>Retry</Button>}>Notifications are temporarily unavailable.</Alert>}
     {!query.isError && <SectionCard>
