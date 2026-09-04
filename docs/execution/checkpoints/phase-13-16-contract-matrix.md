@@ -63,20 +63,20 @@ Classification: **IP** = IMPLEMENTED + PROVEN; **II** = IMPLEMENTED + INSUFFICIE
 | D1316-12 | IP | canonical restrictions enforced at Cycle, Strategy, Scheduling and Live/release commands. |
 | D1316-13 | IP | restriction events invalidate; cleared restrictions do not reactivate stale Strategy/session. |
 | D1316-14 | IP | immutable recommendation/decision history; client-safe projection excludes internal rationale. |
-| D1316-15 | PARTIAL | Backend scale/routing exists; missing usable CRM assignment controls and Client 360 Support composition. See D1316-29. |
+| D1316-15 | IP | Backend scale/routing plus optimistic CRM claim/unassign/escalate controls and bounded Client 360 Support composition are implemented and browser-proven. |
 | D1316-16 | IP | typed ownership-checked resolvers return only bounded summary/link; foreign IDs fail closed. |
 | D1316-17 | IP | client include filters internal messages and never includes AI artifacts; governed Documents reused. |
-| D1316-18 | PARTIAL | durable advisory AI and denylist exist; async UI completion is not reliably discoverable. See D1316-30. |
-| D1316-19 | PARTIAL | delivery worker is safe, but Support reply creates Notification directly without optional preference-aware delivery. See D1316-31. |
+| D1316-18 | IP | Durable advisory AI, denylist, durable completion invalidation and bounded pending-job polling are implemented. |
+| D1316-19 | IP | Both visible Support reply directions create preference-aware canonical Notification/Delivery/outbox work atomically and duplicate-safely. |
 | D1316-20 | IP | deterministic Support pagination and notification cursor/filtering; protected destination routes fail closed. |
 | D1316-21 | IP | app route hierarchy and exact/prefix navigation ownership reviewed; no orphan primary route found. |
-| D1316-22 | PARTIAL | `start-phase13-review.ps1` lacks recorded PID ownership, preflight port refusal and health/current-route checks. See D1316-32. |
+| D1316-22 | IP | Launcher records owned PIDs, refuses occupied ports, propagates command failure, enforces a Credit-only database and verifies API/web health. |
 | D1316-23 | IP | one Plan aggregate/version engine; reconciler preserves completed and consultant-approved history. |
 | D1316-24 | IP | source-deduped WorkItems and semantic-key notifications; no new checklist engine. |
 | D1316-25 | IP | Live, Analysis, Major and Support AI have separate bounded process/authority/provenance contracts. |
 | D1316-26 | IP | professional routes are Consultant-only; grants remain scoped/dated; consequential step-up remains. |
 | D1316-27 | IP | realtime envelopes contain clientId/domain/refetch identifiers, not profile/internal/AI content. |
-| D1316-28 | II | responsive pages and accessible states exist; checkpoint browser desktop/mobile recheck remains required. |
+| D1316-28 | IP | Responsive/accessibility component suites and real consultant CRM browser review passed without console errors. |
 
 ## Additional findings
 
@@ -86,5 +86,6 @@ Classification: **IP** = IMPLEMENTED + PROVEN; **II** = IMPLEMENTED + INSUFFICIE
 | D1316-30 | P1 | AI Support enqueue returns before materialization and the UI invalidates immediately only; completed artifacts can remain invisible without unrelated refresh. | Publish durable completion invalidation and poll/refetch boundedly while pending; prove manual fallback and new proposal visibility. |
 | D1316-31 | P1 | Support reply writes one canonical in-app Notification but does not create preference-aware NotificationDelivery/outbox delivery work, so Phase 16.3’s Support communication retry path is not application-integrated. | Create canonical Support notification/delivery atomically with reply; prove duplicate key yields one message, notification, delivery and delivery event. |
 | D1316-32 | P1 | Phase 13–16 review launcher can report success without owning the intended processes or verifying current API/UI routes. | Bring launcher to the truthful PID/port/health/current-route contract and test its static safety contract. |
+| D1316-33 | P1 | Distributed `fetchSockets()` delayed consecutive local authorization rechecks enough to miss immediate revocation delivery under the accumulated gate. | Authorize this instance's local room sockets on every canonical event; prove resource delivery, live revocation and initial denial in an isolated Redis namespace. |
 
-No other P0/P1 was found during the audit-first pass. Cosmetic P2/P3 work is outside this checkpoint correction wave.
+All D1316-29 through D1316-33 corrections are implemented and proven. No other P0/P1 was found. Cosmetic P2/P3 work remains outside this checkpoint correction wave.
