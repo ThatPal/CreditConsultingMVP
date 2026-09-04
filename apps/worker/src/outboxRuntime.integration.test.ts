@@ -40,8 +40,8 @@ describe('database to realtime outbox pipeline', () => {
     });
     await pool.query(
       `INSERT INTO "OutboxEvent"
-         (id, "eventType", "eventKey", "aggregateType", "aggregateId", payload)
-       VALUES ($1, 'SUPPORT_UPDATED', $2, 'SupportCase', 'case-1', $3::jsonb)`,
+         (id, "eventType", "eventKey", "aggregateType", "aggregateId", payload, "createdAt")
+       VALUES ($1, 'SUPPORT_UPDATED', $2, 'SupportCase', 'case-1', $3::jsonb, '1900-01-01T00:00:00Z')`,
       [
         eventId,
         eventKey,
@@ -80,8 +80,8 @@ describe('database to realtime outbox pipeline', () => {
     const eventKey = `sprint-3.1-c1-poison:${eventId}`;
     await pool.query(
       `INSERT INTO "OutboxEvent"
-         (id, "eventType", "eventKey", "aggregateType", "aggregateId", payload)
-       VALUES ($1, 'INTERNAL_UNSAFE', $2, 'Internal', 'poison-1', $3::jsonb)`,
+         (id, "eventType", "eventKey", "aggregateType", "aggregateId", payload, "createdAt")
+       VALUES ($1, 'INTERNAL_UNSAFE', $2, 'Internal', 'poison-1', $3::jsonb, '1900-01-01T00:00:00Z')`,
       [eventId, eventKey, JSON.stringify({ internalOnly: true })],
     );
     const runtime = await startOutboxRuntime({
@@ -124,8 +124,8 @@ describe('database to realtime outbox pipeline', () => {
     const clientId = '22222222-2222-4222-8222-222222222222';
     await pool.query(
       `INSERT INTO "OutboxEvent"
-         (id, "eventType", "eventKey", "aggregateType", "aggregateId", payload)
-       VALUES ($1, 'notification.created', $2, 'Notification', $3, $4::jsonb)`,
+         (id, "eventType", "eventKey", "aggregateType", "aggregateId", payload, "createdAt")
+       VALUES ($1, 'notification.created', $2, 'Notification', $3, $4::jsonb, '1900-01-01T00:00:00Z')`,
       [
         eventId,
         `sprint-3.3-delivery:${eventId}`,
