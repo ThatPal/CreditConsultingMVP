@@ -36,4 +36,18 @@ describe('authenticated request session-loss signal', () => {
     expect(listener).not.toHaveBeenCalled();
     unsubscribe();
   });
+
+  test('preserves the server error code for typed UI classification', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Missing' } }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    await expect(apiRequest('/api/v1/missing')).rejects.toMatchObject({
+      status: 404,
+      code: 'RESOURCE_NOT_FOUND',
+      message: 'Missing',
+    });
+  });
 });

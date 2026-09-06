@@ -212,7 +212,9 @@ export function WorkQueuePage() {
               component={Link}
               to={
                 queue.data.items[0].deepLink?.route
-                  ? `${queue.data.items[0].deepLink.route}?case=${queue.data.items[0].deepLink.params?.caseId ?? ''}`
+                  ? queue.data.items[0].deepLink.params?.caseId
+                    ? `${queue.data.items[0].deepLink.route}?case=${queue.data.items[0].deepLink.params.caseId}`
+                    : queue.data.items[0].deepLink.route
                   : '/crm/work-queue'
               }
               variant="contained"
@@ -317,7 +319,9 @@ export function WorkQueuePage() {
           <Stack divider={<Divider />}>
             {queue.data?.items.map((item) => {
               const href = item.deepLink?.route
-                ? `${item.deepLink.route}?case=${item.deepLink.params?.caseId ?? ''}`
+                ? item.deepLink.params?.caseId
+                  ? `${item.deepLink.route}?case=${item.deepLink.params.caseId}`
+                  : item.deepLink.route
                 : '/crm/work-queue';
               return (
                 <Stack

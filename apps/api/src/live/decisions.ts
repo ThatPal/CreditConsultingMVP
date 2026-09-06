@@ -115,7 +115,7 @@ export async function evaluateLatestResult(
       aggregateId: session.id,
       payload: (result) => ({
         clientId: session.clientId,
-        domains: ['live-session', 'attention'],
+        domains: ['live-sessions', 'work-queue'],
         sessionId: session.id,
         decisionId: (result as { id: string }).id,
       }),
@@ -218,7 +218,7 @@ export async function transitionSession(
       eventKey: `session:${session.id}:${input.action}:${input.idempotencyKey}`,
       aggregateType: 'ApplicationSession',
       aggregateId: session.id,
-      payload: { clientId: session.clientId, domains: ['live-session'], sessionId: session.id },
+      payload: { clientId: session.clientId, domains: ['live-sessions'], sessionId: session.id },
     },
     mutate: async (tx) => {
       const updated = await tx.applicationSession.updateMany({

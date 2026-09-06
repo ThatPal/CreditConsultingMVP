@@ -81,7 +81,7 @@ export async function startApplicationSession(
       aggregateId: (result) => String((result as { id: string }).id),
       payload: (result) => ({
         clientId: appointment.clientId,
-        domains: ['live-session'],
+        domains: ['live-sessions'],
         sessionId: (result as { id: string }).id,
       }),
     },
@@ -235,7 +235,7 @@ export async function sendSessionMessage(
       aggregateId: input.sessionId,
       payload: (result) => ({
         clientId: input.clientId,
-        domains: ['live-session'],
+        domains: ['live-sessions'],
         sessionId: input.sessionId,
         messageId: (result as { id: string }).id,
       }),

@@ -661,6 +661,7 @@ enum FindingSeverity {
 
 enum OutboxEventStatus {
   PENDING
+  PROCESSING
   PUBLISHED
   FAILED
 }
@@ -2354,8 +2355,11 @@ model OutboxEvent {
   attemptCount   Int               @default(0)
   lastAttemptAt  DateTime?         @db.Timestamptz(3)
   lastErrorCode  String?
+  claimToken     String?            @db.Uuid
+  claimExpiresAt DateTime?          @db.Timestamptz(3)
 
   @@index([status, availableAt, createdAt])
+  @@index([status, claimExpiresAt, createdAt])
   @@index([aggregateType, aggregateId, createdAt])
 }
 

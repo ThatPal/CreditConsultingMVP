@@ -77,12 +77,13 @@ export async function releaseApplication(
       aggregateId: session.id,
       payload: (result) => ({
         clientId: session.clientId,
-        domains: ['live-session'],
+        domains: ['live-sessions'],
         sessionId: session.id,
         applicationId: (result as { id: string }).id,
       }),
     },
     mutate: async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "ApplicationSession" WHERE id = ${session.id}::uuid FOR UPDATE`;
       const current = await tx.applicationSession.findUnique({ where: { id: session.id } });
       if (!current || current.status !== 'LIVE')
         throw new AppError('SESSION_NOT_LIVE', 409, 'Session is not live');
@@ -252,28 +253,41 @@ export async function applyApplicationAction(
       aggregateId: application.id,
       payload: {
         clientId: input.clientId,
-        domains: ['live-session'],
+        domains: ['live-sessions', ...(input.action === 'HELP' ? ['work-queue'] : [])],
         sessionId: application.sessionId,
         applicationId: application.id,
       },
     },
     mutate: async (tx) => {
       if (input.action === 'HELP') {
+        await tx.$queryRaw`SELECT id FROM "ApplicationSession" WHERE id = ${application.sessionId}::uuid FOR UPDATE`;
         const existing = await tx.workItem.findFirst({
-          where: { dedupeKey: `session-help:${application.sessionId}`, status: 'OPEN' },
+          where: { dedupeKey: `session-help:${application.sessionId}` },
         });
-        if (!existing)
+        if (existing)
+          await tx.workItem.update({
+            where: { id: existing.id },
+            data: {
+              status: 'OPEN',
+              priority: 'URGENT',
+              resolvedAt: null,
+              completedAt: null,
+              neededSince: new Date(),
+              version: { increment: 1 },
+            },
+          });
+        else
           await tx.workItem.create({
             data: {
               clientId: input.clientId,
-              title: 'Client needs live-session help',
-              domain: 'LIVE_SESSION',
-              priority: 'URGENT',
-              authority: 'ATTENTION_PROJECTION',
-              sourceType: 'ApplicationSession',
-              sourceId: application.sessionId,
-              reasonCode: 'SESSION_HELP_REQUESTED',
-              dedupeKey: `session-help:${application.sessionId}`,
+            title: 'Client needs live-session help',
+            domain: 'LIVE_SESSION',
+            priority: 'URGENT',
+            authority: 'ATTENTION_PROJECTION',
+            sourceType: 'ApplicationSession',
+            sourceId: application.sessionId,
+            reasonCode: 'SESSION_HELP_REQUESTED',
+            dedupeKey: `session-help:${application.sessionId}`,
               deepLink: { route: `/crm/live-sessions/${application.sessionId}` },
               neededSince: new Date(),
             },
@@ -284,20 +298,30 @@ export async function applyApplicationAction(
           helpRequested: true,
         } as Prisma.InputJsonObject;
       }
-      if (application.status !== 'RELEASED')
+      const current = await tx.creditApplication.findUnique({ where: { id: application.id } });
+      if (!current || current.status !== 'RELEASED')
         throw new AppError(
           'APPLICATION_ACTION_STALE',
           409,
           'Released application has already changed',
         );
       const status = input.action === 'SKIP' ? 'SKIPPED' : 'OPENED';
-      const updated = await tx.creditApplication.update({
-        where: { id: application.id },
+      const claimed = await tx.creditApplication.updateMany({
+        where: { id: application.id, status: 'RELEASED', version: current.version },
         data: {
           status,
           ...(input.action === 'OPEN' ? { openedAt: new Date() } : {}),
           version: { increment: 1 },
         },
+      });
+      if (claimed.count !== 1)
+        throw new AppError(
+          'APPLICATION_ACTION_STALE',
+          409,
+          'Released application has already changed',
+        );
+      const updated = await tx.creditApplication.findUniqueOrThrow({
+        where: { id: application.id },
       });
       await tx.creditApplicationEvent.create({
         data: {
@@ -358,7 +382,7 @@ export async function recordApplicationResult(
       aggregateId: application.id,
       payload: {
         clientId: input.clientId,
-        domains: ['live-session', 'round'],
+        domains: ['live-sessions', 'application-cycles'],
         sessionId: application.sessionId,
         applicationId: application.id,
       },
@@ -367,8 +391,8 @@ export async function recordApplicationResult(
       const current = await tx.creditApplication.findUnique({ where: { id: application.id } });
       if (!current || current.status !== 'OPENED')
         throw new AppError('APPLICATION_RESULT_STALE', 409, 'Application is not awaiting a result');
-      const updated = await tx.creditApplication.update({
-        where: { id: current.id },
+      const claimed = await tx.creditApplication.updateMany({
+        where: { id: current.id, status: 'OPENED', version: current.version },
         data: {
           status: 'RESULT_RECORDED',
           outcome: input.outcome,
@@ -383,6 +407,9 @@ export async function recordApplicationResult(
           version: { increment: 1 },
         },
       });
+      if (claimed.count !== 1)
+        throw new AppError('APPLICATION_RESULT_STALE', 409, 'Application is not awaiting a result');
+      const updated = await tx.creditApplication.findUniqueOrThrow({ where: { id: current.id } });
       await tx.creditApplicationEvent.create({
         data: {
           applicationId: current.id,

@@ -343,6 +343,126 @@ try {
       validationStatus: 'ACCEPTED',
     },
   });
+  // Keep one submitted Review in the consultant queue backed by the same
+  // canonical document/job/output/artifact chain used by production. This is
+  // deliberately separate from the immutable published Review below.
+  const queueReportKey = `credit-reports/${client.id}/demo-review-workspace.pdf`;
+  if (!(await reviewStorage.read(queueReportKey)))
+    await reviewStorage.put(queueReportKey, publishedReportBytes);
+  const queueReport = await prisma.creditReportDocument.upsert({
+    where: { storageKey: queueReportKey },
+    create: {
+      storageKey: queueReportKey,
+      originalFileName: 'Demo Review Workspace Credit Report.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: publishedReportBytes.length,
+      sha256: createHash('sha256').update(publishedReportBytes).digest('hex'),
+      validationStatus: 'ACCEPTED',
+      sourceEntered: 'Synthetic three-bureau review fixture',
+      reportDateEntered: daysAgo(1),
+      reportDate: daysAgo(1),
+      uploadedByUserId: clientUser.id,
+    },
+    update: { validationStatus: 'ACCEPTED' },
+  });
+  await prisma.reviewIntake.update({
+    where: { reviewId: review.id },
+    data: { reportDocumentId: queueReport.id, reportDocumentKey: queueReportKey },
+  });
+  const extractionProcess = await prisma.aIProcessDefinition.upsert({
+    where: {
+      processKey_processVersion: { processKey: 'credit_report.extract', processVersion: 1 },
+    },
+    create: {
+      processKey: 'credit_report.extract',
+      processVersion: 1,
+      authorityLevel: 'FACTUAL_LEVEL_1',
+      modelProfile: 'document_extraction',
+      inputSchemaVersion: 1,
+      outputSchemaVersion: 1,
+      instructionVersion: 'phase7-v1',
+      retryPolicy: { maxAttempts: 3 },
+      dataClassification: 'CLIENT_FINANCIAL_REPORT',
+      allowedContext: ['one-report', 'owning-client-cards'],
+      domainConsumer: 'credit-review',
+    },
+    update: {},
+  });
+  const queueJob = await prisma.aIJob.upsert({
+    where: {
+      processDefinitionId_sourceIdentity_correlationId: {
+        processDefinitionId: extractionProcess.id,
+        sourceIdentity: queueReport.sha256,
+        correlationId: `demo-review-workspace:${review.id}`,
+      },
+    },
+    create: {
+      processDefinitionId: extractionProcess.id,
+      clientId: client.id,
+      correlationId: `demo-review-workspace:${review.id}`,
+      relatedEntityType: 'CreditReportDocument',
+      relatedEntityId: queueReport.id,
+      sourceIdentity: queueReport.sha256,
+      status: 'SUCCEEDED',
+      inputSchemaVersion: extractionProcess.inputSchemaVersion,
+      outputSchemaVersion: extractionProcess.outputSchemaVersion,
+      sourceVersions: { report: queueReport.sha256 },
+      inputEnvelope: { fixture: 'APC_WAVE_1_REVIEW_PATH' },
+      currentAttempt: 1,
+      completedAt: new Date(),
+    },
+    update: { status: 'SUCCEEDED', completedAt: new Date() },
+  });
+  const queueOutput = await prisma.aIJobOutput.upsert({
+    where: { jobId_outputVersion: { jobId: queueJob.id, outputVersion: 1 } },
+    create: {
+      jobId: queueJob.id,
+      outputVersion: 1,
+      outputSchemaVersion: extractionProcess.outputSchemaVersion,
+      status: 'SUCCEEDED',
+      result: { fixture: 'APC_WAVE_1_REVIEW_PATH' },
+      exceptions: [],
+      confidence: 'HIGH',
+      evidence: [{ documentId: queueReport.id }],
+      humanReview: { required: true },
+      provenance: { source: 'DETERMINISTIC_DEMO_FIXTURE' },
+      sourceVersions: { report: queueReport.sha256 },
+    },
+    update: {},
+  });
+  await prisma.creditReportArtifact.upsert({
+    where: {
+      reportDocumentId_artifactType_artifactVersion: {
+        reportDocumentId: queueReport.id,
+        artifactType: 'credit_report.extract',
+        artifactVersion: 1,
+      },
+    },
+    create: {
+      reportDocumentId: queueReport.id,
+      aiJobId: queueJob.id,
+      aiJobOutputId: queueOutput.id,
+      artifactType: 'credit_report.extract',
+      artifactVersion: 1,
+      sourceVersion: queueReport.sha256,
+      schemaVersion: 1,
+      payload: {
+        facts: {
+          scores: [
+            { bureau: 'EXPERIAN', score: 718 },
+            { bureau: 'EQUIFAX', score: 711 },
+            { bureau: 'TRANSUNION', score: 724 },
+          ],
+          tradelines: [
+            { accountType: 'Revolving credit card', balance: 15200, limit: 40000, status: 'open' },
+          ],
+          inquiries: [{ bureau: 'EXPERIAN' }, { bureau: 'TRANSUNION' }],
+          negativeItems: [],
+        },
+      },
+    },
+    update: { current: true, staleAt: null },
+  });
   let publishedPurchase = await prisma.servicePurchase.findFirst({
     where: { clientId: client.id, paymentReference: 'DEMO-PUBLISHED-REVIEW-001' },
   });
@@ -862,7 +982,9 @@ try {
                   clientTitle: 'Report your balance progress',
                   clientBody: 'Tell us what changed after your planned payment.',
                   sortOrder: 1,
-                  outcomeSchema: { fields: [{ key: 'clientReport', type: 'text', required: true }] },
+                  outcomeSchema: {
+                    fields: [{ key: 'clientReport', type: 'text', required: true }],
+                  },
                 },
                 {
                   stableKey: 'consultant-readiness-check',
@@ -871,7 +993,8 @@ try {
                   status: 'LOCKED',
                   owner: 'CONSULTANT',
                   clientTitle: 'Consultant verifies readiness',
-                  clientBody: 'Your consultant confirms this milestone after reviewing your progress.',
+                  clientBody:
+                    'Your consultant confirms this milestone after reviewing your progress.',
                   sortOrder: 2,
                 },
               ],
@@ -887,7 +1010,9 @@ try {
     });
     const guide = version.items.find(({ stableKey }) => stableKey === 'understand-profile')!;
     const outcome = version.items.find(({ stableKey }) => stableKey === 'report-balance-progress')!;
-    const milestone = version.items.find(({ stableKey }) => stableKey === 'consultant-readiness-check')!;
+    const milestone = version.items.find(
+      ({ stableKey }) => stableKey === 'consultant-readiness-check',
+    )!;
     await prisma.planDependency.createMany({
       data: [
         { prerequisiteItemId: guide.id, dependentItemId: outcome.id },
@@ -907,28 +1032,166 @@ try {
     update: {},
   });
   const catalogSeeds = [
-    { issuer: 'Northstar Bank', issuerSlug: 'northstar-bank', slug: 'northstar-everyday', name: 'Northstar Everyday', audience: 'PERSONAL' as const, portfolioType: 'PERSONAL_CREDIT' as const, secured: false, reports: true, facts: { annualFee: 0, purchaseApr: { min: 18.99, max: 28.99 }, welcomeOffer: 'Earn 20,000 points after qualifying spend' }, tags: ['rewards', 'no-annual-fee'] },
-    { issuer: 'Northstar Bank', issuerSlug: 'northstar-bank', slug: 'northstar-business', name: 'Northstar Business Builder', audience: 'BUSINESS' as const, portfolioType: 'BUSINESS_CREDIT' as const, secured: false, reports: false, facts: { annualFee: 95, purchaseApr: { min: 19.99, max: 29.99 } }, tags: ['business'] },
-    { issuer: 'Harbor Community Bank', issuerSlug: 'harbor-community', slug: 'harbor-secured', name: 'Harbor Secured Card', audience: 'PERSONAL' as const, portfolioType: 'SECURED' as const, secured: true, reports: true, facts: { annualFee: 0, securityDepositMinimum: 300, purchaseApr: 24.99 }, tags: ['secured', 'credit-building'] },
-    { issuer: 'LedgerWorks', issuerSlug: 'ledgerworks', slug: 'ledgerworks-expense', name: 'LedgerWorks Expense Card', audience: 'BUSINESS' as const, portfolioType: 'NON_REPORTING' as const, secured: false, reports: false, facts: { annualFee: 0, reporting: 'Does not report as a revolving consumer account' }, tags: ['business', 'non-reporting'] },
+    {
+      issuer: 'Northstar Bank',
+      issuerSlug: 'northstar-bank',
+      slug: 'northstar-everyday',
+      name: 'Northstar Everyday',
+      audience: 'PERSONAL' as const,
+      portfolioType: 'PERSONAL_CREDIT' as const,
+      secured: false,
+      reports: true,
+      facts: {
+        annualFee: 0,
+        purchaseApr: { min: 18.99, max: 28.99 },
+        welcomeOffer: 'Earn 20,000 points after qualifying spend',
+      },
+      tags: ['rewards', 'no-annual-fee'],
+    },
+    {
+      issuer: 'Northstar Bank',
+      issuerSlug: 'northstar-bank',
+      slug: 'northstar-business',
+      name: 'Northstar Business Builder',
+      audience: 'BUSINESS' as const,
+      portfolioType: 'BUSINESS_CREDIT' as const,
+      secured: false,
+      reports: false,
+      facts: { annualFee: 95, purchaseApr: { min: 19.99, max: 29.99 } },
+      tags: ['business'],
+    },
+    {
+      issuer: 'Harbor Community Bank',
+      issuerSlug: 'harbor-community',
+      slug: 'harbor-secured',
+      name: 'Harbor Secured Card',
+      audience: 'PERSONAL' as const,
+      portfolioType: 'SECURED' as const,
+      secured: true,
+      reports: true,
+      facts: { annualFee: 0, securityDepositMinimum: 300, purchaseApr: 24.99 },
+      tags: ['secured', 'credit-building'],
+    },
+    {
+      issuer: 'LedgerWorks',
+      issuerSlug: 'ledgerworks',
+      slug: 'ledgerworks-expense',
+      name: 'LedgerWorks Expense Card',
+      audience: 'BUSINESS' as const,
+      portfolioType: 'NON_REPORTING' as const,
+      secured: false,
+      reports: false,
+      facts: { annualFee: 0, reporting: 'Does not report as a revolving consumer account' },
+      tags: ['business', 'non-reporting'],
+    },
   ];
   for (const seed of catalogSeeds) {
-    const issuer = await prisma.cardIssuer.upsert({ where: { slug: seed.issuerSlug }, create: { slug: seed.issuerSlug, name: seed.issuer, domain: `${seed.issuerSlug}.example`, aliases: [] }, update: { name: seed.issuer } });
-    const product = await prisma.cardProduct.upsert({ where: { slug: seed.slug }, create: { issuerId: issuer.id, slug: seed.slug, canonicalName: seed.name, displayName: seed.name, aliases: [], audience: seed.audience, portfolioType: seed.portfolioType, secured: seed.secured, reportsToBureaus: seed.reports, features: seed.tags, tags: seed.tags }, update: { lifecycle: 'ACTIVE' } });
+    const issuer = await prisma.cardIssuer.upsert({
+      where: { slug: seed.issuerSlug },
+      create: {
+        slug: seed.issuerSlug,
+        name: seed.issuer,
+        domain: `${seed.issuerSlug}.example`,
+        aliases: [],
+      },
+      update: { name: seed.issuer },
+    });
+    const product = await prisma.cardProduct.upsert({
+      where: { slug: seed.slug },
+      create: {
+        issuerId: issuer.id,
+        slug: seed.slug,
+        canonicalName: seed.name,
+        displayName: seed.name,
+        aliases: [],
+        audience: seed.audience,
+        portfolioType: seed.portfolioType,
+        secured: seed.secured,
+        reportsToBureaus: seed.reports,
+        features: seed.tags,
+        tags: seed.tags,
+      },
+      update: { lifecycle: 'ACTIVE' },
+    });
     if (!product.currentOfferVersionId) {
-      const offer = await prisma.cardOfferVersion.create({ data: { productId: product.id, version: 1, facts: seed.facts, materialFingerprint: createHash('sha256').update(JSON.stringify(seed.facts)).digest('hex'), sourceEvidence: { source: 'DETERMINISTIC_DEMO_FIXTURE', reviewed: true }, effectiveFrom: daysAgo(30), freshUntil: seed.slug === 'northstar-everyday' ? daysAgo(1) : new Date(Date.now() + 90 * 86_400_000) } });
-      await prisma.cardProduct.update({ where: { id: product.id }, data: { currentOfferVersionId: offer.id } });
+      const offer = await prisma.cardOfferVersion.create({
+        data: {
+          productId: product.id,
+          version: 1,
+          facts: seed.facts,
+          materialFingerprint: createHash('sha256')
+            .update(JSON.stringify(seed.facts))
+            .digest('hex'),
+          sourceEvidence: { source: 'DETERMINISTIC_DEMO_FIXTURE', reviewed: true },
+          effectiveFrom: daysAgo(30),
+          freshUntil:
+            seed.slug === 'northstar-everyday'
+              ? daysAgo(1)
+              : new Date(Date.now() + 90 * 86_400_000),
+        },
+      });
+      await prisma.cardProduct.update({
+        where: { id: product.id },
+        data: { currentOfferVersionId: offer.id },
+      });
     }
   }
-  await prisma.cardSource.upsert({ where: { key: 'northstar-official' }, create: { key: 'northstar-official', name: 'Northstar official product pages', baseUrl: 'https://northstar-bank.example/cards', allowedHosts: ['northstar-bank.example'], official: true }, update: { active: true } });
+  await prisma.cardSource.upsert({
+    where: { key: 'northstar-official' },
+    create: {
+      key: 'northstar-official',
+      name: 'Northstar official product pages',
+      baseUrl: 'https://northstar-bank.example/cards',
+      allowedHosts: ['northstar-bank.example'],
+      official: true,
+    },
+    update: { active: true },
+  });
   const insightProcess = await prisma.aIProcessDefinition.upsert({
-    where: { processKey_processVersion: { processKey: 'card-insight-preparation', processVersion: 1 } },
-    create: { processKey: 'card-insight-preparation', processVersion: 1, modelProfile: 'configured-card-insight-model', inputSchemaVersion: 1, outputSchemaVersion: 1, instructionVersion: 'phase-10-v1', retryPolicy: { maxAttempts: 3 }, dataClassification: 'INTERNAL_CATALOG', allowedContext: { offerFacts: true, approvedEvidence: true }, domainConsumer: 'CARD_INSIGHT' },
+    where: {
+      processKey_processVersion: { processKey: 'card-insight-preparation', processVersion: 1 },
+    },
+    create: {
+      processKey: 'card-insight-preparation',
+      processVersion: 1,
+      modelProfile: 'configured-card-insight-model',
+      inputSchemaVersion: 1,
+      outputSchemaVersion: 1,
+      instructionVersion: 'phase-10-v1',
+      retryPolicy: { maxAttempts: 3 },
+      dataClassification: 'INTERNAL_CATALOG',
+      allowedContext: { offerFacts: true, approvedEvidence: true },
+      domainConsumer: 'CARD_INSIGHT',
+    },
     update: { enabled: true },
   });
-  const insightProduct = await prisma.cardProduct.findUniqueOrThrow({ where: { slug: 'northstar-everyday' } });
-  if (insightProduct.currentOfferVersionId && !(await prisma.cardInsightVersion.findFirst({ where: { productId: insightProduct.id } }))) {
-    await prisma.cardInsightVersion.create({ data: { productId: insightProduct.id, offerVersionId: insightProduct.currentOfferVersionId, version: 1, status: 'IN_REVIEW', clientSafeSummary: 'A no-annual-fee rewards product whose promotional value should be reviewed against current source freshness.', internalRationale: 'Prepared demonstration awaiting professional authority.', strengths: ['No annual fee'], cautions: ['Promotional terms require refreshed source evidence'], confidence: 'MEDIUM', processKey: insightProcess.processKey, processVersion: insightProcess.processVersion, processDefinitionId: insightProcess.id, modelProvenance: { profile: insightProcess.modelProfile, provider: 'CONFIGURATION_DRIVEN' }, proposedPayload: { summary: 'AI-prepared, not canonical' }, evidence: [{ offerVersionId: insightProduct.currentOfferVersionId }] } });
+  const insightProduct = await prisma.cardProduct.findUniqueOrThrow({
+    where: { slug: 'northstar-everyday' },
+  });
+  if (
+    insightProduct.currentOfferVersionId &&
+    !(await prisma.cardInsightVersion.findFirst({ where: { productId: insightProduct.id } }))
+  ) {
+    await prisma.cardInsightVersion.create({
+      data: {
+        productId: insightProduct.id,
+        offerVersionId: insightProduct.currentOfferVersionId,
+        version: 1,
+        status: 'IN_REVIEW',
+        clientSafeSummary:
+          'A no-annual-fee rewards product whose promotional value should be reviewed against current source freshness.',
+        internalRationale: 'Prepared demonstration awaiting professional authority.',
+        strengths: ['No annual fee'],
+        cautions: ['Promotional terms require refreshed source evidence'],
+        confidence: 'MEDIUM',
+        processKey: insightProcess.processKey,
+        processVersion: insightProcess.processVersion,
+        processDefinitionId: insightProcess.id,
+        modelProvenance: { profile: insightProcess.modelProfile, provider: 'CONFIGURATION_DRIVEN' },
+        proposedPayload: { summary: 'AI-prepared, not canonical' },
+        evidence: [{ offerVersionId: insightProduct.currentOfferVersionId }],
+      },
+    });
   }
   console.info(
     JSON.stringify(

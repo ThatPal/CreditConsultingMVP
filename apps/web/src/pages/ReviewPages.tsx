@@ -40,12 +40,25 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { apiBlobRequest, apiFileRequest, apiRequest } from '../auth/api';
+import { ApiRequestError, apiBlobRequest, apiFileRequest, apiRequest } from '../auth/api';
 import { ChoiceCard } from '../components/common/ChoiceCard';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { MetricCard } from '../components/common/MetricCard';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+
+export function reviewWorkspaceErrorMessage(error: unknown) {
+  if (!(error instanceof ApiRequestError)) return 'The Review workspace could not be loaded.';
+  if (error.status === 401) return 'Your session expired. Sign in again to continue this Review.';
+  if (error.code === 'MFA_REQUIRED' || error.code === 'STEP_UP_REQUIRED')
+    return 'Complete MFA verification to open this governed Review workspace.';
+  if (error.status === 403) return 'You do not have access to this client Review.';
+  if (error.status === 404) return 'This Review no longer exists or is outside your scope.';
+  if (error.code === 'REVIEW_WORKSPACE_INCOMPLETE')
+    return 'This Review is still waiting for an accepted report processing workspace.';
+  if (error.status === 409) return 'This Review changed. Refresh and try again.';
+  return 'The Review workspace is temporarily unavailable. Try again.';
+}
 
 const bureauSeries = [
   { key: 'experianScore', label: 'Experian', color: '#45d7f0' },
@@ -5052,11 +5065,7 @@ export function ConsultantReviewWorkspacePage() {
   });
   if (workspace.isLoading) return <LoadingSkeleton />;
   if (workspace.isError)
-    return (
-      <Alert severity="error">
-        Unable to load the governed Review workspace. Confirm consultant access and MFA step-up.
-      </Alert>
-    );
+    return <Alert severity="error">{reviewWorkspaceErrorMessage(workspace.error)}</Alert>;
   const data = workspace.data!;
   const draft = data.draft;
   const running = data.jobs.some((job) =>

@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import type { Logger } from 'pino';
+import { ZodError } from 'zod';
 
 export class AppError extends Error {
   constructor(
@@ -18,10 +19,15 @@ export const notFound: RequestHandler = (req, _res, next) =>
 export function errorHandler(logger: Logger): ErrorRequestHandler {
   return (error: unknown, req, res, next) => {
     void next;
+    const validation = error instanceof ZodError;
     const known = error instanceof AppError;
-    const status = known ? error.status : 500;
-    const code = known ? error.code : 'INTERNAL_ERROR';
-    const message = known && error.expose ? error.message : 'An unexpected error occurred';
+    const status = validation ? 400 : known ? error.status : 500;
+    const code = validation ? 'VALIDATION_ERROR' : known ? error.code : 'INTERNAL_ERROR';
+    const message = validation
+      ? (error.issues[0]?.message ?? 'The request was invalid')
+      : known && error.expose
+        ? error.message
+        : 'An unexpected error occurred';
     logger.error({ err: error, requestId: req.id }, 'Request failed');
     res.status(status).json({ error: { code, message, requestId: req.id } });
   };

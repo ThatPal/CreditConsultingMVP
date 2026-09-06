@@ -40,8 +40,13 @@ async function loadContext(prisma: PrismaClient, clientId: string, reviewId: str
       },
     },
   });
-  if (!review?.intake?.reportDocument)
-    throw new AppError('NOT_FOUND', 404, 'Credit Review workspace was not found');
+  if (!review) throw new AppError('REVIEW_NOT_FOUND', 404, 'Credit Review was not found');
+  if (!review.intake?.reportDocument)
+    throw new AppError(
+      'REVIEW_WORKSPACE_INCOMPLETE',
+      409,
+      'This Review does not have an accepted report processing workspace yet',
+    );
   const report = review.intake.reportDocument;
   const artifacts = report.aiArtifacts;
   const contextVersions = {

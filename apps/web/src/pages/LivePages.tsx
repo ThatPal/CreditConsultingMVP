@@ -325,6 +325,15 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
     const timer = window.setInterval(beat, 30_000);
     return () => window.clearInterval(timer);
   }, [sessionId]);
+  useEffect(() => {
+    if (!sessionId) return;
+    const refresh = (event: Event) => {
+      const update = (event as CustomEvent<{ domains?: string[] }>).detail;
+      if (update?.domains?.includes('live-sessions')) void load(sessionId);
+    };
+    window.addEventListener('credit:live-update', refresh);
+    return () => window.removeEventListener('credit:live-update', refresh);
+  }, [sessionId, consultant]);
   const send = async () => {
     if (!message.trim()) return;
     await apiRequest(`/api/v1/sessions/${sessionId}/messages`, {

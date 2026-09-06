@@ -1,4 +1,13 @@
-import { Alert, Button, Chip, LinearProgress, MenuItem, Stack, TextField, Typography as MuiTypography } from '@mui/material';
+import {
+  Alert,
+  Button,
+  Chip,
+  LinearProgress,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography as MuiTypography,
+} from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { ElementType } from 'react';
@@ -8,52 +17,465 @@ import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 const Typography: ElementType = MuiTypography;
-type Summary = { round: { id: string; status: string }; sessionEnded: boolean; counts: Record<string, number>; knownApprovedAmount: number; unresolvedFollowUpCount: number; goal: null | { targetAmount: number; progressAmount: number; progressPercent: number }; applications: Array<{ id: string; productName: string; status: string; outcome: string | null; approvedLimit: string | null; approvedLimitKnown: boolean | null }> };
-const label = (value: string) => value.replaceAll('_', ' ').toLowerCase().replace(/^./, (x) => x.toUpperCase());
+type Summary = {
+  round: { id: string; status: string };
+  sessionEnded: boolean;
+  counts: Record<string, number>;
+  knownApprovedAmount: number;
+  unresolvedFollowUpCount: number;
+  goal: null | { targetAmount: number; progressAmount: number; progressPercent: number };
+  applications: Array<{
+    id: string;
+    productName: string;
+    status: string;
+    outcome: string | null;
+    approvedLimit: string | null;
+    approvedLimitKnown: boolean | null;
+  }>;
+};
+const label = (value: string) =>
+  value
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/^./, (x) => x.toUpperCase());
 export function PostRoundPage({ consultant = false }: { consultant?: boolean }) {
   const { clientId = '', roundId = '' } = useParams();
-  const path = consultant ? `/api/v1/consultant/clients/${clientId}/rounds/${roundId}/post-round` : `/api/v1/client/rounds/${roundId}/post-round`;
-  const query = useQuery({ queryKey: ['post-round', roundId, consultant], queryFn: () => apiRequest<Summary>(path) });
+  const path = consultant
+    ? `/api/v1/consultant/clients/${clientId}/rounds/${roundId}/post-round`
+    : `/api/v1/client/rounds/${roundId}/post-round`;
+  const query = useQuery({
+    queryKey: ['post-round', roundId, consultant],
+    queryFn: () => apiRequest<Summary>(path),
+  });
   if (query.isLoading) return <LoadingSkeleton />;
-  if (query.isError || !query.data) return <Alert severity="error">The post-round summary could not be loaded.</Alert>;
+  if (query.isError || !query.data)
+    return <Alert severity="error">The post-round summary could not be loaded.</Alert>;
   const data = query.data;
-  return <Stack spacing={3}><PageHeader eyebrow="Card Round follow-up" title="Round results" description="A factual view of applications and known results. Pending items remain open until confirmed." />{!data.sessionEnded && <Alert severity="info">The live session has not ended. Totals will keep updating as results are recorded.</Alert>}<SectionCard><Stack spacing={2}><Typography variant="h5">Known progress</Typography><Typography variant="h3">${data.knownApprovedAmount.toLocaleString()}</Typography><Typography>Known approved credit · {data.counts.approved} approved · {data.counts.declined} declined · {data.counts.pending} pending</Typography>{data.goal && <><LinearProgress variant="determinate" value={data.goal.progressPercent} /><Typography>{data.goal.progressPercent}% of ${data.goal.targetAmount.toLocaleString()} goal</Typography></>}</Stack></SectionCard>{data.unresolvedFollowUpCount > 0 && <Alert severity="warning">{data.unresolvedFollowUpCount} result{data.unresolvedFollowUpCount === 1 ? '' : 's'} still need follow-up.</Alert>}<SectionCard><Typography variant="h5">Applications</Typography><Stack spacing={1.5}>{data.applications.length ? data.applications.map((item) => <Stack key={item.id} direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between' }}><div><Typography fontWeight={700}>{item.productName}</Typography><Typography color="text.secondary">{item.outcome ? label(item.outcome) : label(item.status)}</Typography></div><Chip label={item.outcome === 'APPROVED' && item.approvedLimitKnown && item.approvedLimit ? `$${Number(item.approvedLimit).toLocaleString()} approved` : item.outcome === 'APPROVED' ? 'Approved · limit pending' : label(item.outcome ?? item.status)} /></Stack>) : <Typography>No released applications were submitted in this Round.</Typography>}</Stack></SectionCard><Button component={Link} to={consultant ? `/crm/clients/${clientId}` : `/app/rounds/${roundId}`}>Back to Round</Button></Stack>;
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="Card Round follow-up"
+        title="Round results"
+        description="A factual view of applications and known results. Pending items remain open until confirmed."
+      />
+      {!data.sessionEnded && (
+        <Alert severity="info">
+          The live session has not ended. Totals will keep updating as results are recorded.
+        </Alert>
+      )}
+      <SectionCard>
+        <Stack spacing={2}>
+          <Typography variant="h5">Known progress</Typography>
+          <Typography variant="h3">${data.knownApprovedAmount.toLocaleString()}</Typography>
+          <Typography>
+            Known approved credit · {data.counts.approved} approved · {data.counts.declined}{' '}
+            declined · {data.counts.pending} pending
+          </Typography>
+          {data.goal && (
+            <>
+              <LinearProgress variant="determinate" value={data.goal.progressPercent} />
+              <Typography>
+                {data.goal.progressPercent}% of ${data.goal.targetAmount.toLocaleString()} goal
+              </Typography>
+            </>
+          )}
+        </Stack>
+      </SectionCard>
+      {data.unresolvedFollowUpCount > 0 && (
+        <Alert severity="warning">
+          {data.unresolvedFollowUpCount} result{data.unresolvedFollowUpCount === 1 ? '' : 's'} still
+          need follow-up.
+        </Alert>
+      )}
+      <SectionCard>
+        <Typography variant="h5">Applications</Typography>
+        <Stack spacing={1.5}>
+          {data.applications.length ? (
+            data.applications.map((item) => (
+              <Stack
+                key={item.id}
+                direction={{ xs: 'column', sm: 'row' }}
+                sx={{ justifyContent: 'space-between' }}
+              >
+                <div>
+                  <Typography fontWeight={700}>{item.productName}</Typography>
+                  <Typography color="text.secondary">
+                    {item.outcome ? label(item.outcome) : label(item.status)}
+                  </Typography>
+                </div>
+                <Chip
+                  label={
+                    item.outcome === 'APPROVED' && item.approvedLimitKnown && item.approvedLimit
+                      ? `$${Number(item.approvedLimit).toLocaleString()} approved`
+                      : item.outcome === 'APPROVED'
+                        ? 'Approved · limit pending'
+                        : label(item.outcome ?? item.status)
+                  }
+                />
+              </Stack>
+            ))
+          ) : (
+            <Typography>No released applications were submitted in this Round.</Typography>
+          )}
+        </Stack>
+      </SectionCard>
+      <Button
+        component={Link}
+        to={consultant ? `/crm/clients/${clientId}` : `/app/rounds/${roundId}`}
+      >
+        Back to Round
+      </Button>
+    </Stack>
+  );
 }
 
 type FollowUp = { id: string; kind: string; status: string; required: boolean; version: number };
+type FollowUpDraft = { outcome: string; approvedLimit: string };
 export function PostRoundFollowUpPage() {
   const { roundId = '' } = useParams();
   const queryClient = useQueryClient();
-  const [outcome, setOutcome] = useState('APPROVED');
-  const [limit, setLimit] = useState('');
-  const query = useQuery({ queryKey: ['post-round-follow-ups', roundId], queryFn: () => apiRequest<{ items: FollowUp[] }>(`/api/v1/client/rounds/${roundId}/follow-ups`) });
-  const initialize = useMutation({ mutationFn: () => apiRequest(`/api/v1/client/rounds/${roundId}/follow-ups/initialize`, { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: '{}' }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['post-round-follow-ups', roundId] }) });
-  const complete = useMutation({ mutationFn: ({ item, unable = false }: { item: FollowUp; unable?: boolean }) => apiRequest(`/api/v1/client/follow-ups/${item.id}/complete`, { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ expectedVersion: item.version, unable, ...(!unable ? { outcome, approvedLimitKnown: outcome === 'APPROVED' ? Boolean(limit) : undefined, approvedLimit: limit ? Number(limit) : undefined } : {}) }) }), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['post-round-follow-ups', roundId] }); queryClient.invalidateQueries({ queryKey: ['post-round', roundId] }); } });
+  const [drafts, setDrafts] = useState<Record<string, FollowUpDraft>>({});
+  const draftFor = (id: string) => drafts[id] ?? { outcome: 'APPROVED', approvedLimit: '' };
+  const updateDraft = (id: string, patch: Partial<FollowUpDraft>) =>
+    setDrafts((current) => ({
+      ...current,
+      [id]: { ...(current[id] ?? { outcome: 'APPROVED', approvedLimit: '' }), ...patch },
+    }));
+  const query = useQuery({
+    queryKey: ['post-round-follow-ups', roundId],
+    queryFn: () => apiRequest<{ items: FollowUp[] }>(`/api/v1/client/rounds/${roundId}/follow-ups`),
+  });
+  const initialize = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/v1/client/rounds/${roundId}/follow-ups/initialize`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: '{}',
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['post-round-follow-ups', roundId] }),
+  });
+  const complete = useMutation({
+    mutationFn: ({ item, unable = false }: { item: FollowUp; unable?: boolean }) => {
+      const draft = draftFor(item.id);
+      return apiRequest(`/api/v1/client/follow-ups/${item.id}/complete`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({
+          expectedVersion: item.version,
+          unable,
+          ...(!unable
+            ? {
+                outcome: draft.outcome,
+                approvedLimitKnown:
+                  draft.outcome === 'APPROVED' ? Boolean(draft.approvedLimit) : undefined,
+                approvedLimit: draft.approvedLimit ? Number(draft.approvedLimit) : undefined,
+              }
+            : {}),
+        }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['post-round-follow-ups', roundId] });
+      queryClient.invalidateQueries({ queryKey: ['post-round', roundId] });
+    },
+  });
   if (query.isLoading) return <LoadingSkeleton />;
-  if (query.isError || !query.data) return <Alert severity="error">Follow-up actions could not be loaded.</Alert>;
-  return <Stack spacing={3}><PageHeader eyebrow="Post-Round Plan" title="Follow up on results" description="Confirm factual outcomes as they become available. Unable to complete keeps required work visible." />{query.data.items.length === 0 ? <SectionCard><Typography>No follow-up actions exist yet.</Typography><Button variant="contained" disabled={initialize.isPending} onClick={() => initialize.mutate()}>Build follow-up Plan</Button></SectionCard> : query.data.items.map((item) => <SectionCard key={item.id}><Stack spacing={2}><Stack direction="row" sx={{ justifyContent: 'space-between' }}><Typography variant="h5">{label(item.kind)}</Typography><Chip label={label(item.status)} color={item.status === 'COMPLETE' ? 'success' : 'default'} /></Stack>{item.status === 'OPEN' && <><TextField select label="Current result" value={outcome} onChange={(event) => setOutcome(event.target.value)}>{['APPROVED','DECLINED','PENDING','APPLICATION_NOT_COMPLETED','TECHNICAL_ISSUE','OTHER'].map((value) => <MenuItem key={value} value={value}>{label(value)}</MenuItem>)}</TextField>{outcome === 'APPROVED' && <TextField label="Known approved limit (optional)" type="number" value={limit} onChange={(event) => setLimit(event.target.value)} />}<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}><Button variant="contained" disabled={complete.isPending} onClick={() => complete.mutate({ item })}>Save factual result</Button><Button variant="outlined" disabled={complete.isPending} onClick={() => complete.mutate({ item, unable: true })}>Unable to complete</Button></Stack></>}</Stack></SectionCard>)}{(initialize.error || complete.error) && <Alert severity="error">{(initialize.error ?? complete.error)?.message}</Alert>}<Button component={Link} to={`/app/rounds/${roundId}/results`}>Back to results</Button></Stack>;
+  if (query.isError || !query.data)
+    return <Alert severity="error">Follow-up actions could not be loaded.</Alert>;
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="Post-Round Plan"
+        title="Follow up on results"
+        description="Confirm factual outcomes as they become available. Unable to complete keeps required work visible."
+      />
+      {query.data.items.length === 0 ? (
+        <SectionCard>
+          <Typography>No follow-up actions exist yet.</Typography>
+          <Button
+            variant="contained"
+            disabled={initialize.isPending}
+            onClick={() => initialize.mutate()}
+          >
+            Build follow-up Plan
+          </Button>
+        </SectionCard>
+      ) : (
+        query.data.items.map((item) => {
+          const draft = draftFor(item.id);
+          return (
+            <SectionCard key={item.id}>
+              <Stack spacing={2}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
+                  <Typography variant="h5">{label(item.kind)}</Typography>
+                  <Chip
+                    label={label(item.status)}
+                    color={item.status === 'COMPLETE' ? 'success' : 'default'}
+                  />
+                </Stack>
+                {item.status === 'OPEN' && (
+                  <>
+                    <TextField
+                      select
+                      label="Current result"
+                      value={draft.outcome}
+                      onChange={(event) => updateDraft(item.id, { outcome: event.target.value })}
+                    >
+                      {[
+                        'APPROVED',
+                        'DECLINED',
+                        'PENDING',
+                        'APPLICATION_NOT_COMPLETED',
+                        'TECHNICAL_ISSUE',
+                        'OTHER',
+                      ].map((value) => (
+                        <MenuItem key={value} value={value}>
+                          {label(value)}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    {draft.outcome === 'APPROVED' && (
+                      <TextField
+                        label="Known approved limit (optional)"
+                        type="number"
+                        value={draft.approvedLimit}
+                        onChange={(event) =>
+                          updateDraft(item.id, { approvedLimit: event.target.value })
+                        }
+                      />
+                    )}
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <Button
+                        variant="contained"
+                        disabled={complete.isPending}
+                        onClick={() => complete.mutate({ item })}
+                      >
+                        Save factual result
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        disabled={complete.isPending}
+                        onClick={() => complete.mutate({ item, unable: true })}
+                      >
+                        Unable to complete
+                      </Button>
+                    </Stack>
+                  </>
+                )}
+              </Stack>
+            </SectionCard>
+          );
+        })
+      )}
+      {(initialize.error || complete.error) && (
+        <Alert severity="error">{(initialize.error ?? complete.error)?.message}</Alert>
+      )}
+      <Button component={Link} to={`/app/rounds/${roundId}/results`}>
+        Back to results
+      </Button>
+    </Stack>
+  );
 }
 
-type AnalysisView = { current: null | { id: string; version: number; kind: string; status: string; stale: boolean; clientSafeContent: { headline?: string; summary?: string; nextActions?: string[] } }; history: Array<{ id: string; version: number; kind: string; status: string }> };
+type AnalysisView = {
+  current: null | {
+    id: string;
+    version: number;
+    kind: string;
+    status: string;
+    stale: boolean;
+    clientSafeContent: { headline?: string; summary?: string; nextActions?: string[] };
+  };
+  history: Array<{ id: string; version: number; kind: string; status: string }>;
+};
 export function RoundAnalysisPage({ consultant = false }: { consultant?: boolean }) {
   const { clientId = '', roundId = '' } = useParams();
   const queryClient = useQueryClient();
-  const path = consultant ? `/api/v1/consultant/clients/${clientId}/rounds/${roundId}/analysis` : `/api/v1/client/rounds/${roundId}/analysis`;
-  const query = useQuery({ queryKey: ['round-analysis', roundId, consultant], queryFn: () => apiRequest<AnalysisView>(path) });
-  const prepare = useMutation({ mutationFn: (kind: string) => apiRequest(`/api/v1/consultant/clients/${clientId}/rounds/${roundId}/analysis`, { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ kind }) }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['round-analysis', roundId, consultant] }) });
-  const approve = useMutation({ mutationFn: (id: string) => apiRequest(`/api/v1/consultant/clients/${clientId}/analyses/${id}/approve`, { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: '{}' }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['round-analysis', roundId, consultant] }) });
+  const path = consultant
+    ? `/api/v1/consultant/clients/${clientId}/rounds/${roundId}/analysis`
+    : `/api/v1/client/rounds/${roundId}/analysis`;
+  const query = useQuery({
+    queryKey: ['round-analysis', roundId, consultant],
+    queryFn: () => apiRequest<AnalysisView>(path),
+  });
+  const prepare = useMutation({
+    mutationFn: (kind: string) =>
+      apiRequest(`/api/v1/consultant/clients/${clientId}/rounds/${roundId}/analysis`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ kind }),
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['round-analysis', roundId, consultant] }),
+  });
+  const approve = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest(`/api/v1/consultant/clients/${clientId}/analyses/${id}/approve`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: '{}',
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['round-analysis', roundId, consultant] }),
+  });
   if (query.isLoading) return <LoadingSkeleton />;
-  if (query.isError || !query.data) return <Alert severity="error">Round analysis could not be loaded.</Alert>;
+  if (query.isError || !query.data)
+    return <Alert severity="error">Round analysis could not be loaded.</Alert>;
   const current = query.data.current;
-  return <Stack spacing={3}><PageHeader eyebrow="Post-Round Analysis" title="What this Round means" description="Deterministic totals stay separate from consultant-approved interpretation." />{!current ? <Alert severity="info">{consultant ? 'Prepare the initial analysis when factual results are ready.' : 'Your consultant has not published an analysis yet.'}</Alert> : <SectionCard><Stack spacing={2}><Stack direction="row" spacing={1}><Chip label={`${label(current.kind)} v${current.version}`} /><Chip label={label(current.status)} color={current.status === 'APPROVED' ? 'success' : 'default'} />{current.stale && <Chip label="Update needed" color="warning" />}</Stack><Typography variant="h4">{current.clientSafeContent.headline ?? 'Round analysis'}</Typography><Typography>{current.clientSafeContent.summary}</Typography>{current.clientSafeContent.nextActions?.map((action) => <Typography key={action}>• {action}</Typography>)}{consultant && current.status === 'DRAFT' && <Button variant="contained" disabled={approve.isPending || current.stale} onClick={() => approve.mutate(current.id)}>Approve and publish</Button>}</Stack></SectionCard>}{consultant && <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>{(['INITIAL','UPDATED','FINAL'] as const).map((kind) => <Button key={kind} variant={kind === 'FINAL' ? 'contained' : 'outlined'} disabled={prepare.isPending} onClick={() => prepare.mutate(kind)}>Prepare {label(kind)}</Button>)}</Stack>}<SectionCard><Typography variant="h5">Version history</Typography>{query.data.history.length ? query.data.history.map((item) => <Typography key={item.id}>Version {item.version} · {label(item.kind)} · {label(item.status)}</Typography>) : <Typography>No published versions yet.</Typography>}</SectionCard>{(prepare.error || approve.error) && <Alert severity="error">{(prepare.error ?? approve.error)?.message}</Alert>}</Stack>;
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="Post-Round Analysis"
+        title="What this Round means"
+        description="Deterministic totals stay separate from consultant-approved interpretation."
+      />
+      {!current ? (
+        <Alert severity="info">
+          {consultant
+            ? 'Prepare the initial analysis when factual results are ready.'
+            : 'Your consultant has not published an analysis yet.'}
+        </Alert>
+      ) : (
+        <SectionCard>
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={1}>
+              <Chip label={`${label(current.kind)} v${current.version}`} />
+              <Chip
+                label={label(current.status)}
+                color={current.status === 'APPROVED' ? 'success' : 'default'}
+              />
+              {current.stale && <Chip label="Update needed" color="warning" />}
+            </Stack>
+            <Typography variant="h4">
+              {current.clientSafeContent.headline ?? 'Round analysis'}
+            </Typography>
+            <Typography>{current.clientSafeContent.summary}</Typography>
+            {current.clientSafeContent.nextActions?.map((action) => (
+              <Typography key={action}>• {action}</Typography>
+            ))}
+            {consultant && current.status === 'DRAFT' && (
+              <Button
+                variant="contained"
+                disabled={approve.isPending || current.stale}
+                onClick={() => approve.mutate(current.id)}
+              >
+                Approve and publish
+              </Button>
+            )}
+          </Stack>
+        </SectionCard>
+      )}
+      {consultant && (
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          {(['INITIAL', 'UPDATED', 'FINAL'] as const).map((kind) => (
+            <Button
+              key={kind}
+              variant={kind === 'FINAL' ? 'contained' : 'outlined'}
+              disabled={prepare.isPending}
+              onClick={() => prepare.mutate(kind)}
+            >
+              Prepare {label(kind)}
+            </Button>
+          ))}
+        </Stack>
+      )}
+      <SectionCard>
+        <Typography variant="h5">Version history</Typography>
+        {query.data.history.length ? (
+          query.data.history.map((item) => (
+            <Typography key={item.id}>
+              Version {item.version} · {label(item.kind)} · {label(item.status)}
+            </Typography>
+          ))
+        ) : (
+          <Typography>No published versions yet.</Typography>
+        )}
+      </SectionCard>
+      {(prepare.error || approve.error) && (
+        <Alert severity="error">{(prepare.error ?? approve.error)?.message}</Alert>
+      )}
+    </Stack>
+  );
 }
 
 export function RoundFinalizationPage() {
   const { clientId = '', roundId = '' } = useParams();
   const queryClient = useQueryClient();
-  const readiness = useQuery({ queryKey: ['round-finalization', roundId], queryFn: () => apiRequest<{ ready: boolean; blockers: string[]; finalizationVersion: number; status: string }>(`/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalization`) });
-  const finalize = useMutation({ mutationFn: () => apiRequest(`/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalize`, { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ expectedVersion: readiness.data?.finalizationVersion ?? 0, confirmed: true }) }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['round-finalization', roundId] }) });
+  const readiness = useQuery({
+    queryKey: ['round-finalization', roundId],
+    queryFn: () =>
+      apiRequest<{
+        ready: boolean;
+        blockers: string[];
+        finalizationVersion: number;
+        status: string;
+      }>(`/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalization`),
+  });
+  const finalize = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalize`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({
+          expectedVersion: readiness.data?.finalizationVersion ?? 0,
+          confirmed: true,
+        }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['round-finalization', roundId] }),
+  });
   if (readiness.isLoading) return <LoadingSkeleton />;
-  if (readiness.isError || !readiness.data) return <Alert severity="error">Finalization readiness could not be loaded.</Alert>;
-  return <Stack spacing={3}><PageHeader eyebrow="CRM Round closeout" title="Finalize Credit Card Round" description="Ending the live session is separate from this explicit, governed lifecycle transition." /><SectionCard><Stack spacing={2}><Chip label={readiness.data.status === 'COMPLETE' ? 'Round finalized' : readiness.data.ready ? 'Ready to finalize' : 'Blocked'} color={readiness.data.status === 'COMPLETE' || readiness.data.ready ? 'success' : 'warning'} />{readiness.data.blockers.length ? readiness.data.blockers.map((blocker) => <Alert key={blocker} severity="warning">{label(blocker)}</Alert>) : <Typography>Live execution, required follow-up, current Final Analysis, Attention, Journey, and concurrency checks are satisfied.</Typography>}<Button variant="contained" color="warning" disabled={!readiness.data.ready || finalize.isPending || readiness.data.status === 'COMPLETE'} onClick={() => finalize.mutate()}>Confirm and finalize Round</Button>{finalize.error && <Alert severity="error">{finalize.error.message}</Alert>}</Stack></SectionCard><Button component={Link} to={`/crm/clients/${clientId}/rounds/${roundId}/analysis`}>Back to analysis</Button></Stack>;
+  if (readiness.isError || !readiness.data)
+    return <Alert severity="error">Finalization readiness could not be loaded.</Alert>;
+  return (
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="CRM Round closeout"
+        title="Finalize Credit Card Round"
+        description="Ending the live session is separate from this explicit, governed lifecycle transition."
+      />
+      <SectionCard>
+        <Stack spacing={2}>
+          <Chip
+            label={
+              readiness.data.status === 'COMPLETE'
+                ? 'Round finalized'
+                : readiness.data.ready
+                  ? 'Ready to finalize'
+                  : 'Blocked'
+            }
+            color={
+              readiness.data.status === 'COMPLETE' || readiness.data.ready ? 'success' : 'warning'
+            }
+          />
+          {readiness.data.blockers.length ? (
+            readiness.data.blockers.map((blocker) => (
+              <Alert key={blocker} severity="warning">
+                {label(blocker)}
+              </Alert>
+            ))
+          ) : (
+            <Typography>
+              Live execution, required follow-up, current Final Analysis, Attention, Journey, and
+              concurrency checks are satisfied.
+            </Typography>
+          )}
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={
+              !readiness.data.ready || finalize.isPending || readiness.data.status === 'COMPLETE'
+            }
+            onClick={() => finalize.mutate()}
+          >
+            Confirm and finalize Round
+          </Button>
+          {finalize.error && <Alert severity="error">{finalize.error.message}</Alert>}
+        </Stack>
+      </SectionCard>
+      <Button component={Link} to={`/crm/clients/${clientId}/rounds/${roundId}/analysis`}>
+        Back to analysis
+      </Button>
+    </Stack>
+  );
 }

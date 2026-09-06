@@ -3,6 +3,7 @@ import {
   BULLMQ_JOB_ATTEMPTS,
   OUTBOX_MAX_CLAIMS,
   outboxFailureDisposition,
+  outboxErrorClassification,
   outboxJobOptions,
   toClientEnvelope,
 } from './outboxRuntime.js';
@@ -69,6 +70,17 @@ describe('outbox runtime contract', () => {
       attempts: 5,
       backoff: { type: 'exponential', delay: 1000 },
       removeOnFail: 1000,
+    });
+  });
+
+  test('classifies malformed or unserviceable work as terminal and transport faults as retryable', () => {
+    expect(outboxErrorClassification(new Error('OUTBOX_PAYLOAD_UNSAFE'))).toEqual({
+      retryable: false,
+      code: 'OUTBOX_PAYLOAD_UNSAFE',
+    });
+    expect(outboxErrorClassification(new Error('connection reset'))).toEqual({
+      retryable: true,
+      code: 'OUTBOX_PUBLISH_FAILED',
     });
   });
 });

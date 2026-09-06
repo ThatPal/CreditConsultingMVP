@@ -17,18 +17,23 @@ export type CurrentUser = {
   capabilities?: string[];
 };
 
-type ApiErrorBody = { error?: { message?: string }; message?: string };
+type ApiErrorBody = { error?: { code?: string; message?: string }; message?: string };
 
 async function requestError(response: Response, fallback: string) {
   const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
   if (response.status === 401) signalSessionLoss();
-  return new ApiRequestError(body.error?.message ?? body.message ?? fallback, response.status);
+  return new ApiRequestError(
+    body.error?.message ?? body.message ?? fallback,
+    response.status,
+    body.error?.code ?? 'UNKNOWN_ERROR',
+  );
 }
 
 export class ApiRequestError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code: string,
   ) {
     super(message);
   }

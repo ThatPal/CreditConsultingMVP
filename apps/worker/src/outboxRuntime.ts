@@ -3,6 +3,7 @@ import { assertCreditDatabaseUrl } from '@credit/runtime';
 import { createClient } from 'redis';
 import { Pool } from 'pg';
 import type { Logger } from 'pino';
+import { randomUUID } from 'node:crypto';
 
 export const OUTBOX_QUEUE = 'credit-outbox-v1';
 export const REALTIME_CHANNEL = 'credit:realtime:events';
@@ -26,7 +27,16 @@ type ClaimedEvent = {
   payloadVersion: number;
   createdAt: Date;
   attemptCount: number;
+  claimToken?: string;
 };
+
+export function outboxErrorClassification(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  return message === 'OUTBOX_PAYLOAD_UNSAFE' ||
+    message === 'NOTIFICATION_DELIVERY_PROCESSOR_UNAVAILABLE'
+    ? { retryable: false, code: message }
+    : { retryable: true, code: 'OUTBOX_PUBLISH_FAILED' };
+}
 
 export function bullConnection(redisUrl: string) {
   const url = new URL(redisUrl);
@@ -102,7 +112,8 @@ export async function startOutboxRuntime(options: {
   await worker.waitUntilReady();
 
   let active = true;
-  const publishBatch = async (limit = 25) => {
+  let publishing: Promise<number> | null = null;
+  const publishBatchOnce = async (limit = 25) => {
     const client = await pool.connect();
     let events: ClaimedEvent[];
     try {
@@ -111,7 +122,8 @@ export async function startOutboxRuntime(options: {
         `
         SELECT id, "eventType", "aggregateId", payload, "payloadVersion", "createdAt", "attemptCount"
         FROM "OutboxEvent"
-        WHERE status = 'PENDING' AND "availableAt" <= now()
+        WHERE ((status = 'PENDING' AND "availableAt" <= now())
+            OR (status = 'PROCESSING' AND "claimExpiresAt" <= now()))
           AND ($2::uuid[] IS NULL OR id = ANY($2::uuid[]))
         ORDER BY "createdAt"
         FOR UPDATE SKIP LOCKED
@@ -119,14 +131,19 @@ export async function startOutboxRuntime(options: {
       `,
         [limit, options.claimEventIds ?? null],
       );
-      events = result.rows;
-      if (events.length)
-        await client.query(
-          `UPDATE "OutboxEvent" SET "attemptCount" = "attemptCount" + 1, "lastAttemptAt" = now(),
-             "availableAt" = now() + interval '30 seconds'
-           WHERE id = ANY($1::uuid[])`,
-          [events.map(({ id }) => id)],
+      events = [];
+      for (const row of result.rows) {
+        const claimToken = randomUUID();
+        const claimed = await client.query<ClaimedEvent>(
+          `UPDATE "OutboxEvent" SET status = 'PROCESSING', "claimToken" = $2::uuid,
+             "claimExpiresAt" = now() + interval '60 seconds',
+             "attemptCount" = "attemptCount" + 1, "lastAttemptAt" = now()
+           WHERE id = $1 RETURNING id, "eventType", "aggregateId", payload,
+             "payloadVersion", "createdAt", "attemptCount", "claimToken"`,
+          [row.id, claimToken],
         );
+        events.push(claimed.rows[0]!);
+      }
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK').catch(() => undefined);
@@ -140,8 +157,10 @@ export async function startOutboxRuntime(options: {
         const envelope = toClientEnvelope(event);
         if (envelope === null) {
           await pool.query(
-            `UPDATE "OutboxEvent" SET status = 'PUBLISHED', "publishedAt" = now(), "lastErrorCode" = NULL WHERE id = $1`,
-            [event.id],
+            `UPDATE "OutboxEvent" SET status = 'PUBLISHED', "publishedAt" = now(),
+               "lastErrorCode" = NULL, "claimToken" = NULL, "claimExpiresAt" = NULL
+             WHERE id = $1 AND status = 'PROCESSING' AND "claimToken" = $2::uuid`,
+            [event.id, event.claimToken],
           );
           continue;
         }
@@ -157,25 +176,39 @@ export async function startOutboxRuntime(options: {
             // A failed Bull job remains retained for diagnostics. Use the
             // durable database attempt as part of the transport identity so
             // a recovered outbox event can actually be delivered again.
-            jobId: `${event.id}-${event.attemptCount + 1}`,
+            jobId: `${event.id}-${event.attemptCount}`,
           },
         );
         await job.waitUntilFinished(queueEvents, 15_000);
         await pool.query(
-          `UPDATE "OutboxEvent" SET status = 'PUBLISHED', "publishedAt" = now(), "lastErrorCode" = NULL WHERE id = $1`,
-          [event.id],
+          `UPDATE "OutboxEvent" SET status = 'PUBLISHED', "publishedAt" = now(),
+             "lastErrorCode" = NULL, "claimToken" = NULL, "claimExpiresAt" = NULL
+           WHERE id = $1 AND status = 'PROCESSING' AND "claimToken" = $2::uuid`,
+          [event.id, event.claimToken],
         );
       } catch (error) {
-        const disposition = outboxFailureDisposition(event.attemptCount);
+        const classification = outboxErrorClassification(error);
+        const disposition = classification.retryable
+          ? outboxFailureDisposition(event.attemptCount - 1)
+          : 'FAILED';
         await pool.query(
           `UPDATE "OutboxEvent" SET status = $2::"OutboxEventStatus", "lastErrorCode" = $3,
-             "availableAt" = now() + interval '5 seconds' WHERE id = $1`,
-          [event.id, disposition, 'OUTBOX_PUBLISH_FAILED'],
+             "availableAt" = now() + interval '5 seconds', "claimToken" = NULL,
+             "claimExpiresAt" = NULL
+           WHERE id = $1 AND status = 'PROCESSING' AND "claimToken" = $4::uuid`,
+          [event.id, disposition, classification.code, event.claimToken],
         );
         options.logger.error({ eventId: event.id, err: error }, 'Outbox publication failed');
       }
     }
     return events.length;
+  };
+  const publishBatch = (limit = 25) => {
+    if (publishing) return publishing;
+    publishing = publishBatchOnce(limit).finally(() => {
+      publishing = null;
+    });
+    return publishing;
   };
   const timer = setInterval(
     () =>

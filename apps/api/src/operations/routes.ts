@@ -273,51 +273,50 @@ export function createOperationsRouter(
         return { status: 'degraded' as const, href };
       }
     };
-    const [commerce, ai, catalog, integrations, security, products, platform] =
-      await Promise.all([
-        section('/admin/payments', async () => ({
-          pending: await prisma.payment.count({
-            where: { state: { in: ['PENDING', 'AWAITING_CUSTOMER', 'PROCESSING'] } },
-          }),
-          failed: await prisma.payment.count({ where: { state: 'FAILED' } }),
-          disputes: await prisma.paymentDispute.count({
-            where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } },
-          }),
-        })),
-        section('/admin/ai/jobs', async () => ({
-          queued: await prisma.aIJob.count({
-            where: { status: { in: ['QUEUED', 'RUNNING', 'RETRYABLE_FAILURE'] } },
-          }),
-          failed: await prisma.aIJob.count({
-            where: { status: { in: ['NON_RETRYABLE_FAILURE', 'SCHEMA_INVALID'] } },
-          }),
-        })),
-        section('/admin/card-catalog', async () => ({
-          pending: await prisma.cardCatalogCandidate.count({ where: { status: 'PENDING' } }),
-          conflicts: await prisma.cardCatalogCandidate.count({
-            where: { status: 'PENDING', materialConflict: true },
-          }),
-        })),
-        section('/admin/integrations', async () => ({
-          enabled: await prisma.integration.count({ where: { enabled: true } }),
-          unhealthy: await prisma.integration.count({
-            where: { enabled: true, status: { in: ['DEGRADED', 'FAILED'] } },
-          }),
-        })),
-        section('/admin/security-events', async () => ({
-          recent: await prisma.securityEvent.count({
-            where: { createdAt: { gte: since }, severity: { in: ['WARNING', 'HIGH'] } },
-          }),
-        })),
-        section('/admin/services', async () => ({
-          active: await prisma.serviceProduct.count({ where: { active: true } }),
-          inactive: await prisma.serviceProduct.count({ where: { active: false } }),
-        })),
-        section('/admin/system-health', async () => ({
-          pendingOutbox: await prisma.outboxEvent.count({ where: { status: 'PENDING' } }),
-          failedOutbox: await prisma.outboxEvent.count({ where: { status: 'FAILED' } }),
-        })),
-      ]);
+    const [commerce, ai, catalog, integrations, security, products, platform] = await Promise.all([
+      section('/admin/payments', async () => ({
+        pending: await prisma.payment.count({
+          where: { state: { in: ['PENDING', 'AWAITING_CUSTOMER', 'PROCESSING'] } },
+        }),
+        failed: await prisma.payment.count({ where: { state: 'FAILED' } }),
+        disputes: await prisma.paymentDispute.count({
+          where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+        }),
+      })),
+      section('/admin/ai/jobs', async () => ({
+        queued: await prisma.aIJob.count({
+          where: { status: { in: ['QUEUED', 'RUNNING', 'RETRYABLE_FAILURE'] } },
+        }),
+        failed: await prisma.aIJob.count({
+          where: { status: { in: ['NON_RETRYABLE_FAILURE', 'SCHEMA_INVALID'] } },
+        }),
+      })),
+      section('/admin/card-catalog', async () => ({
+        pending: await prisma.cardCatalogCandidate.count({ where: { status: 'PENDING' } }),
+        conflicts: await prisma.cardCatalogCandidate.count({
+          where: { status: 'PENDING', materialConflict: true },
+        }),
+      })),
+      section('/admin/integrations', async () => ({
+        enabled: await prisma.integration.count({ where: { enabled: true } }),
+        unhealthy: await prisma.integration.count({
+          where: { enabled: true, status: { in: ['DEGRADED', 'FAILED'] } },
+        }),
+      })),
+      section('/admin/security-events', async () => ({
+        recent: await prisma.securityEvent.count({
+          where: { createdAt: { gte: since }, severity: { in: ['WARNING', 'HIGH'] } },
+        }),
+      })),
+      section('/admin/services', async () => ({
+        active: await prisma.serviceProduct.count({ where: { active: true } }),
+        inactive: await prisma.serviceProduct.count({ where: { active: false } }),
+      })),
+      section('/admin/system-health', async () => ({
+        pendingOutbox: await prisma.outboxEvent.count({ where: { status: 'PENDING' } }),
+        failedOutbox: await prisma.outboxEvent.count({ where: { status: 'FAILED' } }),
+      })),
+    ]);
     res.json({
       asOf: new Date().toISOString(),
       sections: {
@@ -1899,27 +1898,36 @@ export function createOperationsRouter(
           pageSize: z.coerce.number().int().min(1).max(50).default(20),
         })
         .parse(req.query);
+      const queueSourceTypes = ['SUPPORT_CASE', 'ApplicationSession'];
       const candidates = await prisma.workItem.findMany({
-        where: { sourceType: 'SUPPORT_CASE' },
-        distinct: ['clientId'],
-        select: { clientId: true },
+        where: { sourceType: { in: queueSourceTypes } },
+        distinct: ['clientId', 'sourceType'],
+        select: { clientId: true, sourceType: true },
       });
-      const allowed = (
+      const allowedScopes = (
         await Promise.all(
-          candidates.map(async ({ clientId }) => ({
+          candidates.map(async ({ clientId, sourceType }) => ({
             clientId,
-            allowed: await authorization.authorize(req.auth!, 'support.manage', {
-              type: 'client',
-              clientId,
-            }),
+            sourceType,
+            allowed: await authorization.authorize(
+              req.auth!,
+              sourceType === 'SUPPORT_CASE' ? 'support.manage' : 'client.read',
+              {
+                type: 'client',
+                clientId,
+              },
+            ),
           })),
         )
-      )
-        .filter((item) => item.allowed)
-        .map((item) => item.clientId);
+      ).filter((item) => item.allowed);
+      const sourceScope = {
+        OR: allowedScopes.map((item) => ({
+          clientId: item.clientId,
+          sourceType: item.sourceType,
+        })),
+      };
       const where = {
-        clientId: { in: allowed },
-        sourceType: 'SUPPORT_CASE',
+        ...sourceScope,
         ...(query.status
           ? { status: query.status }
           : { status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] as WorkItemStatus[] } }),
@@ -1953,31 +1961,27 @@ export function createOperationsRouter(
         prisma.workItem.count({ where }),
         prisma.workItem.count({
           where: {
-            clientId: { in: allowed },
-            sourceType: 'SUPPORT_CASE',
+            ...sourceScope,
             status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
           },
         }),
         prisma.workItem.count({
           where: {
-            clientId: { in: allowed },
-            sourceType: 'SUPPORT_CASE',
+            ...sourceScope,
             status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
             priority: 'URGENT',
           },
         }),
         prisma.workItem.count({
           where: {
-            clientId: { in: allowed },
-            sourceType: 'SUPPORT_CASE',
+            ...sourceScope,
             status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
             assigneeId: req.auth!.userId,
           },
         }),
         prisma.workItem.count({
           where: {
-            clientId: { in: allowed },
-            sourceType: 'SUPPORT_CASE',
+            ...sourceScope,
             status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
             assigneeId: null,
           },
@@ -2003,13 +2007,17 @@ export function createOperationsRouter(
         const item = await prisma.workItem.findUnique({
           where: { id: req.params.workItemId as string },
         });
-        if (!item || item.sourceType !== 'SUPPORT_CASE')
+        if (!item || !['SUPPORT_CASE', 'ApplicationSession'].includes(item.sourceType ?? ''))
           throw new AppError('NOT_FOUND', 404, 'Attention item was not found');
         if (
-          !(await authorization.authorize(req.auth!, 'support.manage', {
-            type: 'client',
-            clientId: item.clientId,
-          }))
+          !(await authorization.authorize(
+            req.auth!,
+            item.sourceType === 'SUPPORT_CASE' ? 'support.manage' : 'client.read',
+            {
+              type: 'client',
+              clientId: item.clientId,
+            },
+          ))
         )
           throw new AppError('FORBIDDEN', 403, 'You do not have access to this attention item');
         const claimDecision = attentionClaimDecision(item, req.auth!.userId, input.expectedVersion);

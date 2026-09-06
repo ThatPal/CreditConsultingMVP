@@ -55,7 +55,7 @@ export async function confirmPreLiveMaterialChanges(
       aggregateId: session.id,
       payload: (result) => ({
         clientId: input.clientId,
-        domains: ['live-session', 'attention'],
+        domains: ['live-sessions', 'work-queue'],
         sessionId: session.id,
         confirmationId: (result as { id: string }).id,
       }),
