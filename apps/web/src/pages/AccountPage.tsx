@@ -48,7 +48,7 @@ export function AccountPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="PORTAL-43"
+        eyebrow="Client account"
         title="Account & profile"
         description="Manage your permitted identity and contact details."
       />

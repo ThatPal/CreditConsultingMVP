@@ -1,9 +1,11 @@
 import AccountCircleRounded from '@mui/icons-material/AccountCircleRounded';
 import MenuRounded from '@mui/icons-material/MenuRounded';
 import NotificationsNoneRounded from '@mui/icons-material/NotificationsNoneRounded';
+import BoltRounded from '@mui/icons-material/BoltRounded';
 import {
   AppBar,
   Avatar,
+  Autocomplete,
   Badge,
   Box,
   Button,
@@ -14,23 +16,30 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Link as MuiLink,
   Menu,
   MenuItem,
   Popover,
   Stack,
   Toolbar,
+  TextField,
   Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type MouseEvent, type PropsWithChildren } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, type MouseEvent, type PropsWithChildren } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { useAuth } from '../auth/AuthProvider';
 import { designTokens } from '../theme';
-import type { NavigationItem, ShellKind } from './navigation';
+import {
+  activeNavigationId,
+  type NavigationItem,
+  type NavigationGroup,
+  type ShellKind,
+} from './navigation';
 
 const sidebarWidth = 264;
 type AppNotification = {
@@ -88,15 +97,18 @@ function Sidebar({
   role: ShellKind;
   onNavigate?: () => void;
 }) {
+  const { pathname } = useLocation();
+  const activeId = activeNavigationId(items, pathname);
   const primaryItems = items.filter((item) => item.section === 'primary');
   const utilityItems = items.filter((item) => item.section === 'utility');
   const renderItems = (navigationItems: NavigationItem[]) =>
-    navigationItems.map(({ label, path, icon: Icon }) => (
+    navigationItems.map(({ id, label, path, icon: Icon }) => (
       <ListItemButton
         key={path}
-        component={NavLink}
+        component={Link}
         to={path}
-        end={path === '/app' || path === '/crm' || path === '/admin'}
+        selected={id === activeId}
+        aria-current={id === activeId ? 'page' : undefined}
         onClick={onNavigate}
         sx={{
           mb: 0.5,
@@ -115,7 +127,7 @@ function Sidebar({
             left: 0,
             opacity: 0,
           },
-          '&.active': {
+          '&.Mui-selected': {
             color: 'text.primary',
             bgcolor: 'rgba(66, 211, 242, 0.08)',
             backgroundImage: designTokens.gradient.active,
@@ -134,9 +146,21 @@ function Sidebar({
         />
       </ListItemButton>
     ));
+  const adminGroups: NavigationGroup[] = [
+    'Overview',
+    'Identity & security',
+    'Commerce',
+    'Card intelligence',
+    'Automation & AI',
+    'Communications',
+    'Integrations',
+    'Data & governance',
+    'Reporting & settings',
+    'Utilities',
+  ];
   const primaryNavigation =
     role === 'admin'
-      ? (['Overview', 'Commerce', 'Integrations'] as const).map((group) => {
+      ? adminGroups.map((group) => {
           const groupItems = primaryItems.filter((item) => item.group === group);
           return groupItems.length ? (
             <Box key={group} sx={{ mt: group === 'Overview' ? 0 : 1.5 }}>
@@ -221,6 +245,7 @@ export function AppShell({
   const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
   const queryClient = useQueryClient();
   const notificationsQuery = useQuery({
@@ -255,6 +280,49 @@ export function AppShell({
   };
   const notifications = notificationsQuery.data?.notifications ?? [];
   const unread = notificationsQuery.data?.unread ?? 0;
+  const [clientSearch, setClientSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(clientSearch.trim()), 250);
+    return () => window.clearTimeout(timeout);
+  }, [clientSearch]);
+  type ClientResult = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    user: { email: string };
+    _count?: { workItems: number };
+  };
+  const clientSearchQuery = useQuery({
+    queryKey: ['shell-client-search', debouncedSearch],
+    queryFn: () =>
+      apiRequest<{ clients: ClientResult[] }>(
+        `/api/v1/consultant/client-context?search=${encodeURIComponent(debouncedSearch)}&status=ACTIVE&page=1&pageSize=8`,
+      ),
+    enabled: role === 'consultant' && debouncedSearch.length >= 2,
+  });
+  type QueueSummary = {
+    total: number;
+    items?: Array<{ id: string; priority?: string; title?: string }>;
+  };
+  const urgencyQuery = useQuery({
+    queryKey: ['shell-urgent-work'],
+    queryFn: () =>
+      apiRequest<QueueSummary>('/api/v1/consultant/work-queue?priority=URGENT&page=1&pageSize=1'),
+    enabled: role === 'consultant',
+    refetchInterval: 30_000,
+  });
+  const clientOptions = useMemo(
+    () => clientSearchQuery.data?.clients ?? [],
+    [clientSearchQuery.data],
+  );
+  const activeItem = items.find(
+    (entry) => entry.id === activeNavigationId(items, location.pathname),
+  );
+  const finalSegment = location.pathname.split('/').filter(Boolean).at(-1);
+  const pathDetail = finalSegment && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(finalSegment)
+    ? location.pathname.startsWith('/crm/clients/') ? 'Client record' : 'Record detail'
+    : finalSegment?.replaceAll('-', ' ');
   return (
     <Box
       sx={{
@@ -312,10 +380,60 @@ export function AppShell({
             <Box sx={{ display: { lg: 'none' } }}>
               <Brand compact />
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ ml: { xs: 'auto', lg: 0 } }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ ml: { xs: 'auto', lg: 0 }, display: { xs: 'none', sm: 'block' } }}
+            >
               {shellLabel}
             </Typography>
+            {role === 'consultant' && (
+              <Autocomplete
+                size="small"
+                options={clientOptions}
+                loading={clientSearchQuery.isFetching}
+                filterOptions={(options) => options}
+                inputValue={clientSearch}
+                value={null}
+                onInputChange={(_event, value) => setClientSearch(value)}
+                getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
+                onChange={(_event, client) => {
+                  if (client) {
+                    setClientSearch('');
+                    navigate(`/crm/clients/${client.id}`);
+                  }
+                }}
+                noOptionsText={
+                  debouncedSearch.length < 2
+                    ? 'Type at least 2 characters'
+                    : 'No authorized clients found'
+                }
+                renderOption={(props, option) => (
+                  <li {...props} key={option.id}>
+                    <Box>
+                      <Typography sx={{ fontWeight: 800 }}>
+                        {option.firstName} {option.lastName}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.user.email}
+                        {option._count ? ` · ${option._count.workItems} active items` : ''}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+                renderInput={(params) => (
+                  <TextField {...params} label="Find an authorized client" />
+                )}
+                sx={{ ml: { sm: 2 }, width: { xs: 180, sm: 300 }, maxWidth: '38vw' }}
+              />
+            )}
             <Stack direction="row" spacing={1} sx={{ ml: 'auto', alignItems: 'center' }}>
+              {role === 'consultant' && (
+                <>
+                  <IconButton component={Link} to="/crm/work-queue" color={(urgencyQuery.data?.total??0)>0?'warning':'default'} aria-label={`${urgencyQuery.data?.total??0} urgent work items`} sx={{display:{md:'none'}}}><Badge badgeContent={urgencyQuery.data?.total??0} color="warning"><BoltRounded/></Badge></IconButton>
+                  <Button component={Link} to="/crm/work-queue" color={(urgencyQuery.data?.total ?? 0) > 0 ? 'warning' : 'inherit'} startIcon={<BoltRounded />} aria-label={`${urgencyQuery.data?.total ?? 0} urgent work items`} sx={{ display: { xs: 'none', md: 'inline-flex' } }}>{(urgencyQuery.data?.total ?? 0) > 0 ? `${urgencyQuery.data?.total} urgent` : 'Work clear'}</Button>
+                </>
+              )}
               <Tooltip title="Notifications">
                 <IconButton
                   aria-label="Notifications"
@@ -464,6 +582,25 @@ export function AppShell({
             )}
           </Box>
         </Popover>
+        {activeItem && (
+          <Box
+            component="nav"
+            aria-label="Page context"
+            sx={{
+              px: { xs: 2, sm: 3, xl: 5 },
+              py: 1,
+              borderBottom: `1px solid ${designTokens.color.border}`,
+              bgcolor: 'rgba(8,18,36,.68)',
+            }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              <MuiLink component={Link} to={activeItem.path} color="inherit" underline="hover">
+                {activeItem.label}
+              </MuiLink>
+              {pathDetail && location.pathname !== activeItem.path ? ` / ${pathDetail}` : ''}
+            </Typography>
+          </Box>
+        )}
         <Box
           component="main"
           sx={{

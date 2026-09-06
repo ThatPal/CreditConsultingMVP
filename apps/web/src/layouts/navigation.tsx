@@ -7,15 +7,27 @@ import DashboardRounded from '@mui/icons-material/DashboardRounded';
 import DescriptionRounded from '@mui/icons-material/DescriptionRounded';
 import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import HelpRounded from '@mui/icons-material/HelpRounded';
-import StorefrontRounded from '@mui/icons-material/StorefrontRounded';
+import IntegrationInstructionsRounded from '@mui/icons-material/IntegrationInstructionsRounded';
 import NotificationsNoneRounded from '@mui/icons-material/NotificationsNoneRounded';
-import SupportAgentRounded from '@mui/icons-material/SupportAgentRounded';
+import SecurityRounded from '@mui/icons-material/SecurityRounded';
+import SettingsRounded from '@mui/icons-material/SettingsRounded';
+import StorefrontRounded from '@mui/icons-material/StorefrontRounded';
 import TaskAltRounded from '@mui/icons-material/TaskAltRounded';
-import VideoCallRounded from '@mui/icons-material/VideoCallRounded';
 import type { SvgIconComponent } from '@mui/icons-material';
 import type { CurrentUser } from '../auth/api';
 
 export type ShellKind = 'client' | 'consultant' | 'admin';
+export type NavigationGroup =
+  | 'Overview'
+  | 'Identity & security'
+  | 'Commerce'
+  | 'Card intelligence'
+  | 'Automation & AI'
+  | 'Communications'
+  | 'Integrations'
+  | 'Data & governance'
+  | 'Reporting & settings'
+  | 'Utilities';
 export type NavigationItem = {
   id: string;
   label: string;
@@ -24,120 +36,121 @@ export type NavigationItem = {
   shell: ShellKind;
   section: 'primary' | 'utility';
   capability?: string;
-  status: 'available' | 'foundation';
-  group?: 'Overview' | 'Identity & security' | 'Commerce' | 'Catalog' | 'Integrations';
+  group?: NavigationGroup;
+  owns?: string[];
 };
-
+const n = (value: NavigationItem) => value;
 const registry: NavigationItem[] = [
-  {
+  n({
     id: 'portal-home',
     label: 'Home',
     path: '/app',
     icon: DashboardRounded,
     shell: 'client',
     section: 'primary',
-    status: 'available',
-  },
-  {
+    owns: ['/app'],
+  }),
+  n({
     id: 'portal-journey',
     label: 'Journey',
     path: '/app/journey',
     icon: TaskAltRounded,
     shell: 'client',
     section: 'primary',
-    status: 'foundation',
-  },
-  {
-    id: 'portal-plan',
-    label: 'Plan',
-    path: '/app/plan',
-    icon: TaskAltRounded,
-    shell: 'client',
-    section: 'primary',
-    status: 'available',
-  },
-  {
+  }),
+  n({
     id: 'portal-credit',
     label: 'Credit Center',
     path: '/app/credit-center',
     icon: CreditScoreRounded,
     shell: 'client',
     section: 'primary',
-    status: 'available',
-  },
-  {
+    owns: ['/app/credit-center', '/app/plan'],
+  }),
+  n({
     id: 'portal-cards',
     label: 'Cards',
     path: '/app/cards',
     icon: CreditCardRounded,
     shell: 'client',
     section: 'primary',
-    status: 'available',
-  },
-  {
+  }),
+  n({
+    id: 'portal-rounds',
+    label: 'Application Rounds',
+    path: '/app/application-rounds',
+    icon: CalendarMonthRounded,
+    shell: 'client',
+    section: 'primary',
+    owns: ['/app/application-rounds', '/app/rounds'],
+  }),
+  n({
+    id: 'portal-major',
+    label: 'Major Readiness',
+    path: '/app/major-readiness',
+    icon: TaskAltRounded,
+    shell: 'client',
+    section: 'primary',
+  }),
+  n({
     id: 'portal-services',
     label: 'Services',
     path: '/app/services',
     icon: StorefrontRounded,
     shell: 'client',
     section: 'primary',
-    status: 'available',
-  },
-  {
+    owns: ['/app/services', '/app/checkout'],
+  }),
+  n({
     id: 'portal-support',
     label: 'Support',
     path: '/app/support',
     icon: HelpRounded,
     shell: 'client',
     section: 'primary',
-    status: 'available',
-  },
-  {
+  }),
+  n({
     id: 'portal-documents',
     label: 'Documents',
     path: '/app/documents',
     icon: DescriptionRounded,
     shell: 'client',
     section: 'utility',
-    status: 'available',
-  },
-  {
+  }),
+  n({
     id: 'portal-notifications',
     label: 'Notifications',
     path: '/app/notifications',
     icon: NotificationsNoneRounded,
     shell: 'client',
     section: 'utility',
-    status: 'available',
-  },
-  {
+  }),
+  n({
     id: 'portal-account',
     label: 'Account',
     path: '/app/account',
     icon: AccountCircleRounded,
     shell: 'client',
     section: 'utility',
-    status: 'available',
-  },
-  {
+  }),
+  n({
     id: 'crm-dashboard',
     label: 'Dashboard',
     path: '/crm',
     icon: DashboardRounded,
     shell: 'consultant',
     section: 'primary',
-    status: 'available',
-  },
-  {
+    owns: ['/crm'],
+  }),
+  n({
     id: 'crm-work',
     label: 'Work Queue',
     path: '/crm/work-queue',
     icon: TaskAltRounded,
     shell: 'consultant',
     section: 'primary',
-    status: 'available',
-  },
-  {
+  }),
+  n({
     id: 'crm-clients',
     label: 'Clients',
     path: '/crm/clients',
@@ -145,87 +158,55 @@ const registry: NavigationItem[] = [
     shell: 'consultant',
     section: 'primary',
     capability: 'client.read',
-    status: 'available',
-  },
-  {
-    id: 'crm-sessions',
-    label: 'Live Sessions',
-    path: '/crm/sessions',
-    icon: VideoCallRounded,
-    shell: 'consultant',
-    section: 'primary',
-    status: 'foundation',
-  },
-  {
-    id: 'crm-card-catalog',
-    label: 'Card Catalog',
+    owns: ['/crm/clients', '/crm/reviews'],
+  }),
+  n({
+    id: 'crm-cards',
+    label: 'Cards research',
     path: '/crm/card-catalog',
     icon: CreditCardRounded,
     shell: 'consultant',
     section: 'primary',
     capability: 'catalog.read',
-    status: 'available',
-  },
-  {
-    id: 'crm-card-insights',
-    label: 'Card Insights',
-    path: '/crm/card-insights',
-    icon: CreditScoreRounded,
-    shell: 'consultant',
-    section: 'primary',
-    capability: 'catalog.manage',
-    status: 'available',
-  },
-  {
-    id: 'crm-support',
-    label: 'Support',
-    path: '/crm/support',
-    icon: SupportAgentRounded,
-    shell: 'consultant',
-    section: 'primary',
-    capability: 'support.manage',
-    status: 'available',
-  },
-  {
+    owns: ['/crm/card-catalog', '/crm/card-insights'],
+  }),
+  n({
     id: 'crm-calendar',
-    label: 'Calendar',
+    label: 'Calendar & Live',
     path: '/crm/calendar',
     icon: CalendarMonthRounded,
     shell: 'consultant',
     section: 'primary',
-    status: 'foundation',
-  },
-  {
+    owns: ['/crm/calendar', '/crm/sessions', '/crm/live-sessions'],
+  }),
+  n({
+    id: 'crm-support',
+    label: 'Support',
+    path: '/crm/support',
+    icon: HelpRounded,
+    shell: 'consultant',
+    section: 'primary',
+    capability: 'support.manage',
+  }),
+  n({
     id: 'crm-account',
     label: 'Account',
     path: '/crm/account',
     icon: AccountCircleRounded,
     shell: 'consultant',
     section: 'utility',
-    status: 'available',
-  },
-  {
+  }),
+  n({
     id: 'admin-home',
-    label: 'Admin Home',
+    label: 'Operations overview',
     path: '/admin',
-    icon: AdminPanelSettingsRounded,
+    icon: DashboardRounded,
     shell: 'admin',
     section: 'primary',
-    status: 'foundation',
     group: 'Overview',
-  },
-  {
-    id: 'admin-services',
-    label: 'Services',
-    path: '/admin/services',
-    icon: StorefrontRounded,
-    shell: 'admin',
-    section: 'primary',
-    capability: 'commerce.manage',
-    status: 'available',
-    group: 'Commerce',
-  },
-  {
+    owns: ['/admin'],
+  }),
+  n({
     id: 'admin-users',
     label: 'Users & staff',
     path: '/admin/users',
@@ -233,43 +214,75 @@ const registry: NavigationItem[] = [
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
     group: 'Identity & security',
-  },
-  {
+  }),
+  n({
     id: 'admin-access-grants',
     label: 'Access grants',
     path: '/admin/access-grants',
-    icon: AdminPanelSettingsRounded,
+    icon: SecurityRounded,
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
     group: 'Identity & security',
-  },
-  {
+  }),
+  n({
+    id: 'admin-security-events',
+    label: 'Security events',
+    path: '/admin/security-events',
+    icon: SecurityRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'audit.read_platform',
+    group: 'Identity & security',
+  }),
+  n({
+    id: 'admin-services',
+    label: 'Service products',
+    path: '/admin/services',
+    icon: StorefrontRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'commerce.manage',
+    group: 'Commerce',
+  }),
+  n({
     id: 'admin-payments',
-    label: 'Payments',
+    label: 'Payments & gateways',
     path: '/admin/payments',
     icon: CreditCardRounded,
     shell: 'admin',
     section: 'primary',
     capability: 'payment.read',
-    status: 'available',
     group: 'Commerce',
-  },
-  {
-    id: 'admin-audit-events',
-    label: 'Audit history',
-    path: '/admin/audit-events',
-    icon: DescriptionRounded,
+    owns: [
+      '/admin/payments',
+      '/admin/integrations/paypal',
+      '/admin/integrations/stripe',
+      '/admin/integrations/bofa',
+    ],
+  }),
+  n({
+    id: 'admin-card-catalog',
+    label: 'Card catalog',
+    path: '/admin/card-catalog',
+    icon: CreditCardRounded,
     shell: 'admin',
     section: 'primary',
-    capability: 'audit.read_platform',
-    status: 'available',
-    group: 'Identity & security',
-  },
-  {
+    capability: 'catalog.read',
+    group: 'Card intelligence',
+  }),
+  n({
+    id: 'admin-card-insights',
+    label: 'Card insights',
+    path: '/admin/card-insights',
+    icon: CreditScoreRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'catalog.manage',
+    group: 'Card intelligence',
+  }),
+  n({
     id: 'admin-ai-jobs',
     label: 'AI jobs',
     path: '/admin/ai/jobs',
@@ -277,10 +290,9 @@ const registry: NavigationItem[] = [
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
-    group: 'Overview',
-  },
-  {
+    group: 'Automation & AI',
+  }),
+  n({
     id: 'admin-ai-processes',
     label: 'AI processes',
     path: '/admin/ai/processes',
@@ -288,21 +300,9 @@ const registry: NavigationItem[] = [
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
-    group: 'Overview',
-  },
-  {
-    id: 'admin-sources',
-    label: 'Source registry',
-    path: '/admin/sources',
-    icon: DescriptionRounded,
-    shell: 'admin',
-    section: 'primary',
-    capability: 'settings.manage',
-    status: 'available',
-    group: 'Integrations',
-  },
-  {
+    group: 'Automation & AI',
+  }),
+  n({
     id: 'admin-workflow-rules',
     label: 'Workflow rules',
     path: '/admin/workflow-rules',
@@ -310,43 +310,39 @@ const registry: NavigationItem[] = [
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
-    group: 'Overview',
-  },
-  {
-    id: 'admin-notification-operations',
-    label: 'Notifications',
+    group: 'Automation & AI',
+  }),
+  n({
+    id: 'admin-notifications',
+    label: 'Notification operations',
     path: '/admin/notification-operations',
     icon: NotificationsNoneRounded,
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
-    group: 'Integrations',
-  },
-  {
+    group: 'Communications',
+  }),
+  n({
     id: 'admin-integrations',
-    label: 'Integrations',
+    label: 'Non-payment integrations',
     path: '/admin/integrations',
-    icon: AdminPanelSettingsRounded,
+    icon: IntegrationInstructionsRounded,
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
     group: 'Integrations',
-  },
-  {
-    id: 'admin-scheduled-jobs',
-    label: 'Scheduled jobs',
-    path: '/admin/scheduled-jobs',
-    icon: CalendarMonthRounded,
+  }),
+  n({
+    id: 'admin-sources',
+    label: 'Source registry',
+    path: '/admin/sources',
+    icon: DescriptionRounded,
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
-    group: 'Overview',
-  },
-  {
+    group: 'Data & governance',
+  }),
+  n({
     id: 'admin-retention',
     label: 'Retention',
     path: '/admin/retention',
@@ -354,10 +350,19 @@ const registry: NavigationItem[] = [
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
-    group: 'Overview',
-  },
-  {
+    group: 'Data & governance',
+  }),
+  n({
+    id: 'admin-audit-events',
+    label: 'Audit history',
+    path: '/admin/audit-events',
+    icon: DescriptionRounded,
+    shell: 'admin',
+    section: 'primary',
+    capability: 'audit.read_platform',
+    group: 'Data & governance',
+  }),
+  n({
     id: 'admin-reports',
     label: 'Reports',
     path: '/admin/reports',
@@ -365,120 +370,70 @@ const registry: NavigationItem[] = [
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
-    group: 'Overview',
-  },
-  {
+    group: 'Reporting & settings',
+  }),
+  n({
     id: 'admin-settings',
     label: 'Settings',
     path: '/admin/settings',
-    icon: AdminPanelSettingsRounded,
+    icon: SettingsRounded,
     shell: 'admin',
     section: 'primary',
     capability: 'settings.manage',
-    status: 'available',
-    group: 'Overview',
-  },
-  {
-    id: 'admin-security-events',
-    label: 'Security events',
-    path: '/admin/security-events',
-    icon: AdminPanelSettingsRounded,
+    group: 'Reporting & settings',
+  }),
+  n({
+    id: 'admin-scheduled-jobs',
+    label: 'Scheduled jobs',
+    path: '/admin/scheduled-jobs',
+    icon: CalendarMonthRounded,
     shell: 'admin',
     section: 'primary',
-    capability: 'audit.read_platform',
-    status: 'available',
-    group: 'Identity & security',
-  },
-  {
-    id: 'admin-paypal',
-    label: 'PayPal gateway',
-    path: '/admin/integrations/paypal',
-    icon: AdminPanelSettingsRounded,
+    capability: 'settings.manage',
+    group: 'Utilities',
+  }),
+  n({
+    id: 'admin-system-health',
+    label: 'System health',
+    path: '/admin/system-health',
+    icon: TaskAltRounded,
     shell: 'admin',
     section: 'primary',
-    capability: 'payment.read',
-    status: 'available',
-    group: 'Integrations',
-  },
-  {
-    id: 'admin-card-catalog',
-    label: 'Card Catalog',
-    path: '/admin/card-catalog',
-    icon: CreditCardRounded,
-    shell: 'admin',
-    section: 'primary',
-    capability: 'catalog.read',
-    status: 'available',
-    group: 'Catalog',
-  },
-  {
-    id: 'admin-card-insights',
-    label: 'Card Insights',
-    path: '/admin/card-insights',
-    icon: CreditScoreRounded,
-    shell: 'admin',
-    section: 'primary',
-    capability: 'catalog.manage',
-    status: 'available',
-    group: 'Catalog',
-  },
-  {
-    id: 'admin-stripe',
-    label: 'Stripe gateway',
-    path: '/admin/integrations/stripe',
-    icon: AdminPanelSettingsRounded,
-    shell: 'admin',
-    section: 'primary',
-    capability: 'payment.read',
-    status: 'available',
-    group: 'Integrations',
-  },
-  {
-    id: 'admin-bofa',
-    label: 'BofA Merchant Services',
-    path: '/admin/integrations/bofa',
-    icon: AdminPanelSettingsRounded,
-    shell: 'admin',
-    section: 'primary',
-    capability: 'payment.read',
-    status: 'available',
-    group: 'Integrations',
-  },
-  {
+    group: 'Utilities',
+  }),
+  n({
     id: 'admin-account',
     label: 'Account',
     path: '/admin/account',
     icon: AccountCircleRounded,
     shell: 'admin',
     section: 'utility',
-    status: 'available',
-  },
+  }),
 ];
-
-export function navigationFor(user: CurrentUser, shell: ShellKind): NavigationItem[] {
-  const expectedRole =
-    shell === 'client' ? 'CLIENT' : shell === 'consultant' ? 'CONSULTANT' : 'ADMIN';
-  if (user.role !== expectedRole) return [];
-  const capabilities = new Set(user.capabilities ?? []);
-  return registry.filter(
-    (item) => item.shell === shell && (!item.capability || capabilities.has(item.capability)),
-  );
+export function navigationFor(user: CurrentUser, shell: ShellKind) {
+  const role = shell === 'client' ? 'CLIENT' : shell === 'consultant' ? 'CONSULTANT' : 'ADMIN';
+  if (user.role !== role) return [];
+  const caps = new Set(user.capabilities ?? []);
+  return registry.filter((x) => x.shell === shell && (!x.capability || caps.has(x.capability)));
 }
-
-export function validateNavigationRegistry(): boolean {
-  const ids = new Set<string>();
-  const paths = new Set<string>();
-  return registry.every((item) => {
-    const base = item.shell === 'client' ? 'app' : item.shell === 'consultant' ? 'crm' : 'admin';
-    const valid =
-      Boolean(item.id && item.label && item.path.startsWith(`/${base}`)) &&
-      !ids.has(item.id) &&
-      !paths.has(item.path);
-    ids.add(item.id);
-    paths.add(item.path);
+export function activeNavigationId(items: NavigationItem[], pathname: string) {
+  return items
+    .flatMap((entry) => (entry.owns ?? [entry.path]).map((prefix) => ({ entry, prefix })))
+    .filter(
+      ({ prefix }) =>
+        pathname === prefix ||
+        (!['/app', '/crm', '/admin'].includes(prefix) && pathname.startsWith(`${prefix}/`)),
+    )
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0]?.entry.id;
+}
+export function validateNavigationRegistry() {
+  const ids = new Set<string>(),
+    paths = new Set<string>();
+  return registry.every((x) => {
+    const valid = !!x.id && !ids.has(x.id) && !paths.has(x.path);
+    ids.add(x.id);
+    paths.add(x.path);
     return valid;
   });
 }
-
 if (!validateNavigationRegistry()) throw new Error('Navigation registry is invalid');

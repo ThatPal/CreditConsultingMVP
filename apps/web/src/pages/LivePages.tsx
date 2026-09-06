@@ -83,7 +83,7 @@ export function ScheduleRoundPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="PORTAL-28"
+        eyebrow="Application Round · Scheduling"
         title="Schedule your guided application session"
         description="Choose an available time. Your internal appointment remains confirmed even if optional calendar sync is delayed."
       />
@@ -165,7 +165,7 @@ export function ConsultantCalendarPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="CRM-26"
+        eyebrow="Live operations"
         title="Calendar"
         description="Internal appointments are canonical. External busy time never exposes private event details."
       />
@@ -214,7 +214,7 @@ export function AppointmentDetailPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="CRM-27"
+        eyebrow="Appointment"
         title="Appointment detail"
         description="Governed scheduling and calendar-sync state."
       />
@@ -402,7 +402,7 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
     return (
       <Stack spacing={3}>
         <PageHeader
-          eyebrow="PORTAL-29"
+          eyebrow="Application Round · Live"
           title="Live application session"
           description="Your consultant will start the session at the scheduled time."
         />
@@ -645,7 +645,7 @@ export function LiveSessionsPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="CRM-18"
+        eyebrow="Consultant calendar"
         title="Live Sessions"
         description="Supervise active, waiting, paused, and recently completed sessions."
       />

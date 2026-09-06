@@ -5074,7 +5074,7 @@ export function ConsultantReviewWorkspacePage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="CRM-11 · Governed Credit Review"
+        eyebrow="Governed Credit Review"
         title="Credit Review workspace"
         description="Verify immutable source facts, resolve exceptions, approve client-safe analysis, then publish one frozen version."
       />

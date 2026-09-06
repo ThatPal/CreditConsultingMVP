@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
+import { useState } from 'react';
 type Integration = {
   id: string;
   key: string;
@@ -19,6 +21,8 @@ type Integration = {
   updatedAt: string;
 };
 export function AdminIntegrationsPage() {
+  const [selected, setSelected] = useState<Integration | null>(null);
+  const [reason, setReason] = useState('');
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ['admin-integrations'],
@@ -32,10 +36,14 @@ export function AdminIntegrationsPage() {
         body: JSON.stringify({
           enabled: !i.enabled,
           expectedUpdatedAt: i.updatedAt,
-          reason: `Governed ${i.enabled ? 'disable' : 'enable'} from Admin operations`,
+          reason,
         }),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-integrations'] }),
+    onSuccess: () => {
+      setSelected(null);
+      setReason('');
+      return qc.invalidateQueries({ queryKey: ['admin-integrations'] });
+    },
   });
   return (
     <Stack spacing={3}>
@@ -44,9 +52,10 @@ export function AdminIntegrationsPage() {
         description="Provider health and secret-presence status without exposing credential values."
       />
       <Alert severity="info">
-        Payment detail and transaction operations remain in Payments. This page cannot reveal or
-        replace secrets.
+        Payment gateways are managed under Payments. This area is for non-payment integrations and
+        never reveals secret values.
       </Alert>
+      {q.isError && <RecoveryState error={q.error} onRetry={() => void q.refetch()} />}
       <SectionCard>
         <Stack divider={<Divider flexItem />}>
           {q.data?.integrations.map((i) => (
@@ -74,8 +83,8 @@ export function AdminIntegrationsPage() {
                 <Button
                   color={i.enabled ? 'warning' : 'primary'}
                   onClick={() => {
-                    if (confirm(`${i.enabled ? 'Disable' : 'Enable'} ${i.provider}?`))
-                      toggle.mutate(i);
+                    setSelected(i);
+                    setReason('');
                   }}
                 >
                   {i.enabled ? 'Disable' : 'Enable'}
@@ -90,6 +99,30 @@ export function AdminIntegrationsPage() {
           ))}
         </Stack>
       </SectionCard>
+      <GovernedActionDialog
+        open={Boolean(selected)}
+        title={`${selected?.enabled ? 'Disable' : 'Enable'} ${selected?.provider ?? 'integration'}`}
+        effect={
+          selected?.enabled
+            ? 'New provider activity will stop. Existing audit and delivery history remains intact.'
+            : 'Future eligible activity may be sent to this provider.'
+        }
+        {...(selected?.key ? { context: selected.key } : {})}
+        reasonLabel="Reason"
+        reason={reason}
+        required
+        warning
+        pending={toggle.isPending}
+        {...(toggle.isError ? { error: toggle.error.message } : {})}
+        onReasonChange={setReason}
+        onCancel={() => {
+          setSelected(null);
+          setReason('');
+        }}
+        onConfirm={() => {
+          if (selected) toggle.mutate(selected);
+        }}
+      />
     </Stack>
   );
 }

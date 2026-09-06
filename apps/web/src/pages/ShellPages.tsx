@@ -39,14 +39,54 @@ export function AdminLandingPage() {
   };
   const cards: DashboardCard[] = query.data
     ? [
-        { title: 'Payments', section: query.data.sections.commerce, valueKey: 'pending', description: 'Pending payment operations' },
-        { title: 'AI runtime', section: query.data.sections.ai, valueKey: 'queued', description: 'Queued or active AI jobs' },
-        { title: 'Catalog', section: query.data.sections.catalog, valueKey: 'conflicts', description: 'Catalog conflicts requiring review' },
-        { title: 'Integrations', section: query.data.sections.integrations, valueKey: 'unhealthy', description: 'Enabled integrations degraded' },
-        { title: 'Security', section: query.data.sections.security, valueKey: 'recent', description: 'Warnings in the last 24 hours' },
-        { title: 'Products', section: query.data.sections.products, valueKey: 'active', description: 'Active service products' },
-        { title: 'Platform', section: query.data.sections.platform, valueKey: 'failedOutbox', description: 'Failed durable outbox events' },
-        { title: 'Scheduled jobs', section: query.data.sections.scheduledJobs, valueKey: 'failed', description: 'Scheduled-job operations' },
+        {
+          title: 'Payments',
+          section: query.data.sections.commerce,
+          valueKey: 'pending',
+          description: 'Pending payment operations',
+        },
+        {
+          title: 'AI runtime',
+          section: query.data.sections.ai,
+          valueKey: 'queued',
+          description: 'Queued or active AI jobs',
+        },
+        {
+          title: 'Catalog',
+          section: query.data.sections.catalog,
+          valueKey: 'conflicts',
+          description: 'Catalog conflicts requiring review',
+        },
+        {
+          title: 'Integrations',
+          section: query.data.sections.integrations,
+          valueKey: 'unhealthy',
+          description: 'Enabled integrations degraded',
+        },
+        {
+          title: 'Security',
+          section: query.data.sections.security,
+          valueKey: 'recent',
+          description: 'Warnings in the last 24 hours',
+        },
+        {
+          title: 'Products',
+          section: query.data.sections.products,
+          valueKey: 'active',
+          description: 'Active service products',
+        },
+        {
+          title: 'Platform',
+          section: query.data.sections.platform,
+          valueKey: 'failedOutbox',
+          description: 'Failed durable outbox events',
+        },
+        {
+          title: 'Scheduled jobs',
+          section: query.data.sections.scheduledJobs,
+          valueKey: 'failed',
+          description: 'Scheduled-job operations',
+        },
       ]
     : [];
   const displayedCards: DashboardCard[] = query.isLoading
@@ -65,26 +105,47 @@ export function AdminLandingPage() {
         description="Monitor canonical platform modules and open the owning operational surface."
       />
       {query.isError ? (
-        <Alert severity="error">Operational status could not be loaded. Existing modules remain available from navigation.</Alert>
+        <Alert severity="error">
+          Operational status could not be loaded. Existing modules remain available from navigation.
+        </Alert>
       ) : (
         <Alert severity="info">
-          This dashboard is monitoring only. Work and configuration changes remain in their owning modules.
+          This dashboard is monitoring only. Work and configuration changes remain in their owning
+          modules.
         </Alert>
       )}
       <Grid container spacing={2}>
         {displayedCards.map(({ title, section, valueKey, description }, index) => {
           const value = section && valueKey ? section[valueKey] : undefined;
-          return <Grid key={title ?? index} size={{ xs: 12, sm: 6, lg: 3 }}>
-            <SectionCard variant="interactive" sx={{ height: '100%' }}>
-              <Stack spacing={1.5} sx={{ height: '100%' }}>
-                <MetricCard label={title} value={value ?? '—'} supportingText={description} loading={query.isLoading} />
-                {section?.status !== 'healthy' && !query.isLoading && (
-                  <Alert severity={section?.status === 'degraded' ? 'warning' : 'info'}>{section?.reason ?? 'This module is partially degraded.'}</Alert>
-                )}
-                {section?.href && <Button component={Link} to={section.href} variant="outlined" sx={{ alignSelf: 'flex-start' }}>Open module</Button>}
-              </Stack>
-            </SectionCard>
-          </Grid>;
+          return (
+            <Grid key={title ?? index} size={{ xs: 12, sm: 6, lg: 3 }}>
+              <SectionCard variant="interactive" sx={{ height: '100%' }}>
+                <Stack spacing={1.5} sx={{ height: '100%' }}>
+                  <MetricCard
+                    label={title}
+                    value={value ?? '—'}
+                    supportingText={description}
+                    loading={query.isLoading}
+                  />
+                  {section?.status !== 'healthy' && !query.isLoading && (
+                    <Alert severity={section?.status === 'degraded' ? 'warning' : 'info'}>
+                      {section?.reason ?? 'This module is partially degraded.'}
+                    </Alert>
+                  )}
+                  {section?.href && (
+                    <Button
+                      component={Link}
+                      to={section.href}
+                      variant="outlined"
+                      sx={{ alignSelf: 'flex-start' }}
+                    >
+                      Open module
+                    </Button>
+                  )}
+                </Stack>
+              </SectionCard>
+            </Grid>
+          );
         })}
       </Grid>
     </Stack>
@@ -97,7 +158,7 @@ export function StaffAccountPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow={user?.role === 'ADMIN' ? 'Admin account' : 'CRM-28'}
+        eyebrow={user?.role === 'ADMIN' ? 'Admin account' : 'Consultant account'}
         title="Account"
         description="Your authenticated staff identity and security status."
       />
@@ -128,21 +189,78 @@ export function StaffAccountPage() {
   );
 }
 
-export function FoundationPage({ title, description }: { title: string; description: string }) {
+export function SystemHealthPage() {
+  const query = useQuery({
+    queryKey: ['admin-dashboard'],
+    queryFn: () =>
+      apiRequest<{
+        asOf: string;
+        sections: Record<
+          string,
+          { status: string; reason?: string; pendingOutbox?: number; failedOutbox?: number }
+        >;
+      }>('/api/v1/admin/dashboard'),
+    refetchInterval: 30_000,
+  });
+  const platform = query.data?.sections.platform;
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="Coming in a future product phase"
-        title={title}
-        description={description}
+        eyebrow="Utilities"
+        title="System health"
+        description="Safe operational signals for the durable platform runtime. Sensitive payloads and credentials are never displayed."
       />
+      {query.isError ? (
+        <Alert
+          severity="error"
+          action={<Button onClick={() => void query.refetch()}>Retry</Button>}
+        >
+          Health signals could not be loaded.
+        </Alert>
+      ) : (
+        <SectionCard>
+          <Stack spacing={2}>
+            <Typography variant="h3">Durable event delivery</Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <MetricCard
+                label="Pending events"
+                value={platform?.pendingOutbox ?? '—'}
+                supportingText="Waiting for a worker claim"
+                loading={query.isLoading}
+              />
+              <MetricCard
+                label="Failed events"
+                value={platform?.failedOutbox ?? '—'}
+                supportingText="Require operational review"
+                loading={query.isLoading}
+              />
+            </Stack>
+            <Alert severity={platform?.status === 'healthy' ? 'success' : 'warning'}>
+              {platform?.status === 'healthy'
+                ? 'Core operational checks are healthy.'
+                : (platform?.reason ?? 'One or more safe health checks are degraded.')}
+            </Alert>
+            <Typography variant="caption" color="text.secondary">
+              Last checked {query.data?.asOf ? new Date(query.data.asOf).toLocaleString() : '—'}
+            </Typography>
+          </Stack>
+        </SectionCard>
+      )}
+    </Stack>
+  );
+}
+
+export function FoundationPage({ title, description }: { title: string; description: string }) {
+  return (
+    <Stack spacing={3}>
+      <PageHeader eyebrow="Unavailable" title={title} description={description} />
       <SectionCard>
         <Stack spacing={1.5}>
-          <Chip label="Future owner" color="info" sx={{ alignSelf: 'flex-start' }} />
-          <Typography variant="h3">No placeholder activity is shown</Typography>
+          <Chip label="Not available" color="info" sx={{ alignSelf: 'flex-start' }} />
+          <Typography variant="h3">This destination is unavailable</Typography>
           <Typography color="text.secondary">
-            This area will become available when its complete, authoritative workflow is ready. Use
-            the navigation to continue with currently available tools.
+            The requested destination does not exist or is outside your authorized workspace. Use
+            the navigation to continue.
           </Typography>
         </Stack>
       </SectionCard>

@@ -8,7 +8,11 @@ import { designTokens, reducedMotionStyles } from './theme/designTokens';
 import { AuthProvider } from './auth/AuthProvider';
 import type { CurrentUser } from './auth/api';
 import { theme } from './theme';
-import { validateNavigationRegistry } from './layouts/navigation';
+import {
+  activeNavigationId,
+  navigationFor,
+  validateNavigationRegistry,
+} from './layouts/navigation';
 import { focusSurfaceContentStyles } from './components/common/FocusSurface';
 
 function contrastRatio(foreground: string, background: string) {
@@ -67,10 +71,10 @@ describe('application shells', () => {
     expect(within(navigation).getByRole('link', { name: 'Support' })).toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Services' })).toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Credit Center' })).toBeInTheDocument();
-    expect(within(navigation).getByRole('link', { name: 'Plan' })).toHaveAttribute(
-      'href',
-      '/app/plan',
-    );
+    expect(within(navigation).queryByRole('link', { name: 'Plan' })).not.toBeInTheDocument();
+    expect(
+      within(navigation).getByRole('link', { name: 'Application Rounds' }),
+    ).toBeInTheDocument();
     expect(within(navigation).getByText('Utilities')).toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Security' })).not.toBeInTheDocument();
     expect(within(navigation).queryByText('Credit Plan')).not.toBeInTheDocument();
@@ -78,6 +82,43 @@ describe('application shells', () => {
     expect(within(navigation).getByRole('link', { name: 'Home' })).toHaveAttribute(
       'aria-current',
       'page',
+    );
+  });
+
+  test('nested routes have one canonical navigation owner', () => {
+    const client = {
+      userId: '1',
+      email: 'c@example.com',
+      role: 'CLIENT',
+      status: 'ACTIVE',
+      clientId: '1',
+      staffMfaEnabled: false,
+      staffMfaVerified: false,
+      stepUpVerified: false,
+      capabilities: [],
+    } as CurrentUser;
+    const admin = {
+      ...client,
+      role: 'ADMIN',
+      clientId: null,
+      capabilities: [
+        'settings.manage',
+        'payment.read',
+        'audit.read_platform',
+        'catalog.read',
+        'catalog.manage',
+        'commerce.manage',
+      ],
+    } as CurrentUser;
+    expect(activeNavigationId(navigationFor(client, 'client'), '/app/plan')).toBe('portal-credit');
+    expect(activeNavigationId(navigationFor(client, 'client'), '/app/cards/example')).toBe(
+      'portal-cards',
+    );
+    expect(
+      activeNavigationId(navigationFor(client, 'client'), '/app/rounds/example/strategy'),
+    ).toBe('portal-rounds');
+    expect(activeNavigationId(navigationFor(admin, 'admin'), '/admin/integrations/stripe')).toBe(
+      'admin-payments',
     );
   });
 
@@ -103,11 +144,23 @@ describe('application shells', () => {
   });
 
   test('administrator lands in a distinct shell without consultant advisory navigation', () => {
-    renderAt('/admin', 'ADMIN');
+    renderAt('/admin', 'ADMIN', {
+      capabilities: [
+        'settings.manage',
+        'payment.read',
+        'audit.read_platform',
+        'catalog.read',
+        'catalog.manage',
+        'commerce.manage',
+      ],
+    });
     const navigation = screen.getByRole('navigation', { name: /admin navigation/i });
     expect(screen.getByRole('heading', { name: /^operations overview$/i })).toBeInTheDocument();
     expect(within(navigation).queryByText('Clients')).not.toBeInTheDocument();
     expect(within(navigation).queryByText('Work Queue')).not.toBeInTheDocument();
+    expect(within(navigation).getByText('Identity & security')).toBeInTheDocument();
+    expect(within(navigation).getByText('Card intelligence')).toBeInTheDocument();
+    expect(within(navigation).getByRole('link', { name: 'System health' })).toBeInTheDocument();
   });
 
   test('credit readiness exposes prepared consultant decisions', () => {
