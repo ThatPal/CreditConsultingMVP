@@ -59,16 +59,16 @@ describe('Sprint 4.1 consultant client context', () => {
     mockedApi.mockImplementation(async (url: string) => {
       if (String(url).endsWith('/support-summary'))
         return {
-            cases: [
-              {
-                id: 'support-1',
-                subject: 'Round question',
-                status: 'OPEN',
-                priority: 'HIGH',
-                lastMessageAt: new Date().toISOString(),
-              },
-            ],
-          };
+          cases: [
+            {
+              id: 'support-1',
+              subject: 'Round question',
+              status: 'OPEN',
+              priority: 'HIGH',
+              lastMessageAt: new Date().toISOString(),
+            },
+          ],
+        };
       if (String(url).endsWith('/timeline'))
         return {
           events: [
@@ -86,38 +86,38 @@ describe('Sprint 4.1 consultant client context', () => {
       if (String(url).endsWith('/journey')) return { journey: null };
       if (String(url).endsWith('/services')) return { balance: null };
       return {
-            client: {
-              id: '11111111-1111-4111-8111-111111111111',
-              firstName: 'Jordan',
-              lastName: 'Blake',
-              phone: null,
-              timezone: 'America/New_York',
+        client: {
+          id: '11111111-1111-4111-8111-111111111111',
+          firstName: 'Jordan',
+          lastName: 'Blake',
+          phone: null,
+          timezone: 'America/New_York',
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString(),
+          user: { email: 'jordan@example.test' },
+          assignedConsultant: { id: 'staff', name: 'Casey', email: 'casey@example.test' },
+          businesses: [
+            {
+              id: 'business',
+              legalName: 'Blake Studio LLC',
+              displayName: 'Blake Studio',
+              entityType: 'LLC',
+              industry: null,
               status: 'ACTIVE',
-              createdAt: new Date().toISOString(),
-              user: { email: 'jordan@example.test' },
-              assignedConsultant: { id: 'staff', name: 'Casey', email: 'casey@example.test' },
-              businesses: [
-                {
-                  id: 'business',
-                  legalName: 'Blake Studio LLC',
-                  displayName: 'Blake Studio',
-                  entityType: 'LLC',
-                  industry: null,
-                  status: 'ACTIVE',
-                },
-              ],
-              financialRelationships: [
-                {
-                  id: 'relationship',
-                  institutionName: 'Community Credit Union',
-                  relationshipType: 'CHECKING',
-                  approximateTenure: 'About 3 years',
-                  status: 'ACTIVE',
-                  clientBusiness: null,
-                },
-              ],
             },
-          };
+          ],
+          financialRelationships: [
+            {
+              id: 'relationship',
+              institutionName: 'Community Credit Union',
+              relationshipType: 'CHECKING',
+              approximateTenure: 'About 3 years',
+              status: 'ACTIVE',
+              clientBusiness: null,
+            },
+          ],
+        },
+      };
     });
     renderWithContext(
       <Routes>
@@ -126,6 +126,16 @@ describe('Sprint 4.1 consultant client context', () => {
       '/crm/clients/11111111-1111-4111-8111-111111111111',
     );
     expect(await screen.findByRole('heading', { name: 'Jordan Blake' })).toBeInTheDocument();
+    for (const tab of [
+      'Overview',
+      'Journey',
+      'Credit Center',
+      'Cards',
+      'Services',
+      'Timeline',
+      'Support',
+    ])
+      expect(screen.getByRole('tab', { name: tab })).toBeInTheDocument();
     expect(screen.getByText('Blake Studio')).toBeInTheDocument();
     expect(screen.getByText('Community Credit Union')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /Round question/i })).toHaveAttribute(

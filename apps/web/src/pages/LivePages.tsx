@@ -157,10 +157,29 @@ export function ScheduleRoundPage() {
 
 export function ConsultantCalendarPage() {
   const [items, setItems] = useState<Appointment[]>();
+  const [rules, setRules] = useState<
+    Array<{ weekday: number; startMinute: number; endMinute: number; timezone: string }>
+  >([]);
+  const [error, setError] = useState('');
+  const load = () => {
+    setError('');
+    setItems(undefined);
+    void Promise.all([
+      apiRequest<{ appointments: Appointment[] }>('/api/v1/consultant/calendar'),
+      apiRequest<{
+        rules: Array<{ weekday: number; startMinute: number; endMinute: number; timezone: string }>;
+      }>('/api/v1/consultant/availability'),
+    ])
+      .then(([calendar, availability]) => {
+        setItems(calendar.appointments);
+        setRules(availability.rules);
+      })
+      .catch((cause: unknown) =>
+        setError(cause instanceof Error ? cause.message : 'Calendar could not be loaded.'),
+      );
+  };
   useEffect(() => {
-    void apiRequest<{ appointments: Appointment[] }>('/api/v1/consultant/calendar').then((value) =>
-      setItems(value.appointments),
-    );
+    load();
   }, []);
   return (
     <Stack spacing={3}>
@@ -169,7 +188,61 @@ export function ConsultantCalendarPage() {
         title="Calendar"
         description="Internal appointments are canonical. External busy time never exposes private event details."
       />
-      {!items ? (
+      <Card>
+        <CardContent>
+          <Stack spacing={1.5}>
+            <Typography variant="h6">Consulting availability</Typography>
+            <Typography color="text.secondary">
+              This canonical weekly availability is combined with appointments and private external
+              busy time. External event details are never exposed.
+            </Typography>
+            {rules.length ? (
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                {rules.map((rule) => (
+                  <Chip
+                    key={`${rule.weekday}-${rule.startMinute}`}
+                    label={`${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][rule.weekday]} ${String(Math.floor(rule.startMinute / 60)).padStart(2, '0')}:${String(rule.startMinute % 60).padStart(2, '0')}–${String(Math.floor(rule.endMinute / 60)).padStart(2, '0')}:${String(rule.endMinute % 60).padStart(2, '0')}`}
+                  />
+                ))}
+              </Stack>
+            ) : (
+              <Alert severity="info">
+                No weekly availability is configured. Clients cannot book new sessions.
+              </Alert>
+            )}
+            <Button
+              sx={{ alignSelf: 'flex-start' }}
+              variant="outlined"
+              onClick={() =>
+                void apiRequest('/api/v1/consultant/availability', {
+                  method: 'PUT',
+                  body: JSON.stringify({
+                    rules: [1, 2, 3, 4, 5].map((weekday) => ({
+                      weekday,
+                      startMinute: 540,
+                      endMinute: 1020,
+                      timezone: 'America/New_York',
+                    })),
+                  }),
+                })
+                  .then(load)
+                  .catch((cause: unknown) =>
+                    setError(
+                      cause instanceof Error ? cause.message : 'Availability could not be saved.',
+                    ),
+                  )
+              }
+            >
+              Set Monday–Friday, 9 AM–5 PM ET
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+      {error ? (
+        <Alert severity="error" action={<Button onClick={load}>Retry</Button>}>
+          Calendar could not be loaded. Your appointments were not changed.
+        </Alert>
+      ) : !items ? (
         <CircularProgress />
       ) : items.length === 0 ? (
         <Alert severity="info">No appointments are scheduled.</Alert>
@@ -205,11 +278,18 @@ export function ConsultantCalendarPage() {
 export function AppointmentDetailPage() {
   const { clientId = '', appointmentId = '' } = useParams();
   const [item, setItem] = useState<Appointment>();
+  const [error, setError] = useState('');
+  const [starting, setStarting] = useState(false);
   const navigate = useNavigate();
   useEffect(() => {
+    setError('');
     void apiRequest<{ appointment: Appointment }>(
       `/api/v1/consultant/clients/${clientId}/appointments/${appointmentId}`,
-    ).then((value) => setItem(value.appointment));
+    )
+      .then((value) => setItem(value.appointment))
+      .catch((cause: unknown) =>
+        setError(cause instanceof Error ? cause.message : 'Appointment could not be loaded.'),
+      );
   }, [clientId, appointmentId]);
   return (
     <Stack spacing={3}>
@@ -218,7 +298,9 @@ export function AppointmentDetailPage() {
         title="Appointment detail"
         description="Governed scheduling and calendar-sync state."
       />
-      {!item ? (
+      {error ? (
+        <Alert severity="error">{error} Return to Calendar and retry.</Alert>
+      ) : !item ? (
         <CircularProgress />
       ) : (
         <Card>
@@ -231,17 +313,28 @@ export function AppointmentDetailPage() {
               <Typography>External sync: {item.externalSyncStatus}</Typography>
               <Button
                 variant="contained"
-                onClick={() =>
+                disabled={starting || item.status === 'CANCELLED'}
+                onClick={() => (
+                  setStarting(true),
                   void apiRequest<{ result: { id: string } }>(
                     `/api/v1/consultant/appointments/${appointmentId}/session`,
                     {
                       method: 'POST',
                       body: JSON.stringify({ idempotencyKey: `start-${appointmentId}` }),
                     },
-                  ).then((value) => navigate(`/crm/live-sessions/${value.result.id}`))
-                }
+                  )
+                    .then((value) => navigate(`/crm/live-sessions/${value.result.id}`))
+                    .catch((cause: unknown) =>
+                      setError(
+                        cause instanceof Error
+                          ? cause.message
+                          : 'Live session could not be started.',
+                      ),
+                    )
+                    .finally(() => setStarting(false))
+                )}
               >
-                Start or open live session
+                {starting ? 'Opening session…' : 'Start or open live session'}
               </Button>
             </Stack>
           </CardContent>
@@ -412,7 +505,7 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow={consultant ? 'CRM-19' : 'PORTAL-29'}
+        eyebrow={consultant ? 'Live operations' : 'Application Round · Live'}
         title="Live application session"
         description="Committed session state remains authoritative if your connection is interrupted."
       />
@@ -450,37 +543,84 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
             </Alert>
           )}
           {consultant && (
-            <Card>
-              <CardContent>
-                <Stack spacing={2}>
-                  <Typography variant="h6">Governed session controls</Typography>
-                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
-                    <Button variant="contained" onClick={() => void consultantCommand('EVALUATE')}>
-                      Evaluate latest result
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={() =>
-                        void consultantCommand(
-                          snapshot.session.status === 'PAUSED' ? 'RESUME' : 'PAUSE',
-                        )
-                      }
-                    >
-                      {snapshot.session.status === 'PAUSED'
-                        ? 'Resume after revalidation'
-                        : 'Pause safely'}
-                    </Button>
-                    <Button
-                      color="error"
-                      variant="outlined"
-                      onClick={() => void consultantCommand('END')}
-                    >
-                      End live session
-                    </Button>
-                  </Stack>
-                </Stack>
-              </CardContent>
-            </Card>
+            <Grid container spacing={2} aria-label="Consultant live operating console">
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Typography variant="overline">Client and readiness</Typography>
+                      <Typography variant="h6">Supervision status</Typography>
+                      <Typography color="text.secondary">
+                        Session state and participant presence are server-authoritative. A
+                        disconnected or restricted session cannot release new work.
+                      </Typography>
+                      <Chip
+                        label={
+                          snapshot.presence.supervisionSafe
+                            ? 'Ready for supervised work'
+                            : 'Release blocked'
+                        }
+                        color={snapshot.presence.supervisionSafe ? 'success' : 'warning'}
+                      />
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Typography variant="overline">Current application</Typography>
+                      <Typography variant="h6">Governed execution</Typography>
+                      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                        <Button
+                          variant="contained"
+                          onClick={() => void consultantCommand('EVALUATE')}
+                        >
+                          Evaluate latest result
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() =>
+                            void consultantCommand(
+                              snapshot.session.status === 'PAUSED' ? 'RESUME' : 'PAUSE',
+                            )
+                          }
+                        >
+                          {snapshot.session.status === 'PAUSED'
+                            ? 'Resume after revalidation'
+                            : 'Pause safely'}
+                        </Button>
+                        <Button
+                          color="error"
+                          variant="outlined"
+                          onClick={() => void consultantCommand('END')}
+                        >
+                          End live session
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Typography variant="overline">Approved sequence and help</Typography>
+                      <Typography variant="h6">Next decision</Typography>
+                      <Typography color="text.secondary">
+                        Only the frozen approved Strategy sequence may advance. Client help requests
+                        remain visible through the canonical Work Queue.
+                      </Typography>
+                      <Button component={Link} to="/crm/work-queue?family=LIVE">
+                        Open live-help queue
+                      </Button>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           )}
           {!consultant && application && (
             <Card>

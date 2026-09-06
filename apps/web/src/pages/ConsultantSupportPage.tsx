@@ -128,11 +128,10 @@ export function ConsultantSupportPage() {
   const [page, setPage] = useState(1);
   const [pendingAIJobId, setPendingAIJobId] = useState<string | null>(null);
   const linkedCaseId = searchParams.get('case');
-  const filterStatus =
-    filter === 'WAITING_CLIENT' ? 'WAITING_ON_CLIENT' : filter === 'RESOLVED' ? 'RESOLVED' : '';
   const params = new URLSearchParams({ page: String(page), pageSize: '20' });
   if (caseSearch.trim()) params.set('search', caseSearch.trim());
-  if (filterStatus) params.set('status', filterStatus);
+  if (filter === 'WAITING_CLIENT') params.set('status', 'WAITING_ON_CLIENT');
+  else params.set('lifecycle', filter === 'RESOLVED' ? 'RESOLVED' : 'ACTIVE');
   if (filter === 'URGENT') params.set('priority', 'URGENT');
   const query = useQuery({
     queryKey: ['consultant-support-cases', filter, caseSearch, page],
@@ -152,13 +151,7 @@ export function ConsultantSupportPage() {
     retry: false,
     refetchInterval: pendingAIJobId ? 1500 : false,
   });
-  const cases = allCases.filter((item) => {
-    if (filter === 'URGENT')
-      return item.priority === 'URGENT' && !['RESOLVED', 'CLOSED'].includes(item.status);
-    if (filter === 'WAITING_CLIENT') return item.status === 'WAITING_ON_CLIENT';
-    if (filter === 'RESOLVED') return ['RESOLVED', 'CLOSED'].includes(item.status);
-    return !['RESOLVED', 'CLOSED'].includes(item.status);
-  });
+  const cases = allCases;
   const selected =
     (linkedCaseQuery.data?.case.id === selectedId ? linkedCaseQuery.data.case : null) ??
     allCases.find((item) => item.id === selectedId) ??
@@ -197,10 +190,13 @@ export function ConsultantSupportPage() {
   });
   const requestAI = useMutation({
     mutationFn: (kind: 'classification' | 'summary' | 'draft') =>
-      apiRequest<{ jobId: string }>(`/api/v1/consultant/support-cases/${selectedId}/ai-assistance`, {
-        method: 'POST',
-        body: JSON.stringify({ kind }),
-      }),
+      apiRequest<{ jobId: string }>(
+        `/api/v1/consultant/support-cases/${selectedId}/ai-assistance`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ kind }),
+        },
+      ),
     onSuccess: async (result: { jobId: string }) => {
       setPendingAIJobId(result.jobId);
       await queryClient.invalidateQueries({ queryKey: ['consultant-support-case', linkedCaseId] });
@@ -263,14 +259,8 @@ export function ConsultantSupportPage() {
                 }}
                 variant="scrollable"
               >
-                <Tab
-                  value="ACTIVE"
-                  label={`Active (${allCases.filter((item) => !['RESOLVED', 'CLOSED'].includes(item.status)).length})`}
-                />
-                <Tab
-                  value="URGENT"
-                  label={`Urgent (${allCases.filter((item) => item.priority === 'URGENT' && !['RESOLVED', 'CLOSED'].includes(item.status)).length})`}
-                />
+                <Tab value="ACTIVE" label="Active" />
+                <Tab value="URGENT" label="Urgent" />
                 <Tab value="WAITING_CLIENT" label="Waiting on client" />
                 <Tab value="RESOLVED" label="Resolved" />
               </Tabs>

@@ -9,7 +9,12 @@ import {
   requireRole,
 } from '../auth/middleware.js';
 import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
-import type { Prisma, PrismaClient, WorkItemStatus } from '../generated/prisma/client.js';
+import type {
+  Prisma,
+  PrismaClient,
+  SupportCaseStatus,
+  WorkItemStatus,
+} from '../generated/prisma/client.js';
 import type { DurableAIRuntime } from '../ai/durableRuntime.js';
 import { AppError } from '../http/errors.js';
 import { publishLiveUpdate, subscribeToLiveUpdates, type LiveUpdate } from '../liveUpdates.js';
@@ -92,6 +97,7 @@ const supportListQuery = z.object({
     .optional(),
   category: supportCaseSchema.shape.category.optional(),
   priority: z.enum(['NORMAL', 'HIGH', 'URGENT']).optional(),
+  lifecycle: z.enum(['ACTIVE', 'RESOLVED']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
@@ -1317,7 +1323,17 @@ export function createOperationsRouter(
       const clientIds = await authorizedSupportClientIds(prisma, authorization, req.auth!);
       const where = {
         clientId: { in: clientIds },
-        ...(query.status ? { status: query.status } : {}),
+        ...(query.status
+          ? { status: query.status }
+          : query.lifecycle === 'ACTIVE'
+            ? {
+                status: {
+                  in: ['OPEN', 'WAITING_ON_SUPPORT', 'WAITING_ON_CLIENT'] as SupportCaseStatus[],
+                },
+              }
+            : query.lifecycle === 'RESOLVED'
+              ? { status: { in: ['RESOLVED', 'CLOSED'] as SupportCaseStatus[] } }
+              : {}),
         ...(query.category ? { category: query.category } : {}),
         ...(query.priority ? { priority: query.priority } : {}),
         ...(query.search
@@ -1855,21 +1871,50 @@ export function createOperationsRouter(
     requireRole('CONSULTANT', 'ADMIN'),
     async (req, res, next) => {
       try {
-        const assigned = req.auth!.role === 'ADMIN' ? {} : { assigneeId: req.auth!.userId };
-        const clientScope =
-          req.auth!.role === 'ADMIN' ? {} : { assignedConsultantId: req.auth!.userId };
+        const now = new Date();
+        const clientScope: Prisma.ClientWhereInput =
+          req.auth!.role === 'ADMIN'
+            ? {}
+            : {
+                OR: [
+                  {
+                    staffAssignments: {
+                      some: {
+                        staffUserId: req.auth!.userId,
+                        activatedAt: { lte: now },
+                        deactivatedAt: null,
+                      },
+                    },
+                  },
+                  {
+                    accessGrants: {
+                      some: {
+                        granteeId: req.auth!.userId,
+                        startsAt: { lte: now },
+                        expiresAt: { gt: now },
+                        revokedAt: null,
+                        allowedCapabilities: { has: 'client.read' },
+                      },
+                    },
+                  },
+                ],
+              };
+        const actionableScope: Prisma.WorkItemWhereInput = {
+          client: clientScope,
+          OR: [{ assigneeId: req.auth!.userId }, { assigneeId: null }],
+        };
         const [open, dueToday, activeClients, reviews, readiness] = await Promise.all([
           prisma.workItem.count({
-            where: { ...assigned, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+            where: { ...actionableScope, status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] } },
           }),
           prisma.workItem.count({
             where: {
-              ...assigned,
-              status: { in: ['OPEN', 'IN_PROGRESS'] },
+              ...actionableScope,
+              status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
               dueAt: { lte: new Date(new Date().setHours(23, 59, 59, 999)) },
             },
           }),
-          prisma.client.count({ where: { ...clientScope, status: 'ACTIVE' } }),
+          prisma.client.count({ where: { AND: [clientScope, { status: 'ACTIVE' }] } }),
           prisma.creditReview.count({
             where: {
               status: { in: ['INFORMATION_RECEIVED', 'CONSULTANT_REVIEW'] },
@@ -1893,6 +1938,7 @@ export function createOperationsRouter(
           status: z.enum(['OPEN', 'IN_PROGRESS', 'WAITING', 'COMPLETED', 'CANCELLED']).optional(),
           priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional(),
           assignment: z.enum(['MINE', 'UNASSIGNED', 'ALL']).default('ALL'),
+          family: z.enum(['SUPPORT', 'LIVE']).optional(),
           search: z.string().trim().max(100).optional(),
           page: z.coerce.number().int().min(1).default(1),
           pageSize: z.coerce.number().int().min(1).max(50).default(20),
@@ -1920,14 +1966,38 @@ export function createOperationsRouter(
           })),
         )
       ).filter((item) => item.allowed);
-      const sourceScope = {
-        OR: allowedScopes.map((item) => ({
-          clientId: item.clientId,
-          sourceType: item.sourceType,
-        })),
-      };
+      const sourceScope = allowedScopes.map((item) => ({
+        clientId: item.clientId,
+        sourceType: item.sourceType,
+      }));
       const where = {
-        ...sourceScope,
+        AND: [
+          { OR: sourceScope },
+          ...(query.search
+            ? [
+                {
+                  OR: [
+                    { title: { contains: query.search, mode: 'insensitive' as const } },
+                    {
+                      client: {
+                        firstName: { contains: query.search, mode: 'insensitive' as const },
+                      },
+                    },
+                    {
+                      client: {
+                        lastName: { contains: query.search, mode: 'insensitive' as const },
+                      },
+                    },
+                  ],
+                },
+              ]
+            : []),
+        ],
+        ...(query.family === 'SUPPORT'
+          ? { sourceType: 'SUPPORT_CASE' }
+          : query.family === 'LIVE'
+            ? { sourceType: 'ApplicationSession' }
+            : {}),
         ...(query.status
           ? { status: query.status }
           : { status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] as WorkItemStatus[] } }),
@@ -1937,15 +2007,6 @@ export function createOperationsRouter(
           : query.assignment === 'UNASSIGNED'
             ? { assigneeId: null }
             : {}),
-        ...(query.search
-          ? {
-              OR: [
-                { title: { contains: query.search, mode: 'insensitive' as const } },
-                { client: { firstName: { contains: query.search, mode: 'insensitive' as const } } },
-                { client: { lastName: { contains: query.search, mode: 'insensitive' as const } } },
-              ],
-            }
-          : {}),
       };
       const [items, total, open, urgent, mine, unassigned] = await prisma.$transaction([
         prisma.workItem.findMany({
@@ -1961,27 +2022,27 @@ export function createOperationsRouter(
         prisma.workItem.count({ where }),
         prisma.workItem.count({
           where: {
-            ...sourceScope,
+            OR: sourceScope,
             status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
           },
         }),
         prisma.workItem.count({
           where: {
-            ...sourceScope,
+            OR: sourceScope,
             status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
             priority: 'URGENT',
           },
         }),
         prisma.workItem.count({
           where: {
-            ...sourceScope,
+            OR: sourceScope,
             status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
             assigneeId: req.auth!.userId,
           },
         }),
         prisma.workItem.count({
           where: {
-            ...sourceScope,
+            OR: sourceScope,
             status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
             assigneeId: null,
           },

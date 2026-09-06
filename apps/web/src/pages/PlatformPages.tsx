@@ -58,7 +58,8 @@ export function ConsultantDashboardPage() {
         description="Open prioritized work, client reviews, and support from one secure workspace."
       />
       <Alert severity="info">
-        This dashboard monitors current work. Work Queue remains the authoritative action source.
+        Counts include assigned and currently granted clients. Open work includes your items and
+        unassigned work you may claim; Work Queue remains the authoritative action source.
       </Alert>
       {query.isError && (
         <Alert severity="error">
@@ -150,6 +151,7 @@ export function WorkQueuePage() {
   const assignment = searchParams.get('assignment') ?? 'ALL';
   const priority = searchParams.get('priority') ?? '';
   const status = searchParams.get('status') ?? '';
+  const family = searchParams.get('family') ?? '';
   const search = searchParams.get('search') ?? '';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const updateQueueState = (changes: Record<string, string>) => {
@@ -185,10 +187,11 @@ export function WorkQueuePage() {
     pageSize: '12',
     ...(priority ? { priority } : {}),
     ...(status ? { status } : {}),
+    ...(family ? { family } : {}),
     ...(search ? { search } : {}),
   });
   const queue = useQuery({
-    queryKey: ['work-queue', assignment, priority, status, search, page],
+    queryKey: ['work-queue', assignment, priority, status, family, search, page],
     queryFn: () => apiRequest<QueueResponse>(`/api/v1/consultant/work-queue?${params}`),
     placeholderData: (previous) => previous,
   });
@@ -237,6 +240,7 @@ export function WorkQueuePage() {
               ...(assignment !== 'ALL' ? [`Assignment: ${humanizeCode(assignment)}`] : []),
               ...(priority ? [`Priority: ${priorityLabel(priority)}`] : []),
               ...(status ? [`Lifecycle: ${humanizeCode(status)}`] : []),
+              ...(family ? [`Work type: ${humanizeCode(family)}`] : []),
             ]}
             onClearFilters={() => {
               setSearchParams({ page: '1' });
@@ -244,6 +248,17 @@ export function WorkQueuePage() {
             resultLabel={`${queue.data?.total ?? 0} attention items`}
             loading={queue.isFetching}
           >
+            <TextField
+              select
+              label="Work type"
+              value={family}
+              onChange={(e) => updateQueueState({ family: e.target.value, page: '1' })}
+              sx={{ minWidth: 160 }}
+            >
+              <MenuItem value="">All work</MenuItem>
+              <MenuItem value="SUPPORT">Support</MenuItem>
+              <MenuItem value="LIVE">Live help</MenuItem>
+            </TextField>
             <TextField
               select
               label="Assignment"

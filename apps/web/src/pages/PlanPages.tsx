@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -46,7 +46,20 @@ type BuilderResponse = {
       version: number;
       optimisticVersion: number;
       sourceProfileVersion: number | null;
+      items: Array<{
+        stableKey: string;
+        type: Item['type'];
+        completionMode: Item['completionMode'];
+        owner: Item['owner'];
+        clientTitle: string;
+        clientBody: string | null;
+        consultantRationale: string | null;
+        sortOrder: number;
+        required: boolean;
+        pathMemberships: Array<{ path: { key: string } }>;
+      }>;
     }>;
+    title: string;
   };
   context: { review: null | { id: string } };
 };
@@ -120,6 +133,18 @@ export function ConsultantPlanBuilderPage() {
   });
   const [title, setTitle] = useState('Credit preparation plan');
   const [items, setItems] = useState<Item[]>(starterItems);
+  useEffect(() => {
+    const plan = query.data?.plan;
+    const version = plan?.versions[0];
+    if (!plan || !version) return;
+    setTitle(plan.title);
+    setItems(
+      version.items.map((item) => ({
+        ...item,
+        pathKeys: item.pathMemberships.map(({ path }) => path.key),
+      })),
+    );
+  }, [query.data?.plan?.id, query.data?.plan?.versions?.[0]?.optimisticVersion]);
   const draft = useMemo(
     () => ({
       title,

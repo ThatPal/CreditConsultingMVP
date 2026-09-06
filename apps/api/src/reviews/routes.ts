@@ -439,13 +439,27 @@ export function createReviewRouter(
     async (req, res, next) => {
       try {
         const input = parse(
-          z.object({
-            expectedVersion: z.number().int().positive(),
-            fieldPath: z.string().trim().min(1).max(120),
-            effectiveValue: z.unknown(),
-            reason: z.string().trim().min(1).max(1000),
-            sourceReference: z.unknown(),
-          }),
+          z
+            .object({
+              expectedVersion: z.number().int().positive(),
+              fieldPath: z.enum([
+                'aggregateUtilization',
+                'totalAccounts',
+                'openAccounts',
+                'hardInquiries',
+              ]),
+              effectiveValue: z.number().finite().nonnegative().max(500),
+              reason: z.string().trim().min(1).max(1000),
+              sourceReference: z.unknown(),
+            })
+            .superRefine((value, context) => {
+              if (value.fieldPath === 'aggregateUtilization' && value.effectiveValue > 100)
+                context.addIssue({
+                  code: 'custom',
+                  path: ['effectiveValue'],
+                  message: 'Aggregate utilization must be between 0 and 100',
+                });
+            }),
           req.body,
         );
         const draft = await saveReviewOverride(prisma, {

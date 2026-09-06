@@ -18,6 +18,12 @@ type Case = {
   status: string;
   version: number;
   recommendation?: { id: string; type: string; clientSafeExplanation: string };
+  draftRecommendation?: {
+    id: string;
+    version: number;
+    type: string;
+    clientSafeExplanation: string;
+  } | null;
   decision?: { type: string; clientSafeExplanation: string };
   restrictions: Array<{ id: string; scope: string; clearedAt?: string }>;
   timeline: Array<{ id: string; type: string; createdAt: string }>;
@@ -240,6 +246,23 @@ export function ConsultantMajorReadinessPage() {
       />
       <SectionCard>
         <Stack spacing={2}>
+          <Typography variant="h5">Recommendation workspace</Typography>
+          {c.recommendation ? (
+            <Alert severity="success">
+              <strong>Current approved guidance · {label(c.recommendation.type)}</strong>
+              <br />
+              {c.recommendation.clientSafeExplanation}
+            </Alert>
+          ) : (
+            <Alert severity="info">No consultant-approved guidance is currently published.</Alert>
+          )}
+          {c.draftRecommendation && (
+            <Alert severity="warning">
+              <strong>Editable draft v{c.draftRecommendation.version} · not client-visible</strong>
+              <br />
+              {label(c.draftRecommendation.type)} — {c.draftRecommendation.clientSafeExplanation}
+            </Alert>
+          )}
           <TextField
             select
             label="Recommendation"
@@ -261,20 +284,16 @@ export function ConsultantMajorReadinessPage() {
           <Button variant="contained" onClick={() => draft.mutate()}>
             Prepare draft
           </Button>
-          {c.recommendation && (
-            <>
-              <Alert severity="success">Approved: {c.recommendation.clientSafeExplanation}</Alert>
-            </>
-          )}
-          {!c.recommendation && (
-            <Typography>Draft preparation and explicit approval are separate actions.</Typography>
-          )}
+          <Typography>Draft preparation and explicit approval are separate actions.</Typography>
           <Button
-            disabled={!c.recommendation}
-            onClick={() => c.recommendation && approve.mutate(c.recommendation.id)}
+            disabled={!c.draftRecommendation || approve.isPending}
+            onClick={() => c.draftRecommendation && approve.mutate(c.draftRecommendation.id)}
           >
-            Approve current recommendation
+            Approve latest draft
           </Button>
+          {(draft.error || approve.error) && (
+            <Alert severity="error">{(draft.error ?? approve.error)?.message}</Alert>
+          )}
         </Stack>
       </SectionCard>
       <SectionCard>

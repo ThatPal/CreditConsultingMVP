@@ -246,7 +246,7 @@ export function App() {
             element={<ConsultantReviewWorkspacePage />}
           />
           <Route path="reviews" element={<ConsultantReviewsPage />} />
-          <Route path="card-catalog" element={<CatalogOperationsPage />} />
+          <Route path="card-catalog" element={<ExploreCardsPage consultant />} />
           <Route path="card-insights" element={<InsightOperationsPage canApprove />} />
           <Route path="reviews/:clientId/:reviewId" element={<ConsultantReviewWorkspacePage />} />
           <Route path="readiness" element={<ReadinessPage consultant />} />

@@ -991,6 +991,26 @@ describe('Support, notification, and application-cycle characterization', () => 
     );
     expect(consultantIds).toEqual(records.map(({ id }) => id).reverse());
     expect(new Set(consultantIds).size).toBe(4);
+    const active = await request(app)
+      .get(
+        '/api/v1/consultant/support-cases?search=Pagination%20proof&lifecycle=ACTIVE&pageSize=10',
+      )
+      .set('x-test-principal', assigned.header)
+      .expect(200);
+    expect(active.body.total).toBe(2);
+    expect(active.body.cases.map(({ status }: { status: string }) => status)).toEqual(
+      expect.arrayContaining(['OPEN', 'WAITING_ON_CLIENT']),
+    );
+    const resolved = await request(app)
+      .get(
+        '/api/v1/consultant/support-cases?search=Pagination%20proof&lifecycle=RESOLVED&pageSize=10',
+      )
+      .set('x-test-principal', assigned.header)
+      .expect(200);
+    expect(resolved.body.total).toBe(2);
+    expect(resolved.body.cases.map(({ status }: { status: string }) => status)).toEqual(
+      expect.arrayContaining(['RESOLVED', 'CLOSED']),
+    );
   });
 
   test('scopes notification reads and updates to the authenticated user', async () => {
@@ -1136,6 +1156,19 @@ describe('Attention Work Queue characterization', () => {
     });
     await reconcileSupportAttention(prisma, ticket);
     await reconcileSupportAttention(prisma, ticket);
+    const hiddenClient = await createClient('queue-hidden');
+    const hiddenTicket = await prisma.supportCase.create({
+      data: {
+        clientId: hiddenClient.client.id,
+        createdByUserId: hiddenClient.user.id,
+        category: 'OTHER',
+        priority: 'URGENT',
+        status: 'WAITING_ON_SUPPORT',
+        subject: 'Queue search scope secret',
+        lastMessageAt: new Date(),
+      },
+    });
+    await reconcileSupportAttention(prisma, hiddenTicket);
     expect(
       await prisma.workItem.count({
         where: {
@@ -1166,6 +1199,12 @@ describe('Attention Work Queue characterization', () => {
       route: '/crm/support',
       params: { caseId: ticket.id },
     });
+    const scopedSearch = await request(app)
+      .get('/api/v1/consultant/work-queue?search=scope%20secret')
+      .set('x-test-principal', assigned.header)
+      .expect(200);
+    expect(scopedSearch.body.items).toEqual([]);
+    expect(scopedSearch.body.total).toBe(0);
     const results = await Promise.all([
       request(app)
         .post(`/api/v1/consultant/work-queue/${item.id}/claim`)

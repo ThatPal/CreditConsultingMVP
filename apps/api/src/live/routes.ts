@@ -169,6 +169,19 @@ export function createLiveRouter(
       next(error);
     }
   });
+  router.get('/consultant/availability', requireRole('CONSULTANT'), async (req, res, next) => {
+    try {
+      const allowed = await authorization.authorizeCapability(req.auth!, 'strategy.read');
+      if (!allowed) throw new AppError('FORBIDDEN', 403, 'Availability access is not permitted');
+      const rules = await prisma.consultantAvailabilityRule.findMany({
+        where: { consultantId: req.auth!.userId },
+        orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }, { id: 'asc' }],
+      });
+      res.json({ rules });
+    } catch (error) {
+      next(error);
+    }
+  });
   router.get(
     '/consultant/clients/:clientId/appointments/:appointmentId',
     requireRole('CONSULTANT'),

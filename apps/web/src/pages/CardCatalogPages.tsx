@@ -53,7 +53,7 @@ const factsText = (facts: Record<string, unknown>) =>
     )
     .join(' · ');
 
-export function ExploreCardsPage() {
+export function ExploreCardsPage({ consultant = false }: { consultant?: boolean }) {
   const [params, setParams] = useSearchParams();
   const search = params.get('search') ?? '';
   const audience = params.get('audience') ?? '';
@@ -80,8 +80,12 @@ export function ExploreCardsPage() {
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Research"
-        title="Explore cards"
-        description="Compare current governed catalog facts. Exploring or saving a card is not a recommendation, eligibility decision, or application."
+        title={consultant ? 'Card research' : 'Explore cards'}
+        description={
+          consultant
+            ? 'Compare current governed catalog facts while advising a client. Research does not create a recommendation, eligibility decision, or application.'
+            : 'Compare current governed catalog facts. Exploring or saving a card is not a recommendation, eligibility decision, or application.'
+        }
       />
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
         <TextField
@@ -135,7 +139,7 @@ export function ExploreCardsPage() {
           }}
         >
           {query.data.products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product.id} product={product} consultant={consultant} />
           ))}
         </Box>
       )}
@@ -143,7 +147,7 @@ export function ExploreCardsPage() {
   );
 }
 
-function ProductCard({ product }: { product: CatalogProduct }) {
+function ProductCard({ product, consultant = false }: { product: CatalogProduct; consultant?: boolean }) {
   const client = useQueryClient();
   const save = useMutation({
     mutationFn: () =>
@@ -180,18 +184,20 @@ function ProductCard({ product }: { product: CatalogProduct }) {
             Expired promotional details are hidden until the source is refreshed.
           </Alert>
         )}
-        <Stack direction="row" spacing={1}>
-          <Button component={RouterLink} to={`/app/cards/${product.id}`} variant="outlined">
-            View details
-          </Button>
-          <Button
-            startIcon={<BookmarkAddRounded />}
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-          >
-            Save
-          </Button>
-        </Stack>
+        {!consultant && (
+          <Stack direction="row" spacing={1}>
+            <Button component={RouterLink} to={`/app/cards/${product.id}`} variant="outlined">
+              View details
+            </Button>
+            <Button
+              startIcon={<BookmarkAddRounded />}
+              onClick={() => save.mutate()}
+              disabled={save.isPending}
+            >
+              Save
+            </Button>
+          </Stack>
+        )}
         <Typography variant="caption" color="text.secondary">
           Research only — there is no Apply action on this surface.
         </Typography>

@@ -11,6 +11,8 @@ import {
   Grid,
   MenuItem,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from '@mui/material';
@@ -85,10 +87,28 @@ export function ClientsPage() {
             resultLabel={`${query.data?.total ?? 0} authorized clients`}
             loading={query.isFetching}
           >
-            <TextField select size="small" label="Status" value={status} onChange={(event) => update({ status: event.target.value, page: '1' })} sx={{ minWidth: 150 }}>
-              {['ACTIVE', 'LEAD', 'PAUSED', 'CLOSED', 'ALL'].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
+            <TextField
+              select
+              size="small"
+              label="Status"
+              value={status}
+              onChange={(event) => update({ status: event.target.value, page: '1' })}
+              sx={{ minWidth: 150 }}
+            >
+              {['ACTIVE', 'LEAD', 'PAUSED', 'CLOSED', 'ALL'].map((value) => (
+                <MenuItem key={value} value={value}>
+                  {value}
+                </MenuItem>
+              ))}
             </TextField>
-            <TextField select size="small" label="Sort" value={sort} onChange={(event) => update({ sort: event.target.value, page: '1' })} sx={{ minWidth: 170 }}>
+            <TextField
+              select
+              size="small"
+              label="Sort"
+              value={sort}
+              onChange={(event) => update({ sort: event.target.value, page: '1' })}
+              sx={{ minWidth: 170 }}
+            >
               <MenuItem value="NAME_ASC">Name A–Z</MenuItem>
               <MenuItem value="NAME_DESC">Name Z–A</MenuItem>
               <MenuItem value="NEWEST">Newest clients</MenuItem>
@@ -263,97 +283,167 @@ export function Client360Page() {
           </Button>
         }
       />
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 5 }}>
-          <SectionCard>
-            <Stack spacing={1}>
-              <Typography variant="h3">Contact context</Typography>
-              <Typography>{client.user.email}</Typography>
-              <Typography color="text.secondary">{client.phone ?? 'No phone provided'}</Typography>
-              <Typography color="text.secondary">Timezone: {client.timezone}</Typography>
-              <Chip label={client.status} color="success" sx={{ alignSelf: 'flex-start' }} />
-            </Stack>
-          </SectionCard>
+      <SectionCard variant="operational" sx={{ position: 'sticky', top: 0, zIndex: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="caption" color="text.secondary">
+            Client workspace · context remains scoped to {client.firstName} {client.lastName}
+          </Typography>
+          <Tabs
+            value={false}
+            variant="scrollable"
+            scrollButtons="auto"
+            aria-label="Client 360 sections"
+          >
+            <Tab component="a" href="#overview" label="Overview" />
+            <Tab component="a" href="#journey" label="Journey" />
+            <Tab
+              component={Link}
+              to={`/crm/clients/${clientId}/credit-center`}
+              label="Credit Center"
+            />
+            <Tab component={Link} to={`/crm/clients/${clientId}/cards`} label="Cards" />
+            <Tab component="a" href="#services" label="Services" />
+            <Tab component="a" href="#timeline" label="Timeline" />
+            <Tab component="a" href="#support" label="Support" />
+          </Tabs>
+        </Stack>
+      </SectionCard>
+      <Box id="overview" sx={{ scrollMarginTop: 120 }}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 5 }}>
+            <SectionCard>
+              <Stack spacing={1}>
+                <Typography variant="h3">Contact context</Typography>
+                <Typography>{client.user.email}</Typography>
+                <Typography color="text.secondary">
+                  {client.phone ?? 'No phone provided'}
+                </Typography>
+                <Typography color="text.secondary">Timezone: {client.timezone}</Typography>
+                <Chip label={client.status} color="success" sx={{ alignSelf: 'flex-start' }} />
+              </Stack>
+            </SectionCard>
+          </Grid>
+          <Grid size={{ xs: 12, md: 7 }}>
+            <SectionCard>
+              <Stack spacing={1}>
+                <Typography variant="h3">Access context</Typography>
+                <Typography>
+                  {client.assignedConsultant
+                    ? `Primary consultant: ${client.assignedConsultant.name ?? client.assignedConsultant.email}`
+                    : 'Access is provided by an active governed grant.'}
+                </Typography>
+                <Typography color="text.secondary">
+                  Only currently effective assignments and grants permit this view.
+                </Typography>
+              </Stack>
+            </SectionCard>
+          </Grid>
         </Grid>
-        <Grid size={{ xs: 12, md: 7 }}>
-          <SectionCard>
-            <Stack spacing={1}>
-              <Typography variant="h3">Access context</Typography>
-              <Typography>
-                {client.assignedConsultant
-                  ? `Primary consultant: ${client.assignedConsultant.name ?? client.assignedConsultant.email}`
-                  : 'Access is provided by an active governed grant.'}
-              </Typography>
-              <Typography color="text.secondary">
-                Only currently effective assignments and grants permit this view.
-              </Typography>
-            </Stack>
-          </SectionCard>
-        </Grid>
-      </Grid>
+      </Box>
       <SectionCard>
         <Stack spacing={1.5}>
           <Typography variant="h3">Client workspace</Typography>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-            <Button component={Link} to={`/crm/clients/${clientId}/plan`} variant="outlined">Plan</Button>
-            <Button component={Link} to={`/crm/clients/${clientId}/credit-center`} variant="outlined">Credit Center</Button>
-            <Button component={Link} to={`/crm/clients/${clientId}/cards`} variant="outlined">Cards</Button>
-            <Button component={Link} to="/crm/support" variant="outlined">Support</Button>
+            <Button component={Link} to={`/crm/clients/${clientId}/plan`} variant="outlined">
+              Plan
+            </Button>
+            <Button
+              component={Link}
+              to={`/crm/clients/${clientId}/credit-center`}
+              variant="outlined"
+            >
+              Credit Center
+            </Button>
+            <Button component={Link} to={`/crm/clients/${clientId}/cards`} variant="outlined">
+              Cards
+            </Button>
+            <Button component={Link} to="/crm/support" variant="outlined">
+              Support
+            </Button>
           </Stack>
         </Stack>
       </SectionCard>
-      {journeyQuery.isLoading && <CircularProgress aria-label="Loading client journey" />}
-      {journeyQuery.isError && (
-        <Alert severity="warning">Journey context is unavailable or access changed.</Alert>
-      )}
-      {journeyQuery.data?.journey && <JourneySummary data={journeyQuery.data} staff />}
-      {servicesQuery.data?.balance && <ClientServicesSummary data={servicesQuery.data} />}
-      <SectionCard>
-        <Stack spacing={1.5}>
-          <Typography variant="h3">Support</Typography>
-          {supportQuery.isLoading && (
-            <CircularProgress aria-label="Loading client support" size={24} />
-          )}
-          {supportQuery.isError && (
-            <Typography color="text.secondary">
-              Support history is available only to staff with Support authority.
-            </Typography>
-          )}
-          {supportQuery.data?.cases.length === 0 && (
-            <Typography color="text.secondary">No recent support requests.</Typography>
-          )}
-          {supportQuery.data?.cases.map((item) => (
-            <Button
-              key={item.id}
-              component={Link}
-              to={`/crm/support?case=${item.id}`}
-              variant="outlined"
-              sx={{ justifyContent: 'space-between' }}
-            >
-              <span>{item.subject}</span>
-              <span>{item.status.replaceAll('_', ' ')}</span>
-            </Button>
-          ))}
-        </Stack>
-      </SectionCard>
-      <SectionCard>
-        <Stack spacing={1.5}>
-          <Typography variant="h3">Canonical timeline</Typography>
-          {timelineQuery.isLoading && <CircularProgress aria-label="Loading client timeline" size={24} />}
-          {timelineQuery.isError && <Alert severity="warning">Timeline history is unavailable or access changed.</Alert>}
-          {timelineQuery.data?.events?.length === 0 && <Typography color="text.secondary">No recorded history yet.</Typography>}
-          <Stack divider={<Divider />}>
-            {timelineQuery.data?.events?.map((event) => (
-              <Button key={event.id} component={Link} to={event.deepLink} sx={{ justifyContent: 'space-between', py: 1.5 }}>
-                <span>{event.action.replaceAll('_', ' ')}</span>
-                <Typography component="span" variant="caption" color="text.secondary">
-                  {new Date(event.createdAt).toLocaleString()}
-                </Typography>
+      <Box id="journey" sx={{ scrollMarginTop: 120 }}>
+        {journeyQuery.isLoading && <CircularProgress aria-label="Loading client journey" />}
+        {journeyQuery.isError && (
+          <Alert severity="warning">Journey context is unavailable or access changed.</Alert>
+        )}
+        {journeyQuery.data?.journey && <JourneySummary data={journeyQuery.data} staff />}
+      </Box>
+      <Box id="services" sx={{ scrollMarginTop: 120 }}>
+        {servicesQuery.isLoading && (
+          <CircularProgress aria-label="Loading client services" size={24} />
+        )}
+        {servicesQuery.isError && (
+          <Alert severity="warning">Service and entitlement context is unavailable.</Alert>
+        )}
+        {servicesQuery.data?.balance ? (
+          <ClientServicesSummary data={servicesQuery.data} />
+        ) : !servicesQuery.isLoading && !servicesQuery.isError ? (
+          <Alert severity="info">No active service balance for this client.</Alert>
+        ) : null}
+      </Box>
+      <Box id="support" sx={{ scrollMarginTop: 120 }}>
+        <SectionCard>
+          <Stack spacing={1.5}>
+            <Typography variant="h3">Support</Typography>
+            {supportQuery.isLoading && (
+              <CircularProgress aria-label="Loading client support" size={24} />
+            )}
+            {supportQuery.isError && (
+              <Typography color="text.secondary">
+                Support history is available only to staff with Support authority.
+              </Typography>
+            )}
+            {supportQuery.data?.cases.length === 0 && (
+              <Typography color="text.secondary">No recent support requests.</Typography>
+            )}
+            {supportQuery.data?.cases.map((item) => (
+              <Button
+                key={item.id}
+                component={Link}
+                to={`/crm/support?case=${item.id}`}
+                variant="outlined"
+                sx={{ justifyContent: 'space-between' }}
+              >
+                <span>{item.subject}</span>
+                <span>{item.status.replaceAll('_', ' ')}</span>
               </Button>
             ))}
           </Stack>
-        </Stack>
-      </SectionCard>
+        </SectionCard>
+      </Box>
+      <Box id="timeline" sx={{ scrollMarginTop: 120 }}>
+        <SectionCard>
+          <Stack spacing={1.5}>
+            <Typography variant="h3">Canonical timeline</Typography>
+            {timelineQuery.isLoading && (
+              <CircularProgress aria-label="Loading client timeline" size={24} />
+            )}
+            {timelineQuery.isError && (
+              <Alert severity="warning">Timeline history is unavailable or access changed.</Alert>
+            )}
+            {timelineQuery.data?.events?.length === 0 && (
+              <Typography color="text.secondary">No recorded history yet.</Typography>
+            )}
+            <Stack divider={<Divider />}>
+              {timelineQuery.data?.events?.map((event) => (
+                <Button
+                  key={event.id}
+                  component={Link}
+                  to={event.deepLink}
+                  sx={{ justifyContent: 'space-between', py: 1.5 }}
+                >
+                  <span>{event.action.replaceAll('_', ' ')}</span>
+                  <Typography component="span" variant="caption" color="text.secondary">
+                    {new Date(event.createdAt).toLocaleString()}
+                  </Typography>
+                </Button>
+              ))}
+            </Stack>
+          </Stack>
+        </SectionCard>
+      </Box>
       <SectionCard>
         <Stack spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>

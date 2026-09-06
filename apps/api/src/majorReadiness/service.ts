@@ -8,9 +8,44 @@ const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(valu
 const json = (value: unknown) => value as Prisma.InputJsonValue;
 export const restrictionScopes = ['CYCLE', 'STRATEGY', 'SCHEDULING', 'LIVE_EXECUTION'] as const;
 
-export async function enqueueRecommendationPreparation(runtime: DurableAIRuntime, input: { caseId: string; clientId: string; caseVersion: number; profileStateId: string | null }) {
-  await runtime.registerProcess({ processKey: 'major-readiness.recommendation-draft', processVersion: 1, authorityLevel: 'FACTUAL_LEVEL_1', enabled: true, modelProfile: 'bounded-advisory-preparation', inputSchemaVersion: 1, outputSchemaVersion: 1, maxAttempts: 3, dataClassification: 'SENSITIVE', instructionVersion: 'phase15-v1', domainConsumer: 'major-readiness', allowedContext: ['intentType', 'targetTiming', 'published-profile'] });
-  return runtime.createAndEnqueue({ processKey: 'major-readiness.recommendation-draft', processVersion: 1, clientId: input.clientId, correlationId: input.caseId, relatedEntityType: 'MajorReadinessCase', relatedEntityId: input.caseId, sourceIdentity: `major-readiness:${input.caseId}:v${input.caseVersion}`, sourceVersions: { caseVersion: String(input.caseVersion), profileStateId: input.profileStateId ?? 'none' }, input: { caseId: input.caseId, caseVersion: input.caseVersion, profileStateId: input.profileStateId, authority: 'DRAFT_ONLY', prohibited: ['approve', 'finalize', 'predict-lender-approval'] } });
+export async function enqueueRecommendationPreparation(
+  runtime: DurableAIRuntime,
+  input: { caseId: string; clientId: string; caseVersion: number; profileStateId: string | null },
+) {
+  await runtime.registerProcess({
+    processKey: 'major-readiness.recommendation-draft',
+    processVersion: 1,
+    authorityLevel: 'FACTUAL_LEVEL_1',
+    enabled: true,
+    modelProfile: 'bounded-advisory-preparation',
+    inputSchemaVersion: 1,
+    outputSchemaVersion: 1,
+    maxAttempts: 3,
+    dataClassification: 'SENSITIVE',
+    instructionVersion: 'phase15-v1',
+    domainConsumer: 'major-readiness',
+    allowedContext: ['intentType', 'targetTiming', 'published-profile'],
+  });
+  return runtime.createAndEnqueue({
+    processKey: 'major-readiness.recommendation-draft',
+    processVersion: 1,
+    clientId: input.clientId,
+    correlationId: input.caseId,
+    relatedEntityType: 'MajorReadinessCase',
+    relatedEntityId: input.caseId,
+    sourceIdentity: `major-readiness:${input.caseId}:v${input.caseVersion}`,
+    sourceVersions: {
+      caseVersion: String(input.caseVersion),
+      profileStateId: input.profileStateId ?? 'none',
+    },
+    input: {
+      caseId: input.caseId,
+      caseVersion: input.caseVersion,
+      profileStateId: input.profileStateId,
+      authority: 'DRAFT_ONLY',
+      prohibited: ['approve', 'finalize', 'predict-lender-approval'],
+    },
+  });
 }
 
 export async function assertNoCreditActivityRestriction(
@@ -70,8 +105,9 @@ export async function getCase(
     throw new AppError('MAJOR_READINESS_CASE_NOT_FOUND', 404, 'Major Readiness case was not found');
   if (!item) return { case: null };
   const approved = item.recommendations.find((r) => r.approvedAt && !r.supersededAt);
-  const recommendation =
-    approved ?? (includeDraft ? item.recommendations.find((r) => !r.supersededAt) : undefined);
+  const draft = includeDraft
+    ? item.recommendations.find((r) => !r.approvedAt && !r.supersededAt)
+    : undefined;
   return {
     case: {
       id: item.id,
@@ -85,13 +121,22 @@ export async function getCase(
       sourceReviewId: item.sourceReviewId,
       preparationPlanId: item.preparationPlanId,
       finalizedAt: item.finalizedAt,
-      recommendation: recommendation
+      recommendation: approved
         ? {
-            id: recommendation.id,
-            version: recommendation.version,
-            type: recommendation.type,
-            clientSafeExplanation: recommendation.clientSafeExplanation,
-            approvedAt: recommendation.approvedAt,
+            id: approved.id,
+            version: approved.version,
+            type: approved.type,
+            clientSafeExplanation: approved.clientSafeExplanation,
+            approvedAt: approved.approvedAt,
+          }
+        : null,
+      draftRecommendation: draft
+        ? {
+            id: draft.id,
+            version: draft.version,
+            type: draft.type,
+            clientSafeExplanation: draft.clientSafeExplanation,
+            approvedAt: null,
           }
         : null,
       decision: item.decisions.find((d) => !d.supersededAt)
@@ -663,15 +708,74 @@ export async function clearRestrictions(
   });
 }
 
-export async function recordMajorApplicationOutcome(prisma: PrismaClient, input: { caseId: string; clientId: string; actorId: string; outcome: string; submittedAt?: Date | undefined; idempotencyKey: string }) {
-  return executeConsequentialCommand(prisma, { idempotency: { scope: 'major-readiness', subjectId: input.caseId, operation: 'record-major-outcome', key: input.idempotencyKey, requestHash: hash({ outcome: input.outcome, submittedAt: input.submittedAt }) }, audit: { action: 'MAJOR_APPLICATION_OUTCOME_RECORDED', entityType: 'MajorReadinessCase', entityId: input.caseId, clientId: input.clientId, actorId: input.actorId }, outbox: { eventType: 'major-readiness.changed', eventKey: `major-readiness:${input.caseId}:outcome:${input.idempotencyKey}`, aggregateType: 'MajorReadinessCase', aggregateId: input.caseId, payload: { clientId: input.clientId, caseId: input.caseId, reassessmentRequired: true } }, mutate: async (tx) => {
-    const changed = await tx.majorReadinessCase.updateMany({ where: { id: input.caseId, clientId: input.clientId, status: { not: 'COMPLETE' } }, data: { majorApplicationSubmittedAt: input.submittedAt ?? new Date(), majorApplicationOutcome: input.outcome, status: 'REASSESSMENT', version: { increment: 1 } } });
-    if (changed.count !== 1) throw new AppError('CASE_NOT_CURRENT', 409, 'Case is not current');
-    await tx.majorReadinessRecommendation.updateMany({ where: { caseId: input.caseId, supersededAt: null }, data: { supersededAt: new Date() } });
-    await tx.coordinationDecision.updateMany({ where: { caseId: input.caseId, supersededAt: null }, data: { supersededAt: new Date() } });
-    await tx.majorReadinessEvent.create({ data: { caseId: input.caseId, clientId: input.clientId, actorUserId: input.actorId, type: 'MAJOR_APPLICATION_OUTCOME_RECORDED', payload: json({ outcome: input.outcome, lenderDecisionIsFactual: true, advisoryRecommendationSuperseded: true }) } });
-    return { caseId: input.caseId, status: 'REASSESSMENT', outcome: input.outcome };
-  } });
+export async function recordMajorApplicationOutcome(
+  prisma: PrismaClient,
+  input: {
+    caseId: string;
+    clientId: string;
+    actorId: string;
+    outcome: string;
+    submittedAt?: Date | undefined;
+    idempotencyKey: string;
+  },
+) {
+  return executeConsequentialCommand(prisma, {
+    idempotency: {
+      scope: 'major-readiness',
+      subjectId: input.caseId,
+      operation: 'record-major-outcome',
+      key: input.idempotencyKey,
+      requestHash: hash({ outcome: input.outcome, submittedAt: input.submittedAt }),
+    },
+    audit: {
+      action: 'MAJOR_APPLICATION_OUTCOME_RECORDED',
+      entityType: 'MajorReadinessCase',
+      entityId: input.caseId,
+      clientId: input.clientId,
+      actorId: input.actorId,
+    },
+    outbox: {
+      eventType: 'major-readiness.changed',
+      eventKey: `major-readiness:${input.caseId}:outcome:${input.idempotencyKey}`,
+      aggregateType: 'MajorReadinessCase',
+      aggregateId: input.caseId,
+      payload: { clientId: input.clientId, caseId: input.caseId, reassessmentRequired: true },
+    },
+    mutate: async (tx) => {
+      const changed = await tx.majorReadinessCase.updateMany({
+        where: { id: input.caseId, clientId: input.clientId, status: { not: 'COMPLETE' } },
+        data: {
+          majorApplicationSubmittedAt: input.submittedAt ?? new Date(),
+          majorApplicationOutcome: input.outcome,
+          status: 'REASSESSMENT',
+          version: { increment: 1 },
+        },
+      });
+      if (changed.count !== 1) throw new AppError('CASE_NOT_CURRENT', 409, 'Case is not current');
+      await tx.majorReadinessRecommendation.updateMany({
+        where: { caseId: input.caseId, supersededAt: null },
+        data: { supersededAt: new Date() },
+      });
+      await tx.coordinationDecision.updateMany({
+        where: { caseId: input.caseId, supersededAt: null },
+        data: { supersededAt: new Date() },
+      });
+      await tx.majorReadinessEvent.create({
+        data: {
+          caseId: input.caseId,
+          clientId: input.clientId,
+          actorUserId: input.actorId,
+          type: 'MAJOR_APPLICATION_OUTCOME_RECORDED',
+          payload: json({
+            outcome: input.outcome,
+            lenderDecisionIsFactual: true,
+            advisoryRecommendationSuperseded: true,
+          }),
+        },
+      });
+      return { caseId: input.caseId, status: 'REASSESSMENT', outcome: input.outcome };
+    },
+  });
 }
 
 export async function finalizeCase(
