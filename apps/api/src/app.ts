@@ -5,7 +5,7 @@ import express from 'express';
 import { toNodeHandler } from 'better-auth/node';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
-import type { Logger } from 'pino';
+import type { DestinationStream, Logger } from 'pino';
 import type { AuthService } from './auth/authService.js';
 import { authenticate, authenticatePrincipal } from './auth/middleware.js';
 import type { BetterAuthInstance } from './auth/betterAuth.js';
@@ -60,6 +60,22 @@ export const httpLogRedact = [
   'res.headers["set-cookie"]',
 ] as const;
 
+export function createHttpLogger(level: string, stream?: DestinationStream) {
+  return pinoHttp(
+    {
+      level,
+      redact: [...httpLogRedact],
+      genReqId: (req, res) => {
+        const id = req.headers['x-request-id']?.toString() ?? randomUUID();
+        res.setHeader('x-request-id', id);
+        return id;
+      },
+      customProps: (req) => ({ requestId: req.id }),
+    },
+    stream,
+  );
+}
+
 export function createApp(
   env: AppEnv,
   logger: Logger,
@@ -88,18 +104,7 @@ export function createApp(
   if (prisma) app.use('/api/v1/webhooks', createPaymentWebhookRouter(prisma, paymentGateways));
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
-  app.use(
-    pinoHttp({
-      level: logger.level,
-      redact: [...httpLogRedact],
-      genReqId: (req, res) => {
-        const id = req.headers['x-request-id']?.toString() ?? randomUUID();
-        res.setHeader('x-request-id', id);
-        return id;
-      },
-      customProps: (req) => ({ requestId: req.id }),
-    }),
-  );
+  app.use(createHttpLogger(logger.level));
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   if (prisma) app.use('/api/v1/goal-intakes', createGoalIntakePublicRouter(prisma));
   app.get('/ready', async (_req, res) => {

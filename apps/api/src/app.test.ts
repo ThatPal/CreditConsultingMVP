@@ -1,7 +1,8 @@
 import pino from 'pino';
 import request from 'supertest';
 import { describe, expect, test } from 'vitest';
-import { createApp, httpLogRedact } from './app.js';
+import express from 'express';
+import { createApp, createHttpLogger, httpLogRedact } from './app.js';
 import { loadEnv } from './config/env.js';
 
 const env = loadEnv({
@@ -21,6 +22,37 @@ describe('API foundation', () => {
         'res.headers["set-cookie"]',
       ]),
     );
+  });
+  test('never serializes credential-bearing request or response header values', async () => {
+    const authorizationSecret = 'wave0-authorization-secret';
+    const cookieSecret = 'wave0-cookie-secret';
+    const responseCookieSecret = 'wave0-response-cookie-secret';
+    const chunks: string[] = [];
+    const loggingApp = express();
+    loggingApp.use(
+      createHttpLogger('info', {
+        write(chunk) {
+          chunks.push(chunk.toString());
+        },
+      }),
+    );
+    loggingApp.get('/credential-redaction-proof', (_req, res) => {
+      res.setHeader('set-cookie', `session=${responseCookieSecret}; HttpOnly; Secure`);
+      res.json({ status: 'ok' });
+    });
+
+    await request(loggingApp)
+      .get('/credential-redaction-proof')
+      .set('authorization', `Bearer ${authorizationSecret}`)
+      .set('cookie', `session=${cookieSecret}`)
+      .expect(200);
+
+    const serializedLogs = chunks.join('');
+    expect(serializedLogs).not.toContain(authorizationSecret);
+    expect(serializedLogs).not.toContain(cookieSecret);
+    expect(serializedLogs).not.toContain(responseCookieSecret);
+    expect(serializedLogs).not.toContain('Bearer ');
+    expect(serializedLogs).toContain('[Redacted]');
   });
   test('reports health', async () => {
     const response = await request(app).get('/health').expect(200);
