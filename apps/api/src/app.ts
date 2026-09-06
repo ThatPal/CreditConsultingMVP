@@ -54,6 +54,12 @@ export type ReadinessChecks = {
   redis(): Promise<void>;
 };
 
+export const httpLogRedact = [
+  'req.headers.authorization',
+  'req.headers.cookie',
+  'res.headers["set-cookie"]',
+] as const;
+
 export function createApp(
   env: AppEnv,
   logger: Logger,
@@ -85,6 +91,7 @@ export function createApp(
   app.use(
     pinoHttp({
       level: logger.level,
+      redact: [...httpLogRedact],
       genReqId: (req, res) => {
         const id = req.headers['x-request-id']?.toString() ?? randomUUID();
         res.setHeader('x-request-id', id);

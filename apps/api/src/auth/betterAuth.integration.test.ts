@@ -194,9 +194,7 @@ describe.sequential('Better Auth client authentication', () => {
       staffMfaVerified: false,
       stepUpVerified: false,
     });
-    expect(
-      deriveMfaAssurance('ADMIN', true, new Date(Date.now() - 16 * 60_000), 15),
-    ).toEqual({
+    expect(deriveMfaAssurance('ADMIN', true, new Date(Date.now() - 16 * 60_000), 15)).toEqual({
       staffMfaVerified: true,
       stepUpVerified: false,
     });
@@ -244,108 +242,138 @@ describe.sequential('Better Auth client authentication', () => {
     ).toBe(1);
   });
 
-  test('enrolls seeded staff with an otpauth URI, verifies TOTP, and resets to an enrollable state', async () => {
-    await prisma.user.deleteMany({ where: { email: staffEmail } });
-    const passwordHash = await hashPassword(password);
-    const staff = await prisma.user.create({
-      data: {
-        email: staffEmail,
-        name: 'Sprint 4.1 Staff',
-        emailVerified: true,
-        passwordHash,
-        role: 'CONSULTANT',
-        status: 'ACTIVE',
-      },
-    });
-    await prisma.betterAuthAccount.create({
-      data: {
-        issuer: 'local:credential',
-        accountId: staff.id,
+  test.each([false, true])(
+    'enrolls staff and recovers disabled MFA with a previously verified factor (%s)',
+    async (previouslyVerified) => {
+      await prisma.user.deleteMany({ where: { email: staffEmail } });
+      const passwordHash = await hashPassword(password);
+      const staff = await prisma.user.create({
+        data: {
+          email: staffEmail,
+          name: 'Sprint 4.1 Staff',
+          emailVerified: true,
+          passwordHash,
+          role: 'CONSULTANT',
+          status: 'ACTIVE',
+        },
+      });
+      await prisma.betterAuthAccount.create({
+        data: {
+          issuer: 'local:credential',
+          accountId: staff.id,
+          userId: staff.id,
+          providerId: 'credential',
+          password: passwordHash,
+        },
+      });
+      const signedIn = await signIn(staffEmail);
+      expect(signedIn.response.status).toBe(200);
+      let enabled = await call('/api/auth/two-factor/enable', {
+        cookie: signedIn.cookie,
+        body: { password },
+      });
+      if (previouslyVerified) {
+        // Reproduce the review database: enrollment disabled, retained factor verified.
+        await prisma.betterAuthTwoFactor.updateMany({
+          where: { userId: staff.id },
+          data: { verified: true },
+        });
+        enabled = await call('/api/auth/two-factor/enable', {
+          cookie: signedIn.cookie,
+          body: { password },
+        });
+      }
+      expect(enabled.status).toBe(200);
+      expect(
+        await prisma.betterAuthTwoFactor.findFirst({
+          where: { userId: staff.id },
+          select: { verified: true },
+        }),
+      ).toEqual({ verified: false });
+      const enrollment = (await enabled.json()) as { totpURI: string; backupCodes: string[] };
+      expect(enrollment.totpURI).toMatch(/^otpauth:\/\/totp\//);
+      expect(enrollment.backupCodes.length).toBeGreaterThan(0);
+      const secret = new URL(enrollment.totpURI).searchParams.get('secret');
+      expect(secret).toBeTruthy();
+      const currentCode = totp(secret!);
+      const rejectedCode = `${(Number(currentCode[0]) + 1) % 10}${currentCode.slice(1)}`;
+      const rejected = await call('/api/auth/two-factor/verify-totp', {
+        cookie: signedIn.cookie,
+        body: { code: rejectedCode },
+      });
+      expect(rejected.status).toBe(401);
+      expect(
+        await resolveBetterAuthPrincipal(auth, prisma, { cookie: signedIn.cookie }),
+      ).toMatchObject({ staffMfaEnabled: false, staffMfaVerified: false });
+      const verified = await call('/api/auth/two-factor/verify-totp', {
+        cookie: signedIn.cookie,
+        body: { code: totp(secret!) },
+      });
+      expect(verified.status).toBe(200);
+      const verifiedCookie = cookieFrom(verified) || signedIn.cookie;
+      const principal = await resolveBetterAuthPrincipal(
+        auth,
+        prisma,
+        { cookie: verifiedCookie },
+        env.MFA_STEP_UP_TTL_MINUTES,
+      );
+      expect(principal).toMatchObject({
         userId: staff.id,
-        providerId: 'credential',
-        password: passwordHash,
-      },
-    });
-    const signedIn = await signIn(staffEmail);
-    expect(signedIn.response.status).toBe(200);
-    const enabled = await call('/api/auth/two-factor/enable', {
-      cookie: signedIn.cookie,
-      body: { password },
-    });
-    expect(enabled.status).toBe(200);
-    const enrollment = (await enabled.json()) as { totpURI: string; backupCodes: string[] };
-    expect(enrollment.totpURI).toMatch(/^otpauth:\/\/totp\//);
-    expect(enrollment.backupCodes.length).toBeGreaterThan(0);
-    const secret = new URL(enrollment.totpURI).searchParams.get('secret');
-    expect(secret).toBeTruthy();
-    const verified = await call('/api/auth/two-factor/verify-totp', {
-      cookie: signedIn.cookie,
-      body: { code: totp(secret!) },
-    });
-    expect(verified.status).toBe(200);
-    const verifiedCookie = cookieFrom(verified) || signedIn.cookie;
-    const principal = await resolveBetterAuthPrincipal(
-      auth,
-      prisma,
-      { cookie: verifiedCookie },
-      env.MFA_STEP_UP_TTL_MINUTES,
-    );
-    expect(principal).toMatchObject({
-      userId: staff.id,
-      role: 'CONSULTANT',
-      staffMfaEnabled: true,
-      staffMfaVerified: true,
-      stepUpVerified: true,
-    });
-    expect(
-      await prisma.user.findUniqueOrThrow({
-        where: { id: staff.id },
-        select: { twoFactorEnabled: true },
-      }),
-    ).toMatchObject({ twoFactorEnabled: true });
+        role: 'CONSULTANT',
+        staffMfaEnabled: true,
+        staffMfaVerified: true,
+        stepUpVerified: true,
+      });
+      expect(
+        await prisma.user.findUniqueOrThrow({
+          where: { id: staff.id },
+          select: { twoFactorEnabled: true },
+        }),
+      ).toMatchObject({ twoFactorEnabled: true });
 
-    await call('/api/auth/sign-out', { cookie: verifiedCookie, body: {} });
-    const challengedSignIn = await signIn(staffEmail);
-    expect(challengedSignIn.response.status).toBe(200);
-    await expect(challengedSignIn.response.clone().json()).resolves.toMatchObject({
-      twoFactorRedirect: true,
-    });
-    const invalidChallenge = await call('/api/auth/two-factor/verify-totp', {
-      cookie: cookiesFrom(challengedSignIn.response),
-      body: { code: '000000' },
-    });
-    expect([400, 401]).toContain(invalidChallenge.status);
-    expect(await prisma.betterAuthSession.count({ where: { userId: staff.id } })).toBe(0);
-    const verifiedChallenge = await call('/api/auth/two-factor/verify-totp', {
-      cookie: cookiesFrom(challengedSignIn.response),
-      body: { code: totp(secret!) },
-    });
-    expect(verifiedChallenge.status).toBe(200);
-    const challengePrincipal = await resolveBetterAuthPrincipal(
-      auth,
-      prisma,
-      { cookie: cookiesFrom(verifiedChallenge) },
-      env.MFA_STEP_UP_TTL_MINUTES,
-    );
-    expect(challengePrincipal).toMatchObject({
-      userId: staff.id,
-      staffMfaVerified: true,
-      stepUpVerified: true,
-    });
+      await call('/api/auth/sign-out', { cookie: verifiedCookie, body: {} });
+      const challengedSignIn = await signIn(staffEmail);
+      expect(challengedSignIn.response.status).toBe(200);
+      await expect(challengedSignIn.response.clone().json()).resolves.toMatchObject({
+        twoFactorRedirect: true,
+      });
+      const invalidChallenge = await call('/api/auth/two-factor/verify-totp', {
+        cookie: cookiesFrom(challengedSignIn.response),
+        body: { code: '000000' },
+      });
+      expect([400, 401]).toContain(invalidChallenge.status);
+      expect(await prisma.betterAuthSession.count({ where: { userId: staff.id } })).toBe(0);
+      const verifiedChallenge = await call('/api/auth/two-factor/verify-totp', {
+        cookie: cookiesFrom(challengedSignIn.response),
+        body: { code: totp(secret!) },
+      });
+      expect(verifiedChallenge.status).toBe(200);
+      const challengePrincipal = await resolveBetterAuthPrincipal(
+        auth,
+        prisma,
+        { cookie: cookiesFrom(verifiedChallenge) },
+        env.MFA_STEP_UP_TTL_MINUTES,
+      );
+      expect(challengePrincipal).toMatchObject({
+        userId: staff.id,
+        staffMfaVerified: true,
+        stepUpVerified: true,
+      });
 
-    await resetReviewStaffMfa(prisma, [staff.id]);
-    expect(await prisma.betterAuthTwoFactor.count({ where: { userId: staff.id } })).toBe(0);
-    expect(await prisma.betterAuthSession.count({ where: { userId: staff.id } })).toBe(0);
-    const resetSignIn = await signIn(staffEmail);
-    const reenabled = await call('/api/auth/two-factor/enable', {
-      cookie: resetSignIn.cookie,
-      body: { password },
-    });
-    expect(reenabled.status).toBe(200);
-    expect(((await reenabled.json()) as { totpURI: string }).totpURI).toMatch(
-      /^otpauth:\/\/totp\//,
-    );
-  });
+      await resetReviewStaffMfa(prisma, [staff.id]);
+      expect(await prisma.betterAuthTwoFactor.count({ where: { userId: staff.id } })).toBe(0);
+      expect(await prisma.betterAuthSession.count({ where: { userId: staff.id } })).toBe(0);
+      const resetSignIn = await signIn(staffEmail);
+      const reenabled = await call('/api/auth/two-factor/enable', {
+        cookie: resetSignIn.cookie,
+        body: { password },
+      });
+      expect(reenabled.status).toBe(200);
+      expect(((await reenabled.json()) as { totpURI: string }).totpURI).toMatch(
+        /^otpauth:\/\/totp\//,
+      );
+    },
+  );
 
   test('gives seeded Admin the same verified QR-first enrollment and deterministic reset', async () => {
     await prisma.user.deleteMany({ where: { email: adminEmail } });

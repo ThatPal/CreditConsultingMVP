@@ -58,6 +58,10 @@ describe('CRM-02 Work Queue', () => {
       </ThemeProvider>,
     );
     expect(await screen.findByText(/Deadline question/)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/consultant/work-queue?'),
+      expect.anything(),
+    );
     expect(screen.getByText('1 urgent')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open workspace' })).toHaveAttribute(
       'href',
@@ -66,7 +70,7 @@ describe('CRM-02 Work Queue', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Claim' }));
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/consultant/work-queue/attention-1/claim'),
+        expect.stringContaining('/api/v1/consultant/work-queue/attention-1/claim'),
         expect.objectContaining({ method: 'POST', body: JSON.stringify({ expectedVersion: 2 }) }),
       ),
     );

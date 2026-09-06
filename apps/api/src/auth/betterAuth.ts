@@ -116,6 +116,18 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
           });
         if (context.path === '/two-factor/enable' && !isAPIError(context.context.returned)) {
           const actorId = context.context.session?.user.id;
+          // A retained verified factor can outlive disabled account-level MFA.
+          // Better Auth preserves that factor flag on enable, then skips the
+          // account activation in verify-totp. Require fresh proof for the newly
+          // issued factor; never enable the account or grant assurance here.
+          if (actorId)
+            await prisma.betterAuthTwoFactor.updateMany({
+              where: {
+                userId: actorId,
+                user: { twoFactorEnabled: false, role: { in: ['ADMIN', 'CONSULTANT'] } },
+              },
+              data: { verified: false },
+            });
           await prisma.securityEvent.create({
             data: {
               ...(actorId ? { actorId } : {}),

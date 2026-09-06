@@ -1,7 +1,7 @@
 import pino from 'pino';
 import request from 'supertest';
 import { describe, expect, test } from 'vitest';
-import { createApp } from './app.js';
+import { createApp, httpLogRedact } from './app.js';
 import { loadEnv } from './config/env.js';
 
 const env = loadEnv({
@@ -13,6 +13,15 @@ const env = loadEnv({
 const app = createApp(env, pino({ level: 'silent' }));
 
 describe('API foundation', () => {
+  test('configures HTTP-boundary credential redaction', () => {
+    expect(httpLogRedact).toEqual(
+      expect.arrayContaining([
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'res.headers["set-cookie"]',
+      ]),
+    );
+  });
   test('reports health', async () => {
     const response = await request(app).get('/health').expect(200);
     expect(response.body).toEqual({ status: 'ok' });

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
-import { requireCapability, requireRole } from '../auth/middleware.js';
+import { requireCanonicalCapability, requireCapability, requireRole } from '../auth/middleware.js';
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import {
@@ -49,7 +49,7 @@ export function createCardRouter(
   const router = Router();
   router.get(
     '/cards/catalog',
-    requireCapability(authorization, 'catalog.read', undefined, undefined, recorder),
+    requireCanonicalCapability(authorization, 'catalog.read', undefined, recorder),
     async (req, res, next) => {
       try {
         res.json({ products: await listCatalog(prisma, querySchema.parse(req.query)) });
@@ -60,7 +60,7 @@ export function createCardRouter(
   );
   router.get(
     '/cards/catalog/:productId/offers',
-    requireCapability(authorization, 'catalog.read', undefined, undefined, recorder),
+    requireCanonicalCapability(authorization, 'catalog.read', undefined, recorder),
     async (req, res, next) => {
       try {
         res.json({ offers: await offerHistory(prisma, req.params.productId as string) });
@@ -78,15 +78,13 @@ export function createCardRouter(
   });
   router.post('/client/cards', requireRole('CLIENT'), async (req, res, next) => {
     try {
-      res
-        .status(201)
-        .json(
-          await saveClientCard(prisma, {
-            clientId: req.auth!.clientId!,
-            actorId: req.auth!.userId,
-            ...cardSchema.parse(req.body),
-          }),
-        );
+      res.status(201).json(
+        await saveClientCard(prisma, {
+          clientId: req.auth!.clientId!,
+          actorId: req.auth!.userId,
+          ...cardSchema.parse(req.body),
+        }),
+      );
     } catch (error) {
       next(error);
     }
@@ -325,15 +323,13 @@ export function createCardRouter(
               .optional(),
           })
           .parse(req.body);
-        res
-          .status(201)
-          .json(
-            await prepareInsight(prisma, {
-              productId: req.params.productId as string,
-              actorId: req.auth!.userId,
-              ...body,
-            }),
-          );
+        res.status(201).json(
+          await prepareInsight(prisma, {
+            productId: req.params.productId as string,
+            actorId: req.auth!.userId,
+            ...body,
+          }),
+        );
       } catch (error) {
         next(error);
       }

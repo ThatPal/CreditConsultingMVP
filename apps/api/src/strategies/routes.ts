@@ -58,19 +58,17 @@ export function createStrategyRouter(
     requireCapability(authorization, 'strategy.manage', 'clientId', undefined, recorder),
     async (req, res, next) => {
       try {
-        res
-          .status(201)
-          .json(
-            await createStrategyDraft(
-              prisma,
-              {
-                roundId: req.params.roundId as string,
-                clientId: req.params.clientId as string,
-                actorId: req.auth!.userId,
-              },
-              aiRuntime,
-            ),
-          );
+        res.status(201).json(
+          await createStrategyDraft(
+            prisma,
+            {
+              roundId: req.params.roundId as string,
+              clientId: req.params.clientId as string,
+              actorId: req.auth!.userId,
+            },
+            aiRuntime,
+          ),
+        );
       } catch (error) {
         next(error);
       }
@@ -194,7 +192,7 @@ export function createStrategyRouter(
       }
     },
   );
-  router.use('/admin', (_req, _res, next) =>
+  router.use(['/admin/strategies', '/admin/clients/:clientId/strategies'], (_req, _res, next) =>
     next(new AppError('FORBIDDEN', 403, 'Admin role alone does not grant strategy authority')),
   );
   return router;
