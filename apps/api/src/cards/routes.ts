@@ -214,7 +214,7 @@ export function createCardRouter(
   );
   router.get(
     '/catalog/candidates',
-    requireCapability(authorization, 'catalog.read', undefined, undefined, recorder),
+    requireCanonicalCapability(authorization, 'catalog.read', undefined, recorder),
     async (req, res, next) => {
       try {
         const status = z
@@ -229,7 +229,7 @@ export function createCardRouter(
   );
   router.post(
     '/catalog/candidates',
-    requireCapability(authorization, 'catalog.manage', undefined, undefined, recorder),
+    requireCanonicalCapability(authorization, 'catalog.manage', undefined, recorder),
     async (req, res, next) => {
       try {
         const body = z
@@ -253,13 +253,7 @@ export function createCardRouter(
   );
   router.post(
     '/catalog/candidates/:candidateId/approve',
-    requireCapability(
-      authorization,
-      'catalog.manage',
-      undefined,
-      { requireStepUp: true },
-      recorder,
-    ),
+    requireCanonicalCapability(authorization, 'catalog.manage', { requireStepUp: true }, recorder),
     async (req, res, next) => {
       try {
         const body = z
@@ -282,13 +276,7 @@ export function createCardRouter(
   );
   router.post(
     '/catalog/candidates/:candidateId/review',
-    requireCapability(
-      authorization,
-      'catalog.manage',
-      undefined,
-      { requireStepUp: true },
-      recorder,
-    ),
+    requireCanonicalCapability(authorization, 'catalog.manage', { requireStepUp: true }, recorder),
     async (req, res, next) => {
       try {
         const body = z
@@ -314,7 +302,7 @@ export function createCardRouter(
   router.post(
     '/catalog/products/:productId/insights',
     requireRole('CONSULTANT'),
-    requireCapability(authorization, 'catalog.manage', undefined, undefined, recorder),
+    requireCanonicalCapability(authorization, 'catalog.manage', undefined, recorder),
     async (req, res, next) => {
       try {
         const body = z
@@ -349,7 +337,7 @@ export function createCardRouter(
   );
   router.get(
     '/catalog/insights',
-    requireCapability(authorization, 'catalog.manage', undefined, undefined, recorder),
+    requireCanonicalCapability(authorization, 'catalog.manage', undefined, recorder),
     async (req, res, next) => {
       try {
         const status = z
@@ -365,13 +353,7 @@ export function createCardRouter(
   router.post(
     '/catalog/insights/:insightId/approve',
     requireRole('CONSULTANT'),
-    requireCapability(
-      authorization,
-      'catalog.manage',
-      undefined,
-      { requireStepUp: true },
-      recorder,
-    ),
+    requireCanonicalCapability(authorization, 'catalog.manage', { requireStepUp: true }, recorder),
     async (req, res, next) => {
       try {
         const body = z
@@ -403,13 +385,7 @@ export function createCardRouter(
   router.post(
     '/catalog/insights/:insightId/reject',
     requireRole('CONSULTANT'),
-    requireCapability(
-      authorization,
-      'catalog.manage',
-      undefined,
-      { requireStepUp: true },
-      recorder,
-    ),
+    requireCanonicalCapability(authorization, 'catalog.manage', { requireStepUp: true }, recorder),
     async (req, res, next) => {
       try {
         const body = z.object({ note: z.string().min(1).max(1000) }).parse(req.body);
