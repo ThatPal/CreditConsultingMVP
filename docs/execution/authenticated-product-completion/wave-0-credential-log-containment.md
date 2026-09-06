@@ -1,6 +1,6 @@
 # Wave 0 — P0 Credential / Log Containment
 
-Status: **IMPLEMENTED — EXACT-HEAD CI PENDING**
+Status: **COMPLETE — EXACT-HEAD CI PASS**
 
 ## Boundary
 
@@ -89,11 +89,11 @@ also not accepted as gate evidence because the Docker engine terminated both
 Credit service containers with exit code 255 during the run. Exact-head CI uses
 fresh managed PostgreSQL/Redis services and is the authoritative complete gate.
 
-Pending before completion:
-
-- complete security/auth/API regression in exact-head CI;
-- commit and branch synchronization;
-- CI on the exact final pushed head.
+Authoritative GitHub CI run 135 passed on implementation head
+`125d22cce7eb9a4e772d0243f346ebdeecd739a5`. Its fresh-service gate completed
+dependency installation, all 65 migrations, double system seed, lint, typecheck,
+the complete test suite, and build successfully. The report-only completion
+commit is also required to pass CI at the final synchronized branch head.
 
 ## Findings
 
