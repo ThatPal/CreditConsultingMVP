@@ -16,6 +16,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
+import { RecoveryState } from '../components/common/InteractionPatterns';
+import { StatusChip } from '../components/common/StatusChip';
+import { presentStatus } from '../components/common/statusVocabulary';
 
 type Item = {
   stableKey: string;
@@ -128,13 +131,11 @@ export function ConsultantPlanBuilderPage() {
       items,
       dependencies:
         items.length > 1
-          ? items
-              .slice(1)
-              .map((item, index) => ({
-                dependentKey: item.stableKey,
-                prerequisiteKey: items[index]!.stableKey,
-                mode: 'ALL',
-              }))
+          ? items.slice(1).map((item, index) => ({
+              dependentKey: item.stableKey,
+              prerequisiteKey: items[index]!.stableKey,
+              mode: 'ALL',
+            }))
           : [],
     }),
     [items, query.data, title],
@@ -362,7 +363,7 @@ export function ClientPlanPage() {
     queryKey: ['client-plan'],
     queryFn: () => apiRequest<ClientPlanResponse>('/api/v1/client/plan'),
   });
-  const [outcomeText, setOutcomeText] = useState('');
+  const [outcomes, setOutcomes] = useState<Record<string, string>>({});
   const act = useMutation({
     mutationFn: ({ item, action }: { item: ClientPlanItem; action: 'COMPLETE' | 'UNABLE' }) =>
       apiRequest(`/api/v1/client/plan/items/${item.id}/outcomes`, {
@@ -372,19 +373,24 @@ export function ClientPlanPage() {
           idempotencyKey: crypto.randomUUID(),
           action,
           ...(action === 'UNABLE'
-            ? { reason: outcomeText || 'I need help completing this step.' }
+            ? { reason: outcomes[item.id] || 'I need help completing this step.' }
             : item.completionMode === 'STRUCTURED_OUTCOME'
-              ? { outcome: { clientReport: outcomeText } }
+              ? { outcome: { clientReport: outcomes[item.id] } }
               : {}),
         }),
       }),
     onSuccess: () => {
-      setOutcomeText('');
+      setOutcomes((current) => {
+        const next = { ...current };
+        delete next[act.variables?.item.id ?? ''];
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: ['client-plan'] });
     },
   });
   if (query.isLoading) return <Typography>Loading your Plan…</Typography>;
-  if (query.isError) return <Alert severity="error">Your Plan could not be loaded.</Alert>;
+  if (query.isError)
+    return <RecoveryState error={query.error} onRetry={() => void query.refetch()} />;
   if (!query.data?.plan)
     return (
       <Stack spacing={2}>
@@ -397,10 +403,16 @@ export function ClientPlanPage() {
       </Stack>
     );
   const plan = query.data.plan;
+  const currentFocus = plan.version.items.find((item) =>
+    ['AVAILABLE', 'IN_PROGRESS', 'AWAITING_VERIFICATION'].includes(item.status),
+  );
+  const completed = plan.version.items.filter((item) =>
+    ['COMPLETED', 'VERIFIED'].includes(item.status),
+  ).length;
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="PORTAL-08"
+        eyebrow="Your plan"
         title={plan.title}
         description="Follow the available steps. Locked milestones open only when their prerequisites are satisfied."
       />
@@ -415,6 +427,24 @@ export function ClientPlanPage() {
           requirements.
         </Alert>
       )}
+      <Card variant="outlined">
+        <CardContent>
+          <Stack spacing={1.5}>
+            <Typography variant="overline">Current focus</Typography>
+            <Typography variant="h3">
+              {currentFocus?.title ?? 'Waiting for the next verified step'}
+            </Typography>
+            <Typography color="text.secondary">
+              {currentFocus?.body ??
+                'Completed history remains preserved while your consultant prepares the next action.'}
+            </Typography>
+            <Typography variant="body2">
+              Path progress: {completed} of {plan.version.items.length} steps completed
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
+      <Typography variant="h3">Guidance, actions & milestones</Typography>
       <Stack spacing={2}>
         {plan.version.items.map((item) => (
           <Card key={item.id}>
@@ -422,7 +452,7 @@ export function ClientPlanPage() {
               <Stack spacing={1}>
                 <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
                   <Typography variant="h6">{item.title}</Typography>
-                  <Chip label={item.status.replaceAll('_', ' ')} />
+                  <StatusChip {...presentStatus(item.status)} />
                 </Stack>
                 <Typography>{item.body}</Typography>
                 {item.prerequisites.length > 0 && item.status === 'LOCKED' && (
@@ -443,15 +473,18 @@ export function ClientPlanPage() {
                           ? 'What changed?'
                           : 'Optional note'
                       }
-                      value={outcomeText}
-                      onChange={(event) => setOutcomeText(event.target.value)}
+                      value={outcomes[item.id] ?? ''}
+                      onChange={(event) =>
+                        setOutcomes((current) => ({ ...current, [item.id]: event.target.value }))
+                      }
                     />
                     <Stack direction="row" spacing={1}>
                       <Button
                         variant="contained"
                         disabled={
                           act.isPending ||
-                          (item.completionMode === 'STRUCTURED_OUTCOME' && !outcomeText)
+                          (item.completionMode === 'STRUCTURED_OUTCOME' &&
+                            !outcomes[item.id]?.trim())
                         }
                         onClick={() => act.mutate({ item, action: 'COMPLETE' })}
                       >

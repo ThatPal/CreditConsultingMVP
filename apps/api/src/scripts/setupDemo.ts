@@ -1136,6 +1136,72 @@ try {
       });
     }
   }
+  const portfolioSeeds = [
+    {
+      slug: 'northstar-everyday',
+      cardName: 'Northstar Everyday',
+      issuer: 'Northstar Bank',
+      scope: 'PERSONAL' as const,
+      portfolioType: 'PERSONAL_CREDIT' as const,
+      creditLimit: 18000,
+      balance: 3400,
+      accountStatus: 'OPEN' as const,
+    },
+    {
+      slug: 'northstar-business',
+      cardName: 'Northstar Business Builder',
+      issuer: 'Northstar Bank',
+      scope: 'BUSINESS' as const,
+      portfolioType: 'BUSINESS_CREDIT' as const,
+      creditLimit: 22000,
+      balance: 1800,
+      accountStatus: 'OPEN' as const,
+    },
+    {
+      slug: 'harbor-secured',
+      cardName: 'Harbor Secured Card',
+      issuer: 'Harbor Community Bank',
+      scope: 'PERSONAL' as const,
+      portfolioType: 'SECURED' as const,
+      creditLimit: 1000,
+      balance: 0,
+      accountStatus: 'CLOSED' as const,
+    },
+  ];
+  for (const seed of portfolioSeeds) {
+    const product = await prisma.cardProduct.findUniqueOrThrow({ where: { slug: seed.slug } });
+    const existing = await prisma.clientCard.findFirst({
+      where: { clientId: client.id, cardName: seed.cardName },
+    });
+    const data = {
+      cardProductId: product.id,
+      issuer: seed.issuer,
+      scope: seed.scope,
+      portfolioType: seed.portfolioType,
+      identityStatus: 'CONFIRMED' as const,
+      reportsToBureaus: true,
+      creditLimit: seed.creditLimit,
+      balance: seed.balance,
+      accountStatus: seed.accountStatus,
+    };
+    if (existing) await prisma.clientCard.update({ where: { id: existing.id }, data });
+    else
+      await prisma.clientCard.create({
+        data: { clientId: client.id, cardName: seed.cardName, ...data },
+      });
+  }
+  const savedProduct = await prisma.cardProduct.findUniqueOrThrow({
+    where: { slug: 'northstar-everyday' },
+  });
+  await prisma.clientCardWishlist.upsert({
+    where: { clientId_productId: { clientId: client.id, productId: savedProduct.id } },
+    create: {
+      clientId: client.id,
+      productId: savedProduct.id,
+      note: 'Compare current governed terms before the next strategy.',
+    },
+    update: { note: 'Compare current governed terms before the next strategy.' },
+  });
   await prisma.cardSource.upsert({
     where: { key: 'northstar-official' },
     create: {
@@ -1237,6 +1303,7 @@ try {
           'immutable offer versions with one intentionally stale promotion',
           'approved-source catalog governance fixture',
           'AI-prepared CardInsight awaiting authorized human approval',
+          'realistic open/closed personal and business portfolio plus one research-only Wishlist preference',
         ],
         phase11Scenarios: [
           'current published Profile and primary Goal eligible for a seasonal Cycle',

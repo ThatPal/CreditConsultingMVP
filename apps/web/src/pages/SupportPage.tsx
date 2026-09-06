@@ -159,6 +159,15 @@ export function SupportPage() {
     if (linkedCaseId) setSelectedId(linkedCaseId);
   }, [linkedCaseId]);
   useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+    const requestedCategory = searchParams.get('category') as SupportCategory | null;
+    if (requestedCategory && categories.some(([key]) => key === requestedCategory))
+      setCategory(requestedCategory);
+    setSubject(searchParams.get('subject')?.slice(0, 160) ?? '');
+    setMessage(searchParams.get('message')?.slice(0, 4000) ?? '');
+    setNewRequestOpen(true);
+  }, [searchParams]);
+  useEffect(() => {
     if (!isMobile && !selectedId && cases.length) setSelectedId(cases[0]!.id);
   }, [cases, isMobile, selectedId]);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['support-cases'] });

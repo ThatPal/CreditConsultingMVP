@@ -137,9 +137,11 @@ function NotificationGroup({
 export function NotificationsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<'ALL' | 'UNREAD' | 'SUPPORT'>('ALL');
+  const [filter, setFilter] = useState<'ALL' | 'UNREAD' | 'SUPPORT' | 'DOCUMENT' | 'SECURITY'>(
+    'ALL',
+  );
   const filterQuery =
-    filter === 'UNREAD' ? '&unreadOnly=true' : filter === 'SUPPORT' ? '&category=SUPPORT' : '';
+    filter === 'UNREAD' ? '&unreadOnly=true' : filter === 'ALL' ? '' : `&category=${filter}`;
   const query = useInfiniteQuery({
     queryKey: ['notifications', 'history', filter],
     initialPageParam: null as string | null,
@@ -194,6 +196,8 @@ export function NotificationsPage() {
         <ToggleButton value="ALL">All</ToggleButton>
         <ToggleButton value="UNREAD">Unread</ToggleButton>
         <ToggleButton value="SUPPORT">Support</ToggleButton>
+        <ToggleButton value="DOCUMENT">Documents</ToggleButton>
+        <ToggleButton value="SECURITY">Security</ToggleButton>
       </ToggleButtonGroup>
       {(markAll.isError || markOne.isError) && (
         <Alert severity="error">

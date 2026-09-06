@@ -7,6 +7,7 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import {
   approveCandidate,
   approveInsight,
+  getCatalogProduct,
   identifyClientCard,
   ingestCandidate,
   listCandidates,
@@ -53,6 +54,17 @@ export function createCardRouter(
     async (req, res, next) => {
       try {
         res.json({ products: await listCatalog(prisma, querySchema.parse(req.query)) });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
+    '/cards/catalog/:productId',
+    requireCanonicalCapability(authorization, 'catalog.read', undefined, recorder),
+    async (req, res, next) => {
+      try {
+        res.json({ product: await getCatalogProduct(prisma, req.params.productId as string) });
       } catch (error) {
         next(error);
       }

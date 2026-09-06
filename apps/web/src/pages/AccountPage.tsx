@@ -98,6 +98,27 @@ export function AccountPage() {
           </Stack>
         </Stack>
       </SectionCard>
+      <SectionCard>
+        <Stack spacing={1.5}>
+          <Typography variant="h3">Data & privacy</Typography>
+          <Typography color="text.secondary">
+            Request a copy of your information or ask for an account-data review. Requests are
+            verified, tracked, and reviewed against legal, security, payment, and record-retention
+            obligations; they are not instant downloads or automatic deletion promises.
+          </Typography>
+          <Button
+            component={Link}
+            to="/app/support?new=1&category=ACCOUNT&subject=Data%20%26%20privacy%20request&message=Please%20help%20me%20with%20a%20governed%20data%20or%20privacy%20request."
+            variant="outlined"
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Start a governed request
+          </Button>
+          <Typography variant="caption" color="text.secondary">
+            Your request and every response remain available in Support so you can track progress.
+          </Typography>
+        </Stack>
+      </SectionCard>
       <ClientContextSections />
       <SectionCard>
         <Stack spacing={1.5}>

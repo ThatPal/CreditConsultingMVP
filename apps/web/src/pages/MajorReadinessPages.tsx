@@ -6,6 +6,9 @@ import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { RecoveryState } from '../components/common/InteractionPatterns';
+import { StatusChip } from '../components/common/StatusChip';
+import { presentStatus } from '../components/common/statusVocabulary';
 type Case = {
   id: string;
   clientId: string;
@@ -48,7 +51,7 @@ export function MajorReadinessPage({
     onSuccess: () => qc.invalidateQueries({ queryKey: ['major-readiness'] }),
   });
   if (q.isLoading) return <LoadingSkeleton />;
-  if (q.isError) return <Alert severity="error">Unable to load Major Credit Readiness.</Alert>;
+  if (q.isError) return <RecoveryState error={q.error} onRetry={() => void q.refetch()} />;
   const c = q.data?.case;
   return (
     <Stack spacing={3}>
@@ -105,7 +108,7 @@ export function MajorReadinessPage({
           </Stack>
           <SectionCard>
             <Stack spacing={1}>
-              <Chip label={label(c.status)} color={c.status === 'COMPLETE' ? 'success' : 'info'} />
+              <StatusChip {...presentStatus(c.status)} />
               <Typography variant="h5">{label(c.intentType)}</Typography>
               <Typography>{c.targetTiming || 'Timing not supplied'}</Typography>
               {c.clientContext && <Typography color="text.secondary">{c.clientContext}</Typography>}
@@ -116,7 +119,7 @@ export function MajorReadinessPage({
               <Typography variant="h5">Consultant-approved guidance</Typography>
               {c.recommendation ? (
                 <>
-              <Typography sx={{ fontWeight: 700 }}>{label(c.recommendation.type)}</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{label(c.recommendation.type)}</Typography>
                   <Typography>{c.recommendation.clientSafeExplanation}</Typography>
                 </>
               ) : (
@@ -140,7 +143,7 @@ export function MajorReadinessPage({
               <Typography variant="h5">Card-activity coordination</Typography>
               {c.decision ? (
                 <>
-              <Typography sx={{ fontWeight: 700 }}>{label(c.decision.type)}</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{label(c.decision.type)}</Typography>
                   <Typography>{c.decision.clientSafeExplanation}</Typography>
                   {c.restrictions
                     .filter((r) => !r.clearedAt)
@@ -159,7 +162,7 @@ export function MajorReadinessPage({
               {c.timeline.length ? (
                 c.timeline.map((e) => (
                   <Stack key={e.id}>
-                  <Typography sx={{ fontWeight: 700 }}>{label(e.type)}</Typography>
+                    <Typography sx={{ fontWeight: 700 }}>{label(e.type)}</Typography>
                     <Typography color="text.secondary">
                       {new Date(e.createdAt).toLocaleString()}
                     </Typography>
@@ -170,6 +173,13 @@ export function MajorReadinessPage({
               )}
             </SectionCard>
           )}
+          <Button
+            component={Link}
+            to={`/app/support?new=1&category=MAJOR_READINESS&subject=Question%20about%20my%20major%20credit%20readiness&contextType=MAJOR_READINESS&contextId=${c.id}`}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Ask for help with this case
+          </Button>
         </>
       )}
     </Stack>

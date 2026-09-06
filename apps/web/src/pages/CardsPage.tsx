@@ -28,8 +28,8 @@ type ClientCard = {
   cardName: string;
   issuer: string;
   scope: 'PERSONAL' | 'BUSINESS';
-  creditLimit: number | null;
-  balance: number | null;
+  creditLimit: number | string | null;
+  balance: number | string | null;
   accountStatus: 'OPEN' | 'CLOSED' | null;
   applicationOutcome: 'APPROVED' | 'DECLINED' | 'PENDING' | null;
   applicationSource: 'CLIENT' | 'CONSULTANT' | null;
@@ -37,14 +37,18 @@ type ClientCard = {
 };
 type Filter = 'ALL' | 'OPEN' | 'CLOSED' | 'APPLICATIONS';
 
-const money = (value: number | null) =>
+const amount = (value: number | string | null) => {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+const money = (value: number | string | null) =>
   value === null
     ? '—'
     : new Intl.NumberFormat(undefined, {
         style: 'currency',
         currency: 'USD',
         maximumFractionDigits: 0,
-      }).format(value);
+      }).format(amount(value));
 
 export function CardsPage() {
   const [filter, setFilter] = useState<Filter>('ALL');
@@ -73,8 +77,8 @@ export function CardsPage() {
     return true;
   });
   const openCards = cards.filter((card) => card.accountStatus === 'OPEN');
-  const totalLimit = openCards.reduce((sum, card) => sum + (card.creditLimit ?? 0), 0);
-  const totalBalance = openCards.reduce((sum, card) => sum + (card.balance ?? 0), 0);
+  const totalLimit = openCards.reduce((sum, card) => sum + amount(card.creditLimit), 0);
+  const totalBalance = openCards.reduce((sum, card) => sum + amount(card.balance), 0);
   const utilization = totalLimit ? (totalBalance / totalLimit) * 100 : 0;
 
   return (
@@ -85,8 +89,12 @@ export function CardsPage() {
         description="One catalog for current and closed cards, application results, and how each application was submitted."
       />
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-        <Button component={RouterLink} to="/app/cards/explore" variant="contained">Explore cards</Button>
-        <Button component={RouterLink} to="/app/cards/wishlist" variant="outlined">Wishlist</Button>
+        <Button component={RouterLink} to="/app/cards/explore" variant="contained">
+          Explore cards
+        </Button>
+        <Button component={RouterLink} to="/app/cards/wishlist" variant="outlined">
+          Wishlist
+        </Button>
       </Stack>
       <Box
         sx={{

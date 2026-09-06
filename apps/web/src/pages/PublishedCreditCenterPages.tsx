@@ -5,6 +5,7 @@ import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { RecoveryState } from '../components/common/InteractionPatterns';
 
 type PublishedReview = {
   id: string;
@@ -66,7 +67,7 @@ export function PublishedCreditCenterPage({
   });
   if (query.isLoading) return <LoadingSkeleton />;
   if (query.isError)
-    return <Alert severity="error">Your published Credit Center could not be loaded.</Alert>;
+    return <RecoveryState error={query.error} onRetry={() => void query.refetch()} />;
   return <CreditCenterContent data={query.data!} view={view} basePath="/app/credit-center" />;
 }
 
@@ -147,6 +148,16 @@ function CreditCenterContent({
               {label}
             </Button>
           ))}
+          <Button component={Link} to="/app/plan" variant="outlined">
+            Plan
+          </Button>
+          <Button
+            component={Link}
+            to="/app/support?new=1&category=CREDIT_REVIEW&subject=Question%20about%20my%20Credit%20Review&contextType=CREDIT_REVIEW"
+            variant="text"
+          >
+            Ask about this review
+          </Button>
         </Stack>
       )}
       {!current && (

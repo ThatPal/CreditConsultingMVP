@@ -21,9 +21,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { RecoveryState, RecordContext } from '../components/common/InteractionPatterns';
 
 type Role = 'PLANNED' | 'ALTERNATIVE' | 'CONDITIONAL';
 type Candidate = {
@@ -111,7 +113,14 @@ export function ClientStrategyPage() {
   });
   if (query.isLoading) return <CircularProgress aria-label="Loading strategy" />;
   if (query.isError || !query.data)
-    return <Alert severity="error">Your strategy could not be loaded.</Alert>;
+    return (
+      <RecoveryState
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        backTo={`/app/rounds/${roundId}`}
+        backLabel="Back to round"
+      />
+    );
   if (query.data.stale)
     return (
       <Stack spacing={3}>
@@ -142,10 +151,18 @@ export function ClientStrategyPage() {
     );
   return (
     <Stack spacing={3}>
-      <PageHeader
-        eyebrow="Approved strategy"
+      <RecordContext
+        breadcrumbs={[
+          { label: 'Application rounds', to: '/app/application-rounds' },
+          { label: 'Round', to: `/app/rounds/${roundId}` },
+          { label: 'Approved strategy' },
+        ]}
         title="Your card application plan"
-        description="A clear sequence prepared and approved by your consultant."
+        meta={
+          <Typography color="text.secondary">
+            A clear sequence prepared and approved by your consultant.
+          </Typography>
+        }
       />
       <Alert severity="success">
         Strategy version {query.data.approved.version} is ready. Confirm current offer details with
@@ -162,9 +179,32 @@ export function ClientStrategyPage() {
                   {roleLabel[item.role as Role] ?? item.role}
                 </Typography>
                 <Typography>{item.reason}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {item.role === 'PLANNED'
+                    ? 'Complete this step in order and pause after any unexpected result.'
+                    : 'Use only if your consultant confirms the condition applies.'}
+                </Typography>
               </Stack>
             </Stack>
           ))}
+        </Stack>
+      </SectionCard>
+      <SectionCard>
+        <Stack spacing={1.5}>
+          <Typography variant="h5">Prepare for your session</Typography>
+          <Typography color="text.secondary">
+            Confirm your current information and offer facts with your consultant. Scheduling does
+            not authorize an application; each application is released separately during the live
+            session.
+          </Typography>
+          <Button
+            component={Link}
+            to={`/app/rounds/${roundId}/schedule`}
+            variant="contained"
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Choose a session time
+          </Button>
         </Stack>
       </SectionCard>
     </Stack>

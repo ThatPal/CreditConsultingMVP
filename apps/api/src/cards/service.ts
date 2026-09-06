@@ -45,11 +45,13 @@ export async function listCatalog(
     audience?: 'PERSONAL' | 'BUSINESS' | undefined;
     portfolioType?: 'PERSONAL_CREDIT' | 'BUSINESS_CREDIT' | 'SECURED' | 'NON_REPORTING' | undefined;
     includeRetired?: boolean | undefined;
+    productId?: string | undefined;
   } = {},
 ) {
   const products = await prisma.cardProduct.findMany({
     where: {
       ...(input.includeRetired ? {} : { lifecycle: 'ACTIVE' }),
+      ...(input.productId ? { id: input.productId } : {}),
       ...(input.audience ? { audience: input.audience } : {}),
       ...(input.portfolioType ? { portfolioType: input.portfolioType } : {}),
       ...(input.search
@@ -110,6 +112,12 @@ export async function listCatalog(
         }
       : null,
   }));
+}
+
+export async function getCatalogProduct(prisma: PrismaClient, productId: string) {
+  const [product] = await listCatalog(prisma, { productId });
+  if (!product) throw new AppError('NOT_FOUND', 404, 'Card product was not found');
+  return product;
 }
 
 function suppressStalePromotion(facts: unknown) {
