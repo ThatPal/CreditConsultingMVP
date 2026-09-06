@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
 type Source = {
   id: string;
   key: string;
@@ -20,6 +21,8 @@ const headers = () => ({
   'Idempotency-Key': crypto.randomUUID(),
 });
 export function AdminSourcesPage() {
+  const [selected, setSelected] = useState<Source | null>(null);
+  const [reason, setReason] = useState('');
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['admin-sources'],
@@ -53,10 +56,14 @@ export function AdminSourcesPage() {
         body: JSON.stringify({
           active: !source.active,
           expectedUpdatedAt: source.updatedAt,
-          reason: `${source.active ? 'Disable' : 'Enable'} governed retrieval source`,
+          reason,
         }),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-sources'] }),
+    onSuccess: () => {
+      setSelected(null);
+      setReason('');
+      return qc.invalidateQueries({ queryKey: ['admin-sources'] });
+    },
   });
   return (
     <Stack spacing={3}>
@@ -68,6 +75,7 @@ export function AdminSourcesPage() {
         New sources are disabled until reviewed. Private-network and non-HTTPS URLs are rejected
         server-side.
       </Alert>
+      {query.isError && <RecoveryState error={query.error} onRetry={() => void query.refetch()} />}
       <SectionCard>
         <Typography variant="h6">Register disabled source</Typography>
         <Stack spacing={2} sx={{ mt: 2 }}>
@@ -107,10 +115,7 @@ export function AdminSourcesPage() {
               <Button
                 sx={{ alignSelf: 'flex-start' }}
                 color={source.active ? 'warning' : 'primary'}
-                onClick={() => {
-                  if (confirm(`${source.active ? 'Disable' : 'Enable'} ${source.name}?`))
-                    toggle.mutate(source);
-                }}
+                onClick={() => setSelected(source)}
               >
                 {source.active ? 'Disable' : 'Enable'}
               </Button>
@@ -118,6 +123,31 @@ export function AdminSourcesPage() {
           ))}
         </Stack>
       </SectionCard>
+      <GovernedActionDialog
+        open={Boolean(selected)}
+        title={`${selected?.active ? 'Disable' : 'Enable'} retrieval source`}
+        effect={
+          selected?.active
+            ? 'New retrieval through this allowlisted source will stop. Existing provenance remains immutable.'
+            : 'Future retrieval may use this HTTPS source only within its reviewed host allowlist.'
+        }
+        {...(selected?.name ? { context: selected.name } : {})}
+        reasonLabel="Reason"
+        reason={reason}
+        required
+        warning
+        pending={toggle.isPending}
+        {...(toggle.isError ? { error: toggle.error.message } : {})}
+        onReasonChange={setReason}
+        onCancel={() => {
+          setSelected(null);
+          setReason('');
+        }}
+        onConfirm={() => {
+          if (selected) toggle.mutate(selected);
+        }}
+        confirmLabel={selected?.active ? 'Disable source' : 'Enable source'}
+      />
     </Stack>
   );
 }

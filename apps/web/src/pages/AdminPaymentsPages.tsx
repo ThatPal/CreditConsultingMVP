@@ -16,6 +16,7 @@ import { DataNavigationToolbar, DataPagination } from '../components/common/Data
 import { humanizeCode } from '../components/common/labels';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
 
 type Payment = {
   id: string;
@@ -191,7 +192,8 @@ export function AdminPaymentsPage() {
           <Typography variant="h3">Recent refunds</Typography>
           {refunds.data?.refunds.map((item) => (
             <Typography key={item.id}>
-              {providerLabel(item.provider)} · {item.amount} {item.currency} · {humanizeCode(item.status)}
+              {providerLabel(item.provider)} · {item.amount} {item.currency} ·{' '}
+              {humanizeCode(item.status)}
             </Typography>
           )) ?? <Typography color="text.secondary">No refund records.</Typography>}
         </Stack>
@@ -201,7 +203,8 @@ export function AdminPaymentsPage() {
           <Typography variant="h3">Open dispute activity</Typography>
           {disputes.data?.disputes.map((item) => (
             <Typography key={item.id}>
-              {providerLabel(item.provider)} · {item.providerDisputeId} · {humanizeCode(item.status)}
+              {providerLabel(item.provider)} · {item.providerDisputeId} ·{' '}
+              {humanizeCode(item.status)}
             </Typography>
           )) ?? <Typography color="text.secondary">No dispute records.</Typography>}
         </Stack>
@@ -230,6 +233,7 @@ export function AdminPaymentDetailPage() {
   });
   const client = useQueryClient();
   const [refundAmount, setRefundAmount] = useState('');
+  const [confirmRefund, setConfirmRefund] = useState(false);
   const refund = useMutation({
     mutationFn: () =>
       apiRequest(`/api/v1/admin/payments/${paymentId}/refunds`, {
@@ -237,7 +241,11 @@ export function AdminPaymentDetailPage() {
         headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify({ amount: refundAmount }),
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['admin-payment', paymentId] }),
+    onSuccess: () => {
+      setConfirmRefund(false);
+      setRefundAmount('');
+      return client.invalidateQueries({ queryKey: ['admin-payment', paymentId] });
+    },
   });
   const reconcile = useMutation({
     mutationFn: () =>
@@ -248,14 +256,26 @@ export function AdminPaymentDetailPage() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['admin-payment', paymentId] }),
   });
   if (query.isLoading) return <LinearProgress />;
-  if (query.isError) return <Alert severity="error">Payment detail is unavailable.</Alert>;
+  if (query.isError)
+    return (
+      <RecoveryState
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        backTo="/admin/payments"
+        backLabel="Back to payments"
+      />
+    );
   return (
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Payment review"
         title={`${providerLabel(query.data!.payment.provider)} payment`}
         description="Verified provider events and canonical transitions. Sensitive provider credentials are never exposed."
-        actions={<Button component={Link} to="/admin/payments" variant="outlined">Back to payments</Button>}
+        actions={
+          <Button component={Link} to="/admin/payments" variant="outlined">
+            Back to payments
+          </Button>
+        }
       />
       <SectionCard>
         <Stack spacing={1}>
@@ -273,10 +293,7 @@ export function AdminPaymentDetailPage() {
             <Button
               variant="contained"
               disabled={!refundAmount || refund.isPending}
-              onClick={() =>
-                window.confirm('Issue this refund through the original payment provider?') &&
-                refund.mutate()
-              }
+              onClick={() => setConfirmRefund(true)}
             >
               Issue refund
             </Button>
@@ -312,10 +329,23 @@ export function AdminPaymentDetailPage() {
           ))}
         </Stack>
       </SectionCard>
+      <GovernedActionDialog
+        open={confirmRefund}
+        title="Issue original-provider refund"
+        effect={`Request a ${refundAmount || 'specified'} ${query.data!.payment.currency} refund through ${providerLabel(query.data!.payment.provider)}. No alternate provider may be used.`}
+        context={`${providerLabel(query.data!.payment.provider)} payment`}
+        warning
+        pending={refund.isPending}
+        {...(refund.isError ? { error: refund.error.message } : {})}
+        onCancel={() => setConfirmRefund(false)}
+        onConfirm={() => refund.mutate()}
+        confirmLabel="Issue refund"
+      />
     </Stack>
   );
 }
 function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa' }) {
+  const [governedAction, setGovernedAction] = useState<'default' | 'enabled' | null>(null);
   const displayName =
     provider === 'paypal'
       ? 'PayPal'
@@ -366,7 +396,10 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa'
         headers: { 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {}),
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['payment-gateways'] }),
+    onSuccess: () => {
+      setGovernedAction(null);
+      return client.invalidateQueries({ queryKey: ['payment-gateways'] });
+    },
   });
   const testConnection = useMutation({
     mutationFn: () => apiRequest(`/api/v1/admin/integrations/${provider}/test`, { method: 'POST' }),
@@ -434,22 +467,13 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa'
                 !config.enabledForNewPayments ||
                 update.isPending
               }
-              onClick={() =>
-                window.confirm(`Make ${displayName} the default for future checkout?`) &&
-                update.mutate({ action: 'default' })
-              }
+              onClick={() => setGovernedAction('default')}
             >
               Set as default
             </Button>
             <Button
               disabled={!config || config.defaultForCheckout || update.isPending}
-              onClick={() => {
-                if (!config) return;
-                const action = config.enabledForNewPayments ? 'Disable' : 'Enable';
-                if (window.confirm(`${action} ${displayName} for future payments? Historical payments will continue using their original provider.`)) {
-                  update.mutate({ action: 'enabled', body: { enabled: !config.enabledForNewPayments } });
-              }
-              }}
+              onClick={() => setGovernedAction('enabled')}
             >
               {config?.enabledForNewPayments
                 ? 'Disable for new payments'
@@ -458,6 +482,29 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa'
           </Stack>
         </Stack>
       </SectionCard>
+      <GovernedActionDialog
+        open={Boolean(governedAction)}
+        title={
+          governedAction === 'default'
+            ? `Set ${displayName} as checkout default`
+            : `${config?.enabledForNewPayments ? 'Disable' : 'Enable'} ${displayName} for new payments`
+        }
+        effect={
+          governedAction === 'default'
+            ? 'Future checkout will route to this configured provider. Historical payments, refunds, disputes and reconciliation remain bound to their original provider.'
+            : 'Change only future-payment eligibility. Historical provider routing and immutable ledger history remain unchanged.'
+        }
+        context={displayName}
+        warning
+        pending={update.isPending}
+        {...(update.isError ? { error: update.error.message } : {})}
+        onCancel={() => setGovernedAction(null)}
+        onConfirm={() => {
+          if (governedAction === 'default') update.mutate({ action: 'default' });
+          if (governedAction === 'enabled' && config)
+            update.mutate({ action: 'enabled', body: { enabled: !config.enabledForNewPayments } });
+        }}
+      />
     </Stack>
   );
 }

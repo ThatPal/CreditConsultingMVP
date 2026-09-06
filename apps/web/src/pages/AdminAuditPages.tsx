@@ -15,6 +15,8 @@ import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { SafeRecordView } from '../components/admin/SafeRecordView';
+import { RecoveryState } from '../components/common/InteractionPatterns';
 
 type EventRow = {
   id: string;
@@ -148,7 +150,6 @@ export function AdminEventListPage({ kind }: { kind: 'audit' | 'security' }) {
 }
 
 const entityLink = (event: EventDetail) => {
-  if (event.clientId) return `/crm/clients/${event.clientId}`;
   if (event.entityType === 'User' && event.entityId) return `/admin/users/${event.entityId}`;
   if (event.entityType?.includes('Payment') && event.entityId)
     return `/admin/payments/${event.entityId}`;
@@ -163,7 +164,16 @@ export function AdminEventDetailPage({ kind }: { kind: 'audit' | 'security' }) {
   });
   const event = query.data?.event;
   if (query.isLoading) return <Typography>Loading event…</Typography>;
-  if (!event) return <Alert severity="error">Event could not be loaded.</Alert>;
+  if (query.isError)
+    return (
+      <RecoveryState
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        backTo={`/admin/${endpoint}`}
+        backLabel="Back to history"
+      />
+    );
+  if (!event) return <Alert severity="info">This immutable event is not available.</Alert>;
   const link = entityLink(event);
   return (
     <Stack spacing={3}>
@@ -193,8 +203,8 @@ export function AdminEventDetailPage({ kind }: { kind: 'audit' | 'security' }) {
       </SectionCard>
       <SectionCard>
         <Typography variant="h6">Safe metadata</Typography>
-        <Box component="pre" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', m: 0, mt: 2 }}>
-          {JSON.stringify(event.metadata ?? {}, null, 2)}
+        <Box sx={{ mt: 2 }}>
+          <SafeRecordView record={(event.metadata ?? {}) as Record<string, unknown>} />
         </Box>
       </SectionCard>
     </Stack>

@@ -36,6 +36,7 @@ function application(role: 'ADMIN' | 'CONSULTANT', stepUpVerified = true) {
   const prisma = {
     $transaction: vi.fn(async (values: Promise<unknown>[]) => Promise.all(values)),
     user: { count: vi.fn().mockResolvedValue(1), findMany },
+    client: { findMany: vi.fn().mockResolvedValue([]) },
   } as unknown as PrismaClient;
   const authz = {
     authorizeCapability: vi.fn(
@@ -86,5 +87,18 @@ describe('ADMIN-02 identity administration', () => {
       .set('Idempotency-Key', crypto.randomUUID())
       .send({ role: 'CONSULTANT', expectedUpdatedAt: new Date().toISOString() })
       .expect(403);
+  });
+  test('keeps access-grant selectors bounded and Admin-only', async () => {
+    await request(application('CONSULTANT').app)
+      .get('/api/v1/admin/access-grant-options?limit=50')
+      .expect(403);
+    const { app, findMany } = application('ADMIN');
+    await request(app).get('/api/v1/admin/access-grant-options?limit=50').expect(200);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ role: 'asc' }, { email: 'asc' }, { id: 'asc' }],
+        take: 50,
+      }),
+    );
   });
 });

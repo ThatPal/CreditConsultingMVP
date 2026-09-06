@@ -16,6 +16,9 @@ import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
+import { SafeRecordView } from '../components/admin/SafeRecordView';
+import { humanizeCode } from '../components/common/labels';
 
 type Job = {
   id: string;
@@ -115,7 +118,7 @@ export function AdminAIJobsPage() {
                 )}
               </Box>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Chip label={job.status} size="small" />
+                <Chip label={humanizeCode(job.status)} size="small" />
                 <Button component={Link} to={`/admin/ai/jobs/${job.id}`}>
                   Inspect
                 </Button>
@@ -136,6 +139,7 @@ export function AdminAIJobsPage() {
 export function AdminAIJobDetailPage() {
   const { jobId = '' } = useParams();
   const qc = useQueryClient();
+  const [action, setAction] = useState<'retry' | 'cancel' | null>(null);
   const query = useQuery({
     queryKey: ['admin-ai-job', jobId],
     queryFn: () =>
@@ -150,11 +154,23 @@ export function AdminAIJobDetailPage() {
   });
   const mutation = useMutation({
     mutationFn: (action: 'retry' | 'cancel') => mutateJob(jobId, action),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-ai-job', jobId] }),
+    onSuccess: () => {
+      setAction(null);
+      return qc.invalidateQueries({ queryKey: ['admin-ai-job', jobId] });
+    },
   });
   const job = query.data?.job;
   if (query.isLoading) return <Typography>Loading AI job…</Typography>;
-  if (!job) return <Alert severity="error">AI job could not be loaded.</Alert>;
+  if (query.isError)
+    return (
+      <RecoveryState
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        backTo="/admin/ai/jobs"
+        backLabel="Back to jobs"
+      />
+    );
+  if (!job) return <Alert severity="info">This AI job is not available.</Alert>;
   const retryable = [
       'RETRYABLE_FAILURE',
       'NON_RETRYABLE_FAILURE',
@@ -165,7 +181,7 @@ export function AdminAIJobDetailPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        title={`${job.processDefinition.processKey} · ${job.status}`}
+        title={`${job.processDefinition.processKey} · ${humanizeCode(job.status)}`}
         description={`Durable job ${job.id}`}
         actions={
           <Button component={Link} to="/admin/ai/jobs">
@@ -193,20 +209,13 @@ export function AdminAIJobDetailPage() {
             </Alert>
           )}
           <Stack direction="row" spacing={1}>
-            <Button
-              disabled={!retryable || mutation.isPending}
-              onClick={() => {
-                if (confirm('Retry this job through the durable queue?')) mutation.mutate('retry');
-              }}
-            >
+            <Button disabled={!retryable || mutation.isPending} onClick={() => setAction('retry')}>
               Retry
             </Button>
             <Button
               color="warning"
               disabled={!cancellable || mutation.isPending}
-              onClick={() => {
-                if (confirm('Cancel this queued job?')) mutation.mutate('cancel');
-              }}
+              onClick={() => setAction('cancel')}
             >
               Cancel
             </Button>
@@ -215,10 +224,28 @@ export function AdminAIJobDetailPage() {
       </SectionCard>
       <SectionCard>
         <Typography variant="h6">Source versions</Typography>
-        <Box component="pre" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {JSON.stringify(job.sourceVersions, null, 2)}
+        <Box sx={{ mt: 2 }}>
+          <SafeRecordView record={(job.sourceVersions ?? {}) as Record<string, unknown>} />
         </Box>
       </SectionCard>
+      <GovernedActionDialog
+        open={Boolean(action)}
+        title={action === 'retry' ? 'Retry durable AI job' : 'Cancel queued AI job'}
+        effect={
+          action === 'retry'
+            ? 'A duplicate-safe recovery request will return this job to the durable queue. No AI output is automatically approved.'
+            : 'The queued job will be cancelled if its canonical state still permits cancellation.'
+        }
+        context={`${job.processDefinition.processKey} · attempt ${job.currentAttempt} of ${job.maxAttempts}`}
+        warning
+        pending={mutation.isPending}
+        {...(mutation.isError ? { error: mutation.error.message } : {})}
+        onCancel={() => setAction(null)}
+        onConfirm={() => {
+          if (action) mutation.mutate(action);
+        }}
+        confirmLabel={action === 'retry' ? 'Queue retry' : 'Cancel job'}
+      />
     </Stack>
   );
 }

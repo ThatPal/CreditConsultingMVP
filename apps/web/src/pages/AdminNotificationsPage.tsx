@@ -8,11 +8,13 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { RecoveryState } from '../components/common/InteractionPatterns';
+import { humanizeCode } from '../components/common/labels';
 type Template = {
   id: string;
   key: string;
@@ -39,11 +41,17 @@ export function AdminNotificationsPage() {
     queryKey: ['admin-templates'],
     queryFn: () => apiRequest<{ templates: Template[] }>('/api/v1/admin/notification-templates'),
   });
-  const deliveries = useQuery({
-    queryKey: ['admin-deliveries'],
-    queryFn: () =>
-      apiRequest<{ deliveries: Delivery[] }>('/api/v1/admin/notification-deliveries?limit=50'),
+  const [deliveryStatus, setDeliveryStatus] = useState('');
+  const deliveries = useInfiniteQuery({
+    queryKey: ['admin-deliveries', deliveryStatus],
+    initialPageParam: '',
+    queryFn: ({ pageParam }) =>
+      apiRequest<{ deliveries: Delivery[]; nextCursor: string | null }>(
+        `/api/v1/admin/notification-deliveries?limit=50${deliveryStatus ? `&status=${deliveryStatus}` : ''}${pageParam ? `&cursor=${pageParam}` : ''}`,
+      ),
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
+  const deliveryRows = deliveries.data?.pages.flatMap((page) => page.deliveries) ?? [];
   const [key, setKey] = useState(''),
     [channel, setChannel] = useState('EMAIL'),
     [subject, setSubject] = useState(''),
@@ -72,6 +80,15 @@ export function AdminNotificationsPage() {
       <Alert severity="info">
         Templates cannot reference password, token, secret, or card data. New versions are disabled.
       </Alert>
+      {(templates.isError || deliveries.isError) && (
+        <RecoveryState
+          error={templates.error ?? deliveries.error}
+          onRetry={() => {
+            void templates.refetch();
+            void deliveries.refetch();
+          }}
+        />
+      )}
       <SectionCard>
         <Typography variant="h6">Create template version</Typography>
         <Stack spacing={2} sx={{ mt: 2 }}>
@@ -119,20 +136,55 @@ export function AdminNotificationsPage() {
         </Stack>
       </SectionCard>
       <SectionCard>
-        <Typography variant="h6">Recent deliveries</Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
+        >
+          <Typography variant="h6">Delivery operations</Typography>
+          <TextField
+            select
+            size="small"
+            label="Outcome"
+            value={deliveryStatus}
+            onChange={(event) => setDeliveryStatus(event.target.value)}
+            sx={{ minWidth: 190 }}
+          >
+            <MenuItem value="">All outcomes</MenuItem>
+            <MenuItem value="PENDING">Pending</MenuItem>
+            <MenuItem value="PROCESSING">Processing</MenuItem>
+            <MenuItem value="DELIVERED">Delivered</MenuItem>
+            <MenuItem value="RETRY_SCHEDULED">Retry scheduled</MenuItem>
+            <MenuItem value="FAILED">Failed</MenuItem>
+          </TextField>
+        </Stack>
         <Stack divider={<Divider flexItem />}>
-          {deliveries.data?.deliveries.map((d) => (
+          {deliveryRows.map((d) => (
             <Stack key={d.id} sx={{ py: 1 }}>
               <Typography>
-                {d.notification.category} · {d.channel} via {d.provider}
+                {humanizeCode(d.notification.category)} · {humanizeCode(d.channel)} via {d.provider}
               </Typography>
               <Typography variant="caption">
-                {d.status} · {d.attemptCount} attempts{' '}
-                {d.failureCategory ? `· ${d.failureCategory}` : ''}
+                {humanizeCode(d.status)} · {d.attemptCount} attempts{' '}
+                {d.failureCategory ? `· ${humanizeCode(d.failureCategory)}` : ''}
               </Typography>
             </Stack>
           ))}
+          {!deliveries.isLoading && !deliveryRows.length && (
+            <Typography color="text.secondary" sx={{ py: 2 }}>
+              No deliveries match this outcome.
+            </Typography>
+          )}
         </Stack>
+        {deliveries.hasNextPage && (
+          <Button
+            variant="outlined"
+            disabled={deliveries.isFetchingNextPage}
+            onClick={() => void deliveries.fetchNextPage()}
+          >
+            Load older deliveries
+          </Button>
+        )}
       </SectionCard>
     </Stack>
   );

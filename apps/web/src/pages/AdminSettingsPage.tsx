@@ -1,6 +1,8 @@
 import { Alert, Button, Chip, Divider, Stack, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { apiRequest } from '../auth/api';
+import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 type Setting = {
@@ -19,6 +21,8 @@ const keys = [
   'workflow.execution.enabled',
 ];
 export function AdminSettingsPage() {
+  const [selected, setSelected] = useState<{ key: string; enabled: boolean } | null>(null);
+  const [reason, setReason] = useState('');
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ['settings'],
@@ -32,10 +36,14 @@ export function AdminSettingsPage() {
         body: JSON.stringify({
           value,
           activate: true,
-          reason: `Governed safety switch changed to ${value}`,
+          reason,
         }),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
+    onSuccess: () => {
+      setSelected(null);
+      setReason('');
+      return qc.invalidateQueries({ queryKey: ['settings'] });
+    },
   });
   return (
     <Stack spacing={3}>
@@ -47,6 +55,7 @@ export function AdminSettingsPage() {
         Disabling a switch blocks new work only. It never bypasses authorization, changes historical
         records, or silently cancels in-flight durable work.
       </Alert>
+      {q.isError && <RecoveryState error={q.error} onRetry={() => void q.refetch()} />}
       <SectionCard>
         <Stack divider={<Divider flexItem />}>
           {keys.map((key) => {
@@ -58,13 +67,15 @@ export function AdminSettingsPage() {
                   <Typography sx={{ fontWeight: 700 }}>{key}</Typography>
                   <Chip size="small" label={enabled ? 'Enabled' : 'Disabled'} />
                 </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  {current
+                    ? `Effective version ${current.version} · ${current.reason} · activated ${new Date(current.createdAt).toLocaleString()}`
+                    : 'Using the safe platform default; no active override is recorded.'}
+                </Typography>
                 <Button
                   sx={{ alignSelf: 'flex-start' }}
                   color={enabled ? 'warning' : 'primary'}
-                  onClick={() => {
-                    if (confirm(`${enabled ? 'Disable' : 'Enable'} ${key}?`))
-                      change.mutate({ key, value: !enabled });
-                  }}
+                  onClick={() => setSelected({ key, enabled })}
                 >
                   {enabled ? 'Disable new operations' : 'Enable'}
                 </Button>
@@ -73,6 +84,31 @@ export function AdminSettingsPage() {
           })}
         </Stack>
       </SectionCard>
+      <GovernedActionDialog
+        open={Boolean(selected)}
+        title={`${selected?.enabled ? 'Disable' : 'Enable'} platform capability`}
+        effect={
+          selected?.enabled
+            ? 'New operations in this domain will stop. Durable history and in-flight work remain governed by their owning services.'
+            : 'New eligible operations in this domain may resume after the versioned setting is activated.'
+        }
+        {...(selected?.key ? { context: selected.key } : {})}
+        reasonLabel="Reason for this change"
+        reason={reason}
+        required
+        warning
+        pending={change.isPending}
+        {...(change.isError ? { error: change.error.message } : {})}
+        onReasonChange={setReason}
+        onCancel={() => {
+          setSelected(null);
+          setReason('');
+        }}
+        onConfirm={() => {
+          if (selected) change.mutate({ key: selected.key, value: !selected.enabled });
+        }}
+        confirmLabel={selected?.enabled ? 'Disable new operations' : 'Enable capability'}
+      />
     </Stack>
   );
 }

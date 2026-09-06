@@ -396,6 +396,60 @@ export function createAdminOperationsRouter(
     }
   });
 
+  router.get('/access-grant-options', canRead, async (req, res, next) => {
+    try {
+      const input = z
+        .object({
+          staffSearch: z.string().trim().max(120).default(''),
+          clientSearch: z.string().trim().max(120).default(''),
+          limit: z.coerce.number().int().min(1).max(50).default(25),
+        })
+        .parse(req.query);
+      const [staff, clients] = await prisma.$transaction([
+        prisma.user.findMany({
+          where: {
+            role: { in: ['CONSULTANT', 'ADMIN'] },
+            status: 'ACTIVE',
+            ...(input.staffSearch
+              ? {
+                  OR: [
+                    { name: { contains: input.staffSearch, mode: 'insensitive' as const } },
+                    { email: { contains: input.staffSearch, mode: 'insensitive' as const } },
+                  ],
+                }
+              : {}),
+          },
+          select: { id: true, name: true, email: true, role: true },
+          orderBy: [{ role: 'asc' }, { email: 'asc' }, { id: 'asc' }],
+          take: input.limit,
+        }),
+        prisma.client.findMany({
+          where: input.clientSearch
+            ? {
+                OR: [
+                  { firstName: { contains: input.clientSearch, mode: 'insensitive' } },
+                  { lastName: { contains: input.clientSearch, mode: 'insensitive' } },
+                  { user: { email: { contains: input.clientSearch, mode: 'insensitive' } } },
+                ],
+              }
+            : {},
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            status: true,
+            user: { select: { email: true } },
+          },
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }, { id: 'asc' }],
+          take: input.limit,
+        }),
+      ]);
+      res.json({ staff, clients });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get('/audit-events', canRead, async (req, res, next) => {
     try {
       const input = eventQuery.parse(req.query);

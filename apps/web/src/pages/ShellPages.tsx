@@ -197,12 +197,27 @@ export function SystemHealthPage() {
         asOf: string;
         sections: Record<
           string,
-          { status: string; reason?: string; pendingOutbox?: number; failedOutbox?: number }
+          {
+            status: string;
+            reason?: string;
+            href?: string;
+            pendingOutbox?: number;
+            failedOutbox?: number;
+            pending?: number;
+            failed?: number;
+            queued?: number;
+            unhealthy?: number;
+            conflicts?: number;
+          }
         >;
       }>('/api/v1/admin/dashboard'),
     refetchInterval: 30_000,
   });
   const platform = query.data?.sections.platform;
+  const safeMetrics = (section: NonNullable<typeof platform>) =>
+    Object.entries(section).filter(
+      ([key, value]) => !['status', 'reason', 'href'].includes(key) && typeof value === 'number',
+    );
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -245,6 +260,51 @@ export function SystemHealthPage() {
             </Typography>
           </Stack>
         </SectionCard>
+      )}
+      {!query.isError && (
+        <Box
+          sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}
+        >
+          {Object.entries(query.data?.sections ?? {})
+            .filter(([key]) => key !== 'platform')
+            .map(([key, section]) => (
+              <SectionCard key={key}>
+                <Stack spacing={1.5}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <Typography variant="h4">{key.replace(/([a-z])([A-Z])/g, '$1 $2')}</Typography>
+                    <Chip
+                      size="small"
+                      color={section.status === 'healthy' ? 'success' : 'warning'}
+                      label={
+                        section.status === 'healthy'
+                          ? 'Healthy'
+                          : section.status === 'degraded'
+                            ? 'Degraded'
+                            : 'Unavailable'
+                      }
+                    />
+                  </Stack>
+                  {section.reason && (
+                    <Typography color="text.secondary">{section.reason}</Typography>
+                  )}
+                  {safeMetrics(section).map(([metric, value]) => (
+                    <Typography key={metric} variant="body2">
+                      {metric.replace(/([a-z])([A-Z])/g, '$1 $2')}: <strong>{String(value)}</strong>
+                    </Typography>
+                  ))}
+                  {section.href && (
+                    <Button component={Link} to={section.href} sx={{ alignSelf: 'flex-start' }}>
+                      Open owning module
+                    </Button>
+                  )}
+                </Stack>
+              </SectionCard>
+            ))}
+        </Box>
       )}
     </Stack>
   );

@@ -59,7 +59,6 @@ try {
       passwordHash,
       role: 'CONSULTANT',
       status: 'ACTIVE',
-      twoFactorEnabled: false,
     },
   });
   const admin = await prisma.user.upsert({
@@ -78,7 +77,6 @@ try {
       passwordHash,
       role: 'ADMIN',
       status: 'ACTIVE',
-      twoFactorEnabled: false,
     },
   });
   const clientUser = await prisma.user.upsert({
@@ -1202,7 +1200,7 @@ try {
     },
     update: { note: 'Compare current governed terms before the next strategy.' },
   });
-  await prisma.cardSource.upsert({
+  const adminCatalogSource = await prisma.cardSource.upsert({
     where: { key: 'northstar-official' },
     create: {
       key: 'northstar-official',
@@ -1213,6 +1211,62 @@ try {
     },
     update: { active: true },
   });
+  for (let index = 1; index <= 16; index += 1) {
+    const materialConflict = index % 5 === 0;
+    await prisma.cardCatalogCandidate.upsert({
+      where: {
+        sourceId_sourceIdentity: {
+          sourceId: adminCatalogSource.id,
+          sourceIdentity: `apc-wave5-catalog-candidate-${String(index).padStart(2, '0')}`,
+        },
+      },
+      create: {
+        sourceId: adminCatalogSource.id,
+        sourceIdentity: `apc-wave5-catalog-candidate-${String(index).padStart(2, '0')}`,
+        kind: index % 3 === 0 ? 'NEW_PRODUCT' : 'OFFER_CHANGE',
+        status: materialConflict ? 'CONFLICT' : 'PENDING',
+        matchedProductId: index % 3 === 0 ? null : savedProduct.id,
+        normalizedPayload: {
+          displayName:
+            index % 3 === 0 ? `Deterministic review product ${index}` : savedProduct.displayName,
+          annualFee: index % 4 === 0 ? 95 : 0,
+          fixture: 'APC_WAVE_5_ADMIN_VOLUME',
+        },
+        evidence: { source: 'DETERMINISTIC_DEMO_FIXTURE', sequence: index },
+        conflicts: materialConflict ? [{ field: 'annualFee', category: 'SOURCE_MISMATCH' }] : [],
+        materialConflict,
+      },
+      update: {},
+    });
+  }
+  const adminWorkflowFixtures = [
+    ['support-case-created', 'SUPPORT_CASE_CREATED', 'CREATE_NOTIFICATION'],
+    ['document-uploaded', 'DOCUMENT_UPLOADED', 'CREATE_ATTENTION_ITEM'],
+    ['payment-failed', 'PAYMENT_FAILED', 'CREATE_NOTIFICATION'],
+    ['ai-job-failed', 'AI_JOB_FAILED', 'CREATE_ATTENTION_ITEM'],
+    ['round-completed', 'ROUND_COMPLETED', 'CREATE_NOTIFICATION'],
+  ] as const;
+  for (const [key, trigger, actionType] of adminWorkflowFixtures) {
+    await prisma.workflowRule.upsert({
+      where: { key_version: { key: `demo.${key}`, version: 1 } },
+      create: {
+        key: `demo.${key}`,
+        version: 1,
+        trigger,
+        conditionType: 'ALWAYS',
+        conditionConfig: { type: 'ALWAYS' },
+        actionType,
+        actionConfig:
+          actionType === 'CREATE_NOTIFICATION'
+            ? { type: actionType, category: 'operations' }
+            : { type: actionType, priority: 'NORMAL' },
+        enabled: false,
+        reason: 'Deterministic disabled Admin review fixture',
+        createdById: admin.id,
+      },
+      update: {},
+    });
+  }
   const insightProcess = await prisma.aIProcessDefinition.upsert({
     where: {
       processKey_processVersion: { processKey: 'card-insight-preparation', processVersion: 1 },
@@ -1271,6 +1325,11 @@ try {
           supportCases: queueScenarios.length + 1,
           notifications: 31,
           clientDirectory: 25,
+        },
+        adminVolume: {
+          catalogCandidates: 16,
+          workflowRules: adminWorkflowFixtures.length,
+          note: 'Deterministic disabled review fixtures; no real secrets or professional authority',
         },
         clientContextScenarios: [
           'personal-only client',

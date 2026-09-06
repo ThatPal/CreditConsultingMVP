@@ -13,6 +13,8 @@ import { useState } from 'react';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { RecoveryState } from '../components/common/InteractionPatterns';
+import { humanizeCode } from '../components/common/labels';
 type Rule = {
   id: string;
   key: string;
@@ -61,6 +63,7 @@ export function AdminWorkflowPage() {
         New rules are disabled drafts and can only use the bounded trigger, condition, and action
         catalog.
       </Alert>
+      {q.isError && <RecoveryState error={q.error} onRetry={() => void q.refetch()} />}
       <SectionCard>
         <Typography variant="h6">Create rule version</Typography>
         <Stack spacing={2} sx={{ mt: 2 }}>
@@ -79,7 +82,7 @@ export function AdminWorkflowPage() {
               'ROUND_COMPLETED',
             ].map((v) => (
               <MenuItem value={v} key={v}>
-                {v}
+                {humanizeCode(v)}
               </MenuItem>
             ))}
           </TextField>
@@ -108,7 +111,8 @@ export function AdminWorkflowPage() {
                 <Chip size="small" label={rule.enabled ? 'Enabled' : 'Disabled'} />
               </Stack>
               <Typography variant="body2">
-                {rule.trigger} → {rule.actionType} when {rule.conditionType}
+                {humanizeCode(rule.trigger)} → {humanizeCode(rule.actionType)} when{' '}
+                {humanizeCode(rule.conditionType)}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {rule.reason}

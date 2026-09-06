@@ -16,6 +16,7 @@ import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
 
 type UserSummary = {
   id: string;
@@ -174,6 +175,10 @@ export function AdminUserDetailPage() {
   const { userId = '' } = useParams();
   const qc = useQueryClient();
   const [role, setRole] = useState('');
+  const [pendingAction, setPendingAction] = useState<null | {
+    kind: 'role' | 'mfa' | 'session' | 'assignment';
+    id?: string;
+  }>(null);
   const query = useQuery({
     queryKey: ['admin-user', userId],
     queryFn: () => apiRequest<{ user: UserDetail }>(`/api/v1/admin/users/${userId}`),
@@ -182,7 +187,10 @@ export function AdminUserDetailPage() {
   const mutation = useMutation({
     mutationFn: ({ url, method, body }: { url: string; method: string; body?: unknown }) =>
       command(url, method, body),
-    onSuccess: refresh,
+    onSuccess: () => {
+      setPendingAction(null);
+      return refresh();
+    },
   });
   const user = query.data?.user;
   const nextRole = role || user?.role || '';
@@ -197,7 +205,37 @@ export function AdminUserDetailPage() {
     [nextRole, user?.role],
   );
   if (query.isLoading) return <Typography>Loading identity…</Typography>;
-  if (!user) return <Alert severity="error">User could not be loaded.</Alert>;
+  if (query.isError)
+    return (
+      <RecoveryState
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        backTo="/admin/users"
+        backLabel="Back to users"
+      />
+    );
+  if (!user) return <Alert severity="info">This user is not available.</Alert>;
+  const confirmAction = () => {
+    if (!pendingAction) return;
+    if (pendingAction.kind === 'role')
+      mutation.mutate({
+        url: `/api/v1/admin/users/${user.id}/role`,
+        method: 'PATCH',
+        body: { role: nextRole, expectedUpdatedAt: user.updatedAt },
+      });
+    if (pendingAction.kind === 'mfa')
+      mutation.mutate({ url: `/api/v1/admin/users/${user.id}/mfa-reset`, method: 'POST' });
+    if (pendingAction.kind === 'session' && pendingAction.id)
+      mutation.mutate({
+        url: `/api/v1/admin/users/${user.id}/sessions/${pendingAction.id}`,
+        method: 'DELETE',
+      });
+    if (pendingAction.kind === 'assignment' && pendingAction.id)
+      mutation.mutate({
+        url: `/api/v1/admin/assignments/${pendingAction.id}/deactivate`,
+        method: 'POST',
+      });
+  };
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -238,18 +276,7 @@ export function AdminUserDetailPage() {
           ))}
           <Button
             disabled={nextRole === user.role || mutation.isPending}
-            onClick={() => {
-              if (
-                confirm(
-                  `Change ${user.email} from ${user.role} to ${nextRole} and revoke all sessions?`,
-                )
-              )
-                mutation.mutate({
-                  url: `/api/v1/admin/users/${user.id}/role`,
-                  method: 'PATCH',
-                  body: { role: nextRole, expectedUpdatedAt: user.updatedAt },
-                });
-            }}
+            onClick={() => setPendingAction({ kind: 'role' })}
           >
             Confirm role change
           </Button>
@@ -264,13 +291,7 @@ export function AdminUserDetailPage() {
           <Button
             color="warning"
             variant="outlined"
-            onClick={() => {
-              if (confirm(`Reset MFA and revoke every session for ${user.email}?`))
-                mutation.mutate({
-                  url: `/api/v1/admin/users/${user.id}/mfa-reset`,
-                  method: 'POST',
-                });
-            }}
+            onClick={() => setPendingAction({ kind: 'mfa' })}
           >
             Reset staff MFA
           </Button>
@@ -292,12 +313,7 @@ export function AdminUserDetailPage() {
               </Box>
               <Button
                 color="warning"
-                onClick={() =>
-                  mutation.mutate({
-                    url: `/api/v1/admin/users/${user.id}/sessions/${s.id}`,
-                    method: 'DELETE',
-                  })
-                }
+                onClick={() => setPendingAction({ kind: 'session', id: s.id })}
               >
                 Revoke
               </Button>
@@ -317,14 +333,7 @@ export function AdminUserDetailPage() {
                 Client {a.clientId} · {a.deactivatedAt ? 'Inactive' : 'Active'}
               </Typography>
               {!a.deactivatedAt && (
-                <Button
-                  onClick={() =>
-                    mutation.mutate({
-                      url: `/api/v1/admin/assignments/${a.id}/deactivate`,
-                      method: 'POST',
-                    })
-                  }
-                >
+                <Button onClick={() => setPendingAction({ kind: 'assignment', id: a.id })}>
                   Deactivate
                 </Button>
               )}
@@ -349,6 +358,33 @@ export function AdminUserDetailPage() {
           )}
         </Stack>
       </SectionCard>
+      <GovernedActionDialog
+        open={Boolean(pendingAction)}
+        title={
+          pendingAction?.kind === 'role'
+            ? 'Change staff role'
+            : pendingAction?.kind === 'mfa'
+              ? 'Reset staff MFA'
+              : pendingAction?.kind === 'session'
+                ? 'Revoke session'
+                : 'Deactivate client assignment'
+        }
+        effect={
+          pendingAction?.kind === 'role'
+            ? `Change role from ${user.role} to ${nextRole} and revoke all active sessions. Role membership remains distinct from client-scoped grants.`
+            : pendingAction?.kind === 'mfa'
+              ? 'Remove the enrolled second factor and revoke every active session. The staff member must enroll again.'
+              : pendingAction?.kind === 'session'
+                ? 'Revoke this session immediately without changing other sessions or role membership.'
+                : 'End this client assignment without changing immutable assignment history or granting Admin professional authority.'
+        }
+        context={user.email}
+        warning
+        pending={mutation.isPending}
+        {...(mutation.isError ? { error: mutation.error.message } : {})}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={confirmAction}
+      />
     </Stack>
   );
 }
@@ -356,6 +392,27 @@ export function AdminUserDetailPage() {
 export function AdminAccessGrantsPage() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
+  const [selectedGrant, setSelectedGrant] = useState<{ id: string; label: string } | null>(null);
+  const [granteeId, setGranteeId] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [scope, setScope] = useState('READ');
+  const [capability, setCapability] = useState('client.read');
+  const [durationDays, setDurationDays] = useState(7);
+  const [grantReason, setGrantReason] = useState('');
+  const options = useQuery({
+    queryKey: ['admin-grant-options'],
+    queryFn: () =>
+      apiRequest<{
+        staff: Array<{ id: string; name: string | null; email: string; role: string }>;
+        clients: Array<{
+          id: string;
+          firstName: string;
+          lastName: string;
+          status: string;
+          user: { email: string };
+        }>;
+      }>('/api/v1/admin/access-grant-options?limit=50'),
+  });
   const q = useQuery({
     queryKey: ['admin-grants', page],
     queryFn: () =>
@@ -375,7 +432,32 @@ export function AdminAccessGrantsPage() {
   });
   const revoke = useMutation({
     mutationFn: (id: string) => command(`/api/v1/admin/access-grants/${id}/revoke`, 'POST'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-grants'] }),
+    onSuccess: () => {
+      setSelectedGrant(null);
+      return qc.invalidateQueries({ queryKey: ['admin-grants'] });
+    },
+  });
+  const create = useMutation({
+    mutationFn: () => {
+      const startsAt = new Date();
+      const expiresAt = new Date(startsAt.getTime() + durationDays * 86_400_000);
+      return command('/api/v1/admin/access-grants', 'POST', {
+        granteeId,
+        clientId,
+        scope,
+        capabilities: [capability],
+        reason: grantReason,
+        reference: 'APC Wave 5 governed Admin grant editor',
+        startsAt: startsAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      });
+    },
+    onSuccess: () => {
+      setGranteeId('');
+      setClientId('');
+      setGrantReason('');
+      return qc.invalidateQueries({ queryKey: ['admin-grants'] });
+    },
   });
   return (
     <Stack spacing={3}>
@@ -383,6 +465,107 @@ export function AdminAccessGrantsPage() {
         title="Scoped access grants"
         description="Review and immediately revoke time-bounded client access."
       />
+      {(q.isError || options.isError) && (
+        <RecoveryState
+          error={q.error ?? options.error}
+          onRetry={() => {
+            void q.refetch();
+            void options.refetch();
+          }}
+        />
+      )}
+      <SectionCard>
+        <Stack spacing={2}>
+          <Typography variant="h3">Create time-bounded access</Typography>
+          <Alert severity="info">
+            This creates a least-privilege client grant. It does not change role membership, staff
+            assignment, or professional authority.
+          </Alert>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField
+              select
+              fullWidth
+              label="Staff member"
+              value={granteeId}
+              onChange={(event) => setGranteeId(event.target.value)}
+            >
+              {options.data?.staff.map((staff) => (
+                <MenuItem key={staff.id} value={staff.id}>
+                  {staff.name || staff.email} · {staff.role === 'ADMIN' ? 'Admin' : 'Consultant'}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              fullWidth
+              label="Client"
+              value={clientId}
+              onChange={(event) => setClientId(event.target.value)}
+            >
+              {options.data?.clients.map((client) => (
+                <MenuItem key={client.id} value={client.id}>
+                  {client.firstName} {client.lastName} · {client.user.email}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField
+              select
+              fullWidth
+              label="Grant scope"
+              value={scope}
+              onChange={(event) => setScope(event.target.value)}
+            >
+              <MenuItem value="READ">Read only</MenuItem>
+              <MenuItem value="SUPPORT_ONLY">Support only</MenuItem>
+              <MenuItem value="CONSULTANT_WORK">Consultant work</MenuItem>
+            </TextField>
+            <TextField
+              select
+              fullWidth
+              label="Capability"
+              value={capability}
+              onChange={(event) => setCapability(event.target.value)}
+            >
+              <MenuItem value="client.read">Read client context</MenuItem>
+              <MenuItem value="review.read">Read Credit Review</MenuItem>
+              <MenuItem value="support.read">Read Support</MenuItem>
+              <MenuItem value="support.manage">Manage Support</MenuItem>
+              <MenuItem value="document.read">Read documents</MenuItem>
+              <MenuItem value="strategy.read">Read Strategy</MenuItem>
+            </TextField>
+            <TextField
+              select
+              fullWidth
+              label="Duration"
+              value={durationDays}
+              onChange={(event) => setDurationDays(Number(event.target.value))}
+            >
+              <MenuItem value={1}>1 day</MenuItem>
+              <MenuItem value={7}>7 days</MenuItem>
+              <MenuItem value={30}>30 days</MenuItem>
+            </TextField>
+          </Stack>
+          <TextField
+            label="Business purpose"
+            value={grantReason}
+            onChange={(event) => setGrantReason(event.target.value)}
+            multiline
+            minRows={2}
+            slotProps={{ htmlInput: { maxLength: 500 } }}
+          />
+          {create.isError && <RecoveryState error={create.error} />}
+          <Button
+            variant="contained"
+            sx={{ alignSelf: 'flex-start' }}
+            disabled={!granteeId || !clientId || grantReason.trim().length < 4 || create.isPending}
+            onClick={() => create.mutate()}
+          >
+            Create governed grant
+          </Button>
+        </Stack>
+      </SectionCard>
       <SectionCard>
         <Typography variant="h6">Grant history</Typography>
         <Stack divider={<Divider flexItem />}>
@@ -404,7 +587,15 @@ export function AdminAccessGrantsPage() {
               {g.revokedAt ? (
                 <Chip label="Revoked" />
               ) : (
-                <Button color="warning" onClick={() => revoke.mutate(g.id)}>
+                <Button
+                  color="warning"
+                  onClick={() =>
+                    setSelectedGrant({
+                      id: g.id,
+                      label: `${g.grantee.name || g.grantee.email} · ${g.scope}`,
+                    })
+                  }
+                >
                   Revoke immediately
                 </Button>
               )}
@@ -418,6 +609,20 @@ export function AdminAccessGrantsPage() {
         total={q.data?.total ?? 0}
         hasMore={Boolean(q.data?.hasMore)}
         onPageChange={setPage}
+      />
+      <GovernedActionDialog
+        open={Boolean(selectedGrant)}
+        title="Revoke temporary access"
+        effect="End this time-bounded client grant immediately. Role membership and immutable grant history are unchanged."
+        {...(selectedGrant?.label ? { context: selectedGrant.label } : {})}
+        warning
+        pending={revoke.isPending}
+        {...(revoke.isError ? { error: revoke.error.message } : {})}
+        onCancel={() => setSelectedGrant(null)}
+        onConfirm={() => {
+          if (selectedGrant) revoke.mutate(selectedGrant.id);
+        }}
+        confirmLabel="Revoke access"
       />
     </Stack>
   );
