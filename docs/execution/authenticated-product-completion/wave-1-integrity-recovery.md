@@ -92,11 +92,13 @@ No additional P0 security, authority, payment, credit, entitlement, or support-a
 - API health: `http://localhost:3008/health` returned 200.
 - Database: dedicated Credit-only `credit_strategy_wave1`; Redis: `localhost:6380`.
 - Seed accounts: `client@credit.local`, `consultant@credit.local`, `admin@credit.local` with the established temporary development password.
-- Consultant MFA enrollment is intentionally human-controlled. Browser verification reached the correct enrollment boundary on the fresh database; authenticated CRM Review workspace verification is recorded after human enrollment, without bypassing MFA.
+- Consultant MFA enrollment was completed by the product owner without bypass or reset. Authenticated browser verification then proved `/crm/work-queue` with 12 scoped attention items, `/crm/reviews` with the seeded Jordan Blake Review, and queue → `/crm/clients/:clientId/reviews/:reviewId` continuity.
+- The governed Review workspace rendered the accepted synthetic report, no unresolved source exceptions, and the durable `credit_report.extract` job in `SUCCEEDED` state.
+- The Consultant session was signed out normally, then the seeded Client account was verified at `/app` and `/app/credit-center`; the published Credit Review and deterministic profile metrics rendered successfully.
 
 ## Exact-head CI
 
-Exact-final-head CI is run after the report commit is pushed. The final branch head and GitHub Actions run URL are recorded in the handoff and can be verified against this report commit.
+The initial report head `a28de9a37c8111aa6616cbbc4b489d620c084b17` passed CI run `34013276764`. The final browser-evidence report commit is followed by a new exact-final-head CI run; its final branch head and run URL are recorded in the handoff.
 
 ## Deferred boundaries
 
