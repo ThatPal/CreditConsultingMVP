@@ -1313,6 +1313,564 @@ try {
       },
     });
   }
+
+  // Wave 6 acceptance fixtures deliberately model valid lifecycle history rather than
+  // manufacturing disconnected screen-only records. Stable business keys are used for
+  // every lookup so the complete builder remains safe to run repeatedly.
+  const lifecycleProfile = await prisma.creditProfileState.findUniqueOrThrow({
+    where: { clientId: client.id },
+  });
+  const lifecyclePlanVersion = await prisma.planVersion.findFirstOrThrow({
+    where: { planId: demoPlan.id, status: { in: ['ACTIVE', 'APPROVED'] } },
+    orderBy: { version: 'desc' },
+  });
+  await prisma.planItem.updateMany({
+    where: { planVersionId: lifecyclePlanVersion.id, required: true },
+    data: { status: 'COMPLETED', completedAt: daysAgo(1) },
+  });
+  const journey = await prisma.creditJourney.upsert({
+    where: { clientId: client.id },
+    create: { clientId: client.id },
+    update: { status: 'ACTIVE', completedAt: null },
+  });
+  const lifecycleProduct = await prisma.cardProduct.findUniqueOrThrow({
+    where: { slug: 'northstar-business' },
+    include: { currentOfferVersion: true },
+  });
+  if (!lifecycleProduct.currentOfferVersion)
+    throw new Error('Wave 6 lifecycle fixture requires a current governed offer');
+  const lifecycleOffer = lifecycleProduct.currentOfferVersion;
+
+  const ensureCycle = async (cycleNumber: number, status: 'ACTIVE' | 'COMPLETE') => {
+    const cycle = await prisma.applicationCycle.upsert({
+      where: { clientId_cycleNumber: { clientId: client.id, cycleNumber } },
+      create: {
+        clientId: client.id,
+        journeyId: journey.id,
+        cycleNumber,
+        season: cycleNumber === 1 ? 'Fall' : 'Summer',
+        year: 2026,
+        displayName: cycleNumber === 1 ? 'Fall 2026' : 'Summer 2026',
+        status,
+        currentStage: status === 'ACTIVE' ? 'APPLICATION_SEQUENCE' : 'FINAL_RESULTS',
+        readinessDecision: 'READY',
+        madeItToApplications: true,
+        goalConfirmedAt: daysAgo(cycleNumber === 1 ? 3 : 120),
+        ...(status === 'COMPLETE'
+          ? { finalResult: 'Completed with verified follow-up', closedAt: daysAgo(75) }
+          : {}),
+      },
+      update: {},
+    });
+    const snapshot = await prisma.cycleGoalSnapshot.upsert({
+      where: { cycleId: cycle.id },
+      create: {
+        cycleId: cycle.id,
+        sourceGoalId: seededGoal.id,
+        sourceGoalVersion: seededGoal.version,
+        goalType: seededGoal.goalType,
+        scope: seededGoal.scope,
+        targetAmount: seededGoal.targetAmount,
+        allowAnnualFee: seededGoal.allowAnnualFee,
+        cardTypePreference: seededGoal.cardTypePreference,
+        offerPreferences: seededGoal.offerPreferences,
+        feePreference: seededGoal.feePreference,
+        preferenceNote: seededGoal.preferenceNote,
+      },
+      update: {},
+    });
+    return { cycle, snapshot };
+  };
+
+  const ensureLifecycleRound = async (cycleNumber: number, historical: boolean) => {
+    const { cycle, snapshot } = await ensureCycle(cycleNumber, historical ? 'COMPLETE' : 'ACTIVE');
+    const entitlement = await prisma.serviceEntitlement.upsert({
+      where: { sourceKey: `demo-wave6-round-${cycleNumber}` },
+      create: {
+        clientId: client.id,
+        sourceKey: `demo-wave6-round-${cycleNumber}`,
+        serviceType: 'CREDIT_CARD_ROUND',
+        quantityGranted: 1,
+        quantityUsed: 1,
+        status: 'CONSUMED',
+        consumedAt: historical ? daysAgo(100) : daysAgo(3),
+      },
+      update: {},
+    });
+    const sourceContext = {
+      fixture: 'APC_WAVE_6_AUTHORITY_VALID_LIFECYCLE',
+      profileStateId: lifecycleProfile.id,
+      planVersionId: lifecyclePlanVersion.id,
+      goalId: seededGoal.id,
+      cycleNumber,
+    };
+    const round = await prisma.creditCardRound.upsert({
+      where: { cycleId_clientId: { cycleId: cycle.id, clientId: client.id } },
+      create: {
+        clientId: client.id,
+        cycleId: cycle.id,
+        goalSnapshotId: snapshot.id,
+        profileStateId: lifecycleProfile.id,
+        sourceReviewId: publishedReview.id,
+        preparationPlanVersionId: lifecyclePlanVersion.id,
+        serviceEntitlementId: entitlement.id,
+        status: historical ? 'COMPLETE' : 'READY_FOR_STRATEGY',
+        sourceFingerprint: createHash('sha256').update(JSON.stringify(sourceContext)).digest('hex'),
+        sourceContext,
+        startedAt: historical ? daysAgo(105) : daysAgo(3),
+        ...(historical ? { completedAt: daysAgo(75), nextReviewAt: daysAgo(-15) } : {}),
+      },
+      update: {},
+    });
+    let majorCheck = await prisma.roundMajorApplicationCheck.findFirst({
+      where: { roundId: round.id, version: 1 },
+    });
+    if (!majorCheck)
+      majorCheck = await prisma.roundMajorApplicationCheck.create({
+        data: {
+          roundId: round.id,
+          clientId: client.id,
+          version: 1,
+          choice: 'NO',
+          submittedByUserId: clientUser.id,
+          sourceFingerprint: `demo-wave6-major-check-${cycleNumber}`,
+          submittedAt: historical ? daysAgo(104) : daysAgo(2),
+        },
+      });
+    const strategy = await prisma.roundStrategy.upsert({
+      where: { roundId: round.id },
+      create: { roundId: round.id, clientId: client.id, status: 'DRAFT' },
+      update: {},
+    });
+    let version = await prisma.strategyVersion.findUnique({
+      where: { strategyId_version: { strategyId: strategy.id, version: 1 } },
+    });
+    if (!version)
+      version = await prisma.strategyVersion.create({
+        data: {
+          strategyId: strategy.id,
+          version: 1,
+          status: 'APPROVED',
+          sourceFingerprint: round.sourceFingerprint,
+          sourceContext,
+          brief: {
+            title: historical ? 'Completed summer application strategy' : 'Approved fall strategy',
+            clientSafeSummary:
+              'Apply in the reviewed order and pause if the first result changes the plan.',
+            authority: 'HUMAN_APPROVED',
+          },
+          rules: { preserveOrder: true, stopAfterUnexpectedResult: true },
+          validation: { valid: true, fixture: 'APC_WAVE_6' },
+          createdByUserId: consultant.id,
+          approvedByUserId: consultant.id,
+          approvalNote: 'Deterministic professional-review fixture',
+          approvedAt: historical ? daysAgo(102) : daysAgo(2),
+        },
+      });
+    let candidate = await prisma.strategyCandidate.findFirst({
+      where: { strategyVersionId: version.id, productId: lifecycleProduct.id },
+    });
+    if (!candidate)
+      candidate = await prisma.strategyCandidate.create({
+        data: {
+          strategyVersionId: version.id,
+          productId: lifecycleProduct.id,
+          offerVersionId: lifecycleOffer.id,
+          disposition: 'SHORTLISTED',
+          role: 'PLANNED',
+          internalRationale: 'Current governed offer fits the approved sequencing constraints.',
+          clientSafeReason: 'This card matches the reviewed business-credit goal and timing.',
+          sortOrder: 0,
+        },
+      });
+    let application = await prisma.strategyApplication.findFirst({
+      where: { strategyVersionId: version.id, candidateId: candidate.id },
+    });
+    if (!application)
+      application = await prisma.strategyApplication.create({
+        data: {
+          strategyVersionId: version.id,
+          candidateId: candidate.id,
+          sequence: 1,
+          role: 'PLANNED',
+          timingRule: { window: historical ? 'COMPLETED' : 'SCHEDULED_SESSION' },
+          dependencyRule: { requires: [] },
+          stopRule: { stopOn: ['DECLINED', 'MATERIAL_CHANGE'] },
+          reconsiderationRule: { eligible: true, verifyIssuerPolicy: true },
+          internalRationale: 'Single reviewed application preserves controlled execution.',
+          clientSafeReason: 'Start here and review the result with your consultant.',
+        },
+      });
+    await prisma.roundStrategy.update({
+      where: { id: strategy.id },
+      data: { status: 'APPROVED', approvedVersionId: version.id },
+    });
+    return { round, version, application };
+  };
+
+  const currentLifecycle = await ensureLifecycleRound(1, false);
+  const historicalLifecycle = await ensureLifecycleRound(2, true);
+  await prisma.consultantAvailabilityRule.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000601' },
+    create: {
+      id: '00000000-0000-4000-8000-000000000601',
+      consultantId: consultant.id,
+      weekday: new Date().getUTCDay(),
+      startMinute: 0,
+      endMinute: 1440,
+      timezone: 'America/New_York',
+    },
+    update: { active: true },
+  });
+  const ensureAppointmentAndSession = async (
+    roundId: string,
+    strategyVersionId: string,
+    historical: boolean,
+  ) => {
+    let appointment = await prisma.appointment.findFirst({ where: { roundId } });
+    if (!appointment)
+      appointment = await prisma.appointment.create({
+        data: {
+          clientId: client.id,
+          consultantId: consultant.id,
+          roundId,
+          strategyVersionId,
+          startsAt: historical ? daysAgo(100) : new Date(Date.now() - 10 * 60_000),
+          endsAt: historical ? daysAgo(99.96) : new Date(Date.now() + 35 * 60_000),
+          timezone: 'America/New_York',
+          status: historical ? 'COMPLETED' : 'BOOKED',
+        },
+      });
+    const session = await prisma.applicationSession.upsert({
+      where: { roundId },
+      create: {
+        clientId: client.id,
+        consultantId: consultant.id,
+        roundId,
+        appointmentId: appointment.id,
+        strategyVersionId,
+        sourceFingerprint: `demo-wave6-session-${roundId}`,
+        status: historical ? 'ENDED' : 'LIVE',
+        startedAt: historical ? daysAgo(100) : new Date(Date.now() - 8 * 60_000),
+        ...(historical ? { endedAt: daysAgo(99.95) } : {}),
+      },
+      update: {},
+    });
+    for (const [role, userId, connectionId] of [
+      ['CLIENT', clientUser.id, `demo-wave6-client-${roundId}`],
+      ['CONSULTANT', consultant.id, `demo-wave6-consultant-${roundId}`],
+    ] as const)
+      await prisma.sessionPresenceLease.upsert({
+        where: { sessionId_connectionId: { sessionId: session.id, connectionId } },
+        create: {
+          sessionId: session.id,
+          userId,
+          role,
+          connectionId,
+          expiresAt: historical ? daysAgo(99) : new Date(Date.now() + 60 * 60_000),
+        },
+        update: historical
+          ? {}
+          : { expiresAt: new Date(Date.now() + 60 * 60_000), lastSeenAt: new Date() },
+      });
+    return { appointment, session };
+  };
+  const currentLive = await ensureAppointmentAndSession(
+    currentLifecycle.round.id,
+    currentLifecycle.version.id,
+    false,
+  );
+  const historicalLive = await ensureAppointmentAndSession(
+    historicalLifecycle.round.id,
+    historicalLifecycle.version.id,
+    true,
+  );
+  let historicalApplication = await prisma.creditApplication.findFirst({
+    where: {
+      sessionId: historicalLive.session.id,
+      strategyApplicationId: historicalLifecycle.application.id,
+    },
+  });
+  if (!historicalApplication)
+    historicalApplication = await prisma.creditApplication.create({
+      data: {
+        sessionId: historicalLive.session.id,
+        clientId: client.id,
+        roundId: historicalLifecycle.round.id,
+        strategyVersionId: historicalLifecycle.version.id,
+        strategyApplicationId: historicalLifecycle.application.id,
+        productId: lifecycleProduct.id,
+        offerVersionId: lifecycleOffer.id,
+        status: 'RESULT_RECORDED',
+        outcome: 'APPROVED',
+        approvedLimitKnown: true,
+        approvedLimit: 18000,
+        issuerReason: 'Synthetic approval for acceptance review',
+        releasedAt: daysAgo(100),
+        openedAt: daysAgo(100),
+        resultRecordedAt: daysAgo(100),
+      },
+    });
+  let followUp = await prisma.postRoundFollowUp.findFirst({
+    where: {
+      roundId: historicalLifecycle.round.id,
+      applicationId: historicalApplication.id,
+      kind: 'CREDIT_LIMIT_INCREASE',
+    },
+  });
+  if (!followUp)
+    followUp = await prisma.postRoundFollowUp.create({
+      data: {
+        roundId: historicalLifecycle.round.id,
+        clientId: client.id,
+        applicationId: historicalApplication.id,
+        kind: 'CREDIT_LIMIT_INCREASE',
+        status: 'COMPLETE',
+        required: true,
+        currentResult: { approvedLimit: 18000, confirmedByClient: true },
+        completedAt: daysAgo(90),
+      },
+    });
+  let finalAnalysis = await prisma.roundAnalysis.findUnique({
+    where: { roundId_version: { roundId: historicalLifecycle.round.id, version: 1 } },
+  });
+  if (!finalAnalysis)
+    finalAnalysis = await prisma.roundAnalysis.create({
+      data: {
+        roundId: historicalLifecycle.round.id,
+        clientId: client.id,
+        version: 1,
+        kind: 'FINAL',
+        status: 'APPROVED',
+        sourceFingerprint: `demo-wave6-analysis-${historicalLifecycle.round.id}`,
+        sourceSnapshot: { applicationId: historicalApplication.id, followUpId: followUp.id },
+        deterministicFacts: { approved: 1, knownApprovedAmount: 18000 },
+        clientSafeContent: {
+          headline: 'One approved account added',
+          summary: 'The verified result added $18,000 of available credit.',
+          nextActions: ['Continue the published nurture plan', 'Review again before a new cycle'],
+        },
+        internalContent: { fixture: 'APC_WAVE_6', authority: 'CONSULTANT_APPROVED' },
+        preparedBy: 'DETERMINISTIC',
+        approvedByUserId: consultant.id,
+        approvedAt: daysAgo(88),
+      },
+    });
+  await prisma.creditCardRound.update({
+    where: { id: historicalLifecycle.round.id },
+    data: {
+      finalAnalysisId: finalAnalysis.id,
+      finalizedByUserId: consultant.id,
+      finalizationVersion: 1,
+    },
+  });
+
+  const ensureMajorCase = async (
+    targetClientId: string,
+    key: string,
+    decisionType: 'NO_RESTRICTION' | 'PAUSE_CARD_ACTIVITY' | 'LIMIT_CARD_ACTIVITY',
+    reassessment = false,
+  ) => {
+    let readinessCase = await prisma.majorReadinessCase.findFirst({
+      where: { clientId: targetClientId, intentType: key },
+    });
+    if (!readinessCase)
+      readinessCase = await prisma.majorReadinessCase.create({
+        data: {
+          clientId: targetClientId,
+          intentType: key,
+          targetTiming: 'Within the next 90 days',
+          clientContext: 'Synthetic acceptance fixture with no lender-outcome representation.',
+          status: reassessment ? 'REASSESSMENT' : 'COORDINATION',
+          profileStateId: targetClientId === client.id ? lifecycleProfile.id : null,
+          sourceReviewId: targetClientId === client.id ? publishedReview.id : null,
+          createdByUserId: clientUser.id,
+        },
+      });
+    let approved = await prisma.majorReadinessRecommendation.findUnique({
+      where: { caseId_version: { caseId: readinessCase.id, version: 1 } },
+    });
+    if (!approved)
+      approved = await prisma.majorReadinessRecommendation.create({
+        data: {
+          caseId: readinessCase.id,
+          version: 1,
+          type: decisionType === 'NO_RESTRICTION' ? 'PROCEED_NOW' : 'PREPARE_FIRST',
+          clientSafeExplanation:
+            decisionType === 'NO_RESTRICTION'
+              ? 'Current information supports continuing with consultant coordination.'
+              : 'Pause or limit new card activity while the major application is prepared.',
+          internalRationale: 'Synthetic consultant-approved acceptance scenario.',
+          sourceFingerprint: `demo-wave6-readiness-${key}-v1`,
+          sourceSnapshot: { fixture: 'APC_WAVE_6', decisionType },
+          approvedByUserId: consultant.id,
+          approvedAt: daysAgo(4),
+        },
+      });
+    let decision = await prisma.coordinationDecision.findUnique({
+      where: { caseId_version: { caseId: readinessCase.id, version: 1 } },
+    });
+    if (!decision)
+      decision = await prisma.coordinationDecision.create({
+        data: {
+          caseId: readinessCase.id,
+          version: 1,
+          type: decisionType,
+          clientSafeExplanation: approved.clientSafeExplanation,
+          internalRationale: 'Consultant-owned coordination fixture.',
+          sourceRecommendationId: approved.id,
+          decidedByUserId: consultant.id,
+          effectiveAt: daysAgo(3),
+        },
+      });
+    await prisma.majorReadinessCase.update({
+      where: { id: readinessCase.id },
+      data: { currentRecommendationId: approved.id, currentDecisionId: decision.id },
+    });
+    if (decisionType !== 'NO_RESTRICTION')
+      for (const scope of ['CYCLE', 'STRATEGY', 'SCHEDULING', 'LIVE_EXECUTION'] as const)
+        await prisma.clientCreditActivityRestriction.upsert({
+          where: { decisionId_scope: { decisionId: decision.id, scope } },
+          create: {
+            clientId: targetClientId,
+            caseId: readinessCase.id,
+            decisionId: decision.id,
+            scope,
+            reasonCode: decisionType,
+          },
+          update: {},
+        });
+    if (reassessment && targetClientId === client.id)
+      await prisma.majorReadinessRecommendation.upsert({
+        where: { caseId_version: { caseId: readinessCase.id, version: 2 } },
+        create: {
+          caseId: readinessCase.id,
+          version: 2,
+          type: 'REASSESS_LATER',
+          clientSafeExplanation:
+            'A newer draft is under consultant review; the prior approved guidance remains visible.',
+          internalRationale: 'Material timing change requires a fresh professional review.',
+          sourceFingerprint: `demo-wave6-readiness-${key}-v2`,
+          sourceSnapshot: { fixture: 'APC_WAVE_6', draft: true },
+        },
+        update: {},
+      });
+    return readinessCase;
+  };
+  const mainReadiness = await ensureMajorCase(client.id, 'MORTGAGE', 'NO_RESTRICTION', true);
+  const directoryClients = await prisma.client.findMany({
+    where: { user: { email: { startsWith: 'client-directory-' } } },
+    orderBy: { id: 'asc' },
+    take: 2,
+  });
+  if (directoryClients[0])
+    await ensureMajorCase(directoryClients[0].id, 'MORTGAGE_PAUSE_REVIEW', 'PAUSE_CARD_ACTIVITY');
+  if (directoryClients[1])
+    await ensureMajorCase(directoryClients[1].id, 'AUTO_LIMIT_REVIEW', 'LIMIT_CARD_ACTIVITY');
+
+  for (const fixture of [
+    {
+      key: 'live-session',
+      title: 'Live session in progress',
+      domain: 'LIVE_SESSION',
+      priority: 'URGENT' as const,
+      path: `/crm/live-sessions/${currentLive.session.id}`,
+      sourceId: currentLive.session.id,
+    },
+    {
+      key: 'post-round',
+      title: 'Review completed Round analysis',
+      domain: 'POST_ROUND',
+      priority: 'NORMAL' as const,
+      path: `/crm/clients/${client.id}/rounds/${historicalLifecycle.round.id}/analysis`,
+      sourceId: historicalLifecycle.round.id,
+    },
+    {
+      key: 'major-readiness',
+      title: 'Reassess major application readiness',
+      domain: 'MAJOR_READINESS',
+      priority: 'HIGH' as const,
+      path: `/crm/clients/${client.id}/major-readiness/${mainReadiness.id}`,
+      sourceId: mainReadiness.id,
+    },
+  ])
+    if (!(await prisma.workItem.findFirst({ where: { dedupeKey: `demo-wave6-${fixture.key}` } })))
+      await prisma.workItem.create({
+        data: {
+          clientId: client.id,
+          assigneeId: consultant.id,
+          title: fixture.title,
+          domain: fixture.domain,
+          priority: fixture.priority,
+          suggestedNextAction: 'Open the linked workspace and review current canonical context.',
+          sourceType: 'APCWave6Fixture',
+          sourceId: fixture.sourceId,
+          dedupeKey: `demo-wave6-${fixture.key}`,
+          deepLink: { path: fixture.path },
+        },
+      });
+  for (const fixture of [
+    {
+      key: 'appointment',
+      category: 'appointment',
+      title: 'Your guided application session is ready',
+      body: 'Open the scheduled session to join your consultant.',
+      path: `/app/rounds/${currentLifecycle.round.id}/live`,
+    },
+    {
+      key: 'analysis',
+      category: 'round',
+      title: 'Your completed Round analysis is available',
+      body: 'Review the verified results and next actions.',
+      path: `/app/rounds/${historicalLifecycle.round.id}/analysis`,
+    },
+    {
+      key: 'readiness',
+      category: 'major-readiness',
+      title: 'Major readiness reassessment is in progress',
+      body: 'Your approved guidance remains visible while the newer draft is reviewed.',
+      path: '/app/major-readiness',
+    },
+  ]) {
+    await prisma.notification.upsert({
+      where: {
+        userId_semanticKey: { userId: clientUser.id, semanticKey: `demo-wave6-${fixture.key}` },
+      },
+      create: {
+        userId: clientUser.id,
+        clientId: client.id,
+        semanticKey: `demo-wave6-${fixture.key}`,
+        type: 'LIFECYCLE_UPDATE',
+        category: fixture.category,
+        title: fixture.title,
+        body: fixture.body,
+        safePayload: { fixture: 'APC_WAVE_6' },
+        link: fixture.path,
+      },
+      update: {},
+    });
+  }
+  for (const fixture of [
+    ['WAVE6_STRATEGY_APPROVED', 'RoundStrategy', currentLifecycle.round.id],
+    ['WAVE6_LIVE_SESSION_STARTED', 'ApplicationSession', currentLive.session.id],
+    ['WAVE6_POST_ROUND_ANALYSIS_PUBLISHED', 'RoundAnalysis', finalAnalysis.id],
+    ['WAVE6_MAJOR_READINESS_REASSESSMENT', 'MajorReadinessCase', mainReadiness.id],
+  ] as const)
+    if (
+      !(await prisma.auditEvent.findFirst({
+        where: { clientId: client.id, action: fixture[0], entityId: fixture[2] },
+      }))
+    )
+      await prisma.auditEvent.create({
+        data: {
+          clientId: client.id,
+          actorId: consultant.id,
+          action: fixture[0],
+          entityType: fixture[1],
+          entityId: fixture[2],
+          metadata: { fixture: 'APC_WAVE_6', nonProduction: true },
+        },
+      });
   console.info(
     JSON.stringify(
       {
@@ -1370,6 +1928,16 @@ try {
           'one verified Credit Card Round entitlement for rollback/idempotency review',
           'PORTAL-25 Round and PORTAL-26 major-application check available after Cycle start',
         ],
+        wave6LifecycleScenarios: {
+          currentRoundId: currentLifecycle.round.id,
+          historicalRoundId: historicalLifecycle.round.id,
+          liveSessionId: currentLive.session.id,
+          currentAppointmentId: currentLive.appointment.id,
+          approvedStrategyVersionId: currentLifecycle.version.id,
+          finalAnalysisId: finalAnalysis.id,
+          majorReadinessCaseId: mainReadiness.id,
+          authority: 'DETERMINISTIC_NON_PRODUCTION_REVIEW_FIXTURE',
+        },
       },
       null,
       2,
