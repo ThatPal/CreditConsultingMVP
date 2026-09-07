@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
 import { assertNoCreditActivityRestriction } from '../majorReadiness/service.js';
+import { composeRoundLifecycle } from './lifecycleProjection.js';
 
 export type Phase11ClientView = Awaited<ReturnType<typeof getPhase11ClientView>>;
 
@@ -116,11 +117,70 @@ async function roundProjection(prisma: PrismaClient, roundId: string, clientId: 
   const blockers = [!profileCurrent && 'CURRENT_REVIEW_REQUIRED', !goalCurrent && 'GOAL_CHANGED', !sourceCurrent && 'SOURCE_CONTEXT_CHANGED', !preparationComplete && 'PREPARATION_INCOMPLETE', !majorCheck && 'MAJOR_CHECK_REQUIRED'].filter(Boolean) as string[];
   const coordinationRequired = majorCheck ? majorCheck.choice !== 'NO' : false;
   const strategyReady = blockers.length === 0;
+  const [strategy, appointment, session, unresolvedFollowUpCount, approvedAnalysis, activeRestrictions] =
+    await Promise.all([
+      prisma.roundStrategy.findUnique({
+        where: { roundId },
+        include: { approvedVersion: { select: { version: true, approvedAt: true } } },
+      }),
+      prisma.appointment.findFirst({
+        where: { roundId, clientId, status: { in: ['BOOKED', 'COMPLETED'] } },
+        orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
+        select: { status: true, startsAt: true, updatedAt: true },
+      }),
+      prisma.applicationSession.findUnique({
+        where: { roundId },
+        select: { status: true, updatedAt: true, endedAt: true },
+      }),
+      prisma.postRoundFollowUp.count({
+        where: { roundId, clientId, required: true, status: { notIn: ['COMPLETE', 'WAIVED'] } },
+      }),
+      prisma.roundAnalysis.findFirst({
+        where: { roundId, clientId, status: 'APPROVED' },
+        orderBy: [{ version: 'desc' }, { id: 'asc' }],
+        select: { version: true, approvedAt: true },
+      }),
+      prisma.clientCreditActivityRestriction.findMany({
+        where: { clientId, clearedAt: null },
+        orderBy: [{ effectiveAt: 'desc' }, { id: 'asc' }],
+        select: { scope: true },
+      }),
+    ]);
+  const lifecycle = composeRoundLifecycle({
+    roundId: round.id,
+    roundStatus: round.status,
+    updatedAt: round.updatedAt,
+    blockers,
+    preparationComplete,
+    majorCheckComplete: Boolean(majorCheck),
+    strategy: strategy
+      ? {
+          status: strategy.status,
+          version: strategy.approvedVersion?.version ?? null,
+          approvedAt: strategy.approvedVersion?.approvedAt ?? null,
+        }
+      : null,
+    appointment,
+    session,
+    unresolvedFollowUpCount,
+    approvedAnalysis,
+    activeRestrictions: activeRestrictions.map((restriction) => restriction.scope),
+    finalized: round.status === 'COMPLETE' || Boolean(round.completedAt),
+  });
   return {
     round: { ...round, sourceContext: round.sourceContext, majorApplicationChecks: undefined },
-    readiness: { entitlement: round.serviceEntitlement.status, profileCurrent, goalCurrent, sourceCurrent, preparationComplete, majorCheckComplete: Boolean(majorCheck), coordinationRequired, strategyReady, strategyStatus: 'NOT_STARTED', blockers },
+    readiness: { entitlement: round.serviceEntitlement.status, profileCurrent, goalCurrent, sourceCurrent, preparationComplete, majorCheckComplete: Boolean(majorCheck), coordinationRequired, strategyReady, strategyStatus: strategy?.status ?? 'NOT_STARTED', blockers },
     majorCheck,
-    primaryAction: !profileCurrent ? { label: 'Start a new Credit Profile Review', path: '/app/credit-center/review' } : !preparationComplete ? { label: 'Complete preparation', path: '/app/plan' } : !majorCheck ? { label: 'Answer major application check', path: `/app/rounds/${round.id}/major-check` } : { label: 'Wait for consultant strategy', path: `/app/rounds/${round.id}` },
+    lifecycle,
+    primaryAction:
+      lifecycle.nextAction ??
+      (!profileCurrent
+        ? { key: 'START_REVIEW', label: 'Start a new Credit Profile Review', path: '/app/credit-center/review' }
+        : !preparationComplete
+          ? { key: 'COMPLETE_PREPARATION', label: 'Continue preparation Plan', path: '/app/plan' }
+          : !majorCheck
+            ? { key: 'ANSWER_MAJOR_CHECK', label: 'Answer Major application check', path: `/app/rounds/${round.id}/major-check` }
+            : null),
   };
 }
 

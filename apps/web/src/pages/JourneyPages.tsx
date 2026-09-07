@@ -228,7 +228,12 @@ export function ClientHomePage() {
       />
       {query.isLoading && <LinearProgress />}
       {query.isError && (
-        <Alert severity="error">Your current journey context could not be loaded.</Alert>
+        <Alert severity="error">
+          <Stack spacing={1}>
+            <Typography>Your current journey context could not be loaded. No saved work was changed.</Typography>
+            <Button variant="outlined" onClick={() => query.refetch()}>Try loading your journey again</Button>
+          </Stack>
+        </Alert>
       )}
       {query.data && <JourneySummary data={query.data} showHistory={false} />}
       {query.data && (
@@ -245,24 +250,6 @@ export function ClientHomePage() {
             </Button>
           </Stack>
         </SectionCard>
-      )}
-      {!query.data && (
-        <Grid container spacing={2}>
-          {[
-            { title: 'Credit Center', path: '/app/credit-center' },
-            { title: 'Documents', path: '/app/documents' },
-            { title: 'Support', path: '/app/support' },
-          ].map((item) => (
-            <Grid key={item.title} size={{ xs: 12, md: 4 }}>
-              <SectionCard>
-                <Typography variant="h3">{item.title}</Typography>
-                <Button component={Link} to={item.path}>
-                  Open
-                </Button>
-              </SectionCard>
-            </Grid>
-          ))}
-        </Grid>
       )}
     </Stack>
   );

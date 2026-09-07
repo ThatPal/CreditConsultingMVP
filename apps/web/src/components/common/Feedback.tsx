@@ -57,10 +57,26 @@ export function ErrorAlert({
     </Alert>
   );
 }
-export function LoadingSkeleton() {
+export function LoadingSkeleton({ label = 'Loading page content' }: { label?: string }) {
   return (
     <SectionCard className="AppLoadingSkeleton-root">
       <Stack spacing={2}>
+        <Typography
+          sx={{
+            position: 'absolute',
+            width: 1,
+            height: 1,
+            p: 0,
+            m: -1,
+            overflow: 'hidden',
+            clip: 'rect(0, 0, 0, 0)',
+            whiteSpace: 'nowrap',
+            border: 0,
+          }}
+          role="status"
+        >
+          {label}
+        </Typography>
         <Skeleton width="28%" />
         <Skeleton height={52} />
         <Skeleton width="72%" />

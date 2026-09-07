@@ -68,7 +68,21 @@ type RoundView = {
     clientContext: string | null;
     version: number;
   };
-  primaryAction: { label: string; path: string };
+  lifecycle: {
+    currentState: string;
+    meaning: string;
+    owner: 'CLIENT' | 'CONSULTANT' | 'SYSTEM' | 'ADMIN' | 'NONE';
+    mustActNow: boolean;
+    waiting: string | null;
+    freshness: string;
+    stages: Array<{
+      key: string;
+      label: string;
+      state: 'COMPLETED' | 'ACTIVE' | 'AVAILABLE' | 'LOCKED';
+      path: string;
+    }>;
+  };
+  primaryAction: null | { key: string; label: string; path: string };
 };
 
 const readable = (value: string) =>
@@ -257,7 +271,7 @@ export function RoundPage() {
         backLabel="Back to rounds"
       />
     );
-  const { round, readiness, primaryAction, majorCheck } = query.data;
+  const { round, readiness, lifecycle, primaryAction, majorCheck } = query.data;
   const checks = [
     readiness.profileCurrent,
     readiness.preparationComplete,
@@ -284,6 +298,8 @@ export function RoundPage() {
       />
       <SectionCard>
         <Typography variant="h5">Round overview</Typography>
+        <Typography variant="h3" sx={{ mt: 1.5 }}>{lifecycle.currentState}</Typography>
+        <Typography color="text.secondary" sx={{ mt: 0.75 }}>{lifecycle.meaning}</Typography>
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
           <Chip label={`Entitlement: ${readable(round.serviceEntitlement.status)}`} />
           <Chip
@@ -335,44 +351,9 @@ export function RoundPage() {
       <SectionCard>
         <Typography variant="h5">Round path</Typography>
         <Stack spacing={1.25} sx={{ mt: 1.5 }}>
-          {(
-            [
-              ['Preparation', readiness.preparationComplete ? 'COMPLETED' : 'ACTIVE', '/app/plan'],
-              [
-                'Major application check',
-                readiness.majorCheckComplete
-                  ? 'COMPLETED'
-                  : readiness.preparationComplete
-                    ? 'AVAILABLE'
-                    : 'LOCKED',
-                `/app/rounds/${round.id}/major-check`,
-              ],
-              [
-                'Approved strategy',
-                readiness.strategyReady ? 'AVAILABLE' : 'LOCKED',
-                `/app/rounds/${round.id}/strategy`,
-              ],
-              [
-                'Scheduling',
-                readiness.strategyReady ? 'AVAILABLE' : 'LOCKED',
-                `/app/rounds/${round.id}/schedule`,
-              ],
-              [
-                'Live applications and results',
-                ['LIVE', 'RESULTS', 'FOLLOW_UP', 'COMPLETE'].includes(round.status)
-                  ? 'ACTIVE'
-                  : 'LOCKED',
-                `/app/rounds/${round.id}/live`,
-              ],
-              [
-                'Follow-up',
-                ['FOLLOW_UP', 'COMPLETE'].includes(round.status) ? 'AVAILABLE' : 'LOCKED',
-                `/app/rounds/${round.id}/follow-up`,
-              ],
-            ] as const
-          ).map(([title, status, path]) => (
+          {lifecycle.stages.map(({ key, label: title, state: status, path }) => (
             <Stack
-              key={title}
+              key={key}
               direction={{ xs: 'column', sm: 'row' }}
               sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 1 }}
             >
@@ -392,11 +373,19 @@ export function RoundPage() {
       <SectionCard>
         <Typography variant="h5">Next action</Typography>
         <Typography color="text.secondary">
-          Continue only with the next action supported by the current authoritative round state.
+          {lifecycle.waiting ??
+            (lifecycle.mustActNow
+              ? 'This is the next action supported by the current Round state.'
+              : `The next step is owned by ${readable(lifecycle.owner)}.`)}
         </Typography>
-        <Button sx={{ mt: 2 }} variant="contained" component={Link} to={primaryAction.path}>
-          {primaryAction.label}
-        </Button>
+        {primaryAction && (
+          <Button sx={{ mt: 2 }} variant="contained" component={Link} to={primaryAction.path}>
+            {primaryAction.label}
+          </Button>
+        )}
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          Updated {new Date(lifecycle.freshness).toLocaleString()}
+        </Typography>
       </SectionCard>
     </Stack>
   );

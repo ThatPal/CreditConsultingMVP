@@ -280,7 +280,15 @@ export function CardDetailPage() {
         backLabel="Back to Explore"
       />
     );
-  if (!query.data) return null;
+  if (!query.data)
+    return (
+      <RecoveryState
+        error={new Error('Card details were not returned')}
+        onRetry={() => void query.refetch()}
+        backTo="/app/cards/explore"
+        backLabel="Back to Explore"
+      />
+    );
   const product = query.data;
   return (
     <Stack spacing={3}>

@@ -40,6 +40,25 @@ const round = {
     blockers: ['PREPARATION_INCOMPLETE', 'MAJOR_CHECK_REQUIRED'],
   },
   majorCheck: null,
+  lifecycle: {
+    currentState: 'Preparing your Round',
+    meaning: 'Complete the required preparation before your consultant creates a Strategy.',
+    owner: 'CLIENT',
+    mustActNow: true,
+    blocker: 'PREPARATION_INCOMPLETE',
+    nextAction: { key: 'COMPLETE_PREPARATION', label: 'Complete preparation', path: '/app/plan' },
+    waiting: null,
+    freshness: '2026-09-01T00:00:00.000Z',
+    stages: [
+      { key: 'PREPARATION', label: 'Preparation', state: 'ACTIVE', path: '/app/plan' },
+      { key: 'MAJOR_CHECK', label: 'Major application check', state: 'LOCKED', path: '/app/rounds/11111111-1111-4111-8111-111111111111/major-check' },
+      { key: 'STRATEGY', label: 'Approved strategy', state: 'LOCKED', path: '/app/rounds/11111111-1111-4111-8111-111111111111/strategy' },
+      { key: 'SCHEDULING', label: 'Scheduling', state: 'LOCKED', path: '/app/rounds/11111111-1111-4111-8111-111111111111/schedule' },
+      { key: 'LIVE', label: 'Live applications and results', state: 'LOCKED', path: '/app/rounds/11111111-1111-4111-8111-111111111111/live' },
+      { key: 'FOLLOW_UP', label: 'Round follow-up', state: 'LOCKED', path: '/app/rounds/11111111-1111-4111-8111-111111111111/follow-up' },
+      { key: 'ANALYSIS', label: 'Round Analysis', state: 'LOCKED', path: '/app/rounds/11111111-1111-4111-8111-111111111111/analysis' },
+    ],
+  },
   primaryAction: { label: 'Complete preparation', path: '/app/plan' },
 };
 
