@@ -31,7 +31,9 @@ describe('Sprint 8.4 published Credit Center', () => {
       }),
     );
     renderPage();
-    expect(await screen.findByText(/No Credit Review has been published yet/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/published Credit Review is being prepared/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText('718')).not.toBeInTheDocument();
   });
 
@@ -89,9 +91,38 @@ describe('Sprint 8.4 published Credit Center', () => {
         </QueryClientProvider>
       </ThemeProvider>,
     );
-    expect(await screen.findByRole('link', { name: /open secure report/i })).toHaveAttribute(
-      'href',
-      '/api/v1/reviews/report-documents/document-1/content',
+    expect(
+      await screen.findByRole('link', { name: /preview secure source report/i }),
+    ).toHaveAttribute('href', '/api/v1/reviews/report-documents/document-1/content');
+  });
+
+  test('renders only factual published score and utilization visualizations with provenance', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          current: {
+            id: 'publication-2',
+            reviewId: 'review-2',
+            publishedAt: '2026-09-02T12:00:00Z',
+            recommendation: 'PREPARE_FIRST',
+            projection: {
+              profile: { experianScore: 720, aggregateUtilization: 24, openAccounts: 5 },
+              analysisSummary: 'Use the approved Plan to address the published findings.',
+            },
+            report: null,
+          },
+          history: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
     );
+    renderPage();
+    expect(
+      await screen.findByRole('img', { name: /credit score 720 on a scale from 300 to 850/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /credit utilization 24.0 percent/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/approval probability|score improvement/i)).not.toBeInTheDocument();
   });
 });

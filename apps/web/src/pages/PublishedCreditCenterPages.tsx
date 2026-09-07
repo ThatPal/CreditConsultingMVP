@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Chip, Grid, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Divider, Grid, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
@@ -6,6 +6,18 @@ import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { RecoveryState } from '../components/common/InteractionPatterns';
+import {
+  ArchetypeCanvas,
+  DraftPublicationStatus,
+  EventTimeline,
+  FreshnessIndicator,
+  MetricHero,
+  ProductiveEmptyState,
+  ProvenanceDetails,
+  ScoreBand,
+  UtilizationGauge,
+} from '../components/common/ProductFoundation';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 
 type PublishedReview = {
   id: string;
@@ -111,6 +123,12 @@ function CreditCenterContent({
   const current = data.current;
   const projection = current?.projection;
   const profile = projection?.profile ?? {};
+  const scoreEntry = ['experianScore', 'equifaxScore', 'transunionScore']
+    .map((key) => [key, profile[key]] as const)
+    .find(([, value]) => typeof value === 'number');
+  const utilization =
+    typeof profile.aggregateUtilization === 'number' ? profile.aggregateUtilization : null;
+  const publishedDate = current ? new Date(current.publishedAt).toLocaleDateString() : undefined;
   const navigation = consultant
     ? []
     : ([
@@ -129,7 +147,7 @@ function CreditCenterContent({
             ? `${data.client.firstName} ${data.client.lastName}`
             : 'Your published Credit Review'
         }
-        description="Only consultant-approved, published information appears here. Draft analysis and internal AI processing details are never shown."
+        description="Understand your current published financial picture, what your consultant identified, and the next Plan action."
       />
       {navigation.length > 0 && (
         <Stack
@@ -161,44 +179,105 @@ function CreditCenterContent({
         </Stack>
       )}
       {!current && (
-        <Alert severity="info">
-          No Credit Review has been published yet. Your consultant’s draft work remains private
-          until publication.
-        </Alert>
+        <ProductiveEmptyState
+          title="Your published Credit Review is being prepared"
+          reason="Draft analysis stays private until your consultant confirms it is ready. You do not need to interpret unfinished results."
+          owner="Your consultant"
+          action={
+            !consultant ? (
+              <Button component={Link} to="/app/credit-center/review" variant="contained">
+                Check your Credit Review
+              </Button>
+            ) : undefined
+          }
+        />
       )}
       {current && (view === 'overview' || consultant) && (
         <>
-          <SectionCard variant="elevated">
+          <ArchetypeCanvas
+            archetype="financial-dashboard"
+            role={consultant ? 'consultant' : 'client'}
+          >
             <Stack spacing={2}>
               <Stack
                 direction="row"
                 sx={{ justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
               >
-                <Typography variant="h2">Current decision</Typography>
+                <Box>
+                  <Typography variant="overline" color="primary">
+                    Published understanding
+                  </Typography>
+                  <Typography variant="h2">What matters now</Typography>
+                </Box>
                 <Chip color="primary" label={current.recommendation.replaceAll('_', ' ')} />
               </Stack>
               <Typography>
                 {projection?.analysisSummary || 'No published summary was supplied.'}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Published {new Date(current.publishedAt).toLocaleString()}
-              </Typography>
+              <DraftPublicationStatus state="published" owner="Your consultant" />
+              <FreshnessIndicator state="confirmed" at={current.publishedAt} />
             </Stack>
-          </SectionCard>
-          <Grid container spacing={2}>
-            {Object.entries(profile)
-              .slice(0, 8)
-              .map(([key, value]) => (
-                <Grid key={key} size={{ xs: 12, sm: 6, md: 3 }}>
-                  <SectionCard variant="operational">
-                    <Typography color="text.secondary" variant="body2">
-                      {labels[key] ?? key}
+          </ArchetypeCanvas>
+          <ArchetypeCanvas
+            archetype="financial-dashboard"
+            role={consultant ? 'consultant' : 'client'}
+            sx={{ background: 'linear-gradient(145deg, #f8fbff, #eaf3f8)', color: '#102038' }}
+          >
+            <Grid container spacing={3} sx={{ alignItems: 'center' }}>
+              {scoreEntry && (
+                <Grid size={{ xs: 12, md: 5 }}>
+                  <ScoreBand
+                    value={scoreEntry[1] as number}
+                    source={`${labels[scoreEntry[0]]} · published Credit Profile`}
+                    {...(publishedDate ? { asOf: publishedDate } : {})}
+                  />
+                </Grid>
+              )}
+              {utilization !== null && (
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <UtilizationGauge
+                    value={utilization}
+                    source="Published Credit Profile"
+                    {...(publishedDate ? { asOf: publishedDate } : {})}
+                  />
+                </Grid>
+              )}
+              <Grid size={{ xs: 12, md: 3 }}>
+                <MetricHero
+                  label="Open accounts"
+                  value={
+                    typeof profile.openAccounts === 'number' ? profile.openAccounts : 'Not reported'
+                  }
+                  explanation="Accounts included in the published profile."
+                  source="Published Credit Profile"
+                  {...(publishedDate ? { asOf: publishedDate } : {})}
+                />
+              </Grid>
+            </Grid>
+            <Divider sx={{ my: 3 }} />
+            <Grid container spacing={2}>
+              {Object.entries(profile)
+                .filter(
+                  ([key]) =>
+                    ![
+                      'experianScore',
+                      'equifaxScore',
+                      'transunionScore',
+                      'aggregateUtilization',
+                      'openAccounts',
+                    ].includes(key),
+                )
+                .slice(0, 6)
+                .map(([key, value]) => (
+                  <Grid key={key} size={{ xs: 6, md: 2 }}>
+                    <Typography variant="caption">
+                      {labels[key] ?? key.replaceAll(/([A-Z])/g, ' $1')}
                     </Typography>
                     <Typography variant="h3">{valueLabel(key, value)}</Typography>
-                  </SectionCard>
-                </Grid>
-              ))}
-          </Grid>
+                  </Grid>
+                ))}
+            </Grid>
+          </ArchetypeCanvas>
           {consultant && (
             <Stack direction="row" sx={{ gap: 1 }}>
               <Button component={Link} to={`/crm/clients/${data.client?.id}`}>
@@ -217,11 +296,16 @@ function CreditCenterContent({
         </>
       )}
       {current && view === 'profile' && (
-        <SectionCard variant="operational">
+        <ArchetypeCanvas
+          archetype="financial-dashboard"
+          role="client"
+          sx={{ background: 'linear-gradient(145deg, #f8fbff, #eaf3f8)', color: '#102038' }}
+        >
           <Typography variant="h2" gutterBottom>
             Published profile
           </Typography>
-          <Grid container spacing={2}>
+          <DraftPublicationStatus state="published" owner="Your consultant" />
+          <Grid container spacing={3} sx={{ mt: 1 }}>
             {Object.entries(profile).map(([key, value]) => (
               <Grid key={key} size={{ xs: 12, sm: 6, md: 4 }}>
                 <Box>
@@ -233,10 +317,15 @@ function CreditCenterContent({
               </Grid>
             ))}
           </Grid>
-        </SectionCard>
+          <ProvenanceDetails
+            source="Consultant-published Credit Profile"
+            {...(publishedDate ? { asOf: publishedDate } : {})}
+            method="Facts are grouped and formatted from the current published Review; no approval or score-change prediction is calculated."
+          />
+        </ArchetypeCanvas>
       )}
       {current && view === 'report' && (
-        <SectionCard variant="operational">
+        <ArchetypeCanvas archetype="client-workbench" role="client">
           <Typography variant="h2" gutterBottom>
             Source report
           </Typography>
@@ -256,17 +345,27 @@ function CreditCenterContent({
                 rel="noreferrer"
                 variant="contained"
               >
-                Open secure report
+                Preview secure source report
               </Button>
             </Stack>
           ) : (
-            <Alert severity="info">No source report is attached to this publication.</Alert>
+            <Alert severity="info">
+              No source report is attached. Your published Profile and Analysis remain available;
+              ask Support if you expected a report.
+            </Alert>
           )}
-        </SectionCard>
+          <ProvenanceDetails
+            source={current.report?.reportSource || 'Published Credit Review'}
+            {...(current.report?.reportDate || current.report?.uploadedAt
+              ? { asOf: (current.report?.reportDate || current.report?.uploadedAt)! }
+              : {})}
+            method="This document is the evidence source used for the published Profile and consultant interpretation."
+          />
+        </ArchetypeCanvas>
       )}
       {current && view === 'analysis' && (
         <Stack spacing={2}>
-          <SectionCard variant="elevated">
+          <ArchetypeCanvas archetype="guided-decision" role="client">
             <Typography variant="h2" gutterBottom>
               Consultant recommendation
             </Typography>
@@ -276,37 +375,46 @@ function CreditCenterContent({
             {projection?.recommendation?.reasons?.map((reason) => (
               <Chip key={reason} label={reason} sx={{ mr: 1, mt: 2 }} />
             ))}
-          </SectionCard>
-          {projection?.findings?.map((finding) => (
-            <SectionCard key={finding.code} variant="operational">
-              <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
-                <Typography variant="h3">{finding.title}</Typography>
-                <Chip label={finding.severity} />
-              </Stack>
-              <Typography sx={{ mt: 1 }}>{finding.summary}</Typography>
-            </SectionCard>
-          ))}
+            <DraftPublicationStatus state="published" owner="Your consultant" />
+            <Button component={Link} to="/app/plan" variant="contained">
+              Review the Plan actions for these findings
+            </Button>
+          </ArchetypeCanvas>
+          <CollectionSurface
+            title={`Prioritized consultant findings · ${projection?.findings?.length ?? 0}`}
+            mode="bounded"
+          >
+            {projection?.findings?.map((finding) => (
+              <SectionCard key={finding.code} variant="operational">
+                <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
+                  <Typography variant="h3">{finding.title}</Typography>
+                  <Chip label={finding.severity} />
+                </Stack>
+                <Typography sx={{ mt: 1 }}>
+                  Your consultant identified this because: {finding.summary}
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                  Your Plan connects this finding to the actions your consultant has approved for
+                  you.
+                </Typography>
+              </SectionCard>
+            ))}
+          </CollectionSurface>
         </Stack>
       )}
       {current && view === 'history' && (
-        <Stack spacing={2}>
-          {data.history.map((item, index) => (
-            <SectionCard key={item.id} variant={index === 0 ? 'elevated' : 'operational'}>
-              <Stack
-                direction="row"
-                sx={{ justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
-              >
-                <Box>
-                  <Typography variant="h3">
-                    {new Date(item.publishedAt).toLocaleDateString()}
-                  </Typography>
-                  <Typography color="text.secondary">Review {item.reviewId.slice(0, 8)}</Typography>
-                </Box>
-                <Chip label={index === 0 ? 'Current' : item.recommendation.replaceAll('_', ' ')} />
-              </Stack>
-            </SectionCard>
-          ))}
-        </Stack>
+        <ArchetypeCanvas archetype="lifecycle-timeline" role="client">
+          <EventTimeline
+            title="Published Credit Review history"
+            events={data.history.map((item, index) => ({
+              id: item.id,
+              title:
+                index === 0 ? 'Current published Credit Review' : 'Earlier published Credit Review',
+              at: item.publishedAt,
+              detail: `${item.recommendation.replaceAll('_', ' ')}. Historical versions remain reference-only and never replace current truth.`,
+            }))}
+          />
+        </ArchetypeCanvas>
       )}
     </Stack>
   );

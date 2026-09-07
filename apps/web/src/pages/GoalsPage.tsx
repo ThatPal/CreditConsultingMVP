@@ -26,6 +26,11 @@ import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { designTokens } from '../theme';
+import {
+  ArchetypeCanvas,
+  ProgressArc,
+  ProvenanceDetails,
+} from '../components/common/ProductFoundation';
 
 type GoalType =
   | 'ZERO_APR_CREDIT'
@@ -167,7 +172,7 @@ export function GoalsPage() {
           {message}
         </Alert>
       )}
-      <SectionCard variant="elevated">
+      <ArchetypeCanvas archetype="financial-dashboard" role="client">
         <Stack spacing={3}>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <Box
@@ -190,27 +195,45 @@ export function GoalsPage() {
               <Typography variant="h3">Build available credit</Typography>
             </Box>
           </Stack>
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography
-              sx={{
-                fontSize: { xs: 54, sm: 76 },
-                lineHeight: 1,
-                fontWeight: 950,
-                color: 'primary.main',
-                letterSpacing: '-.055em',
-              }}
-            >
-              ${target.toLocaleString()}
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 1 }}>
-              {scope === 'BOTH'
-                ? 'Personal + business'
-                : scope === 'BUSINESS'
-                  ? 'Business'
-                  : 'Personal'}{' '}
-              capacity
-            </Typography>
-          </Box>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={3}
+            sx={{ alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography
+                sx={{
+                  fontSize: { xs: 54, sm: 76 },
+                  lineHeight: 1,
+                  fontWeight: 950,
+                  color: 'primary.main',
+                  letterSpacing: '-.055em',
+                }}
+              >
+                ${target.toLocaleString()}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 1 }}>
+                {scope === 'BOTH'
+                  ? 'Personal + business'
+                  : scope === 'BUSINESS'
+                    ? 'Business'
+                    : 'Personal'}{' '}
+                capacity
+              </Typography>
+            </Box>
+            {primary?.currentAmount != null && primary.targetAmount && primary.targetAmount > 0 && (
+              <ProgressArc
+                value={(primary.currentAmount / primary.targetAmount) * 100}
+                label="Factual goal progress"
+              />
+            )}
+          </Stack>
+          {primary?.currentAmount != null && (
+            <ProvenanceDetails
+              source="Saved goal progress"
+              method="Current amount divided by the saved target amount. This is not an approval probability or projected score change."
+            />
+          )}
           <Slider
             min={5000}
             max={250000}
@@ -311,6 +334,12 @@ export function GoalsPage() {
                 ? 'Confirm goal for this cycle'
                 : 'Save primary goal'}
           </Button>
+          {primary && (
+            <Alert severity="info">
+              Changing this goal may require your consultant to review downstream Plan or Strategy
+              work. Existing published history will remain preserved.
+            </Alert>
+          )}
           {cycleId && (
             <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
               Saving confirms this primary goal and unlocks the next application-cycle step.
@@ -318,7 +347,7 @@ export function GoalsPage() {
           )}
           {savePrimary.isError && <Alert severity="error">{savePrimary.error.message}</Alert>}
         </Stack>
-      </SectionCard>
+      </ArchetypeCanvas>
       <SectionCard
         variant="elevated"
         sx={{

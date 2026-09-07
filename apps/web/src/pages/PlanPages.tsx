@@ -19,6 +19,15 @@ import { PageHeader } from '../components/common/PageHeader';
 import { RecoveryState } from '../components/common/InteractionPatterns';
 import { StatusChip } from '../components/common/StatusChip';
 import { presentStatus } from '../components/common/statusVocabulary';
+import { CollectionSurface } from '../components/common/CollectionSurface';
+import {
+  ArchetypeCanvas,
+  DependencyMap,
+  DraftPublicationStatus,
+  ProgressArc,
+  StickyActionBar,
+  WaitingState,
+} from '../components/common/ProductFoundation';
 
 type Item = {
   stableKey: string;
@@ -73,6 +82,8 @@ type ClientPlanItem = {
   body: string | null;
   deepLink: string | null;
   prerequisites: Array<{ id: string; title: string; status: string }>;
+  owner: 'CLIENT' | 'CONSULTANT' | 'SYSTEM';
+  dueAt?: string | null;
 };
 
 type ClientPlanResponse = {
@@ -80,7 +91,7 @@ type ClientPlanResponse = {
     id: string;
     title: string;
     status: string;
-    version: { staleAt: string | null; items: ClientPlanItem[] };
+    version: { version?: number; staleAt: string | null; items: ClientPlanItem[] };
   };
 };
 
@@ -452,9 +463,13 @@ export function ClientPlanPage() {
           requirements.
         </Alert>
       )}
-      <Card variant="outlined">
-        <CardContent>
-          <Stack spacing={1.5}>
+      <ArchetypeCanvas archetype="guided-decision" role="client">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={3}
+          sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
+        >
+          <Stack spacing={1.5} sx={{ flex: 1 }}>
             <Typography variant="overline">Current focus</Typography>
             <Typography variant="h3">
               {currentFocus?.title ?? 'Waiting for the next verified step'}
@@ -466,13 +481,39 @@ export function ClientPlanPage() {
             <Typography variant="body2">
               Path progress: {completed} of {plan.version.items.length} steps completed
             </Typography>
+            <DraftPublicationStatus
+              state="published"
+              {...(plan.version.version ? { version: plan.version.version } : {})}
+              owner="Your consultant"
+            />
           </Stack>
-        </CardContent>
-      </Card>
+          <ProgressArc
+            value={plan.version.items.length ? (completed / plan.version.items.length) * 100 : 0}
+            label="Plan progress"
+          />
+        </Stack>
+      </ArchetypeCanvas>
+      {currentFocus?.status === 'AWAITING_VERIFICATION' && (
+        <WaitingState
+          prerequisite={`${currentFocus.title} is awaiting verification`}
+          owner="Your consultant"
+          unavailable="The dependent Plan step"
+          userMustAct={false}
+        />
+      )}
+      <DependencyMap
+        title="Plan readiness"
+        items={plan.version.items
+          .slice(0, 5)
+          .map((item) => ({
+            label: item.title,
+            ready: ['COMPLETED', 'VERIFIED', 'AVAILABLE', 'IN_PROGRESS'].includes(item.status),
+          }))}
+      />
       <Typography variant="h3">Guidance, actions & milestones</Typography>
-      <Stack spacing={2}>
+      <CollectionSurface title={`Plan actions · ${plan.version.items.length}`} mode="bounded">
         {plan.version.items.map((item) => (
-          <Card key={item.id}>
+          <Card key={item.id} id={`plan-item-${item.id}`}>
             <CardContent>
               <Stack spacing={1}>
                 <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
@@ -480,6 +521,15 @@ export function ClientPlanPage() {
                   <StatusChip {...presentStatus(item.status)} />
                 </Stack>
                 <Typography>{item.body}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Owner:{' '}
+                  {item.owner === 'CLIENT'
+                    ? 'You'
+                    : item.owner === 'CONSULTANT'
+                      ? 'Your consultant'
+                      : 'System'}
+                  {item.dueAt ? ` · Timing: ${new Date(item.dueAt).toLocaleDateString()}` : ''}
+                </Typography>
                 {item.prerequisites.length > 0 && item.status === 'LOCKED' && (
                   <Typography color="text.secondary">
                     Available after: {item.prerequisites.map((value) => value.title).join(', ')}
@@ -487,7 +537,7 @@ export function ClientPlanPage() {
                 )}
                 {item.deepLink && (
                   <Button component={Link} to={item.deepLink}>
-                    Open related area
+                    Go to the related step
                   </Button>
                 )}
                 {item.status === 'AVAILABLE' && item.type !== 'MILESTONE' && (
@@ -533,7 +583,30 @@ export function ClientPlanPage() {
             </CardContent>
           </Card>
         ))}
-      </Stack>
+      </CollectionSurface>
+      {currentFocus && currentFocus.status === 'AVAILABLE' && (
+        <StickyActionBar label="Current Plan action">
+          {currentFocus.deepLink ? (
+            <Button component={Link} to={currentFocus.deepLink} variant="contained">
+              Start {currentFocus.title}
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              onClick={() =>
+                document
+                  .getElementById(`plan-item-${currentFocus.id}`)
+                  ?.scrollIntoView({ behavior: 'smooth' })
+              }
+            >
+              Start {currentFocus.title}
+            </Button>
+          )}
+          <Button component={Link} to="/app/support?new=1&category=PLAN" variant="outlined">
+            Ask for help with this Plan
+          </Button>
+        </StickyActionBar>
+      )}
     </Stack>
   );
 }
