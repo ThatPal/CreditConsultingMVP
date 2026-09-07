@@ -4,7 +4,11 @@ import { requireClientAccess, requireRole } from '../auth/middleware.js';
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
-import { classifyCycle, resolveCurrentFocus } from './projection.js';
+import {
+  appointmentFoundationStatus,
+  classifyCycle,
+  resolveCurrentFocus,
+} from './projection.js';
 
 const goalSelect = {
   id: true,
@@ -16,7 +20,8 @@ const goalSelect = {
 } as const;
 
 async function projection(prisma: PrismaClient, clientId: string) {
-  const [client, journey, goal, profileState, latestReview, planCount] = await Promise.all([
+  const [client, journey, goal, profileState, latestReview, planCount, appointment] =
+    await Promise.all([
     prisma.client.findUnique({
       where: { id: clientId },
       select: { id: true, firstName: true, lastName: true },
@@ -45,6 +50,11 @@ async function projection(prisma: PrismaClient, clientId: string) {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     }),
     prisma.plan.count({ where: { clientId, status: { in: ['APPROVED', 'ACTIVE', 'STALE'] } } }),
+    prisma.appointment.findFirst({
+      where: { clientId, status: { in: ['BOOKED', 'COMPLETED'] } },
+      select: { status: true },
+      orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
+    }),
   ]);
   if (!client) throw new AppError('NOT_FOUND', 404, 'Client was not found');
   const activeCycle = journey?.cycles.find((cycle) => cycle.status === 'ACTIVE') ?? null;
@@ -110,7 +120,7 @@ async function projection(prisma: PrismaClient, clientId: string) {
         staleAt: latestReview?.readinessExpiresAt ?? null,
       },
       plan: { status: planCount > 0 ? 'AVAILABLE' : 'NOT_AVAILABLE', openActionCount: planCount },
-      appointment: { status: 'NOT_AVAILABLE' },
+      appointment: { status: appointmentFoundationStatus(appointment?.status ?? null) },
     },
     alerts: [],
   };

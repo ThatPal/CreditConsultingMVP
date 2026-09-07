@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { classifyCycle, resolveCurrentFocus } from './projection.js';
+import { appointmentFoundationStatus, classifyCycle, resolveCurrentFocus } from './projection.js';
 
 describe('canonical journey focus', () => {
   test('uses the same deterministic cycle focus for every screen projection', () => {
@@ -38,5 +38,11 @@ describe('canonical journey focus', () => {
     expect(
       resolveCurrentFocus({ activeNurture: null, activeCycle: null, hasGoal: true }),
     ).toMatchObject({ code: 'READY_FOR_CYCLE' });
+  });
+
+  test('projects canonical appointment state instead of reporting available appointments as absent', () => {
+    expect(appointmentFoundationStatus('BOOKED')).toBe('BOOKED');
+    expect(appointmentFoundationStatus('COMPLETED')).toBe('COMPLETED');
+    expect(appointmentFoundationStatus(null)).toBe('NOT_AVAILABLE');
   });
 });

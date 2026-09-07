@@ -1,4 +1,8 @@
-import type { ApplicationCycleStage, ApplicationCycleStatus } from '../generated/prisma/enums.js';
+import type {
+  ApplicationCycleStage,
+  ApplicationCycleStatus,
+  AppointmentStatus,
+} from '../generated/prisma/enums.js';
 
 export type FocusInput = {
   activeNurture: { reasonCode: string } | null;
@@ -91,4 +95,8 @@ export function resolveCurrentFocus(input: FocusInput) {
 
 export function classifyCycle(status: ApplicationCycleStatus) {
   return status === 'ACTIVE' ? 'CURRENT' : 'HISTORY';
+}
+
+export function appointmentFoundationStatus(status: AppointmentStatus | null) {
+  return status ?? 'NOT_AVAILABLE';
 }

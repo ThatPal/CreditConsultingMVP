@@ -1360,7 +1360,16 @@ try {
           ? { finalResult: 'Completed with verified follow-up', closedAt: daysAgo(75) }
           : {}),
       },
-      update: {},
+      update: {
+        journeyId: journey.id,
+        status,
+        currentStage: status === 'ACTIVE' ? 'APPLICATION_SEQUENCE' : 'FINAL_RESULTS',
+        readinessDecision: 'READY',
+        madeItToApplications: true,
+        ...(status === 'COMPLETE'
+          ? { finalResult: 'Completed with verified follow-up', closedAt: daysAgo(75) }
+          : { finalResult: null, closedAt: null }),
+      },
     });
     const snapshot = await prisma.cycleGoalSnapshot.upsert({
       where: { cycleId: cycle.id },
@@ -1420,7 +1429,14 @@ try {
         startedAt: historical ? daysAgo(105) : daysAgo(3),
         ...(historical ? { completedAt: daysAgo(75), nextReviewAt: daysAgo(-15) } : {}),
       },
-      update: {},
+      update: {
+        profileStateId: lifecycleProfile.id,
+        sourceReviewId: publishedReview.id,
+        preparationPlanVersionId: lifecyclePlanVersion.id,
+        status: historical ? 'COMPLETE' : 'READY_FOR_STRATEGY',
+        sourceContext,
+        ...(historical ? { completedAt: daysAgo(75), nextReviewAt: daysAgo(-15) } : {}),
+      },
     });
     let majorCheck = await prisma.roundMajorApplicationCheck.findFirst({
       where: { roundId: round.id, version: 1 },
