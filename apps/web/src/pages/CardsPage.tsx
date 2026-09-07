@@ -21,6 +21,8 @@ import { LoadingSkeleton } from '../components/common/Feedback';
 import { MetricCard } from '../components/common/MetricCard';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { CollectionSurface } from '../components/common/CollectionSurface';
+import { ArchetypeCanvas, MetricHero, UtilizationGauge } from '../components/common/ProductFoundation';
 import { designTokens } from '../theme';
 
 type ClientCard = {
@@ -96,6 +98,18 @@ export function CardsPage() {
           Wishlist
         </Button>
       </Stack>
+      <ArchetypeCanvas archetype="financial-dashboard" role="client">
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(280px, .8fr)' }, gap: 4, alignItems: 'center' }}>
+          <MetricHero
+            label="Open-card balance"
+            value={money(totalBalance)}
+            explanation={`Across ${openCards.length} ${openCards.length === 1 ? 'open card' : 'open cards'} with ${money(totalLimit)} in total reported limits.`}
+            source="Most recent Credit Profile Review"
+            asOf={query.data.reviewSource?.reviewDate ? new Date(query.data.reviewSource.reviewDate).toLocaleDateString() : 'Not yet reviewed'}
+          />
+          <UtilizationGauge value={utilization} source="Open cards in your Credit Profile" asOf={query.data.reviewSource?.reviewDate ? new Date(query.data.reviewSource.reviewDate).toLocaleDateString() : undefined} />
+        </Box>
+      </ArchetypeCanvas>
       <Box
         sx={{
           display: 'grid',
@@ -142,6 +156,7 @@ export function CardsPage() {
           </>
         )}
       </Alert>
+      <CollectionSurface title="Card portfolio collection" mode="gallery-compare" empty={filtered.length === 0} maxHeight={620}>
       <SectionCard>
         <Stack spacing={2.5}>
           <Stack
@@ -292,6 +307,7 @@ export function CardsPage() {
           )}
         </Stack>
       </SectionCard>
+      </CollectionSurface>
     </Stack>
   );
 }

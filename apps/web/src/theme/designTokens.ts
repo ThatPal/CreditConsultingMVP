@@ -52,6 +52,16 @@ export const designTokens = {
     elevated: '0 22px 70px rgba(0, 0, 0, 0.34)',
     glow: '0 0 0 1px rgba(66, 211, 242, 0.18), 0 16px 44px rgba(45, 151, 210, 0.12)',
   },
+  elevation: {
+    chrome: '0 10px 30px rgba(0, 0, 0, 0.18)',
+    workspace: '0 18px 54px rgba(0, 0, 0, 0.28)',
+    focalOverlay: '0 28px 90px rgba(0, 0, 0, 0.42)',
+  },
+  role: {
+    client: { accent: '#42d3f2', density: 'comfortable', contentMax: 1180 },
+    consultant: { accent: '#36d3ae', density: 'compact', contentMax: 1440 },
+    admin: { accent: '#9b78ff', density: 'dense', contentMax: 1600 },
+  },
   motion: {
     fast: '150ms',
     standard: '220ms',

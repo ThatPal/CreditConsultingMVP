@@ -37,35 +37,8 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { GoalsPage } from './pages/GoalsPage';
 import { GoalIntakePage } from './pages/GoalIntakePage';
 import { ActiveServicesPage, PurchaseHistoryPage, ServicesPage } from './pages/ServicesPage';
-import { AdminServiceDetailPage, AdminServicesPage } from './pages/AdminServicesPages';
 import { CheckoutPage } from './pages/CheckoutPage';
-import {
-  AdminPaymentDetailPage,
-  AdminPaymentsPage,
-  AdminBofaPage,
-  AdminPayPalPage,
-  AdminStripePage,
-} from './pages/AdminPaymentsPages';
 import { SecurityPage } from './pages/SecurityPage';
-import {
-  AdminAccessGrantsPage,
-  AdminUserDetailPage,
-  AdminUsersPage,
-} from './pages/AdminIdentityPages';
-import { AdminEventDetailPage, AdminEventListPage } from './pages/AdminAuditPages';
-import {
-  AdminAIJobDetailPage,
-  AdminAIJobsPage,
-  AdminAIProcessesPage,
-} from './pages/AdminAIJobsPages';
-import { AdminSourcesPage } from './pages/AdminSourcesPage';
-import { AdminWorkflowPage } from './pages/AdminWorkflowPage';
-import { AdminNotificationsPage } from './pages/AdminNotificationsPage';
-import { AdminIntegrationsPage } from './pages/AdminIntegrationsPage';
-import { AdminScheduledJobsPage } from './pages/AdminScheduledJobsPage';
-import { AdminRetentionPage } from './pages/AdminRetentionPage';
-import { AdminReportsPage } from './pages/AdminReportsPage';
-import { AdminSettingsPage } from './pages/AdminSettingsPage';
 import {
   AdminLandingPage,
   FoundationPage,
@@ -101,6 +74,34 @@ const DesignSystemPage = lazy(() =>
 const ShellEvidencePage = lazy(() =>
   import('./pages/dev/ShellEvidencePage').then((module) => ({ default: module.ShellEvidencePage })),
 );
+
+// One domain-family boundary keeps the initial authenticated shell small while
+// avoiding a waterfall of per-widget chunks. D0's shell boundary owns loading
+// and render-failure recovery for every component in this family.
+const AdminUsersPage = lazy(() => import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminUsersPage })));
+const AdminUserDetailPage = lazy(() => import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminUserDetailPage })));
+const AdminAccessGrantsPage = lazy(() => import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminAccessGrantsPage })));
+const AdminEventListPage = lazy(() => import('./pages/AdminAuditPages').then((m) => ({ default: m.AdminEventListPage })));
+const AdminEventDetailPage = lazy(() => import('./pages/AdminAuditPages').then((m) => ({ default: m.AdminEventDetailPage })));
+const AdminAIJobsPage = lazy(() => import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIJobsPage })));
+const AdminAIJobDetailPage = lazy(() => import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIJobDetailPage })));
+const AdminAIProcessesPage = lazy(() => import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIProcessesPage })));
+const AdminPaymentsPage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPaymentsPage })));
+const AdminPaymentDetailPage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPaymentDetailPage })));
+const AdminPayPalPage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPayPalPage })));
+const AdminStripePage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminStripePage })));
+const AdminBofaPage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminBofaPage })));
+const AdminServicesPage = lazy(() => import('./pages/AdminServicesPages').then((m) => ({ default: m.AdminServicesPage })));
+const AdminServiceDetailPage = lazy(() => import('./pages/AdminServicesPages').then((m) => ({ default: m.AdminServiceDetailPage })));
+const AdminSourcesPage = lazy(() => import('./pages/AdminSourcesPage').then((m) => ({ default: m.AdminSourcesPage })));
+const AdminWorkflowPage = lazy(() => import('./pages/AdminWorkflowPage').then((m) => ({ default: m.AdminWorkflowPage })));
+const AdminNotificationsPage = lazy(() => import('./pages/AdminNotificationsPage').then((m) => ({ default: m.AdminNotificationsPage })));
+const AdminIntegrationsPage = lazy(() => import('./pages/AdminIntegrationsPage').then((m) => ({ default: m.AdminIntegrationsPage })));
+const AdminScheduledJobsPage = lazy(() => import('./pages/AdminScheduledJobsPage').then((m) => ({ default: m.AdminScheduledJobsPage })));
+const AdminRetentionPage = lazy(() => import('./pages/AdminRetentionPage').then((m) => ({ default: m.AdminRetentionPage })));
+const AdminReportsPage = lazy(() => import('./pages/AdminReportsPage').then((m) => ({ default: m.AdminReportsPage })));
+const AdminSettingsPage = lazy(() => import('./pages/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage })));
+
 export const isDesignSystemShowcaseEnabled = import.meta.env.DEV || import.meta.env.MODE === 'test';
 
 export function App() {

@@ -29,10 +29,10 @@ describe('CRM-01 dashboard composition', () => {
         </QueryClientProvider>
       </ThemeProvider>,
     );
-    expect(await screen.findByText('12')).toBeInTheDocument();
+    expect((await screen.findAllByText('12')).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('25')).toBeInTheDocument();
     expect(screen.getByText(/Work Queue remains the authoritative action source/)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Open' })[0]).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Review prioritized Work Queue' })).toHaveAttribute(
       'href',
       '/crm/work-queue',
     );

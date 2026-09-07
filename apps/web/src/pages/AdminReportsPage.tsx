@@ -7,6 +7,8 @@ import { MetricCard } from '../components/common/MetricCard';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { humanizeAdminLabel, SafeRecordView } from '../components/admin/SafeRecordView';
+import { CollectionSurface } from '../components/common/CollectionSurface';
+import { ArchetypeCanvas, FreshnessIndicator, MetricHero } from '../components/common/ProductFoundation';
 export function AdminReportsPage() {
   const [days, setDays] = useState(30);
   const to = new Date();
@@ -66,8 +68,15 @@ export function AdminReportsPage() {
           />
         ))}
       </Box>
+      <ArchetypeCanvas archetype="operations-grid" role="admin">
+        <Stack direction={{ xs: 'column', md: 'row' }} sx={{ gap: 3, alignItems: { md: 'center' } }}>
+          <Box sx={{ flex: 1 }}><MetricHero label="Operational record groups" value={Object.values(sections).reduce((sum, rows) => sum + rows.length, 0)} explanation="Aggregated status groups in the selected reporting period." source="Canonical operational report endpoint" /></Box>
+          <Stack spacing={1}><FreshnessIndicator state={q.isError ? 'stale' : 'confirmed'} at={q.dataUpdatedAt ? new Date(q.dataUpdatedAt).toISOString() : undefined} /><Typography color="text.secondary">Changing the period refreshes read-only aggregates. It does not mutate operational records.</Typography></Stack>
+        </Stack>
+      </ArchetypeCanvas>
       {Object.entries(sections).map(([name, rows]) => (
-        <SectionCard key={name}>
+        <CollectionSurface key={name} title={humanizeAdminLabel(name)} mode="grid" empty={!rows.length} maxHeight={420}>
+        <SectionCard>
           <Stack spacing={2}>
             <Typography variant="h3">{humanizeAdminLabel(name)}</Typography>
             {!rows.length ? (
@@ -92,6 +101,7 @@ export function AdminReportsPage() {
             )}
           </Stack>
         </SectionCard>
+        </CollectionSurface>
       ))}
     </Stack>
   );

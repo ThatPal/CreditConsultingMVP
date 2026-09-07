@@ -4,7 +4,6 @@ import RouteRounded from '@mui/icons-material/RouteRounded';
 import {
   Alert,
   Button,
-  Chip,
   Divider,
   Grid,
   LinearProgress,
@@ -16,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { CurrentStateSummary } from '../components/common/ProductFoundation';
 
 export type JourneyProjection = {
   client: { id: string; firstName: string; lastName: string };
@@ -82,26 +82,24 @@ export function JourneySummary({
   const history = data.journey.cycles.filter((cycle) => cycle.timelineGroup === 'HISTORY');
   return (
     <Stack spacing={2}>
-      <SectionCard variant="elevated">
-        <Stack spacing={1.5}>
-          <Chip label="Current focus" color="primary" sx={{ alignSelf: 'flex-start' }} />
-          <Typography variant="h2">{data.journey.currentFocus.title}</Typography>
-          {data.journey.currentFocus.detail && (
-            <Typography color="text.secondary">{data.journey.currentFocus.detail}</Typography>
-          )}
-          {!staff && (
+      <CurrentStateSummary
+        state={data.journey.currentFocus.title}
+        meaning={data.journey.currentFocus.detail ?? 'This is the next verified step in your credit strategy.'}
+        owner={staff ? 'Client' : 'You'}
+        asOf={data.journey.cycles.find((cycle) => cycle.timelineGroup === 'CURRENT')?.startedAt ?? data.foundations.creditProfile.effectiveAt ?? undefined}
+        action={
+          !staff ? (
             <Button
               component={Link}
               to={data.journey.currentFocus.action}
               variant="contained"
               endIcon={<ArrowForwardRounded />}
-              sx={{ alignSelf: 'flex-start' }}
             >
-              Continue
+              Continue {data.journey.currentFocus.title}
             </Button>
-          )}
-        </Stack>
-      </SectionCard>
+          ) : undefined
+        }
+      />
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 4 }}>
           <SectionCard>

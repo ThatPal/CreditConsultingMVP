@@ -27,6 +27,7 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 import { humanizeCode, priorityLabel } from '../components/common/labels';
+import { ArchetypeCanvas, FreshnessIndicator, MetricHero } from '../components/common/ProductFoundation';
 
 const demoNotice = (
   <Alert severity="info">
@@ -66,6 +67,18 @@ export function ConsultantDashboardPage() {
           Current workload metrics could not be loaded. Use the owning modules below.
         </Alert>
       )}
+      <ArchetypeCanvas archetype="client-workbench" role="consultant">
+        <Stack direction={{ xs: 'column', md: 'row' }} sx={{ gap: 3, alignItems: { md: 'center' } }}>
+          <Box sx={{ flex: 1 }}>
+            <MetricHero label="Actionable work" value={metrics?.open ?? '—'} explanation="Assigned items plus unassigned work you are authorized to claim." source="Canonical Work Queue" />
+          </Box>
+          <Stack spacing={1} sx={{ minWidth: { md: 260 } }}>
+            <FreshnessIndicator state={query.isError ? 'stale' : 'confirmed'} at={query.dataUpdatedAt ? new Date(query.dataUpdatedAt).toISOString() : undefined} />
+            <Typography color="text.secondary">Work Queue owns priority, claim state, due time and the next operational action.</Typography>
+            <Button component={Link} to="/crm/work-queue" variant="contained">Review prioritized Work Queue</Button>
+          </Stack>
+        </Stack>
+      </ArchetypeCanvas>
       <Grid container spacing={2}>
         {[
           {
@@ -134,7 +147,7 @@ export function ConsultantDashboardPage() {
                   endIcon={<ArrowForwardRounded />}
                   sx={{ alignSelf: 'flex-start' }}
                 >
-                  Open
+                  {title === 'Work queue' ? 'Review Work Queue' : title === 'Client reviews' ? 'Review client Credit Reviews' : 'Open client Support cases'}
                 </Button>
               </Stack>
             </SectionCard>
