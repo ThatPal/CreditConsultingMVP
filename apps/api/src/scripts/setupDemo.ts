@@ -1438,11 +1438,11 @@ try {
         ...(historical ? { completedAt: daysAgo(75), nextReviewAt: daysAgo(-15) } : {}),
       },
     });
-    let majorCheck = await prisma.roundMajorApplicationCheck.findFirst({
+    const majorCheck = await prisma.roundMajorApplicationCheck.findFirst({
       where: { roundId: round.id, version: 1 },
     });
     if (!majorCheck)
-      majorCheck = await prisma.roundMajorApplicationCheck.create({
+      await prisma.roundMajorApplicationCheck.create({
         data: {
           roundId: round.id,
           clientId: client.id,
