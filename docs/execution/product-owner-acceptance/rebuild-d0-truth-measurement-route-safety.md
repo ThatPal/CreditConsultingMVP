@@ -69,11 +69,15 @@ No additional P0 or P1 truth, route-safety, or credential exposure was found in 
 
 - Lifecycle projection focused tests: 4 passed.
 - Route-ready boundary and affected Round UI tests: 5 passed.
+- Client shell loading-state characterization: updated to reject equal generic `Open` actions and require an explicit progress state.
 - API typecheck: passed.
 - Web typecheck: passed.
 - Repository lint: passed.
 - API production build: passed.
 - Web production build: passed (existing bundle-size advisory retained as `CPOAR-D0-004`).
+- Fresh isolated Credit-only database: all 66 migrations applied; system seed passed twice.
+- Complete accumulated suite on that database: Web 104, Runtime 3, API 278 and Worker 16 tests passed (401 total; Shared intentionally has no test files).
+- First exact-head CI (`aa88ffefdc94983ee28f59c90578f346495bd228`) correctly exposed one stale Client Home characterization expecting the removed generic actions. The characterization was corrected to require an explicit loading state and reject generic `Open` links; the complete local gate then passed.
 - Exact-final-head GitHub CI: required on the synchronized final commit; the immutable run result is reported at handoff.
 
 ## Completion recommendation

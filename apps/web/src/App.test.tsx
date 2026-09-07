@@ -186,7 +186,8 @@ describe('application shells', () => {
     expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
     expect(screen.queryByText('$62,000')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /start guided update/i })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /open/i })).toHaveLength(3);
+    expect(screen.queryByRole('link', { name: /^open$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
   test('mobile navigation opens and closes through accessible controls', () => {
