@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { theme } from '../theme';
-import { NotificationsPage } from './NotificationsPage';
+import { NotificationsPage, safeNotificationDestination } from './NotificationsPage';
 
 function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -29,6 +29,14 @@ function renderPage() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('PORTAL-41 notifications', () => {
+  test('permits exact client destinations and rejects external or privileged routes', () => {
+    expect(safeNotificationDestination('/app/rounds/round-1/follow-up')).toBe(
+      '/app/rounds/round-1/follow-up',
+    );
+    expect(safeNotificationDestination('https://example.com')).toBeNull();
+    expect(safeNotificationDestination('/admin')).toBeNull();
+  });
+
   test('renders chronological safe notifications and marks an item read', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
       if (init?.method === 'PATCH') return json({ notification: { id: 'notification-1' } });
@@ -63,11 +71,11 @@ describe('PORTAL-41 notifications', () => {
   });
 
   test('renders empty and safe error states', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ unread: 0, notifications: [], hasMore: false, nextCursor: null }));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      json({ unread: 0, notifications: [], hasMore: false, nextCursor: null }),
+    );
     const first = renderPage();
-    expect(
-      await screen.findByRole('heading', { name: /all caught up/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /all caught up/i })).toBeInTheDocument();
     first.unmount();
     vi.restoreAllMocks();
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(

@@ -99,21 +99,25 @@ const priorityColors = {
 export function SupportPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [newRequestOpen, setNewRequestOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [category, setCategory] = useState<SupportCategory>('CREDIT_REVIEW');
   const [priority, setPriority] = useState<'NORMAL' | 'HIGH' | 'URGENT'>('NORMAL');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
+  const [subject, setSubject] = useState(
+    () => sessionStorage.getItem('credit:support-subject') ?? '',
+  );
+  const [message, setMessage] = useState(
+    () => sessionStorage.getItem('credit:support-message') ?? '',
+  );
   const [reply, setReply] = useState('');
   const [attachmentDocumentIds, setAttachmentDocumentIds] = useState<string[]>([]);
   const [attachmentUploadPending, setAttachmentUploadPending] = useState(false);
-  const [caseSearch, setCaseSearch] = useState('');
-  const [caseStatus, setCaseStatus] = useState('');
-  const [casePage, setCasePage] = useState(1);
+  const [caseSearch, setCaseSearch] = useState(searchParams.get('search') ?? '');
+  const [caseStatus, setCaseStatus] = useState(searchParams.get('status') ?? '');
+  const [casePage, setCasePage] = useState(Math.max(1, Number(searchParams.get('page')) || 1));
   const createIdempotencyKey = useRef(crypto.randomUUID());
   const contextType = searchParams.get('contextType') ?? 'GENERAL';
   const contextResourceId = searchParams.get('contextId');
@@ -168,6 +172,12 @@ export function SupportPage() {
     setNewRequestOpen(true);
   }, [searchParams]);
   useEffect(() => {
+    if (subject) sessionStorage.setItem('credit:support-subject', subject);
+    else sessionStorage.removeItem('credit:support-subject');
+    if (message) sessionStorage.setItem('credit:support-message', message);
+    else sessionStorage.removeItem('credit:support-message');
+  }, [subject, message]);
+  useEffect(() => {
     if (!isMobile && !selectedId && cases.length) setSelectedId(cases[0]!.id);
   }, [cases, isMobile, selectedId]);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['support-cases'] });
@@ -192,6 +202,8 @@ export function SupportPage() {
       setNewRequestOpen(false);
       setSubject('');
       setMessage('');
+      sessionStorage.removeItem('credit:support-subject');
+      sessionStorage.removeItem('credit:support-message');
       setPriority('NORMAL');
       setAttachmentDocumentIds([]);
       createIdempotencyKey.current = crypto.randomUUID();
@@ -279,6 +291,11 @@ export function SupportPage() {
                 onSearchChange={(value) => {
                   setCaseSearch(value);
                   setCasePage(1);
+                  const next = new URLSearchParams(searchParams);
+                  if (value) next.set('search', value);
+                  else next.delete('search');
+                  next.set('page', '1');
+                  setSearchParams(next, { replace: true });
                 }}
                 activeFilters={
                   caseStatus ? [`Status: ${statusLabels[caseStatus as SupportStatus]}`] : []
@@ -286,6 +303,10 @@ export function SupportPage() {
                 onClearFilters={() => {
                   setCaseStatus('');
                   setCasePage(1);
+                  const next = new URLSearchParams(searchParams);
+                  next.delete('status');
+                  next.set('page', '1');
+                  setSearchParams(next, { replace: true });
                 }}
                 resultLabel={`${query.data?.total ?? 0} requests`}
                 loading={query.isFetching}
@@ -298,6 +319,11 @@ export function SupportPage() {
                   onChange={(event) => {
                     setCaseStatus(event.target.value);
                     setCasePage(1);
+                    const next = new URLSearchParams(searchParams);
+                    if (event.target.value) next.set('status', event.target.value);
+                    else next.delete('status');
+                    next.set('page', '1');
+                    setSearchParams(next, { replace: true });
                   }}
                 >
                   <MenuItem value="">All statuses</MenuItem>
@@ -313,6 +339,7 @@ export function SupportPage() {
                   <Box
                     component="button"
                     key={supportCase.id}
+                    data-collection-item
                     onClick={() => setSelectedId(supportCase.id)}
                     sx={{
                       width: '100%',
@@ -349,7 +376,12 @@ export function SupportPage() {
                 pageSize={20}
                 total={query.data?.total ?? 0}
                 hasMore={Boolean(query.data?.hasMore)}
-                onPageChange={setCasePage}
+                onPageChange={(nextPage) => {
+                  setCasePage(nextPage);
+                  const next = new URLSearchParams(searchParams);
+                  next.set('page', String(nextPage));
+                  setSearchParams(next, { replace: true });
+                }}
                 loading={query.isFetching}
               />
             </SectionCard>

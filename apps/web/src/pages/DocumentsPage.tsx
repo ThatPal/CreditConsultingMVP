@@ -30,6 +30,7 @@ import { LoadingSkeleton } from '../components/common/Feedback';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 import { SecureReportViewer } from './ReviewPages';
 
 type ClientDocument = {
@@ -155,104 +156,108 @@ export function DocumentsPage() {
           </Stack>
         </SectionCard>
       ) : (
-        <SectionCard>
-          <DataNavigationToolbar
-            searchLabel="Search documents"
-            searchPlaceholder="Search file names and document types"
-            searchValue={search}
-            onSearchChange={(value) => {
-              updateListState({ search: value, page: '1' });
-            }}
-            activeFilters={[
-              ...(type
-                ? [
-                    `Type: ${typesQuery.data?.documentTypes.find((item) => item.key === type)?.name ?? type}`,
-                  ]
-                : []),
-              ...(status
-                ? [`Status: ${status === 'AVAILABLE' ? 'Available' : 'Previous versions'}`]
-                : []),
-            ]}
-            onClearFilters={() => {
-              updateListState({ type: '', status: '', page: '1' });
-            }}
-            resultLabel={`${query.data?.total ?? 0} documents`}
-            loading={query.isFetching}
-          >
-            <TextField
-              select
-              label="Document type"
-              value={type}
-              onChange={(event) => {
-                updateListState({ type: event.target.value, page: '1' });
+        <CollectionSurface title="Secure document history" mode="bounded" maxHeight={680}>
+          <SectionCard variant="operational">
+            <DataNavigationToolbar
+              searchLabel="Search documents"
+              searchPlaceholder="Search file names and document types"
+              searchValue={search}
+              onSearchChange={(value) => {
+                updateListState({ search: value, page: '1' });
               }}
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="">All types</MenuItem>
-              {(typesQuery.data?.documentTypes ?? []).map((item) => (
-                <MenuItem key={item.key} value={item.key}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Status"
-              value={status}
-              onChange={(event) => {
-                updateListState({ status: event.target.value, page: '1' });
+              activeFilters={[
+                ...(type
+                  ? [
+                      `Type: ${typesQuery.data?.documentTypes.find((item) => item.key === type)?.name ?? type}`,
+                    ]
+                  : []),
+                ...(status
+                  ? [`Status: ${status === 'AVAILABLE' ? 'Available' : 'Previous versions'}`]
+                  : []),
+              ]}
+              onClearFilters={() => {
+                updateListState({ type: '', status: '', page: '1' });
               }}
-              sx={{ minWidth: 170 }}
+              resultLabel={`${query.data?.total ?? 0} documents`}
+              loading={query.isFetching}
             >
-              <MenuItem value="">All statuses</MenuItem>
-              <MenuItem value="AVAILABLE">Available</MenuItem>
-              <MenuItem value="SUPERSEDED">Previous versions</MenuItem>
-            </TextField>
-          </DataNavigationToolbar>
-          <Stack divider={<Divider flexItem />}>
-            {documents.map((document) => (
-              <Stack
-                key={document.id}
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={2}
-                sx={{ py: 2, alignItems: { sm: 'center' } }}
+              <TextField
+                select
+                label="Document type"
+                value={type}
+                onChange={(event) => {
+                  updateListState({ type: event.target.value, page: '1' });
+                }}
+                sx={{ minWidth: 180 }}
               >
-                <DescriptionRounded color="primary" sx={{ fontSize: 34 }} />
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography sx={{ fontWeight: 850, overflowWrap: 'anywhere' }}>
-                    {document.displayFileName}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
-                    Uploaded {new Date(document.uploadedAt).toLocaleDateString()} ·{' '}
-                    {fileSize(document.sizeBytes)} · {document.documentType.name}
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Chip
-                    size="small"
-                    color={document.status === 'AVAILABLE' ? 'success' : 'default'}
-                    label={document.status === 'AVAILABLE' ? 'Available' : 'Previous version'}
-                  />
-                  <Button
-                    variant="outlined"
-                    startIcon={<VisibilityRounded />}
-                    onClick={() => setSelectedDocumentId(document.id)}
-                  >
-                    View
-                  </Button>
+                <MenuItem value="">All types</MenuItem>
+                {(typesQuery.data?.documentTypes ?? []).map((item) => (
+                  <MenuItem key={item.key} value={item.key}>
+                    {item.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Status"
+                value={status}
+                onChange={(event) => {
+                  updateListState({ status: event.target.value, page: '1' });
+                }}
+                sx={{ minWidth: 170 }}
+              >
+                <MenuItem value="">All statuses</MenuItem>
+                <MenuItem value="AVAILABLE">Available</MenuItem>
+                <MenuItem value="SUPERSEDED">Previous versions</MenuItem>
+              </TextField>
+            </DataNavigationToolbar>
+            <Stack divider={<Divider flexItem />}>
+              {documents.map((document) => (
+                <Stack
+                  key={document.id}
+                  data-collection-item
+                  tabIndex={0}
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  sx={{ py: 2, alignItems: { sm: 'center' } }}
+                >
+                  <DescriptionRounded color="primary" sx={{ fontSize: 34 }} />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography sx={{ fontWeight: 850, overflowWrap: 'anywhere' }}>
+                      {document.displayFileName}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
+                      Uploaded {new Date(document.uploadedAt).toLocaleDateString()} ·{' '}
+                      {fileSize(document.sizeBytes)} · {document.documentType.name}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <Chip
+                      size="small"
+                      color={document.status === 'AVAILABLE' ? 'success' : 'default'}
+                      label={document.status === 'AVAILABLE' ? 'Available' : 'Previous version'}
+                    />
+                    <Button
+                      variant="outlined"
+                      startIcon={<VisibilityRounded />}
+                      onClick={() => setSelectedDocumentId(document.id)}
+                    >
+                      View
+                    </Button>
+                  </Stack>
                 </Stack>
-              </Stack>
-            ))}
-          </Stack>
-          <DataPagination
-            page={page}
-            pageSize={20}
-            total={query.data?.total ?? 0}
-            hasMore={Boolean(query.data?.hasMore)}
-            onPageChange={(nextPage) => updateListState({ page: String(nextPage) })}
-            loading={query.isFetching}
-          />
-        </SectionCard>
+              ))}
+            </Stack>
+            <DataPagination
+              page={page}
+              pageSize={20}
+              total={query.data?.total ?? 0}
+              hasMore={Boolean(query.data?.hasMore)}
+              onPageChange={(nextPage) => updateListState({ page: String(nextPage) })}
+              loading={query.isFetching}
+            />
+          </SectionCard>
+        </CollectionSurface>
       )}
 
       <Dialog

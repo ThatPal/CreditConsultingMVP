@@ -38,7 +38,9 @@ export function AccountPage() {
         body: JSON.stringify({ ...data, phone: data.phone === '' ? null : data.phone }),
       });
       await refresh();
-      setMessage('Profile updated.');
+      setMessage(
+        'Account details saved. Your communication and timezone preferences now use these values.',
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Profile could not be updated.');
     } finally {
@@ -50,7 +52,7 @@ export function AccountPage() {
       <PageHeader
         eyebrow="Client account"
         title="Account & profile"
-        description="Manage your permitted identity and contact details."
+        description="Manage the identity and contact details used for communication. Your financial Credit Profile is reviewed separately in Credit Center."
       />
       <SectionCard>
         <Stack spacing={3}>

@@ -16,12 +16,12 @@ import {
   Typography,
 } from '@mui/material';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 
 export type PortalNotification = {
   id: string;
@@ -33,6 +33,12 @@ export type PortalNotification = {
   readAt: string | null;
   createdAt: string;
 };
+
+export function safeNotificationDestination(link: string | null) {
+  if (!link) return null;
+  if (!link.startsWith('/app/') && link !== '/app') return null;
+  return link;
+}
 type NotificationPage = {
   notifications: PortalNotification[];
   unread: number;
@@ -74,6 +80,7 @@ function NotificationGroup({
         return (
           <Box
             key={notification.id}
+            data-collection-item
             component="button"
             type="button"
             onClick={() => onOpen(notification)}
@@ -137,9 +144,13 @@ function NotificationGroup({
 export function NotificationsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<'ALL' | 'UNREAD' | 'SUPPORT' | 'DOCUMENT' | 'SECURITY'>(
-    'ALL',
-  );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedFilter = searchParams.get('filter')?.toUpperCase();
+  const filter = (
+    ['ALL', 'UNREAD', 'SUPPORT', 'DOCUMENT', 'SECURITY'].includes(requestedFilter ?? '')
+      ? requestedFilter
+      : 'ALL'
+  ) as 'ALL' | 'UNREAD' | 'SUPPORT' | 'DOCUMENT' | 'SECURITY';
   const filterQuery =
     filter === 'UNREAD' ? '&unreadOnly=true' : filter === 'ALL' ? '' : `&category=${filter}`;
   const query = useInfiniteQuery({
@@ -161,7 +172,8 @@ export function NotificationsPage() {
   });
   const open = async (notification: PortalNotification) => {
     if (!notification.readAt) await markOne.mutateAsync(notification.id);
-    if (notification.link) navigate(notification.link);
+    const destination = safeNotificationDestination(notification.link);
+    if (destination) navigate(destination, { state: { notificationInbox: `?filter=${filter}` } });
   };
   if (query.isLoading) return <LoadingSkeleton />;
   const notifications = query.data?.pages.flatMap((page) => page.notifications) ?? [];
@@ -190,7 +202,13 @@ export function NotificationsPage() {
         exclusive
         size="small"
         value={filter}
-        onChange={(_, value) => value && setFilter(value)}
+        onChange={(_, value) => {
+          if (!value) return;
+          const next = new URLSearchParams(searchParams);
+          if (value === 'ALL') next.delete('filter');
+          else next.set('filter', value.toLowerCase());
+          setSearchParams(next, { replace: true });
+        }}
         aria-label="Notification filter"
       >
         <ToggleButton value="ALL">All</ToggleButton>
@@ -213,38 +231,45 @@ export function NotificationsPage() {
         </Alert>
       )}
       {!query.isError && (
-        <SectionCard>
-          {!notifications.length ? (
-            <Box sx={{ py: 6, textAlign: 'center' }}>
-              <NotificationsNoneRounded color="primary" sx={{ fontSize: 44 }} />
-              <Typography variant="h3" sx={{ mt: 1 }}>
-                You’re all caught up
-              </Typography>
-              <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-                New account and service updates will appear here.
-              </Typography>
-            </Box>
-          ) : (
-            <Stack spacing={3} divider={<Divider />}>
-              <NotificationGroup title="New" items={fresh} onOpen={(item) => void open(item)} />
-              <NotificationGroup
-                title="Earlier"
-                items={earlier}
-                onOpen={(item) => void open(item)}
-              />
-              {query.hasNextPage && (
-                <Button
-                  variant="outlined"
-                  onClick={() => void query.fetchNextPage()}
-                  disabled={query.isFetchingNextPage}
-                  sx={{ alignSelf: 'center' }}
-                >
-                  {query.isFetchingNextPage ? 'Loading…' : 'Load earlier notifications'}
-                </Button>
-              )}
-            </Stack>
-          )}
-        </SectionCard>
+        <CollectionSurface
+          title="Notification inbox"
+          mode="load-more"
+          maxHeight={680}
+          busy={query.isFetching}
+        >
+          <SectionCard variant="operational">
+            {!notifications.length ? (
+              <Box sx={{ py: 6, textAlign: 'center' }}>
+                <NotificationsNoneRounded color="primary" sx={{ fontSize: 44 }} />
+                <Typography variant="h3" sx={{ mt: 1 }}>
+                  You’re all caught up
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+                  New account and service updates will appear here.
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={3} divider={<Divider />}>
+                <NotificationGroup title="New" items={fresh} onOpen={(item) => void open(item)} />
+                <NotificationGroup
+                  title="Earlier"
+                  items={earlier}
+                  onOpen={(item) => void open(item)}
+                />
+                {query.hasNextPage && (
+                  <Button
+                    variant="outlined"
+                    onClick={() => void query.fetchNextPage()}
+                    disabled={query.isFetchingNextPage}
+                    sx={{ alignSelf: 'center' }}
+                  >
+                    {query.isFetchingNextPage ? 'Loading…' : 'Load earlier notifications'}
+                  </Button>
+                )}
+              </Stack>
+            )}
+          </SectionCard>
+        </CollectionSurface>
       )}
     </Stack>
   );
