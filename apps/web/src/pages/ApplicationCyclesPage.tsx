@@ -1378,6 +1378,8 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
             </Button>
           ) : (
                   <Button
+                    component={Link}
+                    to="/app/services"
                     variant="contained"
                     disabled={
                       !reviewService?.active ||
@@ -1386,7 +1388,7 @@ function CycleRoadmap({ cycle }: { cycle: Cycle }) {
                     }
                   >
                     {reviewService?.checkoutAvailable
-                      ? 'Continue to secure checkout'
+                      ? 'Choose service and checkout'
                       : 'Checkout coming soon'}
             </Button>
           )}
