@@ -18,6 +18,12 @@ type LiveEventDomain =
   | 'live-sessions'
   | 'journey';
 type LiveEventEnvelope = { domains: LiveEventDomain[] };
+export type LiveConnectionState = 'connected' | 'reconnecting';
+export const LIVE_CONNECTION_EVENT = 'credit:live-connection';
+export const liveConnectionCopy = (state: LiveConnectionState) =>
+  state === 'connected'
+    ? 'Realtime updates are connected; committed server state remains authoritative.'
+    : 'Realtime updates are reconnecting. The last confirmed state remains visible; new releases stay governed.';
 
 const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
   'application-cycles': ['application-cycles', 'rounds'],
@@ -64,6 +70,14 @@ export function LiveUpdates({ children }: PropsWithChildren) {
           predicate: (query) => query.queryKey[0] !== 'current-user',
         });
       connected = true;
+      window.dispatchEvent(
+        new CustomEvent<LiveConnectionState>(LIVE_CONNECTION_EVENT, { detail: 'connected' }),
+      );
+    };
+    source.onerror = () => {
+      window.dispatchEvent(
+        new CustomEvent<LiveConnectionState>(LIVE_CONNECTION_EVENT, { detail: 'reconnecting' }),
+      );
     };
     source.addEventListener('refresh', refresh);
     return () => {

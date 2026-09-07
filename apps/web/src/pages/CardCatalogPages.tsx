@@ -19,6 +19,8 @@ import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { RecoveryState } from '../components/common/InteractionPatterns';
+import { CollectionSurface } from '../components/common/CollectionSurface';
+import { designTokens } from '../theme';
 
 export type CatalogProduct = {
   id: string;
@@ -44,14 +46,48 @@ export type CatalogProduct = {
   } | null;
 };
 
+const formatFactValue = (value: unknown) => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const range = value as Record<string, unknown>;
+    if (range.min !== undefined && range.max !== undefined) return `${range.min}–${range.max}`;
+  }
+  if (Array.isArray(value)) return value.join(', ');
+  return String(value);
+};
+
 const factsText = (facts: Record<string, unknown>) =>
   Object.entries(facts)
     .filter(([key]) => key !== 'promotionSuppressed')
-    .map(
-      ([key, value]) =>
-        `${key.replace(/([A-Z])/g, ' $1')}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`,
-    )
+    .map(([key, value]) => `${key.replace(/([A-Z])/g, ' $1')}: ${formatFactValue(value)}`)
     .join(' · ');
+
+function CatalogCardArt({ product }: { product: CatalogProduct }) {
+  return (
+    <Box
+      role="img"
+      aria-label={`${product.displayName} catalog artwork. No issuer artwork is available.`}
+      sx={{
+        minHeight: 142,
+        borderRadius: 3,
+        p: 2.5,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        background:
+          product.audience === 'BUSINESS'
+            ? designTokens.gradient.subtle
+            : designTokens.gradient.brand,
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.12)',
+      }}
+    >
+      <Typography variant="overline">{product.issuer.name}</Typography>
+      <Box>
+        <CreditCardRounded aria-hidden="true" />
+        <Typography sx={{ fontWeight: 850 }}>{product.displayName}</Typography>
+      </Box>
+    </Box>
+  );
+}
 
 export function ExploreCardsPage({ consultant = false }: { consultant?: boolean }) {
   const [params, setParams] = useSearchParams();
@@ -128,26 +164,47 @@ export function ExploreCardsPage({ consultant = false }: { consultant?: boolean 
           <MenuItem value="NON_REPORTING">Non-reporting</MenuItem>
         </TextField>
       </Stack>
+      {(search || audience || portfolioType) && (
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography variant="body2" color="text.secondary">
+            Active filters:
+          </Typography>
+          {search && <Chip label={`Search: ${search}`} />}
+          {audience && <Chip label={audience === 'BUSINESS' ? 'Business' : 'Personal'} />}
+          {portfolioType && <Chip label={portfolioType.replaceAll('_', ' ').toLowerCase()} />}
+          <Button size="small" onClick={() => setParams(new URLSearchParams())}>
+            Clear all
+          </Button>
+        </Stack>
+      )}
       {!query.data?.products.length ? (
         <Alert severity="info">No catalog products match this search.</Alert>
       ) : (
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' },
-            gap: 2,
-          }}
-        >
-          {query.data.products.map((product) => (
-            <ProductCard key={product.id} product={product} consultant={consultant} />
-          ))}
-        </Box>
+        <CollectionSurface title="Governed card catalog" mode="gallery-compare" maxHeight={680}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' },
+              gap: 2,
+            }}
+          >
+            {query.data.products.map((product) => (
+              <ProductCard key={product.id} product={product} consultant={consultant} />
+            ))}
+          </Box>
+        </CollectionSurface>
       )}
     </Stack>
   );
 }
 
-function ProductCard({ product, consultant = false }: { product: CatalogProduct; consultant?: boolean }) {
+function ProductCard({
+  product,
+  consultant = false,
+}: {
+  product: CatalogProduct;
+  consultant?: boolean;
+}) {
   const client = useQueryClient();
   const save = useMutation({
     mutationFn: () =>
@@ -160,6 +217,7 @@ function ProductCard({ product, consultant = false }: { product: CatalogProduct;
   return (
     <SectionCard>
       <Stack spacing={1.5}>
+        <CatalogCardArt product={product} />
         <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between' }}>
           <Box>
             <Typography variant="h4">{product.displayName}</Typography>
@@ -194,7 +252,7 @@ function ProductCard({ product, consultant = false }: { product: CatalogProduct;
               onClick={() => save.mutate()}
               disabled={save.isPending}
             >
-              Save
+              Save for research
             </Button>
           </Stack>
         )}

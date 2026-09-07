@@ -16,6 +16,12 @@ import {
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
+import { FreshnessIndicator } from '../components/common/ProductFoundation';
+import {
+  LIVE_CONNECTION_EVENT,
+  liveConnectionCopy,
+  type LiveConnectionState,
+} from '../LiveUpdates';
 
 type Slot = { startsAt: string; endsAt: string; timezone: string; durationMinutes: number };
 type Appointment = {
@@ -366,6 +372,16 @@ type ReleasedApplication = {
   allowedActions: string[];
 };
 
+export const readableOfferFacts = (facts: unknown) => {
+  if (!facts || typeof facts !== 'object' || Array.isArray(facts)) return [];
+  return Object.entries(facts as Record<string, unknown>)
+    .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
+    .map(([key, value]) => ({
+      label: key.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase()),
+      value: String(value),
+    }));
+};
+
 export function LiveSessionPage({ consultant = false }: { consultant?: boolean }) {
   const { roundId = '', sessionId: routeSessionId = '' } = useParams();
   const [sessionId, setSessionId] = useState(routeSessionId);
@@ -374,7 +390,14 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
   const [message, setMessage] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [connectionState, setConnectionState] = useState<LiveConnectionState>('reconnecting');
   const connectionId = useState(() => crypto.randomUUID())[0];
+  useEffect(() => {
+    const updateConnection = (event: Event) =>
+      setConnectionState((event as CustomEvent<LiveConnectionState>).detail);
+    window.addEventListener(LIVE_CONNECTION_EVENT, updateConnection);
+    return () => window.removeEventListener(LIVE_CONNECTION_EVENT, updateConnection);
+  }, []);
   const load = async (id = sessionId) => {
     if (!id) return;
     try {
@@ -509,6 +532,12 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
         title="Live application session"
         description="Committed session state remains authoritative if your connection is interrupted."
       />
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <FreshnessIndicator state={connectionState === 'connected' ? 'live' : 'reconnecting'} />
+        <Typography variant="body2" color="text.secondary">
+          {liveConnectionCopy(connectionState)}
+        </Typography>
+      </Stack>
       {error && <Alert severity="error">{error}</Alert>}
       {!snapshot ? (
         <CircularProgress />
@@ -631,13 +660,30 @@ export function LiveSessionPage({ consultant = false }: { consultant?: boolean }
                     {application.product?.displayName ?? 'Approved card'}
                   </Typography>
                   <Typography>{application.whyThisCard}</Typography>
-                  <Typography variant="body2">
-                    Frozen offer facts: {JSON.stringify(application.offerFacts)}
-                  </Typography>
+                  <Box
+                    component="dl"
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                      gap: 1,
+                      m: 0,
+                    }}
+                  >
+                    {readableOfferFacts(application.offerFacts).map((fact) => (
+                      <Box key={fact.label}>
+                        <Typography component="dt" variant="caption" color="text.secondary">
+                          {fact.label}
+                        </Typography>
+                        <Typography component="dd" sx={{ m: 0, fontWeight: 750 }}>
+                          {fact.value}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
                   {application.status === 'RELEASED' ? (
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                       <Button variant="contained" onClick={() => void applicationAction('OPEN')}>
-                        Apply on issuer site
+                        Confirm issuer application opened
                       </Button>
                       <Button variant="outlined" onClick={() => void applicationAction('SKIP')}>
                         Skip this card

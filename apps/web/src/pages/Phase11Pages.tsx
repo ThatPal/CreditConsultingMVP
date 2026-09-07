@@ -21,8 +21,12 @@ import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { RecoveryState, RecordContext } from '../components/common/InteractionPatterns';
-import { StatusChip } from '../components/common/StatusChip';
-import { presentStatus } from '../components/common/statusVocabulary';
+import {
+  ArchetypeCanvas,
+  FreshnessIndicator,
+  LifecycleRail,
+  StickyActionBar,
+} from '../components/common/ProductFoundation';
 
 type CycleView = {
   cycle: null | {
@@ -293,13 +297,35 @@ export function RoundPage() {
         }
       />
       <LinearProgress
+        aria-label="Round preparation progress"
         variant="determinate"
         value={(checks.filter(Boolean).length / checks.length) * 100}
       />
+      <ArchetypeCanvas archetype="lifecycle-timeline" role="client">
+        <Stack spacing={1.5}>
+          <Typography variant="overline" color="primary">
+            Current focus
+          </Typography>
+          <Typography variant="h2">{lifecycle.currentState}</Typography>
+          <Typography color="text.secondary">{lifecycle.waiting ?? lifecycle.meaning}</Typography>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Chip
+              label={`Owner: ${readable(String(lifecycle.owner ?? 'NONE'))}`}
+              variant="outlined"
+            />
+            <FreshnessIndicator
+              state="confirmed"
+              at={
+                lifecycle.freshness && !Number.isNaN(Date.parse(lifecycle.freshness))
+                  ? lifecycle.freshness
+                  : undefined
+              }
+            />
+          </Stack>
+        </Stack>
+      </ArchetypeCanvas>
       <SectionCard>
-        <Typography variant="h5">Round overview</Typography>
-        <Typography variant="h3" sx={{ mt: 1.5 }}>{lifecycle.currentState}</Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.75 }}>{lifecycle.meaning}</Typography>
+        <Typography variant="h5">Round facts</Typography>
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
           <Chip label={`Entitlement: ${readable(round.serviceEntitlement.status)}`} />
           <Chip
@@ -349,25 +375,23 @@ export function RoundPage() {
         </Typography>
       </SectionCard>
       <SectionCard>
-        <Typography variant="h5">Round path</Typography>
-        <Stack spacing={1.25} sx={{ mt: 1.5 }}>
-          {lifecycle.stages.map(({ key, label: title, state: status, path }) => (
-            <Stack
-              key={key}
-              direction={{ xs: 'column', sm: 'row' }}
-              sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 1 }}
-            >
-              <Box>
-                <Typography sx={{ fontWeight: 750 }}>{title}</Typography>
-                <StatusChip {...presentStatus(status)} />
-              </Box>
-              {status !== 'LOCKED' && (
-                <Button component={Link} to={path}>
-                  Open
-                </Button>
-              )}
-            </Stack>
-          ))}
+        <LifecycleRail
+          title="Round path"
+          items={lifecycle.stages.map(({ key, label, state }) => ({ key, label, state }))}
+        />
+        <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: 'wrap' }}>
+          {lifecycle.stages
+            .filter((stage) => stage.state !== 'LOCKED')
+            .map((stage) => (
+              <Button
+                key={stage.key}
+                component={Link}
+                to={stage.path}
+                variant={stage.state === 'ACTIVE' ? 'contained' : 'text'}
+              >
+                {stage.state === 'ACTIVE' ? `Continue ${stage.label}` : `Review ${stage.label}`}
+              </Button>
+            ))}
         </Stack>
       </SectionCard>
       <SectionCard>
@@ -378,15 +402,17 @@ export function RoundPage() {
               ? 'This is the next action supported by the current Round state.'
               : `The next step is owned by ${readable(lifecycle.owner)}.`)}
         </Typography>
-        {primaryAction && (
-          <Button sx={{ mt: 2 }} variant="contained" component={Link} to={primaryAction.path}>
-            {primaryAction.label}
-          </Button>
-        )}
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
           Updated {new Date(lifecycle.freshness).toLocaleString()}
         </Typography>
       </SectionCard>
+      {primaryAction && (
+        <StickyActionBar label="Authoritative Round action">
+          <Button variant="contained" component={Link} to={primaryAction.path}>
+            {primaryAction.label}
+          </Button>
+        </StickyActionBar>
+      )}
     </Stack>
   );
 }
