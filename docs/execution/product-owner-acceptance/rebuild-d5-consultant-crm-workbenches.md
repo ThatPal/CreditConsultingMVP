@@ -5,6 +5,7 @@
 - Branch: `rebuild/authenticated-product-poar`
 - Accepted start: `7a554aae9f789221b8a21ad06cea49f0a8692619`
 - Implementation boundary: `0600bc2`
+- Browser-review correction: `868a1e7`
 - Scope: Consultant Dashboard, Work Queue, Clients/Client 360, Review, Plan, Strategy, Calendar/Live, Post-Round, Major Readiness, Support, Cards Research, and cross-workbench continuity.
 - Guardrails: Consultant scope and capability checks remain canonical; Admin catalog authority is not exposed; client-visible publication remains a governed server command; AI remains draft/advisory; immutable results and histories are not edited; optimistic-version and realtime recovery contracts remain intact.
 
@@ -19,6 +20,7 @@
 | CPOAR-D5-005 | P2 | The shell’s existing authorized client search and urgent-work affordance did not carry visible client context into downstream workbenches. | Closed by composing the new client rail with the existing authorized global search and urgent Work Queue controls; the rail is loaded through the same scoped Client Context endpoint and fails closed when access changes. |
 | CPOAR-D5-006 | P2 | A server-backed personal Saved View primitive does not exist in the current canonical model. Implementing device-local “saved views” would contradict PD-4. | Refined: URL-backed filters, pagination and D1 ephemeral scroll restoration provide safe continuity. A canonical Saved View domain remains a separately governed enhancement; D5 does not mislabel local state as a saved view. |
 | CPOAR-D5-007 | P2 | Deep Review, Strategy, Live, Support, Post-Round, Major Readiness and Cards workbenches already carried substantial Wave 4/Wave 6 domain behavior; rebuilding their command logic in D5 risked duplicating or weakening authority. | Reconciled and preserved. D5 applies the new shell/collection/Plan composition centrally and retains those accepted domain commands, typed conflicts, immutable histories, AI boundaries and publication rules. |
+| CPOAR-D5-008 | P1 | The first live Consultant pass exposed a route-recovery failure on populated Client 360: the new shell consumed an active-work count that the scoped detail projection did not return. | Closed during browser review. The authority-scoped detail projection now returns the same active businesses, relationships and work-item counts as the directory, the shell degrades safely when an older response omits counts, and focused API proof covers the contract. Client 360 and downstream client workbenches were then reloaded successfully. |
 
 No new P0 security, authorization, financial, publication or immutable-history defect was found.
 
@@ -59,13 +61,26 @@ The deterministic Credit-only demo seed provides:
 - current and historical Rounds, an approved Strategy version, Appointment, Live Session, application outcomes, final Analysis and Major Readiness case;
 - deterministic non-production authority provenance for lifecycle review fixtures.
 
-Browser review uses `http://localhost:5185` with the temporary Consultant review account. The acceptance sweep covers Dashboard → Work Queue → Review, global search → Client 360 domains, Plan, Strategy, Calendar → Live, Live Help → Work Queue, Post-Round/Analysis/finalization, Major Readiness, Support and Cards Research. Desktop is primary; the bounded collections and Plan/client context rail collapse to normal-flow/intentional sequential composition at narrow width. Keyboard collection behavior is backed by focused regression tests.
+Browser review used `http://localhost:5185` with the temporary Consultant review account. Evidence after CPOAR-D5-008 correction included:
+
+- Dashboard: 16 actionable items, 13 due today, 25 authorized clients, one Review and three urgent items, with Work Queue named as the owning action source.
+- Work Queue: 12 populated Support items with three urgent, five mine and seven unassigned; bounded collection, sticky pagination, reason/owner/age copy and claim/open actions rendered.
+- Client Directory and Client 360: 25 deterministic clients; Jordan Blake opened with governed identity, Journey, services, five recent Support cases, timeline, businesses and financial relationships. The persistent client rail remained visible in Plan, Review, Strategy, completed Round results/analysis and Major Readiness.
+- Review: a populated Information Received Review opened in the three-zone workspace with accepted source report, no unresolved exceptions and successful durable extraction; AI remained unable to approve or publish.
+- Plan: the canonical three-item preparation Plan rendered as structure, typed authoring and client-safe preview zones; consultant-only rationale stayed outside preview.
+- Strategy: populated source context, governed card candidates, factual offer freshness, shortlist, deterministic sequence validation and MFA-gated approval were present; stale source state truthfully blocked approval.
+- Calendar/Live: two deterministic appointments and an active Live session rendered. Live showed connected transport, client-away/consultant-present truth, release blocking, three command zones and the canonical Live Help → Work Queue handoff.
+- Post-Round: the completed historical Round showed one factual $18,000 approval and the Final v1 approved analysis separately from consultant preparation actions.
+- Major Readiness: approved client guidance, a distinct non-client-visible draft, reassessment state and governed coordination decisions rendered without lender probability claims.
+- Support and Cards Research: a populated urgent conversation showed Claim/Escalate/Resolve, Client Reply/Internal Note and advisory AI distinctions; four governed products showed research-only authority and truthful stale-offer treatment.
+
+The in-app review viewport also exercised the narrow composition. The bounded collections and Plan/client context rail use normal-flow/intentional sequential behavior without horizontal workbench overflow. Keyboard collection traversal and focus semantics are backed by focused regression tests.
 
 ## Verification
 
 - Focused D5 Web: 8 files / 21 tests passed across Dashboard, Work Queue, Client 360, Plan, Strategy, Support, visual maturity and client/consultant continuity.
 - Full Web: 29 files / 117 tests passed.
-- Affected API: 10 files / 48 tests passed across source-scoped operations, Client Context, Review, Plan, Live, Post-Round, Major Readiness, Support and Attention; the separately configured realtime gate added 3 files / 7 passing tests.
+- Affected API: 10 files / 48 tests passed across source-scoped operations, Client Context, Review, Plan, Live, Post-Round, Major Readiness, Support and Attention; the separately configured realtime gate added 3 files / 7 passing tests. After the browser finding, the focused Client Context suite passed again: 1 file / 6 tests.
 - Fresh isolated Credit-only database `credit_strategy_d5_ci_0908`: all 66 migrations applied; system seed passed twice; deterministic demo seed passed twice with stable lifecycle identifiers. No Behfar resource was used.
 - Repository lint, typecheck and all production builds passed. The existing Vite entry-chunk advisory remains informational.
 - Exact-final-head GitHub CI: immutable result supplied at handoff after the report boundary is pushed.
