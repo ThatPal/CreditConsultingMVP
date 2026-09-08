@@ -46,6 +46,11 @@ describe('Sprint 4.1 consultant client context', () => {
     });
     renderWithContext(<ClientsPage />);
     expect(await screen.findByText('Jordan Blake')).toBeInTheDocument();
+    expect(screen.getByLabelText('Authorized clients · 1 records')).toBeInTheDocument();
+    expect(screen.getByText('Jordan Blake').closest('[data-collection-item]')).toHaveAttribute(
+      'tabindex',
+      '0',
+    );
     expect(screen.getByText('2 businesses')).toBeInTheDocument();
     expect(screen.getByText('4 active items')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open Client 360/i })).toHaveAttribute(

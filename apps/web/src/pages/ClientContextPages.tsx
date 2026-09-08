@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { JourneySummary, type JourneyProjection } from './JourneyPages';
@@ -127,53 +128,65 @@ export function ClientsPage() {
           {query.data?.clients.length === 0 && (
             <Alert severity="info">No authorized clients match this search.</Alert>
           )}
-          <Stack divider={<Divider />}>
-            {query.data?.clients.map((client) => (
-              <Stack
-                key={client.id}
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={2}
-                sx={{ py: 2, alignItems: { sm: 'center' } }}
-              >
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="h4">
-                    {client.firstName} {client.lastName}
-                  </Typography>
-                  <Typography color="text.secondary">{client.user.email}</Typography>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                    <Chip size="small" label={`${client._count.businesses} businesses`} />
-                    <Chip
-                      size="small"
-                      label={`${client._count.financialRelationships} relationships`}
-                    />
-                    <Chip size="small" label={`${client._count.workItems} active items`} />
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    {client.assignedConsultant
-                      ? `Assigned to ${client.assignedConsultant.name ?? client.assignedConsultant.email}`
-                      : 'Access provided by governed grant'}
-                  </Typography>
-                </Box>
-                <Button
-                  component={Link}
-                  to={`/crm/clients/${client.id}`}
-                  endIcon={<ChevronRightRounded />}
+          <CollectionSurface
+            title={`Authorized clients · ${query.data?.total ?? 0}`}
+            mode="bounded"
+            maxHeight={650}
+            busy={query.isFetching}
+            empty={query.data?.clients.length === 0}
+            footer={
+              query.data ? (
+                <DataPagination
+                  page={page}
+                  pageSize={query.data.pageSize}
+                  total={query.data.total}
+                  hasMore={query.data.hasMore}
+                  onPageChange={(nextPage) => update({ page: String(nextPage) })}
+                  loading={query.isFetching}
+                />
+              ) : undefined
+            }
+          >
+            <Stack divider={<Divider />}>
+              {query.data?.clients.map((client) => (
+                <Stack
+                  key={client.id}
+                  data-collection-item
+                  tabIndex={0}
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  sx={{ py: 2, alignItems: { sm: 'center' } }}
                 >
-                  Open Client 360
-                </Button>
-              </Stack>
-            ))}
-          </Stack>
-          {query.data && (
-            <DataPagination
-              page={page}
-              pageSize={query.data.pageSize}
-              total={query.data.total}
-              hasMore={query.data.hasMore}
-              onPageChange={(nextPage) => update({ page: String(nextPage) })}
-              loading={query.isFetching}
-            />
-          )}
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h4">
+                      {client.firstName} {client.lastName}
+                    </Typography>
+                    <Typography color="text.secondary">{client.user.email}</Typography>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                      <Chip size="small" label={`${client._count.businesses} businesses`} />
+                      <Chip
+                        size="small"
+                        label={`${client._count.financialRelationships} relationships`}
+                      />
+                      <Chip size="small" label={`${client._count.workItems} active items`} />
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                      {client.assignedConsultant
+                        ? `Assigned to ${client.assignedConsultant.name ?? client.assignedConsultant.email}`
+                        : 'Access provided by governed grant'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    component={Link}
+                    to={`/crm/clients/${client.id}`}
+                    endIcon={<ChevronRightRounded />}
+                  >
+                    Open Client 360
+                  </Button>
+                </Stack>
+              ))}
+            </Stack>
+          </CollectionSurface>
         </Stack>
       </SectionCard>
     </Stack>

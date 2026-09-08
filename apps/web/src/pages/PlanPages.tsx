@@ -249,6 +249,34 @@ export function ConsultantPlanBuilderPage() {
               <Chip label={`Status: ${query.data?.plan?.status ?? 'NEW'}`} />
               <Chip label={`Version: ${query.data?.plan?.versions?.[0]?.version ?? 1}`} />
             </Stack>
+            <Box
+              data-testid="plan-three-zone-workbench"
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', xl: '230px minmax(0, 1fr) 320px' },
+                gap: 2,
+                alignItems: 'start',
+              }}
+            >
+              <Box
+                component="aside"
+                aria-label="Plan structure"
+                sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 3 }}
+              >
+                <Typography variant="h6">Plan structure</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Dependencies follow this canonical order. Reordering changes display order, not
+                  prerequisite truth.
+                </Typography>
+                <Stack spacing={1} component="ol" sx={{ pl: 2 }}>
+                  {items.map((item, index) => (
+                    <Typography component="li" key={item.stableKey} variant="body2">
+                      {index + 1}. {item.clientTitle}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Box>
+              <Stack spacing={2} aria-label="Plan item authoring">
             {items.map((item, index) => (
               <Card key={item.stableKey} variant="outlined">
                 <CardContent>
@@ -356,14 +384,42 @@ export function ConsultantPlanBuilderPage() {
             >
               Add typed item
             </Button>
-            <Divider />
-            <Typography variant="h6">Client-safe preview</Typography>
-            {items.map((item) => (
-              <Box key={item.stableKey}>
-                <Typography sx={{ fontWeight: 700 }}>{item.clientTitle}</Typography>
-                <Typography color="text.secondary">{item.clientBody}</Typography>
+              </Stack>
+              <Box
+                component="aside"
+                aria-label="Plan context and client preview"
+                sx={{
+                  p: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 3,
+                  position: { xl: 'sticky' },
+                  top: { xl: 16 },
+                }}
+              >
+                <DraftPublicationStatus
+                  state={query.data?.plan?.status === 'APPROVED' ? 'published' : 'draft'}
+                  version={query.data?.plan?.versions?.[0]?.version ?? 1}
+                  owner="Consultant"
+                />
+                <Typography variant="h6" sx={{ mt: 2 }}>
+                  Client-safe preview
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  This is what the client will understand after approval. Consultant rationale is
+                  never included.
+                </Typography>
+                <Stack spacing={1.5}>
+                  {items.map((item) => (
+                    <Box key={item.stableKey}>
+                      <Typography sx={{ fontWeight: 700 }}>{item.clientTitle}</Typography>
+                      <Typography color="text.secondary">{item.clientBody}</Typography>
+                    </Box>
+                  ))}
+                </Stack>
               </Box>
-            ))}
+            </Box>
+            <Divider />
             <Stack direction="row" spacing={2}>
               <Button variant="contained" onClick={() => save.mutate()} disabled={save.isPending}>
                 Save draft

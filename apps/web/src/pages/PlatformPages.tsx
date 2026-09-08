@@ -26,8 +26,13 @@ import { MetricCard } from '../components/common/MetricCard';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 import { humanizeCode, priorityLabel } from '../components/common/labels';
-import { ArchetypeCanvas, FreshnessIndicator, MetricHero } from '../components/common/ProductFoundation';
+import {
+  ArchetypeCanvas,
+  FreshnessIndicator,
+  MetricHero,
+} from '../components/common/ProductFoundation';
 
 const demoNotice = (
   <Alert severity="info">
@@ -68,14 +73,29 @@ export function ConsultantDashboardPage() {
         </Alert>
       )}
       <ArchetypeCanvas archetype="client-workbench" role="consultant">
-        <Stack direction={{ xs: 'column', md: 'row' }} sx={{ gap: 3, alignItems: { md: 'center' } }}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          sx={{ gap: 3, alignItems: { md: 'center' } }}
+        >
           <Box sx={{ flex: 1 }}>
-            <MetricHero label="Actionable work" value={metrics?.open ?? '—'} explanation="Assigned items plus unassigned work you are authorized to claim." source="Canonical Work Queue" />
+            <MetricHero
+              label="Actionable work"
+              value={metrics?.open ?? '—'}
+              explanation="Assigned items plus unassigned work you are authorized to claim."
+              source="Canonical Work Queue"
+            />
           </Box>
           <Stack spacing={1} sx={{ minWidth: { md: 260 } }}>
-            <FreshnessIndicator state={query.isError ? 'stale' : 'confirmed'} at={query.dataUpdatedAt ? new Date(query.dataUpdatedAt).toISOString() : undefined} />
-            <Typography color="text.secondary">Work Queue owns priority, claim state, due time and the next operational action.</Typography>
-            <Button component={Link} to="/crm/work-queue" variant="contained">Review prioritized Work Queue</Button>
+            <FreshnessIndicator
+              state={query.isError ? 'stale' : 'confirmed'}
+              at={query.dataUpdatedAt ? new Date(query.dataUpdatedAt).toISOString() : undefined}
+            />
+            <Typography color="text.secondary">
+              Work Queue owns priority, claim state, due time and the next operational action.
+            </Typography>
+            <Button component={Link} to="/crm/work-queue" variant="contained">
+              Review prioritized Work Queue
+            </Button>
           </Stack>
         </Stack>
       </ArchetypeCanvas>
@@ -147,7 +167,11 @@ export function ConsultantDashboardPage() {
                   endIcon={<ArrowForwardRounded />}
                   sx={{ alignSelf: 'flex-start' }}
                 >
-                  {title === 'Work queue' ? 'Review Work Queue' : title === 'Client reviews' ? 'Review client Credit Reviews' : 'Open client Support cases'}
+                  {title === 'Work queue'
+                    ? 'Review Work Queue'
+                    : title === 'Client reviews'
+                      ? 'Review client Credit Reviews'
+                      : 'Open client Support cases'}
                 </Button>
               </Stack>
             </SectionCard>
@@ -344,76 +368,90 @@ export function WorkQueuePage() {
           {queue.data?.items.length === 0 && (
             <Alert severity="info">No attention items match these filters.</Alert>
           )}
-          <Stack divider={<Divider />}>
-            {queue.data?.items.map((item) => {
-              const href = item.deepLink?.route
-                ? item.deepLink.params?.caseId
-                  ? `${item.deepLink.route}?case=${item.deepLink.params.caseId}`
-                  : item.deepLink.route
-                : '/crm/work-queue';
-              return (
-                <Stack
-                  key={item.id}
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={2}
-                  sx={{ alignItems: { sm: 'center' }, py: 2 }}
-                >
-                  <Stack sx={{ flex: 1 }} spacing={0.5}>
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                      <Chip
-                        size="small"
-                        color={
-                          item.priority === 'URGENT'
-                            ? 'error'
-                            : item.priority === 'HIGH'
-                              ? 'warning'
-                              : 'default'
-                        }
-                        label={priorityLabel(item.priority)}
-                      />
-                      <Typography variant="h3">{item.title}</Typography>
+          <CollectionSurface
+            title={`Prioritized work · ${queue.data?.total ?? 0}`}
+            mode="inbox-detail"
+            maxHeight={620}
+            busy={queue.isFetching}
+            empty={queue.data?.items.length === 0}
+            footer={
+              queue.data ? (
+                <DataPagination
+                  page={page}
+                  pageSize={queue.data.pageSize}
+                  total={queue.data.total}
+                  hasMore={page * queue.data.pageSize < queue.data.total}
+                  onPageChange={(nextPage) => updateQueueState({ page: String(nextPage) })}
+                  loading={queue.isFetching}
+                />
+              ) : undefined
+            }
+          >
+            <Stack divider={<Divider />}>
+              {queue.data?.items.map((item) => {
+                const href = item.deepLink?.route
+                  ? item.deepLink.params?.caseId
+                    ? `${item.deepLink.route}?case=${item.deepLink.params.caseId}`
+                    : item.deepLink.route
+                  : '/crm/work-queue';
+                return (
+                  <Stack
+                    key={item.id}
+                    data-collection-item
+                    tabIndex={0}
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={2}
+                    sx={{ alignItems: { sm: 'center' }, py: 2 }}
+                  >
+                    <Stack sx={{ flex: 1 }} spacing={0.5}>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <Chip
+                          size="small"
+                          color={
+                            item.priority === 'URGENT'
+                              ? 'error'
+                              : item.priority === 'HIGH'
+                                ? 'warning'
+                                : 'default'
+                          }
+                          label={priorityLabel(item.priority)}
+                        />
+                        <Typography variant="h3">{item.title}</Typography>
+                      </Stack>
+                      <Typography color="text.secondary">
+                        {item.client.firstName} {item.client.lastName} ·{' '}
+                        {humanizeCode(item.reasonCode)}
+                      </Typography>
+                      <Typography variant="caption">
+                        Needed{' '}
+                        {item.neededSince
+                          ? new Date(item.neededSince).toLocaleString()
+                          : 'recently'}{' '}
+                        ·{' '}
+                        {item.assignee
+                          ? `Claimed by ${item.assignee.name ?? item.assignee.email}`
+                          : 'Unassigned'}
+                      </Typography>
                     </Stack>
-                    <Typography color="text.secondary">
-                      {item.client.firstName} {item.client.lastName} ·{' '}
-                      {humanizeCode(item.reasonCode)}
-                    </Typography>
-                    <Typography variant="caption">
-                      Needed{' '}
-                      {item.neededSince ? new Date(item.neededSince).toLocaleString() : 'recently'}{' '}
-                      ·{' '}
-                      {item.assignee
-                        ? `Claimed by ${item.assignee.name ?? item.assignee.email}`
-                        : 'Unassigned'}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1}>
-                    {!item.assigneeId && (
-                      <Button
-                        variant="outlined"
-                        disabled={claim.isPending}
-                        onClick={() => claim.mutate(item)}
-                      >
-                        Claim
+                    <Stack direction="row" spacing={1}>
+                      {!item.assigneeId && (
+                        <Button
+                          variant="outlined"
+                          disabled={claim.isPending}
+                          onClick={() => claim.mutate(item)}
+                        >
+                          Claim
+                        </Button>
+                      )}
+                      <Button component={Link} to={href} variant="contained">
+                        Open workspace
                       </Button>
-                    )}
-                    <Button component={Link} to={href} variant="contained">
-                      Open workspace
-                    </Button>
+                    </Stack>
                   </Stack>
-                </Stack>
-              );
-            })}
-          </Stack>
-          {queue.data && (
-            <DataPagination
-              page={page}
-              pageSize={queue.data.pageSize}
-              total={queue.data.total}
-              hasMore={page * queue.data.pageSize < queue.data.total}
-              onPageChange={(nextPage) => updateQueueState({ page: String(nextPage) })}
-              loading={queue.isFetching}
-            />
-          )}
+                );
+              })}
+            </Stack>
+          </CollectionSurface>
         </Stack>
       </SectionCard>
     </Stack>

@@ -55,6 +55,10 @@ describe('consultant Plan Builder continuity', () => {
       </ThemeProvider>,
     );
     expect(await screen.findByDisplayValue('Jordan rebuilding plan')).toBeInTheDocument();
+    expect(screen.getByTestId('plan-three-zone-workbench')).toBeInTheDocument();
+    expect(screen.getByLabelText('Plan structure')).toBeInTheDocument();
+    expect(screen.getByLabelText('Plan item authoring')).toBeInTheDocument();
+    expect(screen.getByLabelText('Plan context and client preview')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Keep this saved action')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Review your credit findings')).not.toBeInTheDocument();
   });

@@ -9,6 +9,7 @@ import {
   Badge,
   Box,
   Button,
+  Chip,
   Divider,
   Drawer,
   IconButton,
@@ -312,6 +313,24 @@ export function AppShell({
     enabled: role === 'consultant',
     refetchInterval: 30_000,
   });
+  const contextualClientId =
+    role === 'consultant' ? location.pathname.match(/^\/crm\/clients\/([^/]+)/)?.[1] : undefined;
+  type ContextualClient = {
+    client: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      status: string;
+      _count: { workItems: number };
+    };
+  };
+  const contextualClientQuery = useQuery({
+    queryKey: ['shell-client-context', contextualClientId],
+    queryFn: () =>
+      apiRequest<ContextualClient>(`/api/v1/consultant/client-context/${contextualClientId}`),
+    enabled: Boolean(contextualClientId),
+    retry: false,
+  });
   const clientOptions = useMemo(
     () => clientSearchQuery.data?.clients ?? [],
     [clientSearchQuery.data],
@@ -320,9 +339,12 @@ export function AppShell({
     (entry) => entry.id === activeNavigationId(items, location.pathname),
   );
   const finalSegment = location.pathname.split('/').filter(Boolean).at(-1);
-  const pathDetail = finalSegment && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(finalSegment)
-    ? location.pathname.startsWith('/crm/clients/') ? 'Client record' : 'Record detail'
-    : finalSegment?.replaceAll('-', ' ');
+  const pathDetail =
+    finalSegment && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(finalSegment)
+      ? location.pathname.startsWith('/crm/clients/')
+        ? 'Client record'
+        : 'Record detail'
+      : finalSegment?.replaceAll('-', ' ');
   return (
     <Box
       sx={{
@@ -430,8 +452,29 @@ export function AppShell({
             <Stack direction="row" spacing={1} sx={{ ml: 'auto', alignItems: 'center' }}>
               {role === 'consultant' && (
                 <>
-                  <IconButton component={Link} to="/crm/work-queue" color={(urgencyQuery.data?.total??0)>0?'warning':'default'} aria-label={`${urgencyQuery.data?.total??0} urgent work items`} sx={{display:{md:'none'}}}><Badge badgeContent={urgencyQuery.data?.total??0} color="warning"><BoltRounded/></Badge></IconButton>
-                  <Button component={Link} to="/crm/work-queue" color={(urgencyQuery.data?.total ?? 0) > 0 ? 'warning' : 'inherit'} startIcon={<BoltRounded />} aria-label={`${urgencyQuery.data?.total ?? 0} urgent work items`} sx={{ display: { xs: 'none', md: 'inline-flex' } }}>{(urgencyQuery.data?.total ?? 0) > 0 ? `${urgencyQuery.data?.total} urgent` : 'Work clear'}</Button>
+                  <IconButton
+                    component={Link}
+                    to="/crm/work-queue"
+                    color={(urgencyQuery.data?.total ?? 0) > 0 ? 'warning' : 'default'}
+                    aria-label={`${urgencyQuery.data?.total ?? 0} urgent work items`}
+                    sx={{ display: { md: 'none' } }}
+                  >
+                    <Badge badgeContent={urgencyQuery.data?.total ?? 0} color="warning">
+                      <BoltRounded />
+                    </Badge>
+                  </IconButton>
+                  <Button
+                    component={Link}
+                    to="/crm/work-queue"
+                    color={(urgencyQuery.data?.total ?? 0) > 0 ? 'warning' : 'inherit'}
+                    startIcon={<BoltRounded />}
+                    aria-label={`${urgencyQuery.data?.total ?? 0} urgent work items`}
+                    sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+                  >
+                    {(urgencyQuery.data?.total ?? 0) > 0
+                      ? `${urgencyQuery.data?.total} urgent`
+                      : 'Work clear'}
+                  </Button>
                 </>
               )}
               <Tooltip title="Notifications">
@@ -468,6 +511,78 @@ export function AppShell({
             </Stack>
           </Toolbar>
         </AppBar>
+        {contextualClientId && (
+          <Box
+            component="nav"
+            aria-label="Current client workspace"
+            sx={{
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              background:
+                'linear-gradient(90deg, rgba(29,211,176,.14), rgba(66,211,242,.06) 52%, transparent)',
+              px: { xs: 2, sm: 3 },
+              py: 1.25,
+            }}
+          >
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              sx={{ gap: 1.25, alignItems: { md: 'center' }, maxWidth: 1600, mx: 'auto' }}
+            >
+              <Box sx={{ minWidth: 210 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Current client · context stays with this workbench
+                </Typography>
+                <Typography sx={{ fontWeight: 850 }}>
+                  {contextualClientQuery.data
+                    ? `${contextualClientQuery.data.client.firstName} ${contextualClientQuery.data.client.lastName}`
+                    : contextualClientQuery.isError
+                      ? 'Client context unavailable'
+                      : 'Loading client context…'}
+                </Typography>
+              </Box>
+              {contextualClientQuery.data && (
+                <Stack direction="row" sx={{ gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Chip
+                    size="small"
+                    label={contextualClientQuery.data.client.status.replaceAll('_', ' ')}
+                  />
+                  <Chip
+                    size="small"
+                    color={
+                      contextualClientQuery.data.client._count.workItems ? 'warning' : 'default'
+                    }
+                    label={`${contextualClientQuery.data.client._count.workItems} active work`}
+                  />
+                </Stack>
+              )}
+              <Stack
+                direction="row"
+                sx={{ gap: 0.5, ml: { md: 'auto' }, overflowX: 'auto', pb: 0.25 }}
+              >
+                {([
+                  ['Overview', `/crm/clients/${contextualClientId}`],
+                  ['Journey', `/crm/clients/${contextualClientId}#journey`],
+                  ['Credit Center', `/crm/clients/${contextualClientId}/credit-center`],
+                  ['Plan', `/crm/clients/${contextualClientId}/plan`],
+                  ['Cards', `/crm/clients/${contextualClientId}/cards`],
+                  ['Timeline', `/crm/clients/${contextualClientId}#timeline`],
+                  ['Support', `/crm/clients/${contextualClientId}#support`],
+                ] as const).map(([label, to]) => (
+                  <Button
+                    key={label}
+                    component={Link}
+                    to={to}
+                    size="small"
+                    color="inherit"
+                    sx={{ flexShrink: 0 }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </Stack>
+            </Stack>
+          </Box>
+        )}
         <Menu
           anchorEl={accountAnchor}
           open={Boolean(accountAnchor)}

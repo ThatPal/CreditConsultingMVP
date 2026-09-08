@@ -58,6 +58,11 @@ describe('CRM-02 Work Queue', () => {
       </ThemeProvider>,
     );
     expect(await screen.findByText(/Deadline question/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Prioritized work · 1 records')).toBeInTheDocument();
+    expect(screen.getByText(/Deadline question/).closest('[data-collection-item]')).toHaveAttribute(
+      'tabindex',
+      '0',
+    );
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/consultant/work-queue?'),
       expect.anything(),
