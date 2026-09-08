@@ -257,10 +257,15 @@ describe('client and relationship context', () => {
     const pageIds = [first.body.clients[0].id, second.body.clients[0].id, third.body.clients[0].id];
     expect(new Set(pageIds).size).toBe(3);
     expect(pageIds.sort()).toEqual([clients[0]!.id, clients[1]!.id, clients[4]!.id].sort());
-    await request(app())
+    const detail = await request(app())
       .get(`/api/v1/consultant/client-context/${clients[4]!.id}`)
       .set('x-test-identity', 'consultant')
       .expect(200);
+    expect(detail.body.client._count).toEqual({
+      businesses: 0,
+      financialRelationships: 0,
+      workItems: 0,
+    });
     await request(app())
       .get(`/api/v1/consultant/client-context/${clients[0]!.id}`)
       .set('x-test-identity', 'outsider')

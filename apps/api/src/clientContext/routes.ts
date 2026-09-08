@@ -684,6 +684,13 @@ export function createClientContextRouter(
             createdAt: true,
             user: { select: { email: true } },
             assignedConsultant: { select: { id: true, name: true, email: true } },
+            _count: {
+              select: {
+                businesses: { where: { status: 'ACTIVE' } },
+                financialRelationships: { where: { status: 'ACTIVE' } },
+                workItems: { where: { status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] } } },
+              },
+            },
             businesses: { select: businessSelect, orderBy: [{ status: 'asc' }, { id: 'asc' }] },
             financialRelationships: {
               select: relationshipSelect,

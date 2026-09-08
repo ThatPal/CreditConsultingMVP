@@ -321,7 +321,7 @@ export function AppShell({
       firstName: string;
       lastName: string;
       status: string;
-      _count: { workItems: number };
+      _count?: { workItems: number };
     };
   };
   const contextualClientQuery = useQuery({
@@ -546,13 +546,15 @@ export function AppShell({
                     size="small"
                     label={contextualClientQuery.data.client.status.replaceAll('_', ' ')}
                   />
-                  <Chip
-                    size="small"
-                    color={
-                      contextualClientQuery.data.client._count.workItems ? 'warning' : 'default'
-                    }
-                    label={`${contextualClientQuery.data.client._count.workItems} active work`}
-                  />
+                  {contextualClientQuery.data.client._count && (
+                    <Chip
+                      size="small"
+                      color={
+                        contextualClientQuery.data.client._count.workItems ? 'warning' : 'default'
+                      }
+                      label={`${contextualClientQuery.data.client._count.workItems} active work`}
+                    />
+                  )}
                 </Stack>
               )}
               <Stack
