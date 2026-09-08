@@ -12,11 +12,13 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { DataNavigationToolbar, DataPagination } from '../components/common/DataNavigation';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { CollectionSurface } from '../components/common/CollectionSurface';
+import { GovernedActionDialog } from '../components/common/InteractionPatterns';
 
 type Version = {
   id: string;
@@ -132,9 +134,17 @@ function TermsFields({
 }
 
 export function AdminServicesPage() {
-  const [search, setSearch] = useState('');
-  const [active, setActive] = useState('');
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? '';
+  const active = searchParams.get('active') ?? '';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const setFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    if (key !== 'page') next.set('page', '1');
+    setSearchParams(next);
+  };
   const [newKey, setNewKey] = useState('');
   const [newTerms, setNewTerms] = useState(emptyTerms);
   const [showCreate, setShowCreate] = useState(false);
@@ -178,38 +188,43 @@ export function AdminServicesPage() {
         title="Services & products"
         description="Govern immutable commercial versions, availability, pricing, and entitlement mappings."
         actions={
-          <Button variant={showCreate ? 'outlined' : 'contained'} onClick={() => setShowCreate((value) => !value)}>
+          <Button
+            variant={showCreate ? 'outlined' : 'contained'}
+            onClick={() => setShowCreate((value) => !value)}
+          >
             {showCreate ? 'Close draft form' : 'Create product'}
           </Button>
         }
       />
-      {showCreate && <SectionCard>
-        <Box component="form" onSubmit={submitNewProduct}>
-          <Stack spacing={2}>
-            <Typography variant="h3">Create draft product</Typography>
-            <Alert severity="info">
-              Creation produces immutable version 1 in draft. Activate it only after reviewing every
-              term.
-            </Alert>
-            <TextField
-              label="Stable product key"
-              required
-              helperText="Uppercase letters, numbers, and underscores"
-              value={newKey}
-              onChange={(event) => setNewKey(event.target.value.toUpperCase())}
-            />
-            <TermsFields value={newTerms} onChange={setNewTerms} />
-            {createProduct.isError && (
-              <Alert severity="error">
-                The draft could not be created. Check the key, terms, and step-up session.
+      {showCreate && (
+        <SectionCard>
+          <Box component="form" onSubmit={submitNewProduct}>
+            <Stack spacing={2}>
+              <Typography variant="h3">Create draft product</Typography>
+              <Alert severity="info">
+                Creation produces immutable version 1 in draft. Activate it only after reviewing
+                every term.
               </Alert>
-            )}
-            <Button type="submit" variant="contained" disabled={createProduct.isPending}>
-              Create draft product
-            </Button>
-          </Stack>
-        </Box>
-      </SectionCard>}
+              <TextField
+                label="Stable product key"
+                required
+                helperText="Uppercase letters, numbers, and underscores"
+                value={newKey}
+                onChange={(event) => setNewKey(event.target.value.toUpperCase())}
+              />
+              <TermsFields value={newTerms} onChange={setNewTerms} />
+              {createProduct.isError && (
+                <Alert severity="error">
+                  The draft could not be created. Check the key, terms, and step-up session.
+                </Alert>
+              )}
+              <Button type="submit" variant="contained" disabled={createProduct.isPending}>
+                Create draft product
+              </Button>
+            </Stack>
+          </Box>
+        </SectionCard>
+      )}
       <SectionCard variant="operational">
         <Stack spacing={2}>
           <DataNavigationToolbar
@@ -217,8 +232,7 @@ export function AdminServicesPage() {
             searchPlaceholder="Product key or name"
             searchValue={search}
             onSearchChange={(value) => {
-              setSearch(value);
-              setPage(1);
+              setFilter('search', value);
             }}
             resultLabel={`${query.data?.total ?? 0} products`}
             loading={query.isFetching}
@@ -228,8 +242,7 @@ export function AdminServicesPage() {
               label="Availability"
               value={active}
               onChange={(event) => {
-                setActive(event.target.value);
-                setPage(1);
+                setFilter('active', event.target.value);
               }}
               sx={{ minWidth: 170 }}
             >
@@ -244,53 +257,68 @@ export function AdminServicesPage() {
               Products could not be loaded or commerce step-up is required.
             </Alert>
           )}
-          <Stack divider={<Divider />}>
-            {query.data?.products.map((product) => {
-              const current =
-                product.versions.find((version) => version.version === product.currentVersion) ??
-                product.versions[0];
-              return (
-                <Stack
-                  key={product.id}
-                  direction={{ xs: 'column', md: 'row' }}
-                  spacing={2}
-                  sx={{ py: 2, alignItems: { md: 'center' } }}
-                >
-                  <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={1}>
-                      <Typography variant="h3">{current?.name ?? product.key}</Typography>
-                      <Chip
-                        size="small"
-                        color={product.active ? 'success' : 'default'}
-                        label={product.active ? 'Active' : 'Inactive'}
-                      />
-                    </Stack>
-                    <Typography color="text.secondary">
-                      {product.key} · v{current?.version ?? '—'} ·{' '}
-                      {current ? `${current.currency} ${current.price}` : 'Draft terms required'}
-                    </Typography>
-                    <Typography variant="caption">
-                      {current?.entitlementType.replaceAll('_', ' ')} ·{' '}
-                      {current?.includedReviewCredits ?? 0} Review Credits
-                    </Typography>
-                  </Box>
-                  <Button component={Link} to={`/admin/services/${product.id}`} variant="outlined">
-                    Open product
-                  </Button>
-                </Stack>
-              );
-            })}
-          </Stack>
-          {query.data && (
-            <DataPagination
-              page={page}
-              pageSize={query.data.pageSize}
-              total={query.data.total}
-              hasMore={page * query.data.pageSize < query.data.total}
-              onPageChange={setPage}
-              loading={query.isFetching}
-            />
-          )}
+          <CollectionSurface
+            title="Commercial catalog configuration"
+            mode="bounded"
+            empty={!query.isLoading && !query.data?.products.length}
+            busy={query.isFetching}
+            footer={
+              query.data ? (
+                <DataPagination
+                  page={page}
+                  pageSize={query.data.pageSize}
+                  total={query.data.total}
+                  hasMore={page * query.data.pageSize < query.data.total}
+                  onPageChange={(nextPage) => setFilter('page', String(nextPage))}
+                  loading={query.isFetching}
+                />
+              ) : undefined
+            }
+          >
+            <Stack divider={<Divider />}>
+              {query.data?.products.map((product) => {
+                const current =
+                  product.versions.find((version) => version.version === product.currentVersion) ??
+                  product.versions[0];
+                return (
+                  <Stack
+                    key={product.id}
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={2}
+                    sx={{ py: 2, alignItems: { md: 'center' } }}
+                    data-collection-item
+                    tabIndex={0}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Stack direction="row" spacing={1}>
+                        <Typography variant="h3">{current?.name ?? product.key}</Typography>
+                        <Chip
+                          size="small"
+                          color={product.active ? 'success' : 'default'}
+                          label={product.active ? 'Active' : 'Inactive'}
+                        />
+                      </Stack>
+                      <Typography color="text.secondary">
+                        {product.key} · v{current?.version ?? '—'} ·{' '}
+                        {current ? `${current.currency} ${current.price}` : 'Draft terms required'}
+                      </Typography>
+                      <Typography variant="caption">
+                        {current?.entitlementType.replaceAll('_', ' ')} ·{' '}
+                        {current?.includedReviewCredits ?? 0} Review Credits
+                      </Typography>
+                    </Box>
+                    <Button
+                      component={Link}
+                      to={`/admin/services/${product.id}`}
+                      variant="outlined"
+                    >
+                      Open product
+                    </Button>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          </CollectionSurface>
         </Stack>
       </SectionCard>
     </Stack>
@@ -301,6 +329,7 @@ export function AdminServiceDetailPage() {
   const { serviceProductId } = useParams();
   const queryClient = useQueryClient();
   const [newTerms, setNewTerms] = useState(emptyTerms);
+  const [pendingOperation, setPendingOperation] = useState<'activate' | 'deactivate' | null>(null);
   const query = useQuery({
     queryKey: ['admin-product', serviceProductId],
     queryFn: () =>
@@ -323,7 +352,9 @@ export function AdminServiceDetailPage() {
         body: JSON.stringify(version ? { version } : {}),
       }),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['admin-product', serviceProductId] }),
+      queryClient
+        .invalidateQueries({ queryKey: ['admin-product', serviceProductId] })
+        .then(() => setPendingOperation(null)),
   });
   const createVersion = useMutation({
     mutationFn: () =>
@@ -376,9 +407,7 @@ export function AdminServiceDetailPage() {
             <Button
               disabled={!latest || action.isPending}
               variant="contained"
-              onClick={() =>
-                latest && action.mutate({ operation: 'activate', version: latest.version })
-              }
+              onClick={() => latest && setPendingOperation('activate')}
             >
               Activate latest version
             </Button>
@@ -386,13 +415,51 @@ export function AdminServiceDetailPage() {
               disabled={!product.active || action.isPending}
               color="warning"
               variant="outlined"
-              onClick={() => action.mutate({ operation: 'deactivate' })}
+              onClick={() => setPendingOperation('deactivate')}
             >
               Deactivate
             </Button>
           </Stack>
         </Stack>
       </SectionCard>
+      <GovernedActionDialog
+        open={Boolean(pendingOperation)}
+        title={
+          pendingOperation === 'activate'
+            ? 'Activate commercial version'
+            : 'Deactivate service product'
+        }
+        effect={
+          pendingOperation === 'activate'
+            ? 'Make the latest immutable version available for future purchases with its configured price and entitlement.'
+            : 'Stop future purchases. Historical payments and existing entitlements remain unchanged.'
+        }
+        context={latest?.name ?? product.key}
+        warning
+        pending={action.isPending}
+        preview={{
+          current: `${product.active ? 'Active' : 'Inactive'} · current v${product.currentVersion ?? 'none'}`,
+          proposed:
+            pendingOperation === 'activate'
+              ? `Active · v${latest?.version ?? 'none'}`
+              : 'Inactive for future purchases',
+          scope: `${latest?.name ?? product.key}; future purchases only`,
+          timing: 'Immediately after authorized confirmation',
+          reversibility: 'Reversible by a later authorized activation/deactivation.',
+          audit: 'Product, version, actor, commercial effect, and outcome are recorded.',
+        }}
+        onCancel={() => setPendingOperation(null)}
+        onConfirm={() => {
+          if (pendingOperation === 'activate' && latest)
+            action.mutate({ operation: 'activate', version: latest.version });
+          if (pendingOperation === 'deactivate') action.mutate({ operation: 'deactivate' });
+        }}
+        confirmLabel={
+          pendingOperation === 'activate'
+            ? 'Activate for future purchases'
+            : 'Stop future purchases'
+        }
+      />
       <SectionCard>
         <Box
           component="form"

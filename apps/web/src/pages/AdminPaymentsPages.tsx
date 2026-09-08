@@ -1,5 +1,6 @@
 import {
   Alert,
+  Box,
   Button,
   Chip,
   LinearProgress,
@@ -17,6 +18,7 @@ import { humanizeCode } from '../components/common/labels';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 
 type Payment = {
   id: string;
@@ -146,47 +148,63 @@ export function AdminPaymentsPage() {
       {query.data!.payments.length === 0 && (
         <Alert severity="info">No payments match the current search and filters.</Alert>
       )}
-      {query.data!.payments.map((payment) => (
-        <SectionCard key={payment.id} variant="interactive">
-          <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between' }}>
-            <Stack>
-              <Typography variant="h3">
-                {payment.client
-                  ? `${payment.client.firstName} ${payment.client.lastName}`
-                  : 'Client payment'}
-              </Typography>
-              <Typography color="text.secondary">
-                {providerLabel(payment.provider)} · {humanizeCode(payment.environment)} ·{' '}
-                {new Date(payment.createdAt).toLocaleString()}
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={1}>
-              <Chip label={humanizeCode(payment.state)} />
-              <Typography>
-                {new Intl.NumberFormat(undefined, {
-                  style: 'currency',
-                  currency: payment.currency,
-                }).format(Number(payment.amount))}
-              </Typography>
-              <Button component={Link} to={`/admin/payments/${payment.id}`}>
-                Inspect
-              </Button>
-            </Stack>
-          </Stack>
-        </SectionCard>
-      ))}
-      <DataPagination
-        page={page}
-        pageSize={query.data!.pageSize}
-        total={query.data!.total}
-        hasMore={page * query.data!.pageSize < query.data!.total}
-        onPageChange={(nextPage) => {
-          const next = new URLSearchParams(searchParams);
-          next.set('page', String(nextPage));
-          setSearchParams(next);
-        }}
-        loading={query.isFetching}
-      />
+      <CollectionSurface
+        title="Payment ledger"
+        mode="bounded"
+        busy={query.isFetching}
+        empty={query.data!.payments.length === 0}
+        footer={
+          <DataPagination
+            page={page}
+            pageSize={query.data!.pageSize}
+            total={query.data!.total}
+            hasMore={page * query.data!.pageSize < query.data!.total}
+            onPageChange={(nextPage) => {
+              const next = new URLSearchParams(searchParams);
+              next.set('page', String(nextPage));
+              setSearchParams(next);
+            }}
+            loading={query.isFetching}
+          />
+        }
+      >
+        <Stack spacing={1.5}>
+          {query.data!.payments.map((payment) => (
+            <Box key={payment.id} data-collection-item tabIndex={0}>
+              <SectionCard variant="interactive">
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  sx={{ justifyContent: 'space-between' }}
+                >
+                  <Stack>
+                    <Typography variant="h3">
+                      {payment.client
+                        ? `${payment.client.firstName} ${payment.client.lastName}`
+                        : 'Client payment'}
+                    </Typography>
+                    <Typography color="text.secondary">
+                      {providerLabel(payment.provider)} · {humanizeCode(payment.environment)} ·{' '}
+                      {new Date(payment.createdAt).toLocaleString()}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={1}>
+                    <Chip label={humanizeCode(payment.state)} />
+                    <Typography>
+                      {new Intl.NumberFormat(undefined, {
+                        style: 'currency',
+                        currency: payment.currency,
+                      }).format(Number(payment.amount))}
+                    </Typography>
+                    <Button component={Link} to={`/admin/payments/${payment.id}`}>
+                      Inspect
+                    </Button>
+                  </Stack>
+                </Stack>
+              </SectionCard>
+            </Box>
+          ))}
+        </Stack>
+      </CollectionSurface>
       <SectionCard>
         <Stack spacing={1}>
           <Typography variant="h3">Recent refunds</Typography>
@@ -336,6 +354,15 @@ export function AdminPaymentDetailPage() {
         context={`${providerLabel(query.data!.payment.provider)} payment`}
         warning
         pending={refund.isPending}
+        preview={{
+          current: `${query.data!.payment.amount} ${query.data!.payment.currency} · ${humanizeCode(query.data!.payment.state)}`,
+          proposed: `${refundAmount || 'Specified amount'} ${query.data!.payment.currency} refund requested`,
+          scope: `This payment through ${providerLabel(query.data!.payment.provider)} only`,
+          timing: 'Provider timing applies after the request is accepted',
+          reversibility: 'A submitted refund cannot be reversed in this interface.',
+          audit:
+            'The request, provider response, ledger transition, and entitlement effect are recorded.',
+        }}
         {...(refund.isError ? { error: refund.error.message } : {})}
         onCancel={() => setConfirmRefund(false)}
         onConfirm={() => refund.mutate()}
@@ -497,6 +524,26 @@ function AdminGatewayPage({ provider }: { provider: 'paypal' | 'stripe' | 'bofa'
         context={displayName}
         warning
         pending={update.isPending}
+        preview={{
+          current:
+            governedAction === 'default'
+              ? config?.defaultForCheckout
+                ? 'Current checkout default'
+                : 'Not the checkout default'
+              : config?.enabledForNewPayments
+                ? 'Enabled for new payments'
+                : 'Historical operations only',
+          proposed:
+            governedAction === 'default'
+              ? 'Default for future checkout'
+              : config?.enabledForNewPayments
+                ? 'Historical operations only'
+                : 'Enabled for future payments',
+          scope: `${displayName}; future checkout routing only`,
+          timing: 'Effective for new payment creation after confirmation',
+          reversibility: 'Reversible by a later authorized gateway change.',
+          audit: 'Provider, actor, configuration effect, and outcome are recorded.',
+        }}
         {...(update.isError ? { error: update.error.message } : {})}
         onCancel={() => setGovernedAction(null)}
         onConfirm={() => {

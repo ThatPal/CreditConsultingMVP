@@ -17,6 +17,8 @@ import { DataNavigationToolbar, DataPagination } from '../components/common/Data
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
+import { CollectionSurface } from '../components/common/CollectionSurface';
+import { humanizeCode } from '../components/common/labels';
 
 type UserSummary = {
   id: string;
@@ -125,11 +127,24 @@ export function AdminUsersPage() {
         </Stack>
       </DataNavigationToolbar>
       {query.isError && <Alert severity="error">Users could not be loaded.</Alert>}
-      <SectionCard>
-        <Typography variant="h6">{query.data?.total ?? 0} users</Typography>
+      <CollectionSurface
+        title="Identity directory"
+        mode="bounded"
+        busy={query.isFetching}
+        empty={!query.isLoading && !query.data?.users.length}
+        footer={
+          <DataPagination
+            page={page}
+            pageSize={20}
+            total={query.data?.total ?? 0}
+            hasMore={Boolean(query.data?.hasMore)}
+            onPageChange={(next) => set('page', String(next))}
+          />
+        }
+      >
         <Stack divider={<Divider flexItem />}>
           {query.data?.users.map((user) => (
-            <Box key={user.id} sx={{ py: 2 }}>
+            <Box key={user.id} data-collection-item tabIndex={0} sx={{ py: 2 }}>
               <Stack
                 direction={{ xs: 'column', md: 'row' }}
                 sx={{ justifyContent: 'space-between', gap: 1 }}
@@ -140,8 +155,8 @@ export function AdminUsersPage() {
                     {user.email}
                   </Typography>
                   <Stack direction="row" sx={{ gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                    <Chip size="small" label={user.role} />
-                    <Chip size="small" label={user.status} />
+                    <Chip size="small" label={humanizeCode(user.role)} />
+                    <Chip size="small" label={humanizeCode(user.status)} />
                     <Chip size="small" label={`${user._count.betterAuthSessions} sessions`} />
                     <Chip
                       size="small"
@@ -155,18 +170,8 @@ export function AdminUsersPage() {
               </Stack>
             </Box>
           ))}
-          {!query.isLoading && !query.data?.users.length && (
-            <Typography color="text.secondary">No users match these filters.</Typography>
-          )}
         </Stack>
-      </SectionCard>
-      <DataPagination
-        page={page}
-        pageSize={20}
-        total={query.data?.total ?? 0}
-        hasMore={Boolean(query.data?.hasMore)}
-        onPageChange={(next) => set('page', String(next))}
-      />
+      </CollectionSurface>
     </Stack>
   );
 }
@@ -381,6 +386,32 @@ export function AdminUserDetailPage() {
         context={user.email}
         warning
         pending={mutation.isPending}
+        preview={{
+          current:
+            pendingAction?.kind === 'role'
+              ? humanizeCode(user.role)
+              : pendingAction?.kind === 'mfa'
+                ? user.twoFactorEnabled
+                  ? 'MFA enrolled'
+                  : 'MFA not enrolled'
+                : 'Active',
+          proposed:
+            pendingAction?.kind === 'role'
+              ? humanizeCode(nextRole)
+              : pendingAction?.kind === 'mfa'
+                ? 'MFA enrollment required'
+                : 'Revoked',
+          scope:
+            pendingAction?.kind === 'role' || pendingAction?.kind === 'mfa'
+              ? `${user.email} and all active sessions`
+              : `${user.email}; selected record only`,
+          timing: 'Immediately after successful MFA-authorized confirmation',
+          reversibility:
+            pendingAction?.kind === 'session'
+              ? 'The session cannot be restored; the user may sign in again.'
+              : 'A new authorized action is required to restore access.',
+          audit: 'The actor, target, effect, time, and outcome are recorded in immutable history.',
+        }}
         {...(mutation.isError ? { error: mutation.error.message } : {})}
         onCancel={() => setPendingAction(null)}
         onConfirm={confirmAction}
@@ -391,7 +422,8 @@ export function AdminUserDetailPage() {
 
 export function AdminAccessGrantsPage() {
   const qc = useQueryClient();
-  const [page, setPage] = useState(1);
+  const [params, setParams] = useSearchParams();
+  const page = Math.max(1, Number(params.get('page')) || 1);
   const [selectedGrant, setSelectedGrant] = useState<{ id: string; label: string } | null>(null);
   const [granteeId, setGranteeId] = useState('');
   const [clientId, setClientId] = useState('');
@@ -566,13 +598,28 @@ export function AdminAccessGrantsPage() {
           </Button>
         </Stack>
       </SectionCard>
-      <SectionCard>
-        <Typography variant="h6">Grant history</Typography>
+      <CollectionSurface
+        title="Grant history"
+        mode="bounded"
+        empty={!q.isLoading && !q.data?.grants.length}
+        busy={q.isFetching}
+        footer={
+          <DataPagination
+            page={page}
+            pageSize={20}
+            total={q.data?.total ?? 0}
+            hasMore={Boolean(q.data?.hasMore)}
+            onPageChange={(nextPage) => setParams({ page: String(nextPage) })}
+          />
+        }
+      >
         <Stack divider={<Divider flexItem />}>
           {q.data?.grants.map((g) => (
             <Stack
               sx={{ py: 2, justifyContent: 'space-between', gap: 1 }}
               key={g.id}
+              data-collection-item
+              tabIndex={0}
               direction={{ xs: 'column', md: 'row' }}
             >
               <Box>
@@ -602,14 +649,7 @@ export function AdminAccessGrantsPage() {
             </Stack>
           ))}
         </Stack>
-      </SectionCard>
-      <DataPagination
-        page={page}
-        pageSize={20}
-        total={q.data?.total ?? 0}
-        hasMore={Boolean(q.data?.hasMore)}
-        onPageChange={setPage}
-      />
+      </CollectionSurface>
       <GovernedActionDialog
         open={Boolean(selectedGrant)}
         title="Revoke temporary access"
@@ -617,6 +657,14 @@ export function AdminAccessGrantsPage() {
         {...(selectedGrant?.label ? { context: selectedGrant.label } : {})}
         warning
         pending={revoke.isPending}
+        preview={{
+          current: 'Active time-bounded scoped grant',
+          proposed: 'Revoked grant retained in immutable history',
+          scope: selectedGrant?.label ?? 'Selected grant only',
+          timing: 'Immediately after confirmation',
+          reversibility: 'Not reversible; a new least-privilege grant must be issued.',
+          audit: 'Issuer, target, scope, reason, time, and outcome remain auditable.',
+        }}
         {...(revoke.isError ? { error: revoke.error.message } : {})}
         onCancel={() => setSelectedGrant(null)}
         onConfirm={() => {

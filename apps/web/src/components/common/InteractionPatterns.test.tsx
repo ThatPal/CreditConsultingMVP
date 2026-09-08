@@ -74,3 +74,28 @@ test('governed dialog requires a reason, cancels by keyboard and restores trigge
   fireEvent.click(screen.getByRole('button', { name: 'Confirm action' }));
   expect(confirm).toHaveBeenCalledOnce();
 });
+
+test('governed dialog exposes a complete consequence-aware change preview', () => {
+  mount(
+    <GovernedActionDialog
+      open
+      title="Change checkout provider"
+      effect="Changes future checkout routing"
+      preview={{
+        current: 'PayPal',
+        proposed: 'Stripe',
+        scope: 'Future purchases only',
+        timing: 'Immediately after confirmation',
+        reversibility: 'Reversible by another authorized change',
+        audit: 'Actor and outcome are recorded',
+      }}
+      onCancel={() => {}}
+      onConfirm={() => {}}
+    />,
+  );
+  const preview = screen.getByLabelText('Change preview');
+  expect(preview).toHaveTextContent('Current statePayPal');
+  expect(preview).toHaveTextContent('Proposed stateStripe');
+  expect(preview).toHaveTextContent('Future purchases only');
+  expect(preview).toHaveTextContent('Actor and outcome are recorded');
+});

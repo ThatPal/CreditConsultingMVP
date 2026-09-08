@@ -152,6 +152,7 @@ export function GovernedActionDialog({
   onCancel,
   onConfirm,
   confirmLabel = 'Confirm action',
+  preview,
 }: {
   open: boolean;
   title: string;
@@ -167,6 +168,14 @@ export function GovernedActionDialog({
   onCancel: () => void;
   onConfirm: () => void;
   confirmLabel?: string;
+  preview?: {
+    current: string;
+    proposed: string;
+    scope: string;
+    timing: string;
+    reversibility: string;
+    audit: string;
+  };
 }) {
   return (
     <Dialog
@@ -180,6 +189,41 @@ export function GovernedActionDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <Typography>{effect}</Typography>
+          {preview && (
+            <Box
+              component="dl"
+              aria-label="Change preview"
+              sx={{
+                m: 0,
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'minmax(120px, .45fr) 1fr' },
+                gap: 1,
+                p: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+                bgcolor: 'rgba(92, 103, 255, .07)',
+              }}
+            >
+              {[
+                ['Current state', preview.current],
+                ['Proposed state', preview.proposed],
+                ['Scope', preview.scope],
+                ['Effective timing', preview.timing],
+                ['Reversibility', preview.reversibility],
+                ['Audit evidence', preview.audit],
+              ].map(([label, value]) => (
+                <Box key={label} sx={{ display: 'contents' }}>
+                  <Typography component="dt" variant="caption" color="text.secondary">
+                    {label}
+                  </Typography>
+                  <Typography component="dd" variant="body2" sx={{ m: 0 }}>
+                    {value}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
           {context && <Alert severity="info">Affected record: {context}</Alert>}
           {warning && (
             <Alert severity="warning">

@@ -17,6 +17,8 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { SafeRecordView } from '../components/admin/SafeRecordView';
 import { RecoveryState } from '../components/common/InteractionPatterns';
+import { CollectionSurface } from '../components/common/CollectionSurface';
+import { humanizeCode } from '../components/common/labels';
 
 type EventRow = {
   id: string;
@@ -100,17 +102,37 @@ export function AdminEventListPage({ kind }: { kind: 'audit' | 'security' }) {
         )}
       </DataNavigationToolbar>
       {query.isError && <Alert severity="error">Event history could not be loaded.</Alert>}
-      <SectionCard>
+      <CollectionSurface
+        title={kind === 'audit' ? 'Immutable audit evidence' : 'Security event evidence'}
+        mode="bounded"
+        busy={query.isFetching}
+        empty={!query.isLoading && !rows.length}
+        footer={
+          query.hasNextPage ? (
+            <Button
+              variant="outlined"
+              disabled={query.isFetchingNextPage}
+              onClick={() => query.fetchNextPage()}
+            >
+              Load older events
+            </Button>
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              End of the currently authorized history
+            </Typography>
+          )
+        }
+      >
         <Stack divider={<Divider flexItem />}>
           {rows.map((event) => (
-            <Stack key={event.id} sx={{ py: 2, gap: 1 }}>
+            <Stack key={event.id} data-collection-item tabIndex={0} sx={{ py: 2, gap: 1 }}>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
                 sx={{ justifyContent: 'space-between', gap: 1 }}
               >
                 <Box>
                   <Typography sx={{ fontWeight: 700 }}>
-                    {event.action ?? event.eventType}
+                    {humanizeCode(event.action ?? event.eventType ?? 'Recorded event')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {new Date(event.createdAt).toLocaleString()} ·{' '}
@@ -131,20 +153,8 @@ export function AdminEventListPage({ kind }: { kind: 'audit' | 'security' }) {
               )}
             </Stack>
           ))}
-          {!query.isLoading && !rows.length && (
-            <Typography color="text.secondary">No matching events.</Typography>
-          )}
         </Stack>
-      </SectionCard>
-      {query.hasNextPage && (
-        <Button
-          variant="outlined"
-          disabled={query.isFetchingNextPage}
-          onClick={() => query.fetchNextPage()}
-        >
-          Load older events
-        </Button>
-      )}
+      </CollectionSurface>
     </Stack>
   );
 }

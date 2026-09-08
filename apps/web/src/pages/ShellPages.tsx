@@ -97,6 +97,10 @@ export function AdminLandingPage() {
         description: 'Loading operational status',
       }))
     : cards;
+  const attention = cards.filter(({ section, valueKey }) => {
+    const value = section?.[valueKey];
+    return section?.status !== 'healthy' || (typeof value === 'number' && value > 0);
+  });
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -109,10 +113,44 @@ export function AdminLandingPage() {
           Operational status could not be loaded. Existing modules remain available from navigation.
         </Alert>
       ) : (
-        <Alert severity="info">
-          This dashboard is monitoring only. Work and configuration changes remain in their owning
-          modules.
-        </Alert>
+        <Stack spacing={1}>
+          <Alert severity={attention.length ? 'warning' : 'success'}>
+            {attention.length
+              ? `${attention.length} identity, security, or commerce areas have current work or degraded signals. Open the owning module to investigate.`
+              : 'No current monitored exception is reported. Configuration changes remain in their owning modules.'}
+          </Alert>
+          <Typography variant="caption" color="text.secondary">
+            Current snapshot · API operational summaries · as of{' '}
+            {query.data?.asOf ? new Date(query.data.asOf).toLocaleString() : 'loading'}
+          </Typography>
+        </Stack>
+      )}
+      {attention.length > 0 && (
+        <SectionCard variant="elevated">
+          <Stack spacing={1.25}>
+            <Typography variant="overline">Immediate attention</Typography>
+            <Typography variant="h2">Review current exceptions</Typography>
+            {attention.slice(0, 4).map(({ title, section, valueKey, description }) => (
+              <Stack
+                key={title}
+                direction={{ xs: 'column', sm: 'row' }}
+                sx={{ gap: 1, justifyContent: 'space-between', alignItems: { sm: 'center' } }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 800 }}>{title} attention</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {String(section?.[valueKey] ?? '—')} · {description}
+                  </Typography>
+                </Box>
+                {section?.href && (
+                  <Button component={Link} to={section.href}>
+                    Review {title.toLowerCase()}
+                  </Button>
+                )}
+              </Stack>
+            ))}
+          </Stack>
+        </SectionCard>
       )}
       <Grid container spacing={2}>
         {displayedCards.map(({ title, section, valueKey, description }, index) => {
@@ -127,6 +165,11 @@ export function AdminLandingPage() {
                     supportingText={description}
                     loading={query.isLoading}
                   />
+                  {query.data?.asOf && (
+                    <Typography variant="caption" color="text.secondary">
+                      Current snapshot · {new Date(query.data.asOf).toLocaleTimeString()}
+                    </Typography>
+                  )}
                   {section?.status !== 'healthy' && !query.isLoading && (
                     <Alert severity={section?.status === 'degraded' ? 'warning' : 'info'}>
                       {section?.reason ?? 'This module is partially degraded.'}
