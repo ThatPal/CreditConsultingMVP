@@ -28,11 +28,15 @@ function application(role: 'ADMIN' | 'CONSULTANT', failIntegrations = false) {
     aIJob: { count: count(3) },
     cardCatalogCandidate: { count: count(4) },
     integration: {
-      count: failIntegrations ? vi.fn().mockRejectedValue(new Error('provider unavailable')) : count(5),
+      count: failIntegrations
+        ? vi.fn().mockRejectedValue(new Error('provider unavailable'))
+        : count(5),
     },
     securityEvent: { count: count(6) },
     serviceProduct: { count: count(7) },
     outboxEvent: { count: count(8) },
+    scheduledJobDefinition: { count: count(3) },
+    scheduledJobRun: { count: count(2) },
   } as unknown as PrismaClient;
   const app = express();
   app.use((req, _res, next) => {
@@ -57,11 +61,11 @@ describe('ADMIN-01 operational dashboard', () => {
   test('composes canonical module metrics without creating operational work', async () => {
     const response = await request(application('ADMIN')).get('/api/v1/admin/dashboard').expect(200);
     expect(response.body.sections).toMatchObject({
-      commerce: { status: 'healthy', pending: 2, failed: 2, disputes: 1 },
-      ai: { status: 'healthy', queued: 3, failed: 3 },
-      catalog: { status: 'healthy', pending: 4, conflicts: 4 },
-      scheduledJobs: { status: 'unavailable' },
-      platform: { status: 'healthy', pendingOutbox: 8, failedOutbox: 8 },
+      commerce: { status: 'degraded', pending: 2, failed: 2, disputes: 1 },
+      ai: { status: 'degraded', queued: 3, failed: 3 },
+      catalog: { status: 'degraded', pending: 4, conflicts: 4 },
+      scheduledJobs: { status: 'degraded', enabled: 3, queued: 2, failed: 2 },
+      platform: { status: 'degraded', pendingOutbox: 8, failedOutbox: 8 },
     });
   });
 
@@ -73,7 +77,7 @@ describe('ADMIN-01 operational dashboard', () => {
       status: 'degraded',
       href: '/admin/integrations',
     });
-    expect(response.body.sections.commerce.status).toBe('healthy');
+    expect(response.body.sections.commerce.status).toBe('degraded');
   });
 
   test('denies non-admin staff', async () => {

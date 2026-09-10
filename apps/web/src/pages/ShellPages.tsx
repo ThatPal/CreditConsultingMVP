@@ -6,6 +6,12 @@ import { apiRequest } from '../auth/api';
 import { MetricCard } from '../components/common/MetricCard';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
+import { CollectionSurface } from '../components/common/CollectionSurface';
+import {
+  ArchetypeCanvas,
+  FreshnessIndicator,
+  MetricHero,
+} from '../components/common/ProductFoundation';
 
 export function AdminLandingPage() {
   type Section = {
@@ -276,9 +282,26 @@ export function SystemHealthPage() {
           Health signals could not be loaded.
         </Alert>
       ) : (
-        <SectionCard>
+        <ArchetypeCanvas archetype="observability-cockpit" role="admin">
           <Stack spacing={2}>
-            <Typography variant="h3">Durable event delivery</Typography>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={2}
+              sx={{ alignItems: { md: 'center' } }}
+            >
+              <Box sx={{ flex: 1 }}>
+                <MetricHero
+                  label="Durable delivery backlog"
+                  value={platform?.pendingOutbox ?? '—'}
+                  explanation="Events waiting for a worker claim in the current canonical snapshot."
+                  source="Admin operational summary endpoint"
+                />
+              </Box>
+              <FreshnessIndicator
+                state={platform?.status === 'healthy' ? 'confirmed' : 'stale'}
+                at={query.data?.asOf}
+              />
+            </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <MetricCard
                 label="Pending events"
@@ -302,52 +325,66 @@ export function SystemHealthPage() {
               Last checked {query.data?.asOf ? new Date(query.data.asOf).toLocaleString() : '—'}
             </Typography>
           </Stack>
-        </SectionCard>
+        </ArchetypeCanvas>
       )}
       {!query.isError && (
-        <Box
-          sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}
+        <CollectionSurface
+          title="Platform dependency checks"
+          mode="grid"
+          busy={query.isFetching}
+          empty={!query.isLoading && !Object.keys(query.data?.sections ?? {}).length}
         >
-          {Object.entries(query.data?.sections ?? {})
-            .filter(([key]) => key !== 'platform')
-            .map(([key, section]) => (
-              <SectionCard key={key}>
-                <Stack spacing={1.5}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ justifyContent: 'space-between', alignItems: 'center' }}
-                  >
-                    <Typography variant="h4">{key.replace(/([a-z])([A-Z])/g, '$1 $2')}</Typography>
-                    <Chip
-                      size="small"
-                      color={section.status === 'healthy' ? 'success' : 'warning'}
-                      label={
-                        section.status === 'healthy'
-                          ? 'Healthy'
-                          : section.status === 'degraded'
-                            ? 'Degraded'
-                            : 'Unavailable'
-                      }
-                    />
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+              gap: 2,
+            }}
+          >
+            {Object.entries(query.data?.sections ?? {})
+              .filter(([key]) => key !== 'platform')
+              .map(([key, section]) => (
+                <SectionCard key={key}>
+                  <Stack spacing={1.5}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+                    >
+                      <Typography variant="h4">
+                        {key.replace(/([a-z])([A-Z])/g, '$1 $2')}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        color={section.status === 'healthy' ? 'success' : 'warning'}
+                        label={
+                          section.status === 'healthy'
+                            ? 'Healthy'
+                            : section.status === 'degraded'
+                              ? 'Degraded'
+                              : 'Unavailable'
+                        }
+                      />
+                    </Stack>
+                    {section.reason && (
+                      <Typography color="text.secondary">{section.reason}</Typography>
+                    )}
+                    {safeMetrics(section).map(([metric, value]) => (
+                      <Typography key={metric} variant="body2">
+                        {metric.replace(/([a-z])([A-Z])/g, '$1 $2')}:{' '}
+                        <strong>{String(value)}</strong>
+                      </Typography>
+                    ))}
+                    {section.href && (
+                      <Button component={Link} to={section.href} sx={{ alignSelf: 'flex-start' }}>
+                        Open owning module
+                      </Button>
+                    )}
                   </Stack>
-                  {section.reason && (
-                    <Typography color="text.secondary">{section.reason}</Typography>
-                  )}
-                  {safeMetrics(section).map(([metric, value]) => (
-                    <Typography key={metric} variant="body2">
-                      {metric.replace(/([a-z])([A-Z])/g, '$1 $2')}: <strong>{String(value)}</strong>
-                    </Typography>
-                  ))}
-                  {section.href && (
-                    <Button component={Link} to={section.href} sx={{ alignSelf: 'flex-start' }}>
-                      Open owning module
-                    </Button>
-                  )}
-                </Stack>
-              </SectionCard>
-            ))}
-        </Box>
+                </SectionCard>
+              ))}
+          </Box>
+        </CollectionSurface>
       )}
     </Stack>
   );

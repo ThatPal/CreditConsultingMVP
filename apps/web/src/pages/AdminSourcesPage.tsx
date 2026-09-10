@@ -5,6 +5,7 @@ import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 type Source = {
   id: string;
   key: string;
@@ -99,10 +100,15 @@ export function AdminSourcesPage() {
           </Button>
         </Stack>
       </SectionCard>
-      <SectionCard>
+      <CollectionSurface
+        title="Reviewed source registry"
+        mode="bounded"
+        busy={query.isFetching}
+        empty={!query.isLoading && !query.data?.sources.length}
+      >
         <Stack divider={<Divider flexItem />}>
           {query.data?.sources.map((source) => (
-            <Stack key={source.id} sx={{ py: 2, gap: 1 }}>
+            <Stack data-collection-item tabIndex={0} key={source.id} sx={{ py: 2, gap: 1 }}>
               <Stack direction="row" spacing={1}>
                 <Typography sx={{ fontWeight: 700 }}>{source.name}</Typography>
                 <Chip size="small" label={source.active ? 'Active' : 'Disabled'} />
@@ -122,7 +128,7 @@ export function AdminSourcesPage() {
             </Stack>
           ))}
         </Stack>
-      </SectionCard>
+      </CollectionSurface>
       <GovernedActionDialog
         open={Boolean(selected)}
         title={`${selected?.active ? 'Disable' : 'Enable'} retrieval source`}
@@ -132,6 +138,21 @@ export function AdminSourcesPage() {
             : 'Future retrieval may use this HTTPS source only within its reviewed host allowlist.'
         }
         {...(selected?.name ? { context: selected.name } : {})}
+        {...(selected
+          ? {
+              preview: {
+                current: `${selected.active ? 'Effective' : 'Disabled'} · ${selected.baseUrl}`,
+                proposed: selected.active
+                  ? 'Disable new retrieval'
+                  : 'Enable allowlisted retrieval',
+                scope: `Only ${selected.name}; ${selected._count.mappings} mappings and ${selected._count.candidates} historical candidates retain provenance.`,
+                timing:
+                  'Applies to future retrieval after the version-safe update; in-flight work is unchanged.',
+                reversibility: 'A later reviewed version may restore the prior enabled state.',
+                audit: 'Actor, reason, allowlist, prior state, and resulting state are recorded.',
+              },
+            }
+          : {})}
         reasonLabel="Reason"
         reason={reason}
         required

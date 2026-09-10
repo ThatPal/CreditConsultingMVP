@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
-import { SectionCard } from '../components/common/SectionCard';
 import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
 import { useState } from 'react';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 type Integration = {
   id: string;
   key: string;
@@ -56,10 +56,15 @@ export function AdminIntegrationsPage() {
         never reveals secret values.
       </Alert>
       {q.isError && <RecoveryState error={q.error} onRetry={() => void q.refetch()} />}
-      <SectionCard>
+      <CollectionSurface
+        title="Integration registry"
+        mode="bounded"
+        busy={q.isFetching}
+        empty={!q.isLoading && !q.data?.integrations.length}
+      >
         <Stack divider={<Divider flexItem />}>
           {q.data?.integrations.map((i) => (
-            <Stack key={i.id} sx={{ py: 2, gap: 1 }}>
+            <Stack data-collection-item tabIndex={0} key={i.id} sx={{ py: 2, gap: 1 }}>
               <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
                 <Typography sx={{ fontWeight: 700 }}>
                   {i.provider} · {i.type}
@@ -98,7 +103,7 @@ export function AdminIntegrationsPage() {
             </Stack>
           ))}
         </Stack>
-      </SectionCard>
+      </CollectionSurface>
       <GovernedActionDialog
         open={Boolean(selected)}
         title={`${selected?.enabled ? 'Disable' : 'Enable'} ${selected?.provider ?? 'integration'}`}
@@ -108,6 +113,22 @@ export function AdminIntegrationsPage() {
             : 'Future eligible activity may be sent to this provider.'
         }
         {...(selected?.key ? { context: selected.key } : {})}
+        {...(selected
+          ? {
+              preview: {
+                current: `${selected.enabled ? 'Enabled' : 'Disabled'} · ${selected.status} · last successful check ${selected.lastSuccessAt ? new Date(selected.lastSuccessAt).toLocaleString() : 'never'}`,
+                proposed: selected.enabled
+                  ? 'Disable future provider activity'
+                  : 'Enable future eligible provider activity',
+                scope: `${selected.provider} ${selected.type}; payment gateways remain governed in Commerce → Payments.`,
+                timing:
+                  'Applies to new work after the version-safe update; queued and running work keep their recorded provider contract.',
+                reversibility: 'A later reviewed change may restore this enabled state.',
+                audit:
+                  'Actor, reason, prior state, resulting state, and configuration version are recorded.',
+              },
+            }
+          : {})}
         reasonLabel="Reason"
         reason={reason}
         required

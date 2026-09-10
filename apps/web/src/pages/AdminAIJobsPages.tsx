@@ -19,6 +19,7 @@ import { SectionCard } from '../components/common/SectionCard';
 import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
 import { SafeRecordView } from '../components/admin/SafeRecordView';
 import { humanizeCode } from '../components/common/labels';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 
 type Job = {
   id: string;
@@ -99,10 +100,32 @@ export function AdminAIJobsPage() {
         </TextField>
       </DataNavigationToolbar>
       {query.isError && <Alert severity="error">AI jobs could not be loaded.</Alert>}
-      <SectionCard>
+      <CollectionSurface
+        title="Durable job queue"
+        mode="bounded"
+        busy={query.isFetching}
+        empty={!query.isLoading && jobs.length === 0}
+        footer={
+          query.hasNextPage ? (
+            <Button variant="outlined" onClick={() => query.fetchNextPage()}>
+              Load older jobs
+            </Button>
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              End of the loaded durable job history.
+            </Typography>
+          )
+        }
+      >
         <Stack divider={<Divider flexItem />}>
           {jobs.map((job) => (
-            <Stack key={job.id} sx={{ py: 2, gap: 1 }} direction={{ xs: 'column', md: 'row' }}>
+            <Stack
+              data-collection-item
+              tabIndex={0}
+              key={job.id}
+              sx={{ py: 2, gap: 1 }}
+              direction={{ xs: 'column', md: 'row' }}
+            >
               <Box sx={{ flex: 1 }}>
                 <Typography sx={{ fontWeight: 700 }}>
                   {job.processDefinition.processKey} v{job.processDefinition.processVersion}
@@ -126,12 +149,7 @@ export function AdminAIJobsPage() {
             </Stack>
           ))}
         </Stack>
-      </SectionCard>
-      {query.hasNextPage && (
-        <Button variant="outlined" onClick={() => query.fetchNextPage()}>
-          Load older jobs
-        </Button>
-      )}
+      </CollectionSurface>
     </Stack>
   );
 }
@@ -237,6 +255,21 @@ export function AdminAIJobDetailPage() {
             : 'The queued job will be cancelled if its canonical state still permits cancellation.'
         }
         context={`${job.processDefinition.processKey} · attempt ${job.currentAttempt} of ${job.maxAttempts}`}
+        preview={{
+          current: `${humanizeCode(job.status)} · attempt ${job.currentAttempt} of ${job.maxAttempts}`,
+          proposed:
+            action === 'retry' ? 'Queue one durable retry request' : 'Cancel this queued job',
+          scope: `This job only; outputs remain unapproved and professional decisions remain human-owned.`,
+          timing:
+            action === 'retry'
+              ? 'The worker applies the request when it next claims the job.'
+              : 'Immediate only if the canonical job state still permits cancellation.',
+          reversibility:
+            action === 'retry'
+              ? 'The retry request cannot be withdrawn after worker claim.'
+              : 'Cancellation does not delete job history.',
+          audit: 'The request, actor, prior state, and resulting durable state are recorded.',
+        }}
         warning
         pending={mutation.isPending}
         {...(mutation.isError ? { error: mutation.error.message } : {})}
@@ -324,10 +357,15 @@ export function AdminAIProcessesPage() {
           </Button>
         </Stack>
       </SectionCard>
-      <SectionCard>
+      <CollectionSurface
+        title="Version history"
+        mode="history"
+        busy={query.isFetching}
+        empty={!query.isLoading && !query.data?.definitions.length}
+      >
         <Stack divider={<Divider flexItem />}>
           {query.data?.definitions.map((item) => (
-            <Stack key={item.id} sx={{ py: 2 }}>
+            <Stack data-collection-item tabIndex={0} key={item.id} sx={{ py: 2 }}>
               <Stack direction="row" spacing={1}>
                 <Typography sx={{ fontWeight: 700 }}>
                   {item.processKey} v{item.processVersion}
@@ -341,7 +379,7 @@ export function AdminAIProcessesPage() {
             </Stack>
           ))}
         </Stack>
-      </SectionCard>
+      </CollectionSurface>
     </Stack>
   );
 }

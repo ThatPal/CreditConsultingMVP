@@ -279,65 +279,109 @@ export function createOperationsRouter(
         return { status: 'degraded' as const, href };
       }
     };
-    const [commerce, ai, catalog, integrations, security, products, platform] = await Promise.all([
-      section('/admin/payments', async () => ({
-        pending: await prisma.payment.count({
-          where: { state: { in: ['PENDING', 'AWAITING_CUSTOMER', 'PROCESSING'] } },
-        }),
-        failed: await prisma.payment.count({ where: { state: 'FAILED' } }),
-        disputes: await prisma.paymentDispute.count({
-          where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } },
-        }),
-      })),
-      section('/admin/ai/jobs', async () => ({
-        queued: await prisma.aIJob.count({
-          where: { status: { in: ['QUEUED', 'RUNNING', 'RETRYABLE_FAILURE'] } },
-        }),
-        failed: await prisma.aIJob.count({
-          where: { status: { in: ['NON_RETRYABLE_FAILURE', 'SCHEMA_INVALID'] } },
-        }),
-      })),
-      section('/admin/card-catalog', async () => ({
-        pending: await prisma.cardCatalogCandidate.count({ where: { status: 'PENDING' } }),
-        conflicts: await prisma.cardCatalogCandidate.count({
-          where: { status: 'PENDING', materialConflict: true },
-        }),
-      })),
-      section('/admin/integrations', async () => ({
-        enabled: await prisma.integration.count({ where: { enabled: true } }),
-        unhealthy: await prisma.integration.count({
-          where: { enabled: true, status: { in: ['DEGRADED', 'FAILED'] } },
-        }),
-      })),
-      section('/admin/security-events', async () => ({
-        recent: await prisma.securityEvent.count({
-          where: { createdAt: { gte: since }, severity: { in: ['WARNING', 'HIGH'] } },
-        }),
-      })),
-      section('/admin/services', async () => ({
-        active: await prisma.serviceProduct.count({ where: { active: true } }),
-        inactive: await prisma.serviceProduct.count({ where: { active: false } }),
-      })),
-      section('/admin/system-health', async () => ({
-        pendingOutbox: await prisma.outboxEvent.count({ where: { status: 'PENDING' } }),
-        failedOutbox: await prisma.outboxEvent.count({ where: { status: 'FAILED' } }),
-      })),
-    ]);
+    const [commerce, ai, catalog, integrations, security, products, platform, scheduledJobs] =
+      await Promise.all([
+        section('/admin/payments', async () => ({
+          pending: await prisma.payment.count({
+            where: { state: { in: ['PENDING', 'AWAITING_CUSTOMER', 'PROCESSING'] } },
+          }),
+          failed: await prisma.payment.count({ where: { state: 'FAILED' } }),
+          disputes: await prisma.paymentDispute.count({
+            where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+          }),
+        })),
+        section('/admin/ai/jobs', async () => ({
+          queued: await prisma.aIJob.count({
+            where: { status: { in: ['QUEUED', 'RUNNING', 'RETRYABLE_FAILURE'] } },
+          }),
+          failed: await prisma.aIJob.count({
+            where: { status: { in: ['NON_RETRYABLE_FAILURE', 'SCHEMA_INVALID'] } },
+          }),
+        })),
+        section('/admin/card-catalog', async () => ({
+          pending: await prisma.cardCatalogCandidate.count({ where: { status: 'PENDING' } }),
+          conflicts: await prisma.cardCatalogCandidate.count({
+            where: { status: 'PENDING', materialConflict: true },
+          }),
+        })),
+        section('/admin/integrations', async () => ({
+          enabled: await prisma.integration.count({ where: { enabled: true } }),
+          unhealthy: await prisma.integration.count({
+            where: { enabled: true, status: { in: ['DEGRADED', 'FAILED'] } },
+          }),
+        })),
+        section('/admin/security-events', async () => ({
+          recent: await prisma.securityEvent.count({
+            where: { createdAt: { gte: since }, severity: { in: ['WARNING', 'HIGH'] } },
+          }),
+        })),
+        section('/admin/services', async () => ({
+          active: await prisma.serviceProduct.count({ where: { active: true } }),
+          inactive: await prisma.serviceProduct.count({ where: { active: false } }),
+        })),
+        section('/admin/system-health', async () => ({
+          pendingOutbox: await prisma.outboxEvent.count({ where: { status: 'PENDING' } }),
+          failedOutbox: await prisma.outboxEvent.count({ where: { status: 'FAILED' } }),
+        })),
+        section('/admin/scheduled-jobs', async () => ({
+          enabled: await prisma.scheduledJobDefinition.count({ where: { enabled: true } }),
+          queued: await prisma.scheduledJobRun.count({
+            where: { status: { in: ['QUEUED', 'RUNNING'] } },
+          }),
+          failed: await prisma.scheduledJobRun.count({ where: { status: 'FAILED' } }),
+        })),
+      ]);
+    const withDegradedStatus = <T extends { status: 'healthy' | 'degraded'; href: string }>(
+      value: T,
+      degraded: boolean,
+      reason: string,
+    ) =>
+      degraded && value.status === 'healthy'
+        ? { ...value, status: 'degraded' as const, reason }
+        : value;
+    const metric = (value: object, key: string) => {
+      const candidate = (value as Record<string, unknown>)[key];
+      return typeof candidate === 'number' ? candidate : 0;
+    };
     res.json({
       asOf: new Date().toISOString(),
       sections: {
-        commerce,
-        ai,
-        catalog,
-        integrations,
-        scheduledJobs: {
-          status: 'unavailable',
-          href: '/admin/scheduled-jobs',
-          reason: 'Scheduled-job operations are not configured yet.',
-        },
-        security,
+        commerce: withDegradedStatus(
+          commerce,
+          metric(commerce, 'failed') > 0 || metric(commerce, 'disputes') > 0,
+          'Payment failures or open disputes require review.',
+        ),
+        ai: withDegradedStatus(
+          ai,
+          metric(ai, 'failed') > 0,
+          'AI jobs require recovery or human review.',
+        ),
+        catalog: withDegradedStatus(
+          catalog,
+          metric(catalog, 'conflicts') > 0,
+          'Catalog conflicts require review.',
+        ),
+        integrations: withDegradedStatus(
+          integrations,
+          metric(integrations, 'unhealthy') > 0,
+          'Enabled integrations report degraded health.',
+        ),
+        scheduledJobs: withDegradedStatus(
+          scheduledJobs,
+          metric(scheduledJobs, 'failed') > 0,
+          'Scheduled job failures require review.',
+        ),
+        security: withDegradedStatus(
+          security,
+          metric(security, 'recent') > 0,
+          'Recent warning or high-severity security events require review.',
+        ),
         products,
-        platform,
+        platform: withDegradedStatus(
+          platform,
+          metric(platform, 'failedOutbox') > 0,
+          'Failed durable outbox events require operational recovery.',
+        ),
       },
     });
   });

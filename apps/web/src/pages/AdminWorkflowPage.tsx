@@ -15,6 +15,7 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { RecoveryState } from '../components/common/InteractionPatterns';
 import { humanizeCode } from '../components/common/labels';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 type Rule = {
   id: string;
   key: string;
@@ -100,10 +101,15 @@ export function AdminWorkflowPage() {
           </Button>
         </Stack>
       </SectionCard>
-      <SectionCard>
+      <CollectionSurface
+        title="Rule version history"
+        mode="history"
+        busy={q.isFetching}
+        empty={!q.isLoading && !q.data?.rules.length}
+      >
         <Stack divider={<Divider flexItem />}>
           {q.data?.rules.map((rule) => (
-            <Stack key={rule.id} sx={{ py: 2 }}>
+            <Stack data-collection-item tabIndex={0} key={rule.id} sx={{ py: 2 }}>
               <Stack direction="row" spacing={1}>
                 <Typography sx={{ fontWeight: 700 }}>
                   {rule.key} v{rule.version}
@@ -120,7 +126,7 @@ export function AdminWorkflowPage() {
             </Stack>
           ))}
         </Stack>
-      </SectionCard>
+      </CollectionSurface>
     </Stack>
   );
 }

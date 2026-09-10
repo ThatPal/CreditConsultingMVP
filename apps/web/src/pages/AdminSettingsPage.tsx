@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { apiRequest } from '../auth/api';
 import { GovernedActionDialog, RecoveryState } from '../components/common/InteractionPatterns';
 import { PageHeader } from '../components/common/PageHeader';
-import { SectionCard } from '../components/common/SectionCard';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 type Setting = {
   id: string;
   key: string;
@@ -56,13 +56,18 @@ export function AdminSettingsPage() {
         records, or silently cancels in-flight durable work.
       </Alert>
       {q.isError && <RecoveryState error={q.error} onRetry={() => void q.refetch()} />}
-      <SectionCard>
+      <CollectionSurface
+        title="Effective capability configuration"
+        mode="bounded"
+        busy={q.isFetching}
+        empty={false}
+      >
         <Stack divider={<Divider flexItem />}>
           {keys.map((key) => {
             const current = q.data?.settings.find((s) => s.key === key && s.active);
             const enabled = current?.value !== false;
             return (
-              <Stack key={key} sx={{ py: 2, gap: 1 }}>
+              <Stack data-collection-item tabIndex={0} key={key} sx={{ py: 2, gap: 1 }}>
                 <Stack direction="row" spacing={1}>
                   <Typography sx={{ fontWeight: 700 }}>{key}</Typography>
                   <Chip size="small" label={enabled ? 'Enabled' : 'Disabled'} />
@@ -83,7 +88,7 @@ export function AdminSettingsPage() {
             );
           })}
         </Stack>
-      </SectionCard>
+      </CollectionSurface>
       <GovernedActionDialog
         open={Boolean(selected)}
         title={`${selected?.enabled ? 'Disable' : 'Enable'} platform capability`}
@@ -93,6 +98,24 @@ export function AdminSettingsPage() {
             : 'New eligible operations in this domain may resume after the versioned setting is activated.'
         }
         {...(selected?.key ? { context: selected.key } : {})}
+        {...(selected
+          ? {
+              preview: {
+                current: selected.enabled
+                  ? 'Configured and effective: enabled'
+                  : 'Configured and effective: disabled',
+                proposed: selected.enabled
+                  ? 'Disable creation of new operations'
+                  : 'Enable creation of new eligible operations',
+                scope: `${selected.key}; no other capability or historical record changes.`,
+                timing:
+                  'Effective for newly requested work after activation; queued and running work retain their recorded contract.',
+                reversibility:
+                  'A later version may restore the prior value. Historical versions remain immutable.',
+                audit: 'The version, actor, reason, prior value, and effective value are recorded.',
+              },
+            }
+          : {})}
         reasonLabel="Reason for this change"
         reason={reason}
         required

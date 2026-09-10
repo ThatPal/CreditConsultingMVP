@@ -15,6 +15,7 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 import { RecoveryState } from '../components/common/InteractionPatterns';
 import { humanizeCode } from '../components/common/labels';
+import { CollectionSurface } from '../components/common/CollectionSurface';
 type Template = {
   id: string;
   key: string;
@@ -121,11 +122,22 @@ export function AdminNotificationsPage() {
           </Button>
         </Stack>
       </SectionCard>
-      <SectionCard>
-        <Typography variant="h6">Template history</Typography>
+      <CollectionSurface
+        title="Template version history"
+        mode="history"
+        busy={templates.isFetching}
+        empty={!templates.isLoading && !templates.data?.templates.length}
+      >
         <Stack divider={<Divider flexItem />}>
           {templates.data?.templates.map((t) => (
-            <Stack key={t.id} sx={{ py: 1 }} direction="row" spacing={1}>
+            <Stack
+              data-collection-item
+              tabIndex={0}
+              key={t.id}
+              sx={{ py: 1 }}
+              direction="row"
+              spacing={1}
+            >
               <Typography>
                 {t.key} v{t.version}
               </Typography>
@@ -134,33 +146,54 @@ export function AdminNotificationsPage() {
             </Stack>
           ))}
         </Stack>
-      </SectionCard>
-      <SectionCard>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
-        >
-          <Typography variant="h6">Delivery operations</Typography>
-          <TextField
-            select
-            size="small"
-            label="Outcome"
-            value={deliveryStatus}
-            onChange={(event) => setDeliveryStatus(event.target.value)}
-            sx={{ minWidth: 190 }}
+      </CollectionSurface>
+      <CollectionSurface
+        title="Delivery operations"
+        mode="bounded"
+        busy={deliveries.isFetching}
+        empty={!deliveries.isLoading && !deliveryRows.length}
+        controls={
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
           >
-            <MenuItem value="">All outcomes</MenuItem>
-            <MenuItem value="PENDING">Pending</MenuItem>
-            <MenuItem value="PROCESSING">Processing</MenuItem>
-            <MenuItem value="DELIVERED">Delivered</MenuItem>
-            <MenuItem value="RETRY_SCHEDULED">Retry scheduled</MenuItem>
-            <MenuItem value="FAILED">Failed</MenuItem>
-          </TextField>
-        </Stack>
+            <TextField
+              select
+              size="small"
+              label="Outcome"
+              value={deliveryStatus}
+              onChange={(event) => setDeliveryStatus(event.target.value)}
+              sx={{ minWidth: 190 }}
+            >
+              <MenuItem value="">All outcomes</MenuItem>
+              <MenuItem value="PENDING">Pending</MenuItem>
+              <MenuItem value="PROCESSING">Processing</MenuItem>
+              <MenuItem value="DELIVERED">Delivered</MenuItem>
+              <MenuItem value="RETRY_SCHEDULED">Retry scheduled</MenuItem>
+              <MenuItem value="FAILED">Failed</MenuItem>
+            </TextField>
+          </Stack>
+        }
+        footer={
+          deliveries.hasNextPage ? (
+            <Button
+              variant="outlined"
+              disabled={deliveries.isFetchingNextPage}
+              onClick={() => void deliveries.fetchNextPage()}
+            >
+              {deliveries.isFetchingNextPage ? 'Loading…' : 'Load older deliveries'}
+            </Button>
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              End of the loaded provider delivery history.
+            </Typography>
+          )
+        }
+      >
         <Stack divider={<Divider flexItem />}>
           {deliveryRows.map((d) => (
-            <Stack key={d.id} sx={{ py: 1 }}>
+            <Stack data-collection-item tabIndex={0} key={d.id} sx={{ py: 1 }}>
               <Typography>
                 {humanizeCode(d.notification.category)} · {humanizeCode(d.channel)} via {d.provider}
               </Typography>
@@ -170,22 +203,8 @@ export function AdminNotificationsPage() {
               </Typography>
             </Stack>
           ))}
-          {!deliveries.isLoading && !deliveryRows.length && (
-            <Typography color="text.secondary" sx={{ py: 2 }}>
-              No deliveries match this outcome.
-            </Typography>
-          )}
         </Stack>
-        {deliveries.hasNextPage && (
-          <Button
-            variant="outlined"
-            disabled={deliveries.isFetchingNextPage}
-            onClick={() => void deliveries.fetchNextPage()}
-          >
-            Load older deliveries
-          </Button>
-        )}
-      </SectionCard>
+      </CollectionSurface>
     </Stack>
   );
 }
