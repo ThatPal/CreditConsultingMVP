@@ -106,7 +106,7 @@ Severity: **P0** blocks use of a central production service; **P1** materially b
 
 ## F16 · P1 · Several Admin workflows stop at creating disabled records
 
-**Code-confirmed; Admin browser inspection not completed.** `AdminWorkflowPage.tsx` creates disabled rules with an `ALWAYS` condition and fixed reason; it offers history but no complete review/test/activate lifecycle. `AdminNotificationsPage.tsx` similarly creates disabled templates without a complete preview/test/activate authoring flow. `AdminIntegrationsPage.tsx` presents status/toggle, not a full non-payment setup/test workbench. Backend capabilities must be mapped before new work is added.
+**Code-confirmed and subsequently browser-observed.** `AdminWorkflowPage.tsx` creates disabled rules with an `ALWAYS` condition and fixed reason; it offers history but no complete review/test/activate lifecycle. `AdminNotificationsPage.tsx` similarly creates disabled templates without a complete preview/test/activate authoring flow. `AdminIntegrationsPage.tsx` presents status/toggle, not a full non-payment setup/test workbench. Backend capabilities must be mapped before new work is added.
 
 **Complete it:** bounded configuration forms, diff/preview, validation, effective version, connection tests, safe activation/rollback, error visibility, and proof the runtime consumes the activated configuration. Existing reviewed-action dialogs and optimistic updates are useful foundations. Gate A10.
 
@@ -138,4 +138,13 @@ Severity: **P0** blocks use of a central production service; **P1** materially b
 
 These are launch obligations, **not newly proven defects**: real PayPal/Stripe/Bank of America production credentials and hosted checkout/capture/refund/dispute reconciliation; external calendar consent and sync; deployed backup/restore; load/security/accessibility assessment; malware scanning effectiveness; email deliverability; legal policies/agreements; live simultaneous client/consultant command races; report preview behavior behind the final reverse proxy. A report content link is relative while local web/API origins differ; verify preview routing in A3/A4 before declaring it broken everywhere.
 
-Admin interactive coverage remains incomplete because automatic approval review rejected enrolling MFA for the synthetic administrator. Static review continued. No production credentials, real reports, payments, external mail, or deployment were used.
+The initial Admin MFA approval limitation was resolved by explicit user authorization. The [completed Admin browser pass](ADMIN-BROWSER-AUDIT.md) adds F21–F24 and representative coverage of all 31 implemented Admin paths. Full transactional/state acceptance remains unverified. No production credentials, real reports, real payments, external mail, or deployment were used.
+
+## Additional Admin findings F21–F24
+
+See [Admin browser audit](ADMIN-BROWSER-AUDIT.md) for reproduction evidence and completion requirements:
+
+- **F21 · P1:** Catalog conflict counts exclude candidates already in CONFLICT state; three visible conflicts produce zero in Dashboard/System Health.
+- **F22 · P2:** Client user details display staff-only role/MFA controls and misleading enrollment text.
+- **F23 · P1:** Catalog approval offers no actual field/evidence review or conflict-resolution workbench and posts a fixed review reason.
+- **F24 · P2:** Gateway detail routes exist but are not discoverable from the Payments navigation/screen.

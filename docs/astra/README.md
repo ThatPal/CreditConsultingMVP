@@ -14,6 +14,7 @@ The audit is independent of the previous versions. Astra has its own worktree, b
 4. [Workflow and architecture plan](ARCHITECTURE.md): transaction boundaries, shared truth, integrations, and release evidence.
 5. [Development roadmap](ROADMAP.md): dependency-ordered delivery through production, with acceptance gates and the first implementation package.
 6. [Audit scope and source manifest](EVIDENCE.md): exactly what was read, run, inspected, and not proved.
+7. [Completed Admin browser pass](ADMIN-BROWSER-AUDIT.md): authorized MFA enrollment, 31 Admin paths inspected, and four additional findings (24 total).
 
 ## What explains the result
 

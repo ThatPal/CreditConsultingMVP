@@ -115,7 +115,7 @@ Finish full service catalog, credits/entitlements, purchases/receipts, refunds/d
 
 Complete all 27 Admin contracts: user/role/session/grants; service/payment/provider operations; catalog/insight/source operations; AI jobs/process definitions; workflow/template/integration authoring and actual activation; scheduler; audit/security/retention; operational reports and settings. Replace fixed values/reasons or disabled-draft-only screens with usable bounded workflows. Show effective runtime state separately from intended configuration.
 
-**Done when:** an authorized operator can perform each planned workflow without editing source/DB, except explicitly deployment-owned secrets. Approval/diff/test/activation/rollback and error recovery are meaningful. Report metrics have definitions and reconcile to source records. Admin role browser coverage, keyboard/density and consequential-action tests are complete. The audit's Admin MFA coverage limitation must be resolved through authorized test access.
+**Done when:** an authorized operator can perform each planned workflow without editing source/DB, except explicitly deployment-owned secrets. Approval/diff/test/activation/rollback and error recovery are meaningful. Report metrics have definitions and reconcile to source records. Admin role browser coverage, keyboard/density and consequential-action tests are complete. The initial MFA access limitation is resolved; the completed browser audit adds F21–F24. Close incorrect conflict counts, inappropriate client/staff controls, missing catalog evidence/resolution, and gateway discoverability in A2/A6/A9/A10 as applicable.
 
 ## A11 · Finish the public brand and all written content
 

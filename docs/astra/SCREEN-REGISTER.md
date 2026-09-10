@@ -2,7 +2,7 @@
 
 110 canonical screen contracts from Drive 13 are accounted for below. A “screen” may be a tab, drawer, or workflow state; 110 contracts do not require 110 separate routes. The route inventory exported alongside this register records the actual React routes. Preserve aliases deliberately or retire them with tested redirects.
 
-**Coverage:** B = browser-observed representative state plus source mapping; S = source/specification mapping only; M = missing top-level experience. B is not certification of all buttons, roles, responsive sizes or failure states. Admin remains S because MFA enrollment was rejected by automatic review. Client Review stages not reached in the seeded completed-review state remain S. The detailed implementation files in each family were inspected to identify material gaps; no claim that every line or transition was exhaustively executed is made.
+**Coverage:** B = browser-observed representative state plus source mapping; S = source/specification mapping only; M = missing top-level experience. B is not certification of all buttons, roles, responsive sizes or failure states. Admin's initial MFA limitation was resolved by user authorization; the follow-up inspected all 31 implemented Admin paths with representative records. Missing Admin product-management/integration-detail experiences remain S. Client Review stages not reached in the seeded completed-review state remain S. The detailed implementation files in each family were inspected to identify material gaps; no claim that every line or transition was exhaustively executed is made.
 
 **Common completion contract for every row:** clear primary question and next owner/action; typed query and commands; permission/resource scope; visible loading/empty/error/blocked/stale states; save/retry/conflict recovery; no hidden internal fields; long-data behavior; keyboard and screen-reader semantics; responsive desktop/tablet/mobile ordering; functional deep links and realtime invalidation; realistic task evidence. Each row adds the feature-specific section and interaction work.
 
@@ -21,7 +21,7 @@
 | AUTH-02 | Login | `/login`; B | Recognizable brand, sign-in, safe return path, clear error/recovery, no raw fetch error; responsive form. | A1, A3 |
 | AUTH-03 | Email verification | `/verify-email`; S | Deliverable email/link, verified/expired/invalid/used states, safe resend and continuation; prove actual transport. | A3 |
 | AUTH-04 | Forgot / reset password | `/forgot-password`, `/reset-password`; S | Real mail, expiry/single use, password validation, session revocation and retry; recovery must work outside a signed-in session. | A3, A12 |
-| AUTH-05 | Staff MFA / step-up | `/mfa`; B consultant only | Enrollment/challenge, recovery codes and governed recovery, expired step-up preserving draft; Admin runtime coverage still open. | A3, A10, A12 |
+| AUTH-05 | Staff MFA / step-up | `/mfa`; B consultant and Admin | Enrollment and TOTP verified for both synthetic staff roles. Governed recovery and expired step-up preserving drafts still need acceptance. | A3, A10, A12 |
 | AUTH-06 | Account / security sessions | Role-specific account/security; B client | Device identity/time, current session, revoke other/session, reset, session expiry; staff recovery proof. | A10, A12 |
 
 Primary implementation: `pages/AuthPages.tsx`, `GoalIntakePage.tsx`, `SecurityPage.tsx`, auth provider/guards. Public marketing pages do not exist in `App.tsx`.
@@ -116,33 +116,33 @@ Implementation families: PlatformPages; ClientContextPages; ReviewPages; PlanPag
 
 | ID | Screen | Current route / coverage | Sections and completion work | Wave |
 |---|---|---|---|---|
-| ADMIN-01 | Dashboard | `/admin`; S | System/service health, actionable exceptions, commerce/delivery/AI trends, owner and operational drill-down; no generic metric decoration. | A10 |
-| ADMIN-02 | Users | `/admin/users`; S | Search/filter/sort/page, roles/status/MFA summary, create/invite where approved, saved views and scoped actions. | A10 |
-| ADMIN-03 | User detail / roles / sessions | `/admin/users/:userId`; S | Identity/access, sessions/MFA, role/status change preview/reason/step-up, immutable audit and recovery. | A10, A12 |
-| ADMIN-04 | Assignment / temporary grants | `/admin/access-grants`; S | Primary assignment, bounded temporary capability/scope/time, conflict/expiry/revoke, actual effective access and event propagation. | A10, A12 |
-| ADMIN-05 | Services/products | `/admin/services`; S | Product/price/access status, catalog versions, availability and clear commercial operations. | A9, A10 |
-| ADMIN-06 | Service detail / pricing / entitlement | `/admin/services/:serviceProductId`; S | Typed versioned price/credits/entitlement rules, draft/effective diff, validation/activation, grandfathered purchases. | A9, A10 |
-| ADMIN-07 | Payments | `/admin/payments`; S | Provider/status/date/product/client filters, reconciled totals, pending/failure/refund/dispute queues and saved views. | A9, A10 |
-| ADMIN-08 | Payment detail / refund / dispute | `/admin/payments/:paymentId`; S | Original provider evidence, amount/ledger, attempts/webhooks, safe refund/dispute/reconcile actions, audit and entitlement effects. | A9, A10 |
-| ADMIN-09 | Gateways | Payments/integrations family; S | Three configured providers, one new-payment default, effective status/environment/health; historical provider retained. | A3, A9 |
-| ADMIN-10 | Gateway detail / connection test | `/admin/integrations/paypal`, `/stripe`, `/bofa`; S | Credentials as secret references, hosted-flow capabilities, test/configuration/default activation and explicit unsupported operation recovery. | A3, A9 |
-| ADMIN-11 | Catalog queue | `/admin/card-catalog`; S | New/changed/stale/conflicting/unmatched/asset issues, materiality/impact, claim/open/retrieve/dismiss and automatic resolution. | A6 |
+| ADMIN-01 | Dashboard | `/admin`; B | System/service health, actionable exceptions, commerce/delivery/AI trends, owner and operational drill-down; no generic metric decoration. | A10 |
+| ADMIN-02 | Users | `/admin/users`; B | Search/filter/sort/page, roles/status/MFA summary, create/invite where approved, saved views and scoped actions. | A10 |
+| ADMIN-03 | User detail / roles / sessions | `/admin/users/:userId`; B | Identity/access, sessions/MFA, role/status change preview/reason/step-up, immutable audit and recovery. | A10, A12 |
+| ADMIN-04 | Assignment / temporary grants | `/admin/access-grants`; B | Primary assignment, bounded temporary capability/scope/time, conflict/expiry/revoke, actual effective access and event propagation. | A10, A12 |
+| ADMIN-05 | Services/products | `/admin/services`; B | Product/price/access status, catalog versions, availability and clear commercial operations. | A9, A10 |
+| ADMIN-06 | Service detail / pricing / entitlement | `/admin/services/:serviceProductId`; B | Typed versioned price/credits/entitlement rules, draft/effective diff, validation/activation, grandfathered purchases. | A9, A10 |
+| ADMIN-07 | Payments | `/admin/payments`; B | Provider/status/date/product/client filters, reconciled totals, pending/failure/refund/dispute queues and saved views. | A9, A10 |
+| ADMIN-08 | Payment detail / refund / dispute | `/admin/payments/:paymentId`; B | Original provider evidence, amount/ledger, attempts/webhooks, safe refund/dispute/reconcile actions, audit and entitlement effects. | A9, A10 |
+| ADMIN-09 | Gateways | Payments/integrations family; B | Three configured providers, one new-payment default, effective status/environment/health; historical provider retained. | A3, A9 |
+| ADMIN-10 | Gateway detail / connection test | `/admin/integrations/paypal`, `/stripe`, `/bofa`; B | Credentials as secret references, hosted-flow capabilities, test/configuration/default activation and explicit unsupported operation recovery. | A3, A9 |
+| ADMIN-11 | Catalog queue | `/admin/card-catalog`; B | New/changed/stale/conflicting/unmatched/asset issues, materiality/impact, claim/open/retrieve/dismiss and automatic resolution. | A6 |
 | ADMIN-12 | Product / offer management | Catalog embedded state; S | Identity/aliases/assets, candidate-v-current field diff, conflict/source evidence, dedupe/link/create, versioned publish and downstream impact. | A6 |
-| ADMIN-13 | Insight approval | `/admin/card-insights`; S | Draft/evidence/source versions, strategic uses/cautions, edit/approve/reject/regenerate/stale, correct professional authority. | A6 |
-| ADMIN-14 | AI operations | `/admin/ai/jobs`; S | Filters/queue/age/latency/cost/failures, process/entity context and safe retry/cancel; real provider observability. | A3, A10 |
-| ADMIN-15 | AI job detail | `/admin/ai/jobs/:jobId`; S | Attempts/input scope/output validity/evidence/exceptions, redacted diagnostics, retry/cancel/replay and downstream materialization state. | A3, A10 |
-| ADMIN-16 | AI processes / model profiles | `/admin/ai/processes`; S | Versioned instructions/models/limits/schema/authority, evaluation evidence, safe activation/rollback; UI settings must drive runtime. | A3, A10 |
-| ADMIN-17 | Sources | `/admin/sources`; S | Approved source scope/provider, retrieval/health/freshness, provenance, conflicts and controlled refresh configuration. | A6, A10 |
-| ADMIN-18 | Workflow rules | `/admin/workflow-rules`; S | Typed conditions/actions, draft/validate/simulate/diff/activate, effective version and history; current disabled-record creation is partial. | A10 |
-| ADMIN-19 | Notifications/templates | `/admin/notification-operations`; S | Template variables/editor/preview/test/activate, channel/provider, delivery attempts/failure/retry and preferences; complete real transports. | A3, A10 |
-| ADMIN-20 | Integrations overview | `/admin/integrations`; S | Configured/effective/degraded states, last actual success, actionable setup/diagnostics; toggles must reflect real capability. | A3, A10 |
+| ADMIN-13 | Insight approval | `/admin/card-insights`; B | Draft/evidence/source versions, strategic uses/cautions, edit/approve/reject/regenerate/stale, correct professional authority. | A6 |
+| ADMIN-14 | AI operations | `/admin/ai/jobs`; B | Filters/queue/age/latency/cost/failures, process/entity context and safe retry/cancel; real provider observability. | A3, A10 |
+| ADMIN-15 | AI job detail | `/admin/ai/jobs/:jobId`; B | Attempts/input scope/output validity/evidence/exceptions, redacted diagnostics, retry/cancel/replay and downstream materialization state. | A3, A10 |
+| ADMIN-16 | AI processes / model profiles | `/admin/ai/processes`; B | Versioned instructions/models/limits/schema/authority, evaluation evidence, safe activation/rollback; UI settings must drive runtime. | A3, A10 |
+| ADMIN-17 | Sources | `/admin/sources`; B | Approved source scope/provider, retrieval/health/freshness, provenance, conflicts and controlled refresh configuration. | A6, A10 |
+| ADMIN-18 | Workflow rules | `/admin/workflow-rules`; B | Typed conditions/actions, draft/validate/simulate/diff/activate, effective version and history; current disabled-record creation is partial. | A10 |
+| ADMIN-19 | Notifications/templates | `/admin/notification-operations`; B | Template variables/editor/preview/test/activate, channel/provider, delivery attempts/failure/retry and preferences; complete real transports. | A3, A10 |
+| ADMIN-20 | Integrations overview | `/admin/integrations`; B | Configured/effective/degraded states, last actual success, actionable setup/diagnostics; toggles must reflect real capability. | A3, A10 |
 | ADMIN-21 | Integration detail | Non-payment detail incomplete; S | Provider-specific form, secret presence, connect/test/reconnect/disable, scoped effect/history; prove calendar/email/storage transport. | A3, A8, A10 |
-| ADMIN-22 | Scheduled jobs | `/admin/scheduled-jobs`; S | Schedule/timezone/enabled definitions, run/attempt history, lease/timeout diagnostics, manual enqueue/retry and effective schedule management. | A10, A12 |
-| ADMIN-23 | Audit | `/admin/audit-events`, `/:eventId`; S | Search/date/actor/resource, safe event detail and related object, immutable history, retention/redaction and authorized export if approved. | A10, A12 |
-| ADMIN-24 | Security events | `/admin/security-events`, `/:eventId`; S | Severity/category/actor scope, context and response workflow, session/access links, redacted diagnostics. | A10, A12 |
-| ADMIN-25 | Retention/data governance | `/admin/retention`; S | Policy/holds, dry-run affected scope, reviewed execution, failed-item retry, audit and backup/restore implications; request fulfillment. | A10, A12 |
-| ADMIN-26 | Operational reporting | `/admin/reports`; S | Revenue/service/funnel/throughput/backlog/AI/support metrics with exact definitions, date range, useful charts and authorized drill-down. | A10 |
-| ADMIN-27 | System settings | `/admin/settings`; S | Effective capability switches, version/reason/diff and activation, correct runtime effect, failed-load state must not imply known enabled status. | A10, A12 |
+| ADMIN-22 | Scheduled jobs | `/admin/scheduled-jobs`; B | Schedule/timezone/enabled definitions, run/attempt history, lease/timeout diagnostics, manual enqueue/retry and effective schedule management. | A10, A12 |
+| ADMIN-23 | Audit | `/admin/audit-events`, `/:eventId`; B | Search/date/actor/resource, safe event detail and related object, immutable history, retention/redaction and authorized export if approved. | A10, A12 |
+| ADMIN-24 | Security events | `/admin/security-events`, `/:eventId`; B | Severity/category/actor scope, context and response workflow, session/access links, redacted diagnostics. | A10, A12 |
+| ADMIN-25 | Retention/data governance | `/admin/retention`; B | Policy/holds, dry-run affected scope, reviewed execution, failed-item retry, audit and backup/restore implications; request fulfillment. | A10, A12 |
+| ADMIN-26 | Operational reporting | `/admin/reports`; B | Revenue/service/funnel/throughput/backlog/AI/support metrics with exact definitions, date range, useful charts and authorized drill-down. | A10 |
+| ADMIN-27 | System settings | `/admin/settings`; B | Effective capability switches, version/reason/diff and activation, correct runtime effect, failed-load state must not imply known enabled status. | A10, A12 |
 
 Implementation: `pages/Admin*`, admin shared components, `ShellPages.tsx`, `apps/api/src/admin`, `operations`, `commerce`, `cards`, `ai`, authorization and scheduler/worker packages. `/admin/system-health` is an additional runtime route; include provider/worker/outbox/DB/Redis readiness and actionable degraded states in A10/A12. Admin account/security routes reuse staff components.
 

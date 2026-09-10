@@ -73,6 +73,7 @@ Inherited `review:phase*`, `review:setup` and old review scripts remain historic
 - Added AGENTS.md and launcher; isolated default Compose/package/environment settings.
 - Set Better Auth's cookie prefix from the existing environment setting so local versions have distinct cookies. This changes only Astra; it does not weaken authentication or bypass MFA. Existing local Astra sessions may need to sign in again after this prefix change.
 - Installed dependencies, generated/build artifacts and seeded synthetic Astra data. These generated/private resources are ignored.
+- With explicit follow-up authorization, enrolled the synthetic Admin account's MFA and completed the Admin browser audit. Its setup key is in ignored `.tmp/astra-runtime/demo-admin-mfa.json` for local test access only; never stage or publish it. A retention preview recorded zero affected records; no cleanup was executed.
 
 The paid-service/report/AI/Plan/design defects described in the audit are intentionally **not fixed yet**. The next authorized development step is A1/A2 in ROADMAP.md. Preserve the baseline evidence while implementing fixes; do not silently rewrite the original audit as if the baseline defects never existed.
 

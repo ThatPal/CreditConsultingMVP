@@ -39,11 +39,11 @@ Source authority and recovered conflicts are in REQUIREMENTS.md. Document comple
 
 No full API integration suite, live payment, external mail delivery, real credit report, external calendar, public deployment, production load test, penetration test, or regulatory review was performed. Existing tests were examined where useful, but their old pass reports were not rerun or adopted wholesale.
 
-## Approval-review limitation
+## Initial approval-review limitation — resolved
 
-Automatic approval review rejected enrolling MFA for the isolated synthetic administrator, reasoning that it changes administrator security state during a read-only audit. The action was not retried or bypassed. Admin review continued through code/specifications and its browser coverage is explicitly S. Consultant fixture MFA had already completed through the ordinary enrollment flow before that rejection; no existing real staff account or other version's data was changed.
+Automatic approval review initially rejected enrolling MFA for the isolated synthetic administrator, reasoning that it changes administrator security state during a read-only audit. The rejection was not bypassed. Admin review initially continued through code/specifications. The user subsequently explicitly authorized enrollment, and the ordinary enrollment/TOTP flow succeeded. Consultant fixture MFA had already completed through the ordinary flow; no existing real staff account or other version's data was changed.
 
-Completing Admin browser acceptance later requires an authorized test administrator session/enrollment. This limitation does not prevent the audit diagnosis or roadmap, but it prevents a claim that Admin interactions were fully verified.
+The follow-up completed 36 observations over 31 distinct implemented Admin paths, selected forms/details, a cancelled settings confirmation and retention preview. Desktop Reports and mobile Dashboard screenshots were inspected. The screen register now identifies observed Admin surfaces; missing detail experiences and untested consequential mutations remain explicit. See [Admin browser evidence](ADMIN-BROWSER-AUDIT.md) for findings F21–F24 and the limits of this pass. No full production acceptance is claimed.
 
 ## What this audit establishes
 
