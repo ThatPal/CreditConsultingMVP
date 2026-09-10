@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../auth/api';
+import { EvidenceFile, PlanAttachments, type PlanFile } from './PlanAttachments';
 
 export type ResponseField = {
   key: string;
@@ -19,6 +20,8 @@ export type Evidence = {
   kind: string;
   data: Record<string, unknown> | null;
   createdAt: string;
+  responseSnapshot?: ResponseField[] | null;
+  attachments?: PlanFile[];
 };
 export type ResponseItem = {
   id: string;
@@ -67,7 +70,9 @@ export function ResponseHistory({
                     variant="body2"
                     sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                   >
-                    {item.responseForm?.fields.find((field) => field.key === key)?.label ??
+                    {(entry.responseSnapshot ?? item.responseForm?.fields)?.find(
+                      (field) => field.key === key,
+                    )?.label ??
                       (key === 'note' || key === 'reason' ? 'Note' : key.replace(/_/g, ' '))}
                     :{' '}
                     {typeof value === 'boolean'
@@ -79,6 +84,9 @@ export function ResponseHistory({
                         : String(value)}
                   </Typography>
                 ))}
+            {entry.attachments?.map((file) => (
+              <EvidenceFile key={file.documentId} file={file} />
+            ))}
           </Box>
         ))}
       </Stack>
@@ -96,6 +104,12 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
         .map(([key, value]) => [key, String(value)]),
     );
   });
+  const previousFiles =
+    item.history?.filter((entry) => entry.kind === 'COMPLETE').at(-1)?.attachments ?? [];
+  const [files, setFiles] = useState<PlanFile[]>(() =>
+    previousFiles.filter((file) => file.available && file.status === 'AVAILABLE'),
+  );
+  const [uploading, setUploading] = useState(false);
   const [note, setNote] = useState('');
   const [help, setHelp] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -111,6 +125,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
       action: 'COMPLETE' | 'UNABLE';
       outcome?: Record<string, unknown>;
       reason?: string;
+      documentIds?: string[];
     }) => {
       const serialized = JSON.stringify(payload);
       if (attempt.current?.payload !== serialized)
@@ -129,13 +144,18 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
     },
   });
   const submit = () => {
+    if (uploading || mutation.isPending) return;
     const issues: Record<string, string> = {};
     if (help) {
       if (!note.trim()) {
         setErrors({ note: 'Tell your consultant where you got stuck.' });
         return;
       }
-      mutation.mutate({ action: 'UNABLE', reason: note.trim() });
+      mutation.mutate({
+        action: 'UNABLE',
+        reason: note.trim(),
+        documentIds: files.map((file) => file.documentId),
+      });
       return;
     }
     const outcome: Record<string, unknown> = {};
@@ -164,6 +184,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
     if (Object.keys(issues).length) return;
     mutation.mutate({
       action: 'COMPLETE',
+      documentIds: files.map((file) => file.documentId),
       outcome: fields.length ? outcome : { note: note.trim() },
     });
   };
@@ -269,6 +290,19 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
           )}
         </>
       )}
+      {previousFiles.some((file) => !file.available || file.status !== 'AVAILABLE') && (
+        <Alert severity="info">
+          Some files from your previous response are no longer current. Their submission records
+          remain in the history below. Select an available replacement if it supports your
+          correction.
+        </Alert>
+      )}
+      <PlanAttachments
+        value={files}
+        onChange={setFiles}
+        disabled={mutation.isPending}
+        onBusyChange={setUploading}
+      />
       {mutation.isError && (
         <Alert severity="error">
           {mutation.error.message} Your response is still here. You can retry.
@@ -278,7 +312,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
         <Button
           type="submit"
           variant="contained"
-          disabled={mutation.isPending || (!help && Boolean(formError))}
+          disabled={uploading || mutation.isPending || (!help && Boolean(formError))}
         >
           {mutation.isPending
             ? 'Saving…'

@@ -209,6 +209,7 @@ export function createPlanRouter(
           .object({
             idempotencyKey: z.string().min(8).max(160),
             action: z.enum(['COMPLETE', 'UNABLE']),
+            documentIds: z.array(z.string().uuid()).max(5).optional(),
             outcome: z.record(z.string(), z.unknown()).optional(),
             reason: z.string().min(1).max(1000).optional(),
           })

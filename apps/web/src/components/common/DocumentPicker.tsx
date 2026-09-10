@@ -35,7 +35,11 @@ export function DocumentPicker({
   value,
   onChange,
   documentTypes,
+  disabled = false,
+  onDocumentSelected,
 }: {
+  disabled?: boolean;
+  onDocumentSelected?: (document: PickerDocument) => void;
   value: string[];
   onChange: (ids: string[]) => void;
   documentTypes: Array<{ key: string; name: string }>;
@@ -60,15 +64,30 @@ export function DocumentPicker({
 
   return (
     <>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { sm: 'center' } }}>
-        <Button variant="outlined" startIcon={<SearchRounded />} onClick={() => setOpen(true)}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1}
+        sx={{ alignItems: { sm: 'center' } }}
+      >
+        <Button
+          disabled={disabled}
+          variant="outlined"
+          startIcon={<SearchRounded />}
+          onClick={() => setOpen(true)}
+        >
           Attach existing documents
         </Button>
         <Typography variant="body2" color="text.secondary">
           {value.length ? `${value.length} selected` : 'Optional · up to five'}
         </Typography>
       </Stack>
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" aria-labelledby="document-picker-title">
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="document-picker-title"
+      >
         <DialogTitle id="document-picker-title">Choose existing documents</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -76,9 +95,19 @@ export function DocumentPicker({
               searchLabel="Search documents"
               searchPlaceholder="Search by file name or document type"
               searchValue={search}
-              onSearchChange={(value) => { setSearch(value); setPage(1); }}
-              activeFilters={type ? [`Type: ${documentTypes.find((item) => item.key === type)?.name ?? type}`] : []}
-              onClearFilters={() => { setType(''); setPage(1); }}
+              onSearchChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+              activeFilters={
+                type
+                  ? [`Type: ${documentTypes.find((item) => item.key === type)?.name ?? type}`]
+                  : []
+              }
+              onClearFilters={() => {
+                setType('');
+                setPage(1);
+              }}
               resultLabel={`${query.data?.total ?? 0} available documents`}
               loading={query.isFetching}
             >
@@ -88,17 +117,31 @@ export function DocumentPicker({
                   labelId="document-picker-type-label"
                   label="Document type"
                   value={type}
-                  onChange={(event) => { setType(event.target.value); setPage(1); }}
+                  onChange={(event) => {
+                    setType(event.target.value);
+                    setPage(1);
+                  }}
                 >
                   <MenuItem value="">All types</MenuItem>
-                  {documentTypes.map((item) => <MenuItem key={item.key} value={item.key}>{item.name}</MenuItem>)}
+                  {documentTypes.map((item) => (
+                    <MenuItem key={item.key} value={item.key}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </DataNavigationToolbar>
             {query.isError && <Typography color="error">Unable to load documents.</Typography>}
             <List aria-label="Available existing documents" disablePadding>
               {(query.data?.documents ?? []).map((document) => (
-                <ListItemButton key={document.id} onClick={() => toggle(document.id)} disabled={!value.includes(document.id) && value.length >= 5}>
+                <ListItemButton
+                  key={document.id}
+                  onClick={() => {
+                    onDocumentSelected?.(document);
+                    toggle(document.id);
+                  }}
+                  disabled={!value.includes(document.id) && value.length >= 5}
+                >
                   <Checkbox checked={value.includes(document.id)} tabIndex={-1} />
                   <ListItemText
                     primary={document.displayFileName}
@@ -108,7 +151,9 @@ export function DocumentPicker({
                 </ListItemButton>
               ))}
             </List>
-            {!query.isLoading && query.data?.documents.length === 0 && <Typography color="text.secondary">No documents match this search.</Typography>}
+            {!query.isLoading && query.data?.documents.length === 0 && (
+              <Typography color="text.secondary">No documents match this search.</Typography>
+            )}
             <DataPagination
               page={page}
               pageSize={10}
@@ -120,8 +165,12 @@ export function DocumentPicker({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => onChange([])} disabled={!value.length}>Clear</Button>
-          <Button variant="contained" onClick={() => setOpen(false)}>Done</Button>
+          <Button onClick={() => onChange([])} disabled={!value.length}>
+            Clear
+          </Button>
+          <Button variant="contained" onClick={() => setOpen(false)}>
+            Done
+          </Button>
         </DialogActions>
       </Dialog>
     </>

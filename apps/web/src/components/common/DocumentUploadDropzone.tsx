@@ -35,11 +35,13 @@ export function DocumentUploadDropzone({
   onUploaded,
   onBusyChange,
   title = 'Upload a document',
+  disabled = false,
 }: {
   documentType: UploadDocumentType;
   onUploaded: (document: UploadedDocument) => void | Promise<void>;
   onBusyChange?: (busy: boolean) => void;
   title?: string;
+  disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -50,7 +52,7 @@ export function DocumentUploadDropzone({
   const guidance = `${documentType.allowedExtensions.join(', ')} up to ${formatSize(documentType.maximumSizeBytes)}`;
 
   async function submit(file?: File) {
-    if (!file || uploading) return;
+    if (!file || uploading || disabled) return;
     setError(null);
     setSuccess(null);
     const extension = extensionOf(file.name);
@@ -95,7 +97,7 @@ export function DocumentUploadDropzone({
         data-testid="document-upload-dropzone"
         onDragEnter={(event) => {
           event.preventDefault();
-          if (!uploading) setDragging(true);
+          if (!uploading && !disabled) setDragging(true);
         }}
         onDragOver={(event) => event.preventDefault()}
         onDragLeave={(event) => {
@@ -137,7 +139,7 @@ export function DocumentUploadDropzone({
           </Box>
           <Button
             variant="contained"
-            disabled={uploading}
+            disabled={uploading || disabled}
             onClick={() => inputRef.current?.click()}
           >
             {uploading ? 'Uploading…' : 'Select file'}
@@ -148,7 +150,7 @@ export function DocumentUploadDropzone({
             type="file"
             aria-label="Choose file to upload"
             accept={documentType.allowedMimeTypes.join(',')}
-            disabled={uploading}
+            disabled={uploading || disabled}
             onChange={(event) => {
               void submit(event.currentTarget.files?.[0]);
               event.currentTarget.value = '';

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
 import { getClientPlan } from './service.js';
+import { preparePlanAttachments } from './attachments.js';
 import {
   approvePlan,
   createPlanDraft,
@@ -113,6 +114,8 @@ describe('consequential client Plan execution', () => {
       where: { planItem: { planVersion: { plan: { clientId } } } },
     });
     await prisma.plan.deleteMany({ where: { clientId } });
+    await prisma.document.deleteMany({ where: { clientId } });
+    await prisma.documentType.deleteMany({ where: { key: marker } });
     await prisma.client.delete({ where: { id: clientId } });
     await prisma.user.deleteMany({ where: { id: { in: [clientUserId, consultantId] } } });
     await prisma.$disconnect();
@@ -316,6 +319,131 @@ describe('consequential client Plan execution', () => {
         where: { sourceId: report.id, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
       }),
     ).toBe(0);
+  });
+
+  test('pins private document versions and question labels, rejects unavailable evidence, and supports correction', async () => {
+    const documentType = await prisma.documentType.create({
+      data: {
+        key: marker,
+        name: 'QA evidence',
+        allowedMimeTypes: ['application/pdf'],
+        allowedExtensions: ['.pdf'],
+        maximumSizeBytes: 1000,
+        retentionCategory: 'TEST',
+      },
+    });
+    const file = await prisma.document.create({
+      data: {
+        clientId,
+        documentTypeId: documentType.id,
+        originalFileName: 'evidence.pdf',
+        displayFileName: 'Original evidence.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 100,
+        sha256: 'original-hash',
+        storageProvider: 'LOCAL_DISK',
+        storageKey: marker,
+        uploadedByUserId: clientUserId,
+        retentionCategory: 'TEST',
+        clientVisible: true,
+      },
+    });
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'Attachment review',
+      purpose: 'NURTURE',
+      items: [
+        {
+          stableKey: 'evidence',
+          type: 'ACTION',
+          owner: 'CLIENT',
+          completionMode: 'CLIENT_REPORT_CONSULTANT_VERIFY',
+          clientTitle: 'Submit evidence',
+          sortOrder: 0,
+          outcomeSchema: {
+            type: 'object',
+            properties: { report: { type: 'string', title: 'Original question' } },
+            required: ['report'],
+          },
+        },
+      ],
+      dependencies: [],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const step = (await getClientPlan(prisma, clientId)).plan!.version.items[0]!;
+    const submit = (ids: string[]) =>
+      executePlanItem(prisma, {
+        clientId,
+        itemId: step.id,
+        actorId: clientUserId,
+        idempotencyKey: randomUUID(),
+        action: 'COMPLETE',
+        outcome: { report: 'Evidence attached' },
+        documentIds: ids,
+      });
+    await expect(submit([file.id, file.id])).rejects.toMatchObject({
+      code: 'PLAN_ATTACHMENTS_INVALID',
+    });
+    await expect(submit(Array.from({ length: 6 }, () => randomUUID()))).rejects.toMatchObject({
+      code: 'PLAN_ATTACHMENTS_INVALID',
+    });
+    await expect(submit([randomUUID()])).rejects.toMatchObject({
+      code: 'PLAN_ATTACHMENT_UNAVAILABLE',
+    });
+    for (const status of ['SUPERSEDED', 'DELETED'] as const) {
+      await prisma.document.update({ where: { id: file.id }, data: { status } });
+      await expect(submit([file.id])).rejects.toMatchObject({
+        code: 'PLAN_ATTACHMENT_UNAVAILABLE',
+      });
+    }
+    await prisma.document.update({
+      where: { id: file.id },
+      data: { status: 'AVAILABLE', clientVisible: false },
+    });
+    await expect(submit([file.id])).rejects.toMatchObject({ code: 'PLAN_ATTACHMENT_UNAVAILABLE' });
+    expect(await prisma.planItemOutcome.count({ where: { planItemId: step.id } })).toBe(0);
+    await prisma.document.update({ where: { id: file.id }, data: { clientVisible: true } });
+    await expect(
+      prisma.$transaction((tx) => preparePlanAttachments(tx, randomUUID(), [file.id])),
+    ).rejects.toMatchObject({ code: 'PLAN_ATTACHMENT_UNAVAILABLE' });
+    const first = await submit([file.id]);
+    await prisma.document.update({
+      where: { id: file.id },
+      data: { displayFileName: 'Renamed.pdf', status: 'SUPERSEDED' },
+    });
+    const history = (await getClientPlan(prisma, clientId)).plan!.version.items[0]!.history;
+    expect(history[0]!.attachments[0]).toMatchObject({
+      fileName: 'Original evidence.pdf',
+      sha256: 'original-hash',
+      available: true,
+      status: 'SUPERSEDED',
+    });
+    expect(history[0]!.responseSnapshot).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'report', label: 'Original question' }),
+      ]),
+    );
+    await prisma.document.update({ where: { id: file.id }, data: { status: 'DELETED' } });
+    await expect(
+      verifyPlanItem(prisma, clientId, step.id, consultantId, {
+        decision: 'VERIFY',
+        expectedOutcomeId: first.outcomeId,
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_EVIDENCE_UNAVAILABLE' });
+    await verifyPlanItem(prisma, clientId, step.id, consultantId, {
+      decision: 'RETURN',
+      expectedOutcomeId: first.outcomeId,
+      note: 'Please attach an available file.',
+    });
+    await prisma.document.update({ where: { id: file.id }, data: { status: 'AVAILABLE' } });
+    const second = await submit([file.id]);
+    await verifyPlanItem(prisma, clientId, step.id, consultantId, {
+      decision: 'VERIFY',
+      expectedOutcomeId: second.outcomeId,
+    });
+    expect(await prisma.planOutcomeAttachment.count({ where: { documentId: file.id } })).toBe(2);
+    expect(
+      await prisma.planOutcomeAttachment.findFirst({ where: { outcomeId: first.outcomeId } }),
+    ).toMatchObject({ fileName: 'Original evidence.pdf' });
   });
 
   test('records unable state and one meaningful Attention projection without false completion', async () => {

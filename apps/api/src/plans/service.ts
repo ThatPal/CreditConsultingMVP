@@ -3,6 +3,7 @@ import { AppError } from '../http/errors.js';
 import { validatePlanGraph } from './validation.js';
 import { prerequisitesSatisfied } from './validation.js';
 import { clientResponseForm, responseFields, validateResponse } from './outcomes.js';
+import { preparePlanAttachments } from './attachments.js';
 import {
   assertPlanSourceOwnership,
   assertPlanSourcesCurrent,
@@ -821,6 +822,7 @@ export async function executePlanItem(
     action: 'COMPLETE' | 'UNABLE';
     outcome?: Prisma.InputJsonValue;
     reason?: string;
+    documentIds?: string[];
   },
 ) {
   const existing = await prisma.planItemOutcome.findFirst({
@@ -899,12 +901,16 @@ export async function executePlanItem(
           );
       }
 
+      const attachments = await preparePlanAttachments(tx, input.clientId, input.documentIds ?? []);
       const outcome = await tx.planItemOutcome.create({
         data: {
           planItemId: item.id,
           idempotencyKey: input.idempotencyKey,
           actorId: input.actorId,
           kind: input.action,
+          responseSnapshot: clientResponseForm(item.outcomeSchema, item.completionMode)
+            .fields as Prisma.InputJsonValue,
+          attachments: { create: attachments },
           ...(input.action === 'UNABLE'
             ? { data: { reason: input.reason!.trim() } }
             : input.outcome === undefined
@@ -1034,6 +1040,28 @@ export async function verifyPlanItem(
         'The submitted evidence changed. Reload before reviewing it.',
       );
     const returning = review?.decision === 'RETURN';
+    if (!returning && evidence.latestOutcomeId) {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT d."id" FROM "Document" d INNER JOIN "PlanOutcomeAttachment" a ON a."documentId" = d."id" WHERE a."outcomeId" = ${evidence.latestOutcomeId}::uuid ORDER BY d."id" FOR SHARE OF d`,
+      );
+      const attachments = await tx.planOutcomeAttachment.findMany({
+        where: { outcomeId: evidence.latestOutcomeId },
+        include: { document: true },
+      });
+      if (
+        attachments.some(
+          (row) =>
+            row.document.status === 'DELETED' ||
+            !row.document.clientVisible ||
+            row.document.sha256 !== row.sha256,
+        )
+      )
+        throw new AppError(
+          'PLAN_EVIDENCE_UNAVAILABLE',
+          409,
+          'An attached file is no longer available for review. Request a correction and ask the client to attach an available file.',
+        );
+    }
     if (returning && (!review.note?.trim() || item.status !== 'AWAITING_VERIFICATION'))
       throw new AppError(
         'PLAN_CORRECTION_INVALID',
@@ -1142,11 +1170,40 @@ async function itemHistory(
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: 21,
-    select: { id: true, kind: true, data: true, createdAt: true },
+    select: {
+      id: true,
+      kind: true,
+      data: true,
+      createdAt: true,
+      responseSnapshot: true,
+      attachments: {
+        select: {
+          documentId: true,
+          fileName: true,
+          mimeType: true,
+          sizeBytes: true,
+          sha256: true,
+          document: { select: { status: true, clientVisible: true, sha256: true } },
+        },
+      },
+    },
   });
   return {
     latestOutcomeId: rows[0]?.id ?? null,
-    history: rows.slice(0, 20).reverse(),
+    history: rows
+      .slice(0, 20)
+      .reverse()
+      .map(({ attachments, ...entry }) => ({
+        ...entry,
+        attachments: attachments.map(({ document, ...file }) => ({
+          ...file,
+          available:
+            document.clientVisible &&
+            document.status !== 'DELETED' &&
+            document.sha256 === file.sha256,
+          status: document.status,
+        })),
+      })),
     historyLimited: rows.length > 20,
   };
 }

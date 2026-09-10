@@ -159,3 +159,7 @@ The user authorized development. [Implementation pass 1](IMPLEMENTATION-01.md) r
 6. Present the concrete slice and evidence; then carry the accepted standard into subsequent waves. Do not stop at a static mockup or claim the slice makes the whole platform production ready.
 
 No branches are merged into Sol or non-AI. Any future reuse between versions must be an explicitly requested selective transfer; Astra remains the sole version advanced by this task.
+
+## Latest checkpoint: pass 4
+
+[Plan documents and evidence snapshots](IMPLEMENTATION-04.md) adds private attachment selection/upload, immutable submission metadata/question labels, protected downloads, and unavailable-evidence correction handling. A5 is still in progress: prioritize full history/review access, help resolution, response-aware preview, durable drafts, and remaining lifecycle states. Document scanning, retention, storage integrity, and access qualification remain explicit production gates.
