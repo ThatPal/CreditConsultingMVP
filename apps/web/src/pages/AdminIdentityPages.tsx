@@ -431,6 +431,7 @@ export function AdminAccessGrantsPage() {
   const [capability, setCapability] = useState('client.read');
   const [durationDays, setDurationDays] = useState(7);
   const [grantReason, setGrantReason] = useState('');
+  const [confirmCreate, setConfirmCreate] = useState(false);
   const options = useQuery({
     queryKey: ['admin-grant-options'],
     queryFn: () =>
@@ -485,6 +486,7 @@ export function AdminAccessGrantsPage() {
       });
     },
     onSuccess: () => {
+      setConfirmCreate(false);
       setGranteeId('');
       setClientId('');
       setGrantReason('');
@@ -495,7 +497,7 @@ export function AdminAccessGrantsPage() {
     <Stack spacing={3}>
       <PageHeader
         title="Scoped access grants"
-        description="Review and immediately revoke time-bounded client access."
+        description="Preview, issue, review, and immediately revoke time-bounded client access."
       />
       {(q.isError || options.isError) && (
         <RecoveryState
@@ -592,9 +594,9 @@ export function AdminAccessGrantsPage() {
             variant="contained"
             sx={{ alignSelf: 'flex-start' }}
             disabled={!granteeId || !clientId || grantReason.trim().length < 4 || create.isPending}
-            onClick={() => create.mutate()}
+            onClick={() => setConfirmCreate(true)}
           >
-            Create governed grant
+            Review access grant
           </Button>
         </Stack>
       </SectionCard>
@@ -650,6 +652,27 @@ export function AdminAccessGrantsPage() {
           ))}
         </Stack>
       </CollectionSurface>
+      <GovernedActionDialog
+        open={confirmCreate}
+        title="Issue time-bounded scoped access"
+        effect="Grant only the selected capability for the selected client and duration. This does not change role membership, staff assignment, or professional authority."
+        context={`${options.data?.staff.find((item) => item.id === granteeId)?.name || options.data?.staff.find((item) => item.id === granteeId)?.email || 'Selected staff member'} · ${options.data?.clients.find((item) => item.id === clientId)?.firstName ?? 'Selected'} ${options.data?.clients.find((item) => item.id === clientId)?.lastName ?? 'client'}`}
+        warning
+        pending={create.isPending}
+        preview={{
+          current: 'No selected explicit scoped grant',
+          proposed: `${humanizeCode(scope)} · ${capability} · ${durationDays} day${durationDays === 1 ? '' : 's'}`,
+          scope: `Selected staff member and client only; purpose: ${grantReason}`,
+          timing: 'Starts immediately and expires automatically at the displayed duration',
+          reversibility: 'May be revoked immediately; immutable history is retained.',
+          audit:
+            'Issuer, grantee, client, capability, purpose, start, expiry, and outcome are recorded.',
+        }}
+        {...(create.isError ? { error: create.error.message } : {})}
+        onCancel={() => setConfirmCreate(false)}
+        onConfirm={() => create.mutate()}
+        confirmLabel="Issue scoped access"
+      />
       <GovernedActionDialog
         open={Boolean(selectedGrant)}
         title="Revoke temporary access"
