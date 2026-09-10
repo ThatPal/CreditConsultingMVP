@@ -48,6 +48,8 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
       ),
     },
     advanced: {
+      // Keep Astra's browser session cookies separate from other local checkouts.
+      cookiePrefix: env.SESSION_COOKIE_NAME,
       database: { generateId: 'uuid' },
       useSecureCookies: env.NODE_ENV === 'production',
     },

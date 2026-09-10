@@ -1,0 +1,628 @@
+{
+  "auditDate": "2026-09-10",
+  "baseline": "ee3b8648b4a61ab76d4b56bd1cfd307b83bd8eb0",
+  "privateSourcesIgnored": true,
+  "routeCount": 120,
+  "canonicalScreenCount": 110,
+  "conversationStats": {
+    "6a95daa3-6144-83ea-aff6-9cf0497eb8a0": {
+      "title": "Sprint 3.4 Review Status",
+      "pages": 13,
+      "turns": 124,
+      "userMessages": 124,
+      "assistantMessages": 124,
+      "attachmentReferences": 0,
+      "possibleLengthLimitedTexts": 0,
+      "explicitTruncationFlags": 0
+    },
+    "6a8674b6-8234-83ea-9c77-c8be83c2ec9f": {
+      "title": "Credit Consulting Business Strategy",
+      "pages": 30,
+      "turns": 299,
+      "userMessages": 299,
+      "assistantMessages": 297,
+      "attachmentReferences": 0,
+      "possibleLengthLimitedTexts": 7,
+      "explicitTruncationFlags": 7
+    }
+  },
+  "sources": [
+    {
+      "file": "drive/10NDSnzbLjpDJk6_4F6n5izCBi_vWDXP0WcJ8LED0oBU.txt",
+      "sha256": "603eec583e8818c93adfbed6102277d4e68a25877b920d2ace2638668d641fb0",
+      "bytes": 6542,
+      "title": "Credit Consulting — Current Marketing & Funnel Playbook",
+      "source": "https://docs.google.com/document/d/10NDSnzbLjpDJk6_4F6n5izCBi_vWDXP0WcJ8LED0oBU/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/10NXvzRPv8CLkY0zl6zPzmI-eionPraKG0ygU0NnTpTQ.txt",
+      "sha256": "8025f90ccece2d1fdcce705468abd4653e48a03a976e9682a39b94d570f2eb76",
+      "bytes": 9946,
+      "title": "Credit Consulting — Current Consultant Methodology & SOP",
+      "source": "https://docs.google.com/document/d/10NXvzRPv8CLkY0zl6zPzmI-eionPraKG0ygU0NnTpTQ/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/11YZzzfGGUQd-bX_0gcJvuRsAnEES0RXtImNROiCU2kk.txt",
+      "sha256": "14c145ffda6ecc27b0552e3171e0f06032e877a4e4424412ddffdda0ceddfeca",
+      "bytes": 3592,
+      "title": "Credit Consulting — Current Forms, Client Content & Deliverable Reference",
+      "source": "https://docs.google.com/document/d/11YZzzfGGUQd-bX_0gcJvuRsAnEES0RXtImNROiCU2kk/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/13BhbHPY8FEOFfPC7XEywe04OxLJvJ5RakB9DbPszKUo.txt",
+      "sha256": "8ffc1f87491468344a3c86cb4b85c66c09ab6c779612e41b36a8dcd0f292e814",
+      "bytes": 175455,
+      "title": "13 — Detailed Screen & UI Specification",
+      "source": "https://docs.google.com/document/d/13BhbHPY8FEOFfPC7XEywe04OxLJvJ5RakB9DbPszKUo/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/15-EWneIK13kZS8EKs_8tSE6GeaN832tgo63uvRQ-Rds.txt",
+      "sha256": "e45ee032cd704af32fca9abaa202923a66382812d8e654dd7e1e365615ab393c",
+      "bytes": 6104,
+      "title": "Credit Consulting — Current Launch & Operating Readiness Checklist",
+      "source": "https://docs.google.com/document/d/15-EWneIK13kZS8EKs_8tSE6GeaN832tgo63uvRQ-Rds/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/16SL515AgKzdoBO5Wxq8iInAXI0RD2NU1KnkO8Aaeg4k.txt",
+      "sha256": "5122894db9b3bda3debc67bd0ddd0b82ccd53b5e866856550d14e90d1db727cf",
+      "bytes": 34922,
+      "title": "SUPPORTING SEED — Credit Card & Issuer Research Database — Not Live Canonical Catalog",
+      "source": "https://docs.google.com/spreadsheets/d/16SL515AgKzdoBO5Wxq8iInAXI0RD2NU1KnkO8Aaeg4k/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/16Ta20iaiRoWDRK3hJtVfaktTsLyIiQNeCqmqmmWIiOI.txt",
+      "sha256": "aa36170121867acb9ce91fcaeb06fe0ddfebfc82d2736e4fa66e87658aec636d",
+      "bytes": 18140,
+      "title": "10 — Security, Privacy, Permissions & Data Governance",
+      "source": "https://docs.google.com/document/d/16Ta20iaiRoWDRK3hJtVfaktTsLyIiQNeCqmqmmWIiOI/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/17z0vU37C0cHsbkZbDsDckxNb0MLTAcNX6KPXNxxIgZk.txt",
+      "sha256": "9d4cb656d2591b5d4a6d8ad6ebb4b4418b4a5a22f1e370dbe42775182c37a661",
+      "bytes": 20929,
+      "title": "12 — Implementation & Development Plan",
+      "source": "https://docs.google.com/document/d/17z0vU37C0cHsbkZbDsDckxNb0MLTAcNX6KPXNxxIgZk/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/182pYnfUmiQYaweGuTwJMy2IsSO9CGHq3yahHolU1hiA.txt",
+      "sha256": "a204a7f3b8a9d06e527f7db63380011658a76b1b4d862aaeed25af1d452944eb",
+      "bytes": 13623,
+      "title": "POAR-E — APPROVED PRODUCT REBUILD PROGRAM & PRODUCT DECISIONS",
+      "source": "https://docs.google.com/document/d/182pYnfUmiQYaweGuTwJMy2IsSO9CGHq3yahHolU1hiA/edit"
+    },
+    {
+      "file": "drive/18T6RuzcMizp8UIBKWAlin5s-YWBTib7c9vLPz7_-bzU.txt",
+      "sha256": "1ec60ba36ced75fc131c84d2ce5478313babee6eff30cc8fa05beb06339e914f",
+      "bytes": 7064,
+      "title": "Credit Consulting — Current Legal & Compliance Review Checklist",
+      "source": "https://docs.google.com/document/d/18T6RuzcMizp8UIBKWAlin5s-YWBTib7c9vLPz7_-bzU/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/19xuxpzuVbPx74ALo79BxLZsV9ltOQaIHO-sIyZYF3xg.txt",
+      "sha256": "4fe5aaf166182a9d7641a7d7cb1ce1e7191e2bc3a46df1ebace3c8a972ff9d0b",
+      "bytes": 7074,
+      "title": "Credit Consulting — Current Business & Service Architecture",
+      "source": "https://docs.google.com/document/d/19xuxpzuVbPx74ALo79BxLZsV9ltOQaIHO-sIyZYF3xg/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1KeLC_qv4tZe2bINgxIY0bo6B2lbnfNlf6S3UVvK-Y0Q.txt",
+      "sha256": "ca770eee01040906c97a79e3c649dc56cd6362c54d967038f7ec0595bce4f56a",
+      "bytes": 14668,
+      "title": "03 — Lifetime Credit Journey & Workflow Architecture",
+      "source": "https://docs.google.com/document/d/1KeLC_qv4tZe2bINgxIY0bo6B2lbnfNlf6S3UVvK-Y0Q/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1MscOXp3cAVNmgii3ykur3NpkgvhFnQiD2F1_3QbwEeQ.txt",
+      "sha256": "4fc4dadc401570084ee7a0c5b0a805fece3bea07c2ab85fde765eebd29237c9f",
+      "bytes": 94259,
+      "title": "POAR-A — AUTHENTICATED SCREEN CONTENT, DESIGN & FUNCTIONALITY MASTER SPECIFICATION",
+      "source": "https://docs.google.com/document/d/1MscOXp3cAVNmgii3ykur3NpkgvhFnQiD2F1_3QbwEeQ/edit"
+    },
+    {
+      "file": "drive/1N9L17FedHi9n2YEmmygUUKNZt1AXKgGbgFkuinthtvQ.txt",
+      "sha256": "6b3c3f2ffe222d13a7a3ccede47834e8910674bfa7e786eabf9d278d8d96b062",
+      "bytes": 4832,
+      "title": "Product Development — Current Canonical Index",
+      "source": "https://docs.google.com/document/d/1N9L17FedHi9n2YEmmygUUKNZt1AXKgGbgFkuinthtvQ/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1O_teMErEUgYSq5ja8N2B3aKfgbQbypWSF1-ir5-evbc.txt",
+      "sha256": "17e8e542833af57fcaa479296aa1fa25126c55bb8f88ae5e67c30cdb6b57a500",
+      "bytes": 82606,
+      "title": "14 — Development Roadmap / Phases / Sprints",
+      "source": "https://docs.google.com/document/d/1O_teMErEUgYSq5ja8N2B3aKfgbQbypWSF1-ir5-evbc/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1Sh3efUC16u9jPCQdk-ye-s2YFFiXPw5KLPbU1kod0JM.txt",
+      "sha256": "52c512d6933709a0eb7f2a593a41276170e647e5ea1d01f8029a83a7a65bd40a",
+      "bytes": 39376,
+      "title": "POAR-B — CROSS-SCREEN WORKFLOW & JOURNEY COMPLETENESS MASTER AUDIT",
+      "source": "https://docs.google.com/document/d/1Sh3efUC16u9jPCQdk-ye-s2YFFiXPw5KLPbU1kod0JM/edit"
+    },
+    {
+      "file": "drive/1SpUodfDzG8yq6R2M6FPeYpvCJTWCmy2mTIF29zYeVq8.txt",
+      "sha256": "3c9d9f3deb676ea374597fa1c1d800b58d653074f86f4e1770c893610d26577f",
+      "bytes": 25233,
+      "title": "07 — Technical Architecture & Database Design",
+      "source": "https://docs.google.com/document/d/1SpUodfDzG8yq6R2M6FPeYpvCJTWCmy2mTIF29zYeVq8/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1TEKMzxFChJBTdf0t2XNNYeKgF2YNIcOnve40bq6It9k.txt",
+      "sha256": "ab2e2b0bada0a92abc3f99487bde325f999f67e446f9262ccd4fedcd16d25808",
+      "bytes": 19229,
+      "title": "09 — AI Processes, Pipelines & Decision Contracts",
+      "source": "https://docs.google.com/document/d/1TEKMzxFChJBTdf0t2XNNYeKgF2YNIcOnve40bq6It9k/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1YYhXWiha-0oShfeQwL0rNLMNU8kG2bYF-kyKIGhRXnU.txt",
+      "sha256": "279cca4662f0e4bf0831cba42c8ab151876897aa112177ed9c834396f98f811a",
+      "bytes": 2890,
+      "title": "Credit Card Research — Current Source, Seed & Catalog Governance",
+      "source": "https://docs.google.com/document/d/1YYhXWiha-0oShfeQwL0rNLMNU8kG2bYF-kyKIGhRXnU/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1YZ60H61Fay-reCDn4xfsMrS9ItbnNURH1pW4uccSPsg.txt",
+      "sha256": "2e0e5fdedf3e89637af4cde697427a142dc27f74f7366337f0192da4d9da2493",
+      "bytes": 10720,
+      "title": "05 — Business Rules & State Machines",
+      "source": "https://docs.google.com/document/d/1YZ60H61Fay-reCDn4xfsMrS9ItbnNURH1pW4uccSPsg/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1ctdNQGXPWqK_whcwGZP9Qli5DDYOfWAE0H3P0-WgrPI.txt",
+      "sha256": "9fcf7aec0d44196e3925bf34868a1a96f487f245d614c89fd4ed2631b57b6acf",
+      "bytes": 22638,
+      "title": "11 — Integrations, Infrastructure, Deployment & Non-Functional Requirements",
+      "source": "https://docs.google.com/document/d/1ctdNQGXPWqK_whcwGZP9Qli5DDYOfWAE0H3P0-WgrPI/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1e1k7xEsRk0RprDOY6jOYJ8wzfiFn_i9IJ_afxvGB7mE.txt",
+      "sha256": "9383c9e43b87bc225abca5f4bb3e8cb0f8becf2930581bdeec10753c39e536c3",
+      "bytes": 10229,
+      "title": "01 — Approved Complete Product Model",
+      "source": "https://docs.google.com/document/d/1e1k7xEsRk0RprDOY6jOYJ8wzfiFn_i9IJ_afxvGB7mE/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1fuToEJGACGLVFg8_1wQLNEL8ifL4UhlvREsPlJP3fvU.txt",
+      "sha256": "499a915bf77646a92158d99bd96ad4c6d028210e92c674a07fa494b82e26baac",
+      "bytes": 2685,
+      "title": "Credit Consulting Operations — Current System of Record & Operational Data Reference",
+      "source": "https://docs.google.com/document/d/1fuToEJGACGLVFg8_1wQLNEL8ifL4UhlvREsPlJP3fvU/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1gqG-xPUX_5axKgp2VLGyB6-LAJwtxWg5AAp9zdnrKVg.txt",
+      "sha256": "5f9919d658322e7e60068fdac133a28d592bfb722750d0b9f9556168c1b05e49",
+      "bytes": 30338,
+      "title": "08 — API, Commands, Queries, Domain Events & Realtime Contracts",
+      "source": "https://docs.google.com/document/d/1gqG-xPUX_5axKgp2VLGyB6-LAJwtxWg5AAp9zdnrKVg/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1qaP7SFEW48jZ4jPKxOpDJrY7tJ7Ovmfj3iv3XRhp8vw.txt",
+      "sha256": "281a868475f925b302156cdbfcde05845efb5fa285d03a0fa18b56c5c3d2deaf",
+      "bytes": 21824,
+      "title": "06 — Screen, UX Architecture & Visual Design",
+      "source": "https://docs.google.com/document/d/1qaP7SFEW48jZ4jPKxOpDJrY7tJ7Ovmfj3iv3XRhp8vw/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1xGxmqhAOVyYzjrTjI2lCYGiUxMse7Qr1oAGje3Vy5EA.txt",
+      "sha256": "4e6fb587215a8e245e24cfd837271559eaa6ac9fc722c1020a54940902a70001",
+      "bytes": 2440,
+      "title": "Credit Consulting Clients — Current Client Record & Document Governance",
+      "source": "https://docs.google.com/document/d/1xGxmqhAOVyYzjrTjI2lCYGiUxMse7Qr1oAGje3Vy5EA/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1y-C8x9Thnn1FCxJVNWPiZuupvrqbAQZLkn2hXsbK_70.txt",
+      "sha256": "507023ea32b67b186f658e5ea3b3a9cf8212f1d50ff2dbd6e700747f154dee91",
+      "bytes": 8710,
+      "title": "02 — Business & Website Context",
+      "source": "https://docs.google.com/document/d/1y-C8x9Thnn1FCxJVNWPiZuupvrqbAQZLkn2hXsbK_70/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1yEayVc1vskAVEHy5j_EsNJbX5YdH2_aECbs4RqX3o2s.txt",
+      "sha256": "16d71f5e95d63b712250f954848d7cd71a7072c5d3ab0d452c284f5315789a58",
+      "bytes": 44708,
+      "title": "Development Execution & Review Workflow",
+      "source": "https://docs.google.com/document/d/1yEayVc1vskAVEHy5j_EsNJbX5YdH2_aECbs4RqX3o2s/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1yTv6I_A3JQkI-pcfBpQmQqUXc4zQ2Es4N75IOsP_pZ8.txt",
+      "sha256": "e9a37710a201ee1fcc1d035efe2191f7fea06f834a3b15f2a5d1e774b30fb262",
+      "bytes": 27327,
+      "title": "04 — Information Architecture & Conceptual Data Model",
+      "source": "https://docs.google.com/document/d/1yTv6I_A3JQkI-pcfBpQmQqUXc4zQ2Es4N75IOsP_pZ8/edit?usp=drivesdk"
+    },
+    {
+      "file": "drive/1zl_WEi6KqvkyoxoX8Mbs8gm6PpiZ8RsjflHMSI22EIc.txt",
+      "sha256": "da52bcbd6e4058a24cf82652015be0e9df9a37914625cad700c6c108865f0c74",
+      "bytes": 4050,
+      "title": "Credit Consulting — Current Finance, Unit Economics & Operating Metrics Reference",
+      "source": "https://docs.google.com/document/d/1zl_WEi6KqvkyoxoX8Mbs8gm6PpiZ8RsjflHMSI22EIc/edit?usp=drivesdk"
+    },
+    {
+      "file": "conversations/review-1.json",
+      "sha256": "e3ec45333408f33e4909130a9f198a12368d41c8ef488c58cc0094b68abcdd49",
+      "bytes": 52603,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-10.json",
+      "sha256": "38414954aa60936e1b066c2cf91dca97fdfc7d85fdfc66206ebdd11ca1a3c59b",
+      "bytes": 37406,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-11.json",
+      "sha256": "c1e94bea7efef8d9246270bd1adfaacff1bdaeac49f7cf27f575f51f938b0c04",
+      "bytes": 38173,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-12.json",
+      "sha256": "57657cc1f489bb5f1d11a8208218a375d4fe28c5a6655c1230aed3c6d8ef88a4",
+      "bytes": 40377,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-13.json",
+      "sha256": "cfaf89c605f110afa7d92c841c0ece5a974d08b354a24a0cd63d8cd3d1852b46",
+      "bytes": 17166,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 4,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-2.json",
+      "sha256": "dc7171dd4acc226029d88cc32caf96ab493ec01c6e1fcf7da0d076775f1dbfdc",
+      "bytes": 65706,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-3.json",
+      "sha256": "45ab0ec47ea3ee21ced15e9db1a611a5e6ba56656e5bc14b25a4f7bfc1eeece8",
+      "bytes": 48454,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-4.json",
+      "sha256": "9192fe89dab1a12b473aad69d8c443caff24fa12aeda167ee853171609a903d5",
+      "bytes": 46968,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-5.json",
+      "sha256": "55132337e513633316985ea5a56ca54d066e18bffed3cd0c0b5d1079ab56b424",
+      "bytes": 37278,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-6.json",
+      "sha256": "6571d0ab887b9a62e8dd295afc8f7aa8bbe9f44bb99e16bde71a2964155675a8",
+      "bytes": 40518,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-7.json",
+      "sha256": "4a29d14a6e4dbbdf4f61eaa88da5d386fe377f5991f6fc890f196e06b56bb8c7",
+      "bytes": 49508,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-8.json",
+      "sha256": "5e5dd5d9bed817f4dd048aa01f1611f79f25fd839796b39de7290fba3a0bb67b",
+      "bytes": 34038,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/review-9.json",
+      "sha256": "d47f9224754b583ea02e2b1823a60143e65d6630f08830d7ccda3d9e32df1390",
+      "bytes": 36543,
+      "title": "Sprint 3.4 Review Status",
+      "source": "https://chatgpt.com/c/6a95daa3-6144-83ea-aff6-9cf0497eb8a0",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-1.json",
+      "sha256": "f82b8e3d34daa5e2239b3e3cbd78e2ae29d47e19fe0060c5d101128292cd4010",
+      "bytes": 30915,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-10.json",
+      "sha256": "7d8b5bfc614223cd5cf10496920c488f68981e8408bbbec20f39d68e0c8cd6ed",
+      "bytes": 157744,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-11.json",
+      "sha256": "aab5750775961d102090211b8e94a05be7b012711c9d53ca337c876df4060bc5",
+      "bytes": 124872,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-12.json",
+      "sha256": "fb7bc916e868f939a94242ba60d085af4e8adc9286c032960763a53e8fa2a122",
+      "bytes": 185645,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-13.json",
+      "sha256": "faa99a937c280f6c51915488b2c63818881d562ee772d26ca48fd7b8909950c8",
+      "bytes": 107456,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-14.json",
+      "sha256": "d90ecbe8f7c7ee1025ea6797e362a67f0a536e43e5c8d47bde7f5e6916efd82e",
+      "bytes": 87728,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-15.json",
+      "sha256": "2eacff4de23a56ab1cc4c9ff4892ce26ff1b4acf205bd52c8a16318f442f9f11",
+      "bytes": 87286,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-16.json",
+      "sha256": "1199cca9158335888468220664568e508cfc4417cdbee30c93d6caf8834a228d",
+      "bytes": 92679,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-17.json",
+      "sha256": "3557e8161edb7f88f16045c8ce7f501c399fa6cbee7da26c4e5af5efec06dc35",
+      "bytes": 85989,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-18.json",
+      "sha256": "9474056ab05cf72ff85bb13975716176123e667cb909dd1a8e96ad0c075610b5",
+      "bytes": 57317,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-19.json",
+      "sha256": "44debfa0b5f64b95e41793a68cd54244eda6e49187fd22459f248aa000e55554",
+      "bytes": 103956,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-2.json",
+      "sha256": "790881a9575b552e711d6577b1e84fc651ec5d46ad0ada1cc6eff03751029a4c",
+      "bytes": 32999,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-20.json",
+      "sha256": "8d3f33c273709bd2e789c1e6d6f8d504f21a1e34a619f2530c2c6a109edf3981",
+      "bytes": 89995,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-21.json",
+      "sha256": "dad208d14225cd1ffd2aeeaba296f4040c84559aca31642fc7e45cb9f7c88453",
+      "bytes": 52837,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-22.json",
+      "sha256": "d7ae9fc3df5629c3e13436d64c0eeb87ec7c984db86e7214d8d02400bccd141d",
+      "bytes": 102801,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-23.json",
+      "sha256": "a09b1d51e1bd7a1cdb6bc5a809f5b63698f82d8361abeeea9d5ee9941ed37b2d",
+      "bytes": 43528,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-24.json",
+      "sha256": "4b351703bc117f7a52edf3f01bff1df113717c5054cebd57ee8026483e22d46f",
+      "bytes": 42155,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-25.json",
+      "sha256": "5418fc816a723d4af3f5c1ce20d3debf0fab151e0b3b1269f8612d97e43c99b1",
+      "bytes": 98817,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-26.json",
+      "sha256": "ed77449550ff490fff6b6b572d521a770eaad8eaa0d5b79bec9eb3268b7f661a",
+      "bytes": 93151,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-27.json",
+      "sha256": "44d0f0e1bdd25ffb5f8a83828bbb5b6053239a6d34dab4986e40ee7b2d02d9d4",
+      "bytes": 56135,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-28.json",
+      "sha256": "82f63cee6abad8908811bb3a72fec9c69cfd8f012d4069a088877f0962bb3afa",
+      "bytes": 83321,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-29.json",
+      "sha256": "b6a450369bfe1899b31477afa38f0ec0f8af67b5fcdf37d48a9f65c5b5f5bee8",
+      "bytes": 91527,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-3.json",
+      "sha256": "ce940a5d714eb4eabad2814390accfc8e5b6306bacc44fe934c0236c209d8ead",
+      "bytes": 21726,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-30.json",
+      "sha256": "ad883e3c8a4ef4933b01b1cffafa3f394130e544aac82b29cc3402af4150ac68",
+      "bytes": 82419,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 9,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-4.json",
+      "sha256": "c4f9b2a9b7f10e1702cf7a12dcfa9079d47dbeb9ab81926f129c5322b477bc8a",
+      "bytes": 14376,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-5.json",
+      "sha256": "fb79f4380c2c4d634e7108370be180ac78a6eb45071a9fd848a6537b743ac793",
+      "bytes": 27338,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-6.json",
+      "sha256": "3d520f2a617c122c8e90f67aec9b691c6749754cbdc4c520a478fd50b66d7015",
+      "bytes": 31081,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-7.json",
+      "sha256": "63e39d237088403b5c2780ebd02ee18c08ef5c6d97ff4daf2fee465e07dd938f",
+      "bytes": 50155,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-8.json",
+      "sha256": "76bcf4b01ced08c2fd97579c6cf566a42e3baa457e2ceaaab4beced45ad5451d",
+      "bytes": 100268,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    },
+    {
+      "file": "conversations/strategy-9.json",
+      "sha256": "ef478df20643df3a258f37433d8d012f94c5b27ef9e1d035062fb998bb42bc57",
+      "bytes": 154606,
+      "title": "Credit Consulting Business Strategy",
+      "source": "https://chatgpt.com/c/6a8674b6-8234-83ea-9c77-c8be83c2ec9f",
+      "turns": 10,
+      "attachmentCount": 0
+    }
+  ]
+}

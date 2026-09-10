@@ -1,0 +1,163 @@
+# Screen and section audit register
+
+110 canonical screen contracts from Drive 13 are accounted for below. A “screen” may be a tab, drawer, or workflow state; 110 contracts do not require 110 separate routes. The route inventory exported alongside this register records the actual React routes. Preserve aliases deliberately or retire them with tested redirects.
+
+**Coverage:** B = browser-observed representative state plus source mapping; S = source/specification mapping only; M = missing top-level experience. B is not certification of all buttons, roles, responsive sizes or failure states. Admin remains S because MFA enrollment was rejected by automatic review. Client Review stages not reached in the seeded completed-review state remain S. The detailed implementation files in each family were inspected to identify material gaps; no claim that every line or transition was exhaustively executed is made.
+
+**Common completion contract for every row:** clear primary question and next owner/action; typed query and commands; permission/resource scope; visible loading/empty/error/blocked/stale states; save/retry/conflict recovery; no hidden internal fields; long-data behavior; keyboard and screen-reader semantics; responsive desktop/tablet/mobile ordering; functional deep links and realtime invalidation; realistic task evidence. Each row adds the feature-specific section and interaction work.
+
+`c` = `/crm/clients/:clientId`; `r` = `/app/rounds/:roundId`; `cr` = `c/rounds/:roundId`. Routes using these abbreviations are expanded by context, not literal URLs.
+
+## Public and authentication
+
+| ID | Screen | Current route / coverage | Sections and completion work | Wave |
+|---|---|---|---|---|
+| PUBLIC-01 | Marketing Home | `/` → intake; M | Value proposition, service fit, coordinated strategy benefit, credible process visual, trust, primary start CTA; real brand composition. | A11 |
+| PUBLIC-02 | Services / How it works | Missing; M | Service deliverables and boundaries, client/consultant roles, lifecycle and ongoing support; contextual CTA. | A11 |
+| PUBLIC-03 | Pricing / Service selection | Authenticated services only; M | Public product/pricing summary backed by configured catalog, credit/entitlement explanation, purchase prerequisites and next step. | A9, A11 |
+| PUBLIC-04 | FAQ / Disclosures / Trust | Missing; M | Searchable/scannable questions, data/privacy/support, reviewed agreements and disclosures, contact/recovery paths; no invented social proof. | A11 |
+| PUBLIC-05 | Goal-first intake | `/goal-intake`; B | Brand/value context, single desired amount, scope/preferences, current situation, contact, review/confirm, resumable handoff; replace target-centric slider framing. | A1, A4, A11 |
+| AUTH-01 | Register | `/register`; S | Identity/contact, password guidance, linked agreement versions, consent, intake continuity, duplicate/verification/retry states. | A3, A11 |
+| AUTH-02 | Login | `/login`; B | Recognizable brand, sign-in, safe return path, clear error/recovery, no raw fetch error; responsive form. | A1, A3 |
+| AUTH-03 | Email verification | `/verify-email`; S | Deliverable email/link, verified/expired/invalid/used states, safe resend and continuation; prove actual transport. | A3 |
+| AUTH-04 | Forgot / reset password | `/forgot-password`, `/reset-password`; S | Real mail, expiry/single use, password validation, session revocation and retry; recovery must work outside a signed-in session. | A3, A12 |
+| AUTH-05 | Staff MFA / step-up | `/mfa`; B consultant only | Enrollment/challenge, recovery codes and governed recovery, expired step-up preserving draft; Admin runtime coverage still open. | A3, A10, A12 |
+| AUTH-06 | Account / security sessions | Role-specific account/security; B client | Device identity/time, current session, revoke other/session, reset, session expiry; staff recovery proof. | A10, A12 |
+
+Primary implementation: `pages/AuthPages.tsx`, `GoalIntakePage.tsx`, `SecurityPage.tsx`, auth provider/guards. Public marketing pages do not exist in `App.tsx`.
+
+## Client portal
+
+| ID | Screen | Current route / coverage | Sections and completion work | Wave |
+|---|---|---|---|---|
+| PORTAL-01 | Home / Current focus | `/app`; B | One factual next action, owner and blocker; concise goal progress, Profile freshness, actual active Plan items, live/appointment context and service entry. F04/F05/F08/F09. | A1, A2 |
+| PORTAL-02 | Journey | `/app/journey`; B | Lifetime timeline, current season, active Nurture, completed cycles and openable history; replace four record-existence milestones. | A2, A9 |
+| PORTAL-03 | Goal confirmation | `/app/goals`; B | Desired amount and amount reached with scope; one primary goal, preferences, revision preview and material-change effect; preserve cycle snapshots. | A2, A4 |
+| PORTAL-04 | Credit Center overview | `/app/credit-center`; B | Published Review/source date, Profile/recommendation summary, relevant factors, shared Plan next step and new Review eligibility. | A4 |
+| PORTAL-05 | Credit Profile | `/app/credit-center/profile`; B | Ordered bureau/model/date and financial sections, utilization, accounts/inquiries, source-linked detail; replace generic object rendering. | A4 |
+| PORTAL-06 | Credit Report | `/app/credit-center/report`; B | Source identity/date/coverage, usable protected preview/download, missing/retained/deleted states, route/proxy verification. | A3, A4 |
+| PORTAL-07 | Analysis | `/app/credit-center/analysis`; B | Clear recommendation, key factors and meaning, prioritized explanation, Plan links and change context; no unsupported scores/predictions. | A4 |
+| PORTAL-08 | Shared Plan | `/app/plan`; B | Current focus, Actions/Guidance/Milestones, completion-specific drawers, verification/wait/unable states, history and next step. | A5 |
+| PORTAL-09 | Review history | `/app/credit-center/history`; B | Open immutable version, report/published dates, meaningful comparison, current-v-historical labels; human-readable recommendation. | A4 |
+| PORTAL-10 | Review eligibility | `/app/credit-center/review` state; S | Newer supported report check, current foundation explanation and valid next step; no hard arbitrary 30-day gate. | A4 |
+| PORTAL-11 | Review credit gate | Review/services state; S | Available/reserved/consumed credits, price/purchase path, exactly-once access and recovery; never lose upload progress. | A3, A4 |
+| PORTAL-12 | Review upload | Review state; S | Real supported report instructions, drop/select, progress/cancel/retry, protected source preview and persistent draft. | A3, A4 |
+| PORTAL-13 | Validation / correction | Review state; S | Unsupported/partial/date mismatch, clear correction/reupload, no duplicate consumption, verified source provenance. | A3, A4 |
+| PORTAL-14 | Complete card portfolio intake | Review state; S | Personal/business/non-reporting cards, identify/add/update/close drawer, duplicate detection, scoped balances/limits and complete confirmation. | A4, A6 |
+| PORTAL-15 | Changes since report | Review state; S | New applications, account/limit/balance changes and major plans since source date; concise delta review, not a duplicate full intake. | A4 |
+| PORTAL-16 | Submit / processing | Review state; S | Summary, confirmation, resumable durable progress, needs-information, failure/retry and consultant handoff; real document pipeline. | A3, A4 |
+| PORTAL-17 | My Cards | `/app/cards`; B | Useful portfolio summary, type/status/source filters, current details, Add/Edit/Identify/Close, history and report-v-current distinction. | A6 |
+| PORTAL-18 | Explore | `/app/cards/explore`; B | Rich factual filters, current offer highlights, fee/APR units, card art, preference context, detail/Wishlist; optional client compare is an enhancement, not required by original Explore contract. | A6 |
+| PORTAL-19 | Wishlist | `/app/cards/wishlist`; B | Current offer snapshot, notes/priority where supported, changed/discontinued state, remove/open detail, consultant consideration context. | A6 |
+| PORTAL-20 | Card detail | `/app/cards/:productId`; S | Product identity/art, offer costs/intro/rewards/benefits, freshness/source, Wishlist; separate approved Strategy context without hidden sequence. | A6 |
+| PORTAL-21 | Available services | `/app/services`; B | Clear Review/Round/Major deliverables, price, eligibility, credit use and primary purchase action; no commercial-engine jargon. | A9 |
+| PORTAL-22 | Credits / active services | `/app/services/active`; B | Available/reserved/used credits, active service progress, what is included and next action; relevant expiry only from policy. | A9 |
+| PORTAL-23 | Purchase history | `/app/services/history`; B | Date/product/amount/provider/status, receipt/detail, refund/dispute context, understandable historical labels. | A9 |
+| PORTAL-24 | Checkout | `/app/checkout/:purchaseIntentId`; S | Order/price/terms, original gateway, hosted payment, pending/cancel/failure/resume, verified paid access; no real provider flow tested. | A3, A9 |
+| PORTAL-25 | Current Round | `/app/application-rounds`, `r`; B | Seasonal context, desired amount and verified progress, coherent phase/owner/blocker, valid Strategy/session/results links, pause/history. | A2, A7–A9 |
+| PORTAL-26 | Major application check | `r/major-check`; B | Type/timing/no/not sure, consequence explained, save/revision, Major service handoff and restriction-aware next step. | A7, A9 |
+| PORTAL-27 | Strategy ready / preparation | `r/strategy`; B | Client-safe preparation and readiness, approved reasons, scheduling next step, stale review banner; never reveal future execution policy. | A7 |
+| PORTAL-28 | Schedule | `r/schedule`; S loading state only | Timezone-aware slots, consultant/appointment context, book/reschedule/cancel, no slots/provider outage/collision states and reminders. | A8 |
+| PORTAL-29 | Live session | `r/live`; B waiting state | Final change confirmation, real presence, one released card, Why/Apply/Skip/Help, safe external handoff, reconnect/pause and restoration. | A8 |
+| PORTAL-30 | Result entry / detail | Live/result state; S | Approved/declined/pending/technical/skipped distinctions, limit/date/evidence, validation, duplicate-safe submit and pending next step. | A8, A9 |
+| PORTAL-31 | Post-Round summary | `r/results`; B active and historical | Confirmed totals vs pending, goal context, each application/outcome and detail, subsequent changes reflected without double-counting. | A9 |
+| PORTAL-32 | Post-Round follow-up | `r/follow-up`; B active and completed | Shared Plan outcome forms for pending/reconsideration/CLI, unable/verification/history; hide invalid pre-end generation actions. | A5, A9 |
+| PORTAL-33 | Round Analysis | `r/analysis`; B historical | Verified results, consultant interpretation, version/freshness, changed outcomes, next-cycle/Nurture handoff; no raw deterministic jargon. | A9 |
+| PORTAL-34 | Major Readiness application | `/app/major-readiness`; B | Type/timing/context, service access, material changes, case status and next owner; complete creation/edit path. | A9 |
+| PORTAL-35 | Major Readiness assessment | `/app/major-readiness/readiness`; B | Approved guidance, factors, source date, in-progress reassessment and what remains valid; no conflicting Ready/Review state. | A9 |
+| PORTAL-36 | Major preparation | `/app/major-readiness/preparation`; B | Relevant shared Plan Actions/Guidance/Milestones inline, completion and context; more useful than only a link to Plan. | A5, A9 |
+| PORTAL-37 | Major coordination | `/app/major-readiness/coordination`; B | Current restrictions, explanation, affected card activity, next review/owner and history; enforce in domain commands. | A9 |
+| PORTAL-38 | Major timeline | `/app/major-readiness/timeline`; B | Intake, decisions, source/restriction changes, reassessments and completion; real case history instead of empty generic message. | A9 |
+| PORTAL-39 | Support home | `/app/support`; B | Search/filter, request category/priority/context, create, clear waiting owner and unread state, useful response expectation. | A10 |
+| PORTAL-40 | Support detail | Support selected thread; B | Bounded conversation, attachments/context, reply/draft, resolve/reopen rules, deep link and realtime. Keep live help in session. | A10 |
+| PORTAL-41 | Notifications | `/app/notifications`; B | Actionable inbox, category/unread/read, correct contextual links, earlier history, preferences and grouped low-noise updates. | A10 |
+| PORTAL-42 | Documents | `/app/documents`; B | Category-aware upload, list/filter/page, protected preview, status/retry/retention; report intake stays in owning Review workflow. | A3, A10 |
+| PORTAL-43 | Account/profile | `/app/account`; B | Contact/timezone, save state/conflict, email-change/recovery policy, privacy request with plain wording and tracked fulfillment. | A10 |
+| PORTAL-44 | Security/sessions | `/app/account/security`; B | Device/session history, current indicator, revoke/reset, clear expired/failed states, no accidental current-session loss. | A10, A12 |
+
+Implementation families: JourneyPages; GoalsPage/GoalIntakePage; ReviewPages; PublishedCreditCenterPages; PlanPages; CardsPage/CardCatalogPages; ServicesPage/CheckoutPage; Phase11Pages; StrategyPages; LivePages; PostRoundPages; MajorReadinessPages; SupportPage; DocumentsPage; NotificationsPage; AccountPage/SecurityPage.
+
+## Consultant CRM
+
+| ID | Screen | Current route / coverage | Sections and completion work | Wave |
+|---|---|---|---|---|
+| CRM-01 | Dashboard | `/crm`; B | Workload/throughput, due/urgent work, sessions soon, portfolio context; compact useful trends and drill-down rather than repeated queue links. | A1, A10 |
+| CRM-02 | Work Queue | `/crm/work-queue`; B | Priority/owner/due/reason/next action, claim/reassign per capability, named saved views, useful bulk actions, aging and realtime. | A2, A10 |
+| CRM-03 | Clients | `/crm/clients`; B | Fast directory, filters/sort/pagination, relationship/work context, saved views and access changes; efficient scan density. | A10 |
+| CRM-04 | Client 360 overview | `c`; B | Persistent identity/context header, actual next step, key facts, work/service summary; remove all-modules stack and stale future-module prose. | A2, A10 |
+| CRM-05 | Client Journey | Client 360 section; B | Seasons/Nurture/history, decisions and valid next-step links, same truth as client; no generic completed rails. | A2, A9 |
+| CRM-06 | Client Credit Center | `c/credit-center`; S | Published client-safe view plus authorized source/workspace links; correct freshness, history and permissions. | A4 |
+| CRM-07 | Client Cards | `c/cards`; S | Current/report comparison, identify/correct/duplicate warnings, business/non-reporting, Wishlist and downstream strategy impact. | A6 |
+| CRM-08 | Client Services | Client 360 section; B | Credits/entitlements/purchases with status and next action; retain limits on consultant commercial authority. | A9, A10 |
+| CRM-09 | Client Timeline | Client 360 section; B | Readable business events, filters/date grouping, contextual links and source details; audit event codes are not a relationship timeline. | A10 |
+| CRM-10 | Client Support | Client 360 section; B | Scoped open/history requests, owner/priority/unread, contextual create/open; preserve client scope. | A10 |
+| CRM-11 | Review workspace | `c/reviews/:reviewId`; B source tab | Source/field verification, exceptions, complete Profile, analysis/recommendation, Plan and publication; linked provenance and real AI preparation. | A3, A4 |
+| CRM-12 | Plan Builder | `c/plan`; B | Independent dependency/path editor, completion/outcome schemas, source versions, exact preview, autosave, diff/reconcile and verification; repair F06. | A5 |
+| CRM-13 | Strategy context / AI brief | `cr/strategy` section; B | Client-specific constraints and evidence, source freshness, real AI candidates, manual fallback and refresh. | A7 |
+| CRM-14 | Strategy candidates | Strategy section; B | Rich factual/relationship filters, candidate rationale/exclusions, catalog detail and shortlist with roles; three-zone research workspace. | A6, A7 |
+| CRM-15 | Strategy compare | Strategy compare state; S | Pin 2–5 products, explicit decision dimensions, fixed product headers, evidence/insight, add/remove and shortlist; useful AI interpretation. | A7 |
+| CRM-16 | Strategy sequence/rules | Strategy section; B | Visual reorder plus keyboard alternative, typed branches/alternatives/stops, client-safe Why, reachability and restriction validation. | A7 |
+| CRM-17 | Strategy approval | Strategy section; B blocked state | Exact source/offer version checklist, warning vs blocker, client preview, consequential confirmation, immutable freeze and stale reapproval. | A7 |
+| CRM-18 | Live list / persistent panel | `/crm/live-sessions`; S, shell B | Live/upcoming/waiting/paused/attention categories; dock survives navigation with client/current card/status; badge alone insufficient. | A8 |
+| CRM-19 | Live console | `/crm/live-sessions/:sessionId`; B | Client readiness/presence, active card and complete sequence, result/branch decision, help/chat, pause/revision/end and reconnect; real supervision evidence. | A8 |
+| CRM-20 | Post-Round workspace | `cr/results`, `/analysis`, `/finalize`; S | Outcome correction/verification, follow-up completeness, dynamic totals, prepared Analysis, publish/finalize and Nurture handoff. | A9 |
+| CRM-21 | Major workspace | `c/major-readiness/:caseId`; S | Intake/source review, approved guidance/restrictions, shared Plan, change diff, reassessment/closure and propagation. | A9 |
+| CRM-22 | Support inbox | `/crm/support`; S | Prioritized scoped queue, claim/filter/saved view, SLA/age and next action, full conversation workbench. | A10 |
+| CRM-23 | Support workspace | Support selected case; S | Context/documents/conversation, internal notes where approved, draft assistance with evidence, send/resolve/reopen/escalate and audit. | A10 |
+| CRM-24 | Catalog research | `/crm/card-catalog`; S | Dense table/tile research, rich filters, source/insight freshness, compare and Add to Strategy in client context. | A6 |
+| CRM-25 | Card detail / insight | No dedicated CRM detail route; S | Current offer, history diff, sources/conflicts, internal insight and impact; correct capability-specific actions. | A6 |
+| CRM-26 | Calendar | `/crm/calendar`; B | Day/week/list, editable availability/exceptions/timezone, external busy and sync health, upcoming sessions/attention; replace preset-only configuration. | A8 |
+| CRM-27 | Appointment detail | `c/appointments/:appointmentId`; S | Client/Round/timezone, booking state, reschedule/cancel/no-show, reminders/sync errors and join readiness. | A8 |
+| CRM-28 | Consultant account/security | `/crm/account`, `/account/security`; S | Profile/timezone, availability/provider connection entry, sessions and step-up/recovery; retain unsaved work. | A8, A10 |
+
+Implementation families: PlatformPages; ClientContextPages; ReviewPages; PlanPages; CardCatalogPages; StrategyPages; LivePages; PostRoundPages; MajorReadinessPages; ConsultantSupportPage; ShellPages; ConsultantAppShell. Legacy `/crm/reviews`, `/crm/reviews/:clientId/:reviewId`, `/crm/readiness`, `/crm/sessions` also exist and need deliberate canonical routing.
+
+## Admin
+
+| ID | Screen | Current route / coverage | Sections and completion work | Wave |
+|---|---|---|---|---|
+| ADMIN-01 | Dashboard | `/admin`; S | System/service health, actionable exceptions, commerce/delivery/AI trends, owner and operational drill-down; no generic metric decoration. | A10 |
+| ADMIN-02 | Users | `/admin/users`; S | Search/filter/sort/page, roles/status/MFA summary, create/invite where approved, saved views and scoped actions. | A10 |
+| ADMIN-03 | User detail / roles / sessions | `/admin/users/:userId`; S | Identity/access, sessions/MFA, role/status change preview/reason/step-up, immutable audit and recovery. | A10, A12 |
+| ADMIN-04 | Assignment / temporary grants | `/admin/access-grants`; S | Primary assignment, bounded temporary capability/scope/time, conflict/expiry/revoke, actual effective access and event propagation. | A10, A12 |
+| ADMIN-05 | Services/products | `/admin/services`; S | Product/price/access status, catalog versions, availability and clear commercial operations. | A9, A10 |
+| ADMIN-06 | Service detail / pricing / entitlement | `/admin/services/:serviceProductId`; S | Typed versioned price/credits/entitlement rules, draft/effective diff, validation/activation, grandfathered purchases. | A9, A10 |
+| ADMIN-07 | Payments | `/admin/payments`; S | Provider/status/date/product/client filters, reconciled totals, pending/failure/refund/dispute queues and saved views. | A9, A10 |
+| ADMIN-08 | Payment detail / refund / dispute | `/admin/payments/:paymentId`; S | Original provider evidence, amount/ledger, attempts/webhooks, safe refund/dispute/reconcile actions, audit and entitlement effects. | A9, A10 |
+| ADMIN-09 | Gateways | Payments/integrations family; S | Three configured providers, one new-payment default, effective status/environment/health; historical provider retained. | A3, A9 |
+| ADMIN-10 | Gateway detail / connection test | `/admin/integrations/paypal`, `/stripe`, `/bofa`; S | Credentials as secret references, hosted-flow capabilities, test/configuration/default activation and explicit unsupported operation recovery. | A3, A9 |
+| ADMIN-11 | Catalog queue | `/admin/card-catalog`; S | New/changed/stale/conflicting/unmatched/asset issues, materiality/impact, claim/open/retrieve/dismiss and automatic resolution. | A6 |
+| ADMIN-12 | Product / offer management | Catalog embedded state; S | Identity/aliases/assets, candidate-v-current field diff, conflict/source evidence, dedupe/link/create, versioned publish and downstream impact. | A6 |
+| ADMIN-13 | Insight approval | `/admin/card-insights`; S | Draft/evidence/source versions, strategic uses/cautions, edit/approve/reject/regenerate/stale, correct professional authority. | A6 |
+| ADMIN-14 | AI operations | `/admin/ai/jobs`; S | Filters/queue/age/latency/cost/failures, process/entity context and safe retry/cancel; real provider observability. | A3, A10 |
+| ADMIN-15 | AI job detail | `/admin/ai/jobs/:jobId`; S | Attempts/input scope/output validity/evidence/exceptions, redacted diagnostics, retry/cancel/replay and downstream materialization state. | A3, A10 |
+| ADMIN-16 | AI processes / model profiles | `/admin/ai/processes`; S | Versioned instructions/models/limits/schema/authority, evaluation evidence, safe activation/rollback; UI settings must drive runtime. | A3, A10 |
+| ADMIN-17 | Sources | `/admin/sources`; S | Approved source scope/provider, retrieval/health/freshness, provenance, conflicts and controlled refresh configuration. | A6, A10 |
+| ADMIN-18 | Workflow rules | `/admin/workflow-rules`; S | Typed conditions/actions, draft/validate/simulate/diff/activate, effective version and history; current disabled-record creation is partial. | A10 |
+| ADMIN-19 | Notifications/templates | `/admin/notification-operations`; S | Template variables/editor/preview/test/activate, channel/provider, delivery attempts/failure/retry and preferences; complete real transports. | A3, A10 |
+| ADMIN-20 | Integrations overview | `/admin/integrations`; S | Configured/effective/degraded states, last actual success, actionable setup/diagnostics; toggles must reflect real capability. | A3, A10 |
+| ADMIN-21 | Integration detail | Non-payment detail incomplete; S | Provider-specific form, secret presence, connect/test/reconnect/disable, scoped effect/history; prove calendar/email/storage transport. | A3, A8, A10 |
+| ADMIN-22 | Scheduled jobs | `/admin/scheduled-jobs`; S | Schedule/timezone/enabled definitions, run/attempt history, lease/timeout diagnostics, manual enqueue/retry and effective schedule management. | A10, A12 |
+| ADMIN-23 | Audit | `/admin/audit-events`, `/:eventId`; S | Search/date/actor/resource, safe event detail and related object, immutable history, retention/redaction and authorized export if approved. | A10, A12 |
+| ADMIN-24 | Security events | `/admin/security-events`, `/:eventId`; S | Severity/category/actor scope, context and response workflow, session/access links, redacted diagnostics. | A10, A12 |
+| ADMIN-25 | Retention/data governance | `/admin/retention`; S | Policy/holds, dry-run affected scope, reviewed execution, failed-item retry, audit and backup/restore implications; request fulfillment. | A10, A12 |
+| ADMIN-26 | Operational reporting | `/admin/reports`; S | Revenue/service/funnel/throughput/backlog/AI/support metrics with exact definitions, date range, useful charts and authorized drill-down. | A10 |
+| ADMIN-27 | System settings | `/admin/settings`; S | Effective capability switches, version/reason/diff and activation, correct runtime effect, failed-load state must not imply known enabled status. | A10, A12 |
+
+Implementation: `pages/Admin*`, admin shared components, `ShellPages.tsx`, `apps/api/src/admin`, `operations`, `commerce`, `cards`, `ai`, authorization and scheduler/worker packages. `/admin/system-health` is an additional runtime route; include provider/worker/outbox/DB/Redis readiness and actionable degraded states in A10/A12. Admin account/security routes reuse staff components.
+
+## Shared interactions and missing states
+
+| Shared element | Required behavior / evidence |
+|---|---|
+| Shells and navigation | Role-specific hierarchy, consistent selected state and breadcrumbs, persistent Client 360 context, live dock, responsive drawer, focus restoration and no nested-scroll traps. |
+| Collections | Domain-appropriate density, server paging/filtering, stable sort, meaningful empty/error state, named saved views; bounded scrolling only when it helps comparison or persistent context. |
+| Draft authoring | Debounced save with explicit status, server versions, conflict diff, safe navigation/resume, final approval separate from draft save. |
+| Consequential actions | Review exact effect, reason where required, pending/result/error recovery, stable idempotency across retries, no success label before durable commit. |
+| Card drawer | Shared catalog search/manual fallback, scoped balance/limit/type fields, duplicate/match history, no raw full account numbers. |
+| Outcome drawer | Typed field schema by action/result; updates original application/fact transactionally; unable/needs-verification states. |
+| Source viewer | Secure protected content, source/page reference, usable zoom/navigation, expiry/retry/retention, accessible alternate text/metadata. |
+| Data visuals | Meaningful denominators and source dates; neutral score scale if model range unknown; current/report data never silently mixed; text alternatives and reduced motion. |
+| Notifications and live updates | Correct destination and authorized resource, changed query keys refreshed, meaningful owner/action, reconnect and lost-scope handling. |
+
+The next development pass expands each row into exact field/query/command/state contracts before implementation and attaches evidence to this register. No row is “production complete” at this audit baseline.

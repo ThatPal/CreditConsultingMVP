@@ -11,3 +11,6 @@ coverage/
 *.log
 .DS_Store
 apps/api/src/generated/
+
+# Private planning references stay local; never publish conversation/Drive dumps.
+docs/astra/sources/
