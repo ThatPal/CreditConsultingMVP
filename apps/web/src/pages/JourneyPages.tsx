@@ -277,7 +277,7 @@ export function JourneySummary({
                     component={Link}
                     to={record.href}
                     endIcon={<ArrowForwardRounded />}
-                    sx={{ alignSelf: 'flex-start', px: 0 }}
+                    sx={{ alignSelf: 'flex-start' }}
                   >
                     {record.link}
                   </Button>
