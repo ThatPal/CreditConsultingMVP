@@ -1,8 +1,9 @@
 # POAR Rebuild D8 — Whole Product Owner Acceptance & Final Maturity Audit
 
-Status: **COMPLETE — exact-head CI pending at report commit**  
+Status: **COMPLETE — accepted for physical review**  
 Branch: `rebuild/authenticated-product-poar`  
 Accepted start: `b517bd2d23a89c88ce6142f2599d660f4ac9156e`
+Implementation/report boundary: `917942cfe216e41bddc36c7126f788ea9e0d2d98`
 
 ## Outcome
 
@@ -51,7 +52,7 @@ The current Fall 2026 Round deliberately demonstrates a pre-session-end state. I
 - Total clean final local test evidence: **107 files / 419 tests passed**.
 - Repository typecheck, ESLint and recursive production build passed. The recursive build includes web, API, worker, runtime and shared packages. Vite retains its existing non-blocking main-chunk advisory.
 - Populated Client, Consultant and Admin browser walkthroughs passed on `http://localhost:5185`; API health remains at `http://localhost:3008/api/health/live`.
-- Exact-final-head GitHub CI is run after the report commit is pushed and recorded in the synchronized handoff.
+- GitHub CI passed on the implementation/report boundary: [run 34525032671](https://github.com/ThatPal/CreditConsultingMVP/actions/runs/34525032671). The final report-only synchronization commit receives its own exact-final-head CI before handoff.
 
 ## Boundaries
 
