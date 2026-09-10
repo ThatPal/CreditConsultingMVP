@@ -22,7 +22,6 @@ import { presentStatus } from '../components/common/statusVocabulary';
 import { CollectionSurface } from '../components/common/CollectionSurface';
 import {
   ArchetypeCanvas,
-  DependencyMap,
   DraftPublicationStatus,
   ProgressArc,
   StickyActionBar,
@@ -47,14 +46,37 @@ type Item = {
   pathKeys: string[];
 };
 
+type Sources = {
+  sourceReviewId: string | null;
+  sourceReviewVersion: number | null;
+  sourceGoalRevisionId: string | null;
+  sourceProfileVersion: number | null;
+};
+type Dependency = {
+  dependentKey: string;
+  prerequisiteKey: string;
+  groupKey: string;
+  mode: 'ALL' | 'ANY';
+};
 type BuilderResponse = {
   plan: null | {
     id: string;
     status: string;
+    purpose: string;
     versions: Array<{
       version: number;
       optimisticVersion: number;
       sourceProfileVersion: number | null;
+      sourceReviewId: string | null;
+      sourceReviewVersion: number | null;
+      sourceGoalRevisionId: string | null;
+      paths: Array<{
+        key: string;
+        clientLabel: string;
+        internalLabel: string | null;
+        status: string;
+        sortOrder: number;
+      }>;
       items: Array<{
         stableKey: string;
         type: Item['type'];
@@ -65,12 +87,18 @@ type BuilderResponse = {
         consultantRationale: string | null;
         sortOrder: number;
         required: boolean;
+        prerequisites: Array<{
+          prerequisiteItem: { stableKey: string };
+          groupKey: string;
+          mode: 'ALL' | 'ANY';
+        }>;
+        outcomeSchema?: Record<string, unknown> | null;
         pathMemberships: Array<{ path: { key: string } }>;
       }>;
     }>;
     title: string;
   };
-  context: { review: null | { id: string } };
+  context: { review: null | { id: string }; sources?: Sources };
 };
 
 type ClientPlanItem = {
@@ -144,14 +172,40 @@ export function ConsultantPlanBuilderPage() {
   });
   const [title, setTitle] = useState('Credit preparation plan');
   const [items, setItems] = useState<Item[]>(starterItems);
+  const [dependencies, setDependencies] = useState<Dependency[]>([
+    {
+      dependentKey: 'utilization-outcome',
+      prerequisiteKey: 'review-guidance',
+      groupKey: 'default',
+      mode: 'ALL',
+    },
+    {
+      dependentKey: 'consultant-check',
+      prerequisiteKey: 'utilization-outcome',
+      groupKey: 'default',
+      mode: 'ALL',
+    },
+  ]);
+  const [reconcileReason, setReconcileReason] = useState('');
   useEffect(() => {
     const plan = query.data?.plan;
     const version = plan?.versions[0];
     if (!plan || !version) return;
     setTitle(plan.title);
+    setDependencies(
+      version.items.flatMap((item) =>
+        (item.prerequisites ?? []).map((edge) => ({
+          dependentKey: item.stableKey,
+          prerequisiteKey: edge.prerequisiteItem.stableKey,
+          groupKey: edge.groupKey,
+          mode: edge.mode,
+        })),
+      ),
+    );
     setItems(
       version.items.map((item) => ({
         ...item,
+        outcomeSchema: item.outcomeSchema ?? undefined,
         pathKeys: item.pathMemberships.map(({ path }) => path.key),
       })),
     );
@@ -159,22 +213,20 @@ export function ConsultantPlanBuilderPage() {
   const draft = useMemo(
     () => ({
       title,
-      purpose: 'PREPARATION',
-      sourceReviewId: query.data?.context.review?.id ?? null,
-      sourceReviewVersion: 1,
-      sourceGoalRevisionId: null,
-      sourceProfileVersion: 1,
+      purpose: query.data?.plan?.purpose ?? 'PREPARATION',
+      sourceReviewId: query.data?.plan
+        ? (query.data.plan.versions[0]?.sourceReviewId ?? null)
+        : (query.data?.context.sources?.sourceReviewId ?? null),
+      sourceReviewVersion: query.data?.plan?.versions[0]?.sourceReviewVersion ?? null,
+      sourceGoalRevisionId: query.data?.plan
+        ? (query.data.plan.versions[0]?.sourceGoalRevisionId ?? null)
+        : (query.data?.context.sources?.sourceGoalRevisionId ?? null),
+      sourceProfileVersion: query.data?.plan?.versions[0]?.sourceProfileVersion ?? null,
+      paths: query.data?.plan?.versions[0]?.paths ?? [],
       items,
-      dependencies:
-        items.length > 1
-          ? items.slice(1).map((item, index) => ({
-              dependentKey: item.stableKey,
-              prerequisiteKey: items[index]!.stableKey,
-              mode: 'ALL',
-            }))
-          : [],
+      dependencies,
     }),
-    [items, query.data, title],
+    [items, dependencies, query.data, title],
   );
   const save = useMutation({
     mutationFn: async () => {
@@ -214,9 +266,9 @@ export function ConsultantPlanBuilderPage() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          sourceProfileVersion: (version.sourceProfileVersion ?? 0) + 1,
+          ...query.data?.context.sources,
           material: true,
-          reason: 'Consultant confirmed a material source change.',
+          reason: reconcileReason.trim(),
         }),
       });
     },
@@ -230,7 +282,7 @@ export function ConsultantPlanBuilderPage() {
       <PageHeader
         eyebrow="Client plan"
         title="Plan Builder"
-        description="Build a typed, dependency-aware client Plan. Display order never changes prerequisite truth."
+        description="Write the client’s steps, set ownership, and review the Plan before publishing."
       />
       {save.isError && (
         <Alert severity="error">
@@ -265,8 +317,8 @@ export function ConsultantPlanBuilderPage() {
               >
                 <Typography variant="h6">Plan structure</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                  Dependencies follow this canonical order. Reordering changes display order, not
-                  prerequisite truth.
+                  Items appear in this display order. Saved prerequisites are preserved separately
+                  when you edit.
                 </Typography>
                 <Stack spacing={1} component="ol" sx={{ pl: 2 }}>
                   {items.map((item, index) => (
@@ -277,113 +329,115 @@ export function ConsultantPlanBuilderPage() {
                 </Stack>
               </Box>
               <Stack spacing={2} aria-label="Plan item authoring">
-            {items.map((item, index) => (
-              <Card key={item.stableKey} variant="outlined">
-                <CardContent>
-                  <Stack spacing={2}>
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                      <TextField
-                        select
-                        label="Type"
-                        value={item.type}
-                        onChange={(event) =>
-                          setItems((current) =>
-                            current.map((candidate, i) =>
-                              i === index
-                                ? { ...candidate, type: event.target.value as Item['type'] }
-                                : candidate,
-                            ),
-                          )
-                        }
-                      >
-                        {['ACTION', 'GUIDANCE', 'MILESTONE'].map((value) => (
-                          <MenuItem key={value} value={value}>
-                            {value}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                      <TextField
-                        label="Client title"
-                        fullWidth
-                        value={item.clientTitle}
-                        onChange={(event) =>
-                          setItems((current) =>
-                            current.map((candidate, i) =>
-                              i === index
-                                ? { ...candidate, clientTitle: event.target.value }
-                                : candidate,
-                            ),
-                          )
-                        }
-                      />
-                    </Stack>
-                    <TextField
-                      label="Client guidance"
-                      multiline
-                      value={item.clientBody ?? ''}
-                      onChange={(event) =>
-                        setItems((current) =>
-                          current.map((candidate, i) =>
-                            i === index
-                              ? { ...candidate, clientBody: event.target.value }
-                              : candidate,
-                          ),
-                        )
-                      }
-                    />
-                    <TextField
-                      label="Consultant-only rationale"
-                      multiline
-                      value={item.consultantRationale ?? ''}
-                      onChange={(event) =>
-                        setItems((current) =>
-                          current.map((candidate, i) =>
-                            i === index
-                              ? { ...candidate, consultantRationale: event.target.value }
-                              : candidate,
-                          ),
-                        )
-                      }
-                    />
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        disabled={index === 0}
-                        onClick={() =>
-                          setItems((current) => {
-                            const next = [...current];
-                            [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
-                            return next.map((value, i) => ({ ...value, sortOrder: i }));
-                          })
-                        }
-                      >
-                        Move up
-                      </Button>
-                      <Button
-                        color="error"
-                        onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
-                      >
-                        Remove
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </CardContent>
-              </Card>
-            ))}
-            <Button
-              onClick={() =>
-                setItems((current) => [
-                  ...current,
-                  {
-                    ...starterItems[0]!,
-                    stableKey: `item-${crypto.randomUUID()}`,
-                    clientTitle: 'New guidance',
-                    sortOrder: current.length,
-                  },
-                ])
-              }
-            >
-              Add typed item
-            </Button>
+                {items.map((item, index) => (
+                  <Card key={item.stableKey} variant="outlined">
+                    <CardContent>
+                      <Stack spacing={2}>
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                          <TextField
+                            select
+                            label="Type"
+                            value={item.type}
+                            onChange={(event) =>
+                              setItems((current) =>
+                                current.map((candidate, i) =>
+                                  i === index
+                                    ? { ...candidate, type: event.target.value as Item['type'] }
+                                    : candidate,
+                                ),
+                              )
+                            }
+                          >
+                            {['ACTION', 'GUIDANCE', 'MILESTONE'].map((value) => (
+                              <MenuItem key={value} value={value}>
+                                {value}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            label="Client title"
+                            fullWidth
+                            value={item.clientTitle}
+                            onChange={(event) =>
+                              setItems((current) =>
+                                current.map((candidate, i) =>
+                                  i === index
+                                    ? { ...candidate, clientTitle: event.target.value }
+                                    : candidate,
+                                ),
+                              )
+                            }
+                          />
+                        </Stack>
+                        <TextField
+                          label="Client guidance"
+                          multiline
+                          value={item.clientBody ?? ''}
+                          onChange={(event) =>
+                            setItems((current) =>
+                              current.map((candidate, i) =>
+                                i === index
+                                  ? { ...candidate, clientBody: event.target.value }
+                                  : candidate,
+                              ),
+                            )
+                          }
+                        />
+                        <TextField
+                          label="Consultant-only rationale"
+                          multiline
+                          value={item.consultantRationale ?? ''}
+                          onChange={(event) =>
+                            setItems((current) =>
+                              current.map((candidate, i) =>
+                                i === index
+                                  ? { ...candidate, consultantRationale: event.target.value }
+                                  : candidate,
+                              ),
+                            )
+                          }
+                        />
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            disabled={index === 0}
+                            onClick={() =>
+                              setItems((current) => {
+                                const next = [...current];
+                                [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
+                                return next.map((value, i) => ({ ...value, sortOrder: i }));
+                              })
+                            }
+                          >
+                            Move up
+                          </Button>
+                          <Button
+                            color="error"
+                            onClick={() =>
+                              setItems((current) => current.filter((_, i) => i !== index))
+                            }
+                          >
+                            Remove
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                ))}
+                <Button
+                  onClick={() =>
+                    setItems((current) => [
+                      ...current,
+                      {
+                        ...starterItems[0]!,
+                        stableKey: `item-${crypto.randomUUID()}`,
+                        clientTitle: 'New guidance',
+                        sortOrder: current.length,
+                      },
+                    ])
+                  }
+                >
+                  Add typed item
+                </Button>
               </Stack>
               <Box
                 component="aside"
@@ -420,6 +474,22 @@ export function ConsultantPlanBuilderPage() {
               </Box>
             </Box>
             <Divider />
+            <TextField
+              label="Reason for source review"
+              value={reconcileReason}
+              onChange={(event) => setReconcileReason(event.target.value)}
+              helperText="Compare the Plan with the latest published review and saved goal revision. Describe the material change before creating a replacement draft."
+            />
+            {reconcile.isError && (
+              <Alert severity="error">
+                The source review could not be saved. Try again after checking the Plan.
+              </Alert>
+            )}
+            {reconcile.isSuccess && (
+              <Alert severity="success">
+                Source comparison completed. Plan details have been refreshed.
+              </Alert>
+            )}
             <Stack direction="row" spacing={2}>
               <Button variant="contained" onClick={() => save.mutate()} disabled={save.isPending}>
                 Save draft
@@ -433,7 +503,12 @@ export function ConsultantPlanBuilderPage() {
                 Approve Plan
               </Button>
               <Button
-                disabled={!query.data?.plan || reconcile.isPending}
+                disabled={
+                  !query.data?.plan ||
+                  !query.data.context.sources ||
+                  !reconcileReason.trim() ||
+                  reconcile.isPending
+                }
                 onClick={() => reconcile.mutate()}
               >
                 Reconcile source change
@@ -495,10 +570,20 @@ export function ClientPlanPage() {
       </Stack>
     );
   const plan = query.data.plan;
-  const currentFocus = plan.version.items.find((item) =>
-    ['AVAILABLE', 'IN_PROGRESS', 'AWAITING_VERIFICATION'].includes(item.status),
-  );
-  const completed = plan.version.items.filter((item) =>
+  const canAct = ['ACTIVE', 'APPROVED'].includes(plan.status) && !plan.version.staleAt;
+  const currentFocus = canAct
+    ? (plan.version.items.find(
+        (item) =>
+          item.owner === 'CLIENT' &&
+          item.type !== 'MILESTONE' &&
+          ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
+      ) ?? plan.version.items.find((item) => item.status === 'AWAITING_VERIFICATION'))
+    : undefined;
+  const visibleItems = plan.version.items.filter((item) => item.status !== 'CANCELLED');
+  const openActions = visibleItems.filter(
+    (item) => item.type === 'ACTION' && item.status !== 'COMPLETED',
+  ).length;
+  const completed = visibleItems.filter((item) =>
     ['COMPLETED', 'VERIFIED'].includes(item.status),
   ).length;
   return (
@@ -506,7 +591,7 @@ export function ClientPlanPage() {
       <PageHeader
         eyebrow="Your plan"
         title={plan.title}
-        description="Follow the available steps. Locked milestones open only when their prerequisites are satisfied."
+        description="Your preparation steps, supporting guidance, and consultant checkpoints in one place."
       />
       {plan.version.staleAt && (
         <Alert severity="warning">
@@ -519,7 +604,11 @@ export function ClientPlanPage() {
           requirements.
         </Alert>
       )}
-      <ArchetypeCanvas archetype="guided-decision" role="client">
+      <ArchetypeCanvas
+        archetype="guided-decision"
+        role="client"
+        sx={{ borderRadius: { xs: '20px', md: '20px' } }}
+      >
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={3}
@@ -528,14 +617,22 @@ export function ClientPlanPage() {
           <Stack spacing={1.5} sx={{ flex: 1 }}>
             <Typography variant="overline">Current focus</Typography>
             <Typography variant="h3">
-              {currentFocus?.title ?? 'Waiting for the next verified step'}
+              {plan.status === 'STALE'
+                ? 'Your consultant is reviewing this Plan'
+                : (currentFocus?.title ??
+                  (completed === visibleItems.length && visibleItems.length > 0
+                    ? 'Your Plan steps are complete'
+                    : 'Your consultant owns the next step'))}
             </Typography>
             <Typography color="text.secondary">
               {currentFocus?.body ??
-                'Completed history remains preserved while your consultant prepares the next action.'}
+                (completed === visibleItems.length && visibleItems.length > 0
+                  ? 'Your completed work is saved below. Return Home to see what comes next in your journey.'
+                  : 'Your completed work is saved below. Check the owner and status of each remaining step.')}
             </Typography>
             <Typography variant="body2">
-              Path progress: {completed} of {plan.version.items.length} steps completed
+              Actions remaining: {openActions} · {completed} of {visibleItems.length} total steps
+              completed
             </Typography>
             <DraftPublicationStatus
               state="published"
@@ -544,7 +641,7 @@ export function ClientPlanPage() {
             />
           </Stack>
           <ProgressArc
-            value={plan.version.items.length ? (completed / plan.version.items.length) * 100 : 0}
+            value={visibleItems.length ? (completed / visibleItems.length) * 100 : 0}
             label="Plan progress"
           />
         </Stack>
@@ -557,23 +654,26 @@ export function ClientPlanPage() {
           userMustAct={false}
         />
       )}
-      <DependencyMap
-        title="Plan readiness"
-        items={plan.version.items
-          .slice(0, 5)
-          .map((item) => ({
-            label: item.title,
-            ready: ['COMPLETED', 'VERIFIED', 'AVAILABLE', 'IN_PROGRESS'].includes(item.status),
-          }))}
-      />
       <Typography variant="h3">Guidance, actions & milestones</Typography>
-      <CollectionSurface title={`Plan actions · ${plan.version.items.length}`} mode="bounded">
-        {plan.version.items.map((item) => (
-          <Card key={item.id} id={`plan-item-${item.id}`}>
+      <CollectionSurface title={`Plan steps · ${visibleItems.length}`} mode="bounded">
+        {visibleItems.map((item) => (
+          <Box
+            key={item.id}
+            id={`plan-item-${item.id}`}
+            sx={{ borderBottom: 1, borderColor: 'divider', scrollMarginTop: 100, py: 1 }}
+          >
             <CardContent>
               <Stack spacing={1}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-                  <Typography variant="h6">{item.title}</Typography>
+                <Stack
+                  direction="row"
+                  sx={{ justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}
+                >
+                  <Stack>
+                    <Typography variant="overline" color="text.secondary">
+                      {item.type.toLowerCase()}
+                    </Typography>
+                    <Typography variant="h6">{item.title}</Typography>
+                  </Stack>
                   <StatusChip {...presentStatus(item.status)} />
                 </Stack>
                 <Typography>{item.body}</Typography>
@@ -596,40 +696,43 @@ export function ClientPlanPage() {
                     Go to the related step
                   </Button>
                 )}
-                {item.status === 'AVAILABLE' && item.type !== 'MILESTONE' && (
-                  <Stack spacing={1}>
-                    <TextField
-                      label={
-                        item.completionMode === 'STRUCTURED_OUTCOME'
-                          ? 'What changed?'
-                          : 'Optional note'
-                      }
-                      value={outcomes[item.id] ?? ''}
-                      onChange={(event) =>
-                        setOutcomes((current) => ({ ...current, [item.id]: event.target.value }))
-                      }
-                    />
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        variant="contained"
-                        disabled={
-                          act.isPending ||
-                          (item.completionMode === 'STRUCTURED_OUTCOME' &&
-                            !outcomes[item.id]?.trim())
+                {canAct &&
+                  item.owner === 'CLIENT' &&
+                  ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
+                  item.type !== 'MILESTONE' && (
+                    <Stack spacing={1}>
+                      <TextField
+                        label={
+                          item.completionMode === 'STRUCTURED_OUTCOME'
+                            ? 'What changed?'
+                            : 'Optional note'
                         }
-                        onClick={() => act.mutate({ item, action: 'COMPLETE' })}
-                      >
-                        {item.type === 'GUIDANCE' ? 'I understand' : 'Report complete'}
-                      </Button>
-                      <Button
-                        disabled={act.isPending}
-                        onClick={() => act.mutate({ item, action: 'UNABLE' })}
-                      >
-                        I need help
-                      </Button>
+                        value={outcomes[item.id] ?? ''}
+                        onChange={(event) =>
+                          setOutcomes((current) => ({ ...current, [item.id]: event.target.value }))
+                        }
+                      />
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          variant="contained"
+                          disabled={
+                            act.isPending ||
+                            (item.completionMode === 'STRUCTURED_OUTCOME' &&
+                              !outcomes[item.id]?.trim())
+                          }
+                          onClick={() => act.mutate({ item, action: 'COMPLETE' })}
+                        >
+                          {item.type === 'GUIDANCE' ? 'I understand' : 'Report complete'}
+                        </Button>
+                        <Button
+                          disabled={act.isPending}
+                          onClick={() => act.mutate({ item, action: 'UNABLE' })}
+                        >
+                          I need help
+                        </Button>
+                      </Stack>
                     </Stack>
-                  </Stack>
-                )}
+                  )}
                 {item.status === 'AWAITING_VERIFICATION' && (
                   <Alert severity="info">
                     Your update was recorded and is awaiting consultant verification.
@@ -637,7 +740,7 @@ export function ClientPlanPage() {
                 )}
               </Stack>
             </CardContent>
-          </Card>
+          </Box>
         ))}
       </CollectionSurface>
       {currentFocus && currentFocus.status === 'AVAILABLE' && (
@@ -650,9 +753,11 @@ export function ClientPlanPage() {
             <Button
               variant="contained"
               onClick={() =>
-                document
-                  .getElementById(`plan-item-${currentFocus.id}`)
-                  ?.scrollIntoView({ behavior: 'smooth' })
+                document.getElementById(`plan-item-${currentFocus.id}`)?.scrollIntoView({
+                  behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? 'auto'
+                    : 'smooth',
+                })
               }
             >
               Start {currentFocus.title}

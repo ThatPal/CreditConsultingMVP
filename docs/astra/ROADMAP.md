@@ -145,7 +145,9 @@ Run a limited real-use pilot with the **completed feature set**, approved client
 
 Production acceptance is a recorded business and technical decision, not an automatic promotion after deployment. The user authorizes publishing/deployment when the concrete release candidate and evidence are ready.
 
-## First implementation package, ready to start next
+## First implementation package, underway
+
+The user authorized development. [Implementation pass 1](IMPLEMENTATION-01.md) records the implemented Home/Credit Center/Plan changes and verification. A1/A2 remain in progress; the remaining source, graph-authoring, interaction and state requirements below are not waived.
 
 1. Verify Astra path/branch/runtime boundary using WORKSPACE.md; capture baseline and start A1.
 2. Finalize the source conflict decisions and next-action/state matrix, with exact primary-goal/currency/source-date terminology.

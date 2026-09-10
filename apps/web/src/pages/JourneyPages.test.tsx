@@ -37,10 +37,12 @@ describe('POAR D2 client financial journey', () => {
         </MemoryRouter>
       </ThemeProvider>,
     );
-    expect(
-      screen.getByRole('link', { name: /continue complete your plan action/i }),
-    ).toHaveAttribute('href', '/app/plan');
-    expect(screen.getByText(/factual target \$50,000/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /view next step/i })).toHaveAttribute(
+      'href',
+      '/app/plan',
+    );
+    expect(screen.getByText('Desired credit amount')).toBeInTheDocument();
+    expect(screen.getByText('$50,000')).toBeInTheDocument();
     expect(screen.getByLabelText('Your financial journey')).toBeInTheDocument();
     expect(screen.queryByText(/approval probability|score improvement/i)).not.toBeInTheDocument();
   });

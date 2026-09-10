@@ -31,9 +31,7 @@ describe('Sprint 8.4 published Credit Center', () => {
       }),
     );
     renderPage();
-    expect(
-      await screen.findByText(/published Credit Review is being prepared/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No published Credit Review yet/i)).toBeInTheDocument();
     expect(screen.queryByText('718')).not.toBeInTheDocument();
   });
 
@@ -93,7 +91,10 @@ describe('Sprint 8.4 published Credit Center', () => {
     );
     expect(
       await screen.findByRole('link', { name: /preview secure source report/i }),
-    ).toHaveAttribute('href', '/api/v1/reviews/report-documents/document-1/content');
+    ).toHaveAttribute(
+      'href',
+      expect.stringContaining('/api/v1/reviews/report-documents/document-1/content'),
+    );
   });
 
   test('renders only factual published score and utilization visualizations with provenance', async () => {
@@ -117,12 +118,11 @@ describe('Sprint 8.4 published Credit Center', () => {
       ),
     );
     renderPage();
-    expect(
-      await screen.findByRole('img', { name: /credit score 720 on a scale from 300 to 850/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('img', { name: /credit utilization 24.0 percent/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('720')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /credit utilization 24 percent/i })).toBeInTheDocument();
+    expect(screen.getByText('Equifax')).toBeInTheDocument();
+    expect(screen.getByText('TransUnion')).toBeInTheDocument();
+    expect(screen.getAllByText('Not reported').length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText(/approval probability|score improvement/i)).not.toBeInTheDocument();
   });
 });

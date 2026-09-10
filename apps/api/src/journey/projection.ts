@@ -8,7 +8,38 @@ export type FocusInput = {
   activeNurture: { reasonCode: string } | null;
   activeCycle: { id: string; currentStage: ApplicationCycleStage } | null;
   hasGoal: boolean;
+  round?: { id: string; status: string; strategy: { status: string } | null } | null;
+  plan?: ReturnType<typeof summarizePlan>;
 };
+
+export function summarizePlan(
+  plan: {
+    status: string;
+    version: {
+      items: Array<{ id: string; type: string; status: string; owner: string; title: string }>;
+    };
+  } | null,
+) {
+  const items = plan?.version.items ?? [];
+  const actions = items.filter((item) => item.type === 'ACTION' && item.status !== 'CANCELLED');
+  return {
+    status: plan?.status ?? 'NOT_AVAILABLE',
+    openActionCount: actions.filter((item) => item.status !== 'COMPLETED').length,
+    completedActionCount: actions.filter((item) => item.status === 'COMPLETED').length,
+    totalActionCount: actions.length,
+    awaitingVerificationCount: items.filter((item) => item.status === 'AWAITING_VERIFICATION')
+      .length,
+    nextClientItem:
+      plan && ['ACTIVE', 'APPROVED'].includes(plan.status)
+        ? (items.find(
+            (item) =>
+              item.owner === 'CLIENT' &&
+              item.type !== 'MILESTONE' &&
+              ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
+          ) ?? null)
+        : null,
+  };
+}
 
 const stageFocus: Record<ApplicationCycleStage, { code: string; title: string; action: string }> = {
   STARTED: { code: 'CONFIRM_GOAL', title: 'Confirm your goal', action: '/app/goals' },
@@ -70,26 +101,87 @@ const stageFocus: Record<ApplicationCycleStage, { code: string; title: string; a
 };
 
 export function resolveCurrentFocus(input: FocusInput) {
+  if (input.round?.status === 'BLOCKED')
+    return {
+      code: 'ROUND_BLOCKED',
+      title: 'Your round needs a consultant review',
+      detail: 'Your consultant must resolve a restriction before applications can continue.',
+      owner: 'CONSULTANT',
+      actionLabel: 'View round status',
+      action: '/app/application-rounds',
+    };
+  if (input.round?.strategy?.status === 'STALE')
+    return {
+      code: 'STRATEGY_STALE',
+      title: 'Your consultant is updating your strategy',
+      detail:
+        'Information used to prepare your strategy has changed. Wait for the updated strategy before applying.',
+      owner: 'CONSULTANT',
+      actionLabel: 'View round status',
+      action: '/app/application-rounds',
+    };
+  if (input.plan?.status === 'STALE')
+    return {
+      code: 'PLAN_STALE',
+      title: 'Your consultant is reviewing your Plan',
+      detail:
+        'Your completed work is saved. The Plan needs review after a change to its source information.',
+      owner: 'CONSULTANT',
+      actionLabel: 'View your Plan',
+      action: '/app/plan',
+    };
+  if (input.plan?.nextClientItem)
+    return {
+      code: 'PLAN_ACTION',
+      title: input.plan.nextClientItem.title,
+      detail: 'Continue this available step in your Plan.',
+      owner: 'CLIENT',
+      actionLabel: 'Continue your Plan',
+      action: '/app/plan',
+    };
+  if (input.plan?.awaitingVerificationCount)
+    return {
+      code: 'PLAN_VERIFICATION',
+      title: 'Your consultant is checking your update',
+      detail: 'Your update is saved. Your consultant owns the next step.',
+      owner: 'CONSULTANT',
+      actionLabel: 'View your Plan',
+      action: '/app/plan',
+    };
   if (input.activeNurture)
     return {
       code: 'NURTURE',
       title: 'Continue your preparation period',
       detail: input.activeNurture.reasonCode.replaceAll('_', ' ').toLowerCase(),
       action: '/app/journey',
+      owner: 'CLIENT',
+      actionLabel: 'View your journey',
     };
-  if (input.activeCycle) return { ...stageFocus[input.activeCycle.currentStage], detail: null };
+  if (input.activeCycle)
+    return {
+      ...stageFocus[input.activeCycle.currentStage],
+      detail: null,
+      owner: ['CONSULTANT_DECISION', 'STRATEGY'].includes(input.activeCycle.currentStage)
+        ? 'CONSULTANT'
+        : 'CLIENT',
+      actionLabel: 'View next step',
+    };
   if (input.hasGoal)
     return {
       code: 'READY_FOR_CYCLE',
       title: 'Your goal is ready for the next guided step',
       detail: 'A new application cycle has not started.',
       action: '/app/journey',
+      owner: 'CONSULTANT',
+      actionLabel: 'View your journey',
     };
   return {
     code: 'SET_GOAL',
     title: 'Choose your primary credit goal',
     detail: 'Your journey starts with a clear goal.',
     action: '/app/goals',
+    owner: 'CLIENT',
+    actionLabel: 'Set your desired credit amount',
   };
 }
 

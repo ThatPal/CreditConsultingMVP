@@ -75,6 +75,6 @@ Inherited `review:phase*`, `review:setup` and old review scripts remain historic
 - Installed dependencies, generated/build artifacts and seeded synthetic Astra data. These generated/private resources are ignored.
 - With explicit follow-up authorization, enrolled the synthetic Admin account's MFA and completed the Admin browser audit. Its setup key is in ignored `.tmp/astra-runtime/demo-admin-mfa.json` for local test access only; never stage or publish it. A retention preview recorded zero affected records; no cleanup was executed.
 
-The paid-service/report/AI/Plan/design defects described in the audit are intentionally **not fixed yet**. The next authorized development step is A1/A2 in ROADMAP.md. Preserve the baseline evidence while implementing fixes; do not silently rewrite the original audit as if the baseline defects never existed.
+The user has now authorized development. A1/A2 are underway; see IMPLEMENTATION-01.md for the implemented reference slice, evidence, and remaining work. The paid-service/report/AI and broader production defects remain open. Preserve baseline audit evidence rather than rewriting it as if the defects never existed.
 
 No raw private sources, secrets or runtime data should be staged or pushed. Any future hosting, CI environment, provider webhook, database, object store or domain created for Astra must likewise be separately scoped from Sol/non-AI.

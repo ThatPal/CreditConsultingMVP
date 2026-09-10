@@ -16,9 +16,27 @@ describe('targeted realtime invalidation', () => {
   test('deduplicates overlapping query roots', () => {
     expect(queryRootsForLiveDomains(['plan', 'plan'])).toEqual([
       'plan',
+      'client-plan',
+      'plan-builder',
       'post-round',
       'post-round-follow-ups',
+      'portal-home',
+      'portal-journey',
     ]);
+  });
+
+  test('publication refreshes client and consultant Credit Centers and Home', () => {
+    for (const domain of ['review', 'credit-profile'] as const) {
+      expect(queryRootsForLiveDomains([domain])).toEqual(
+        expect.arrayContaining([
+          'published-credit-center',
+          'consultant-published-credit-center',
+          'portal-home',
+          'portal-journey',
+        ]),
+      );
+    }
+    expect(queryRootsForLiveDomains(['home'])).toContain('portal-home');
   });
 
   test('never describes a reconnecting transport as live', () => {

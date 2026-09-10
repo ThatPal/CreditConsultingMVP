@@ -1,11 +1,11 @@
 import { ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { apiRequest } from '../auth/api';
 import { theme } from '../theme';
-import { ConsultantPlanBuilderPage } from './PlanPages';
+import { ClientPlanPage, ConsultantPlanBuilderPage } from './PlanPages';
 
 vi.mock('../auth/api', () => ({ apiRequest: vi.fn() }));
 const mockedApi = vi.mocked(apiRequest);
@@ -13,17 +13,74 @@ const mockedApi = vi.mocked(apiRequest);
 describe('consultant Plan Builder continuity', () => {
   beforeEach(() => mockedApi.mockReset());
 
+  test.each([
+    { status: 'STALE', owner: 'CLIENT', staleAt: '2026-09-10T12:00:00Z' },
+    { status: 'ACTIVE', owner: 'CONSULTANT', staleAt: null },
+  ])(
+    'does not offer client completion for $status / $owner work',
+    async ({ status, owner, staleAt }) => {
+      mockedApi.mockResolvedValue({
+        plan: {
+          id: 'plan',
+          title: 'Preparation',
+          status,
+          version: {
+            staleAt,
+            items: [
+              {
+                id: 'item',
+                type: 'ACTION',
+                completionMode: 'ACKNOWLEDGEMENT',
+                status: 'AVAILABLE',
+                owner,
+                title: 'Check the source',
+                body: 'Review the source record.',
+                prerequisites: [],
+                deepLink: null,
+              },
+            ],
+          },
+        },
+      });
+      render(
+        <ThemeProvider theme={theme}>
+          <QueryClientProvider client={new QueryClient()}>
+            <MemoryRouter>
+              <ClientPlanPage />
+            </MemoryRouter>
+          </QueryClientProvider>
+        </ThemeProvider>,
+      );
+      await screen.findByRole('heading', { name: 'Preparation' });
+      expect(screen.queryByRole('button', { name: 'Report complete' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'I need help' })).not.toBeInTheDocument();
+    },
+  );
+
   test('hydrates the canonical saved draft instead of replacing it with starter content', async () => {
     mockedApi.mockResolvedValue({
       plan: {
         id: 'plan-1',
         title: 'Jordan rebuilding plan',
         status: 'DRAFT',
+        purpose: 'NURTURE',
         versions: [
           {
             version: 4,
             optimisticVersion: 7,
             sourceProfileVersion: 3,
+            sourceReviewId: 'saved-review',
+            sourceReviewVersion: 6,
+            sourceGoalRevisionId: 'saved-goal-revision',
+            paths: [
+              {
+                key: 'primary',
+                clientLabel: 'Primary path',
+                internalLabel: 'Keep this path',
+                status: 'ACTIVE',
+                sortOrder: 0,
+              },
+            ],
             items: [
               {
                 stableKey: 'saved-step',
@@ -36,6 +93,28 @@ describe('consultant Plan Builder continuity', () => {
                 sortOrder: 0,
                 required: true,
                 pathMemberships: [{ path: { key: 'primary' } }],
+                prerequisites: [
+                  {
+                    prerequisiteItem: { stableKey: 'later-display-step' },
+                    groupKey: 'choice',
+                    mode: 'ANY',
+                  },
+                ],
+                outcomeSchema: { required: ['balance'] },
+                deepLink: '/app/credit-center',
+              },
+              {
+                stableKey: 'later-display-step',
+                type: 'GUIDANCE',
+                completionMode: 'ACKNOWLEDGEMENT',
+                owner: 'CLIENT',
+                clientTitle: 'Independent guidance',
+                clientBody: null,
+                consultantRationale: null,
+                sortOrder: 1,
+                required: false,
+                pathMemberships: [],
+                prerequisites: [],
               },
             ],
           },
@@ -61,5 +140,31 @@ describe('consultant Plan Builder continuity', () => {
     expect(screen.getByLabelText('Plan context and client preview')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Keep this saved action')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Review your credit findings')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() =>
+      expect(mockedApi.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(true),
+    );
+    const saved = mockedApi.mock.calls.find(([, init]) => init?.method === 'PUT')!;
+    const payload = JSON.parse(String(saved[1]?.body));
+    expect(payload.draft).toMatchObject({
+      purpose: 'NURTURE',
+      sourceReviewId: 'saved-review',
+      sourceReviewVersion: 6,
+      sourceGoalRevisionId: 'saved-goal-revision',
+      sourceProfileVersion: 3,
+    });
+    expect(payload.draft.dependencies).toEqual([
+      {
+        dependentKey: 'saved-step',
+        prerequisiteKey: 'later-display-step',
+        groupKey: 'choice',
+        mode: 'ANY',
+      },
+    ]);
+    expect(payload.draft.paths[0]).toMatchObject({ key: 'primary', status: 'ACTIVE' });
+    expect(payload.draft.items[0]).toMatchObject({
+      deepLink: '/app/credit-center',
+      outcomeSchema: { required: ['balance'] },
+    });
   });
 });

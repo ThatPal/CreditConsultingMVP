@@ -16,7 +16,8 @@ type LiveEventDomain =
   | 'strategy'
   | 'appointments'
   | 'live-sessions'
-  | 'journey';
+  | 'journey'
+  | 'home';
 type LiveEventEnvelope = { domains: LiveEventDomain[] };
 export type LiveConnectionState = 'connected' | 'reconnecting';
 export const LIVE_CONNECTION_EVENT = 'credit:live-connection';
@@ -26,24 +27,47 @@ export const liveConnectionCopy = (state: LiveConnectionState) =>
     : 'Realtime updates are reconnecting. The last confirmed state remains visible; new releases stay governed.';
 
 const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
-  'application-cycles': ['application-cycles', 'rounds'],
-  'credit-profile': ['credit-profile'],
+  'application-cycles': ['application-cycles', 'rounds', 'portal-home', 'portal-journey'],
+  'credit-profile': [
+    'credit-profile',
+    'published-credit-center',
+    'consultant-published-credit-center',
+    'portal-home',
+    'portal-journey',
+  ],
   documents: ['documents', 'review-documents'],
   notifications: ['notifications'],
-  review: ['reviews', 'review-workspace', 'credit-center'],
+  review: [
+    'reviews',
+    'review-workspace',
+    'credit-center',
+    'published-credit-center',
+    'consultant-published-credit-center',
+    'portal-home',
+    'portal-journey',
+  ],
   services: ['services', 'purchases'],
   support: ['support', 'support-cases'],
   'work-queue': ['work-queue'],
   'major-readiness': ['major-readiness'],
-  plan: ['plan', 'post-round', 'post-round-follow-ups'],
-  strategy: ['strategy'],
-  appointments: ['appointments', 'calendar'],
+  plan: [
+    'plan',
+    'client-plan',
+    'plan-builder',
+    'post-round',
+    'post-round-follow-ups',
+    'portal-home',
+    'portal-journey',
+  ],
+  strategy: ['strategy', 'portal-home', 'portal-journey'],
+  appointments: ['appointments', 'calendar', 'portal-home', 'portal-journey'],
   'live-sessions': ['live-session', 'live-sessions'],
-  journey: ['journey'],
+  journey: ['journey', 'portal-home', 'portal-journey'],
+  home: ['portal-home', 'portal-journey'],
 };
 
 export const queryRootsForLiveDomains = (domains: LiveEventDomain[]) => [
-  ...new Set(domains.flatMap((domain) => queryRootsByDomain[domain])),
+  ...new Set(domains.flatMap((domain) => queryRootsByDomain[domain] ?? [])),
 ];
 
 export function LiveUpdates({ children }: PropsWithChildren) {

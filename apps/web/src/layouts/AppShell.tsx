@@ -30,7 +30,14 @@ import {
   useTheme,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState, type MouseEvent, type PropsWithChildren } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PropsWithChildren,
+} from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { useAuth } from '../auth/AuthProvider';
@@ -247,6 +254,16 @@ export function AppShell({
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const mainContent = useRef<HTMLElement>(null);
+  useEffect(() => {
+    // Each screen has its own starting point. Retaining the previous screen's
+    // offset hid the next screen's heading, especially on phones and tablets.
+    if (!location.hash) {
+      if (mainContent.current) mainContent.current.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [location.pathname, location.hash]);
   const { logout } = useAuth();
   const queryClient = useQueryClient();
   const notificationsQuery = useQuery({
@@ -561,15 +578,17 @@ export function AppShell({
                 direction="row"
                 sx={{ gap: 0.5, ml: { md: 'auto' }, overflowX: 'auto', pb: 0.25 }}
               >
-                {([
-                  ['Overview', `/crm/clients/${contextualClientId}`],
-                  ['Journey', `/crm/clients/${contextualClientId}#journey`],
-                  ['Credit Center', `/crm/clients/${contextualClientId}/credit-center`],
-                  ['Plan', `/crm/clients/${contextualClientId}/plan`],
-                  ['Cards', `/crm/clients/${contextualClientId}/cards`],
-                  ['Timeline', `/crm/clients/${contextualClientId}#timeline`],
-                  ['Support', `/crm/clients/${contextualClientId}#support`],
-                ] as const).map(([label, to]) => (
+                {(
+                  [
+                    ['Overview', `/crm/clients/${contextualClientId}`],
+                    ['Journey', `/crm/clients/${contextualClientId}#journey`],
+                    ['Credit Center', `/crm/clients/${contextualClientId}/credit-center`],
+                    ['Plan', `/crm/clients/${contextualClientId}/plan`],
+                    ['Cards', `/crm/clients/${contextualClientId}/cards`],
+                    ['Timeline', `/crm/clients/${contextualClientId}#timeline`],
+                    ['Support', `/crm/clients/${contextualClientId}#support`],
+                  ] as const
+                ).map(([label, to]) => (
                   <Button
                     key={label}
                     component={Link}
@@ -720,6 +739,7 @@ export function AppShell({
         )}
         <Box
           component="main"
+          ref={mainContent}
           sx={{
             width: '100%',
             minHeight: 0,

@@ -1,7 +1,71 @@
 import { describe, expect, test } from 'vitest';
-import { appointmentFoundationStatus, classifyCycle, resolveCurrentFocus } from './projection.js';
+import {
+  appointmentFoundationStatus,
+  classifyCycle,
+  resolveCurrentFocus,
+  summarizePlan,
+} from './projection.js';
 
 describe('canonical journey focus', () => {
+  test('counts unfinished actions, excluding guidance, milestones and cancelled work', () => {
+    const item = { id: 'item', owner: 'CLIENT', title: 'A step' };
+    const summary = summarizePlan({
+      status: 'ACTIVE',
+      version: {
+        items: [
+          { ...item, type: 'ACTION', status: 'COMPLETED' },
+          { ...item, type: 'ACTION', status: 'LOCKED' },
+          { ...item, type: 'ACTION', status: 'AWAITING_VERIFICATION' },
+          { ...item, type: 'ACTION', status: 'CANCELLED' },
+          { ...item, type: 'GUIDANCE', status: 'AVAILABLE' },
+          { ...item, type: 'MILESTONE', status: 'LOCKED' },
+        ],
+      },
+    });
+    expect(summary).toMatchObject({
+      openActionCount: 2,
+      totalActionCount: 3,
+      completedActionCount: 1,
+      awaitingVerificationCount: 1,
+    });
+    expect(summarizePlan(null)).toMatchObject({ status: 'NOT_AVAILABLE', openActionCount: 0 });
+  });
+
+  test('a stale strategy overrides the legacy review-sequence action and names the consultant', () => {
+    expect(
+      resolveCurrentFocus({
+        activeNurture: null,
+        activeCycle: { id: 'cycle', currentStage: 'APPLICATION_SEQUENCE' },
+        hasGoal: true,
+        round: { id: 'round', status: 'READY_FOR_STRATEGY', strategy: { status: 'STALE' } },
+      }),
+    ).toMatchObject({
+      code: 'STRATEGY_STALE',
+      owner: 'CONSULTANT',
+      actionLabel: 'View round status',
+    });
+  });
+
+  test('blocked rounds precede available Plan actions and stale Plans offer no client work', () => {
+    const plan = summarizePlan({
+      status: 'STALE',
+      version: {
+        items: [
+          { id: 'item', type: 'ACTION', status: 'AVAILABLE', owner: 'CLIENT', title: 'Apply' },
+        ],
+      },
+    });
+    expect(plan.nextClientItem).toBeNull();
+    expect(
+      resolveCurrentFocus({
+        activeNurture: null,
+        activeCycle: null,
+        hasGoal: true,
+        plan,
+        round: { id: 'round', status: 'BLOCKED', strategy: null },
+      }),
+    ).toMatchObject({ code: 'ROUND_BLOCKED', owner: 'CONSULTANT' });
+  });
   test('uses the same deterministic cycle focus for every screen projection', () => {
     const input = {
       activeNurture: null,

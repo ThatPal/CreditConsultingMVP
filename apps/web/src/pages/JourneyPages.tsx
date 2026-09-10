@@ -1,19 +1,22 @@
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import RouteRounded from '@mui/icons-material/RouteRounded';
-import { Alert, Button, Divider, Grid, LinearProgress, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  Grid,
+  LinearProgress,
+  Stack,
+  Typography,
+} from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
-import {
-  ArchetypeCanvas,
-  CurrentStateSummary,
-  LifecycleRail,
-  MetricHero,
-  WaitingState,
-} from '../components/common/ProductFoundation';
 
 export type JourneyProjection = {
   client: { id: string; firstName: string; lastName: string };
@@ -22,7 +25,14 @@ export type JourneyProjection = {
     id: string | null;
     status: string;
     startedAt: string | null;
-    currentFocus: { code: string; title: string; detail: string | null; action: string };
+    currentFocus: {
+      code: string;
+      title: string;
+      detail: string | null;
+      action: string;
+      owner?: string;
+      actionLabel?: string;
+    };
     cycles: Array<{
       id: string;
       cycleNumber: number;
@@ -51,7 +61,12 @@ export type JourneyProjection = {
   };
   foundations: {
     creditProfile: { status: string; effectiveAt?: string | null };
-    plan: { status: string; openActionCount: number };
+    plan: {
+      status: string;
+      openActionCount: number;
+      completedActionCount?: number;
+      totalActionCount?: number;
+    };
     appointment: { status: string };
   };
 };
@@ -78,119 +93,200 @@ export function JourneySummary({
 }) {
   const current = data.journey.cycles.filter((cycle) => cycle.timelineGroup === 'CURRENT');
   const history = data.journey.cycles.filter((cycle) => cycle.timelineGroup === 'HISTORY');
-  const foundationStages = [
-    {
-      key: 'review',
-      label: 'Credit Review',
-      ready: data.foundations.creditProfile.status !== 'NOT_AVAILABLE',
-    },
-    {
-      key: 'profile',
-      label: 'Understand your Credit Profile',
-      ready:
-        data.foundations.creditProfile.status === 'PUBLISHED' ||
-        data.foundations.creditProfile.status === 'CURRENT',
-    },
-    { key: 'plan', label: 'Follow your Plan', ready: data.foundations.plan.status === 'AVAILABLE' },
-    { key: 'cycle', label: 'Prepare for an Application Cycle', ready: current.length > 0 },
-  ];
-  const activeIndex = Math.max(
-    0,
-    foundationStages.findIndex((stage) => !stage.ready),
-  );
+  const focus = data.journey.currentFocus;
+  const plan = data.foundations.plan;
+  const hasPlan = plan.status !== 'NOT_AVAILABLE';
+  const profileAvailable = ['PUBLISHED', 'CURRENT'].includes(data.foundations.creditProfile.status);
+  const owner =
+    focus.owner === 'CONSULTANT'
+      ? staff
+        ? 'Consultant'
+        : 'Your consultant'
+      : staff
+        ? 'Client'
+        : 'You';
   return (
-    <Stack spacing={2}>
-      <CurrentStateSummary
-        state={data.journey.currentFocus.title}
-        meaning={
-          data.journey.currentFocus.detail ??
-          'This is the next verified step in your credit strategy.'
-        }
-        owner={staff ? 'Client' : 'You'}
-        asOf={
-          data.journey.cycles.find((cycle) => cycle.timelineGroup === 'CURRENT')?.startedAt ??
-          data.foundations.creditProfile.effectiveAt ??
-          undefined
-        }
-        action={
-          !staff ? (
+    <Stack spacing={4}>
+      <Box
+        component="section"
+        aria-label="Your next step"
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.6fr) minmax(240px, 1fr)' },
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          background: 'linear-gradient(120deg, #142c36 0%, #153d44 65%, #20514e 100%)',
+          color: '#f3f8f6',
+        }}
+      >
+        <Stack spacing={2.5} sx={{ p: { xs: 3, md: 5 }, alignItems: 'flex-start' }}>
+          <Chip
+            label={`Next step · ${owner}`}
+            size="small"
+            sx={{ color: '#ddf2e7', bgcolor: '#ffffff12', border: '1px solid #ffffff30' }}
+          />
+          <Typography
+            component="h2"
+            sx={{
+              fontSize: { xs: 28, md: 36 },
+              lineHeight: 1.18,
+              fontWeight: 650,
+              letterSpacing: '-0.025em',
+              maxWidth: 580,
+            }}
+          >
+            {focus.title}
+          </Typography>
+          {focus.detail && (
+            <Typography sx={{ color: '#cee0dc', maxWidth: 520, lineHeight: 1.7 }}>
+              {focus.detail}
+            </Typography>
+          )}
+          {!staff && (
             <Button
               component={Link}
-              to={data.journey.currentFocus.action}
+              to={focus.action}
               variant="contained"
               endIcon={<ArrowForwardRounded />}
+              sx={{ background: '#d1edb5', color: '#173b31', '&:hover': { bgcolor: '#e1f5ce' } }}
             >
-              Continue {data.journey.currentFocus.title}
+              {focus.actionLabel ?? 'View next step'}
             </Button>
-          ) : undefined
-        }
-      />
-      <ArchetypeCanvas archetype="financial-dashboard" role={staff ? 'consultant' : 'client'}>
-        <Grid container spacing={3}>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <MetricHero
-              label="Your goal"
-              value={
-                data.goal ? (names[data.goal.goalType] ?? readable(data.goal.goalType)) : 'Not set'
-              }
-              explanation={
-                data.goal
-                  ? `${readable(data.goal.scope)} scope${data.goal.targetAmount ? ` · factual target $${data.goal.targetAmount.toLocaleString()}` : ''}`
-                  : 'Choose a goal before planning begins.'
-              }
-              source="Saved goal"
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <MetricHero
-              label="Credit Profile"
-              value={readable(data.foundations.creditProfile.status)}
-              explanation="This is the latest consultant-published financial foundation for your Plan."
-              source="Published Credit Review"
-              {...(data.foundations.creditProfile.effectiveAt
-                ? { asOf: data.foundations.creditProfile.effectiveAt }
-                : {})}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <MetricHero
-              label="Plan actions"
-              value={
-                data.foundations.plan.status === 'AVAILABLE'
-                  ? data.foundations.plan.openActionCount
-                  : 'Waiting'
-              }
-              explanation={`Appointments: ${readable(data.foundations.appointment.status)}. Your Plan owns preparation actions.`}
-              source="Approved Plan"
-            />
-          </Grid>
+          )}
+        </Stack>
+        <Stack
+          spacing={2}
+          sx={{
+            p: { xs: 3, md: 5 },
+            borderLeft: { md: '1px solid #ffffff20' },
+            borderTop: { xs: '1px solid #ffffff20', md: 0 },
+            justifyContent: 'center',
+            bgcolor: '#ffffff05',
+          }}
+        >
+          <Typography variant="overline" sx={{ color: '#cee0dc' }}>
+            Desired credit amount
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: { xs: 38, md: 48 },
+              lineHeight: 1,
+              fontWeight: 500,
+              letterSpacing: '-0.04em',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {data.goal?.targetAmount != null
+              ? new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: 'USD',
+                  maximumFractionDigits: 0,
+                }).format(data.goal.targetAmount)
+              : 'Not set'}
+          </Typography>
+          <Typography sx={{ color: '#cee0dc' }}>
+            {data.goal
+              ? (names[data.goal.goalType] ?? readable(data.goal.goalType))
+              : 'Set the amount you want to work toward.'}
+          </Typography>
+          {!staff && (
+            <Button
+              component={Link}
+              to="/app/goals"
+              sx={{ alignSelf: 'flex-start', color: '#d1edb5', px: 0 }}
+            >
+              Review your goal <ArrowForwardRounded sx={{ ml: 1, fontSize: 18 }} />
+            </Button>
+          )}
+        </Stack>
+      </Box>
+      <Box component="section" aria-label="Your financial journey">
+        <Typography variant="h3" sx={{ mb: 2 }}>
+          Your working picture
+        </Typography>
+        <Grid container spacing={0} sx={{ borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
+          {[
+            {
+              label: 'Credit Profile',
+              value: profileAvailable
+                ? 'Published'
+                : data.foundations.creditProfile.status === 'NOT_AVAILABLE'
+                  ? 'Not available yet'
+                  : readable(data.foundations.creditProfile.status),
+              detail: data.foundations.creditProfile.effectiveAt
+                ? `Profile dated ${new Date(data.foundations.creditProfile.effectiveAt).toLocaleDateString()}`
+                : 'Your published credit facts will appear here.',
+              href: '/app/credit-center',
+              link: 'Open Credit Center',
+            },
+            {
+              label: 'Plan actions remaining',
+              value: hasPlan ? String(plan.openActionCount) : 'Not available yet',
+              detail: hasPlan
+                ? plan.status === 'STALE'
+                  ? 'Your consultant is reviewing this Plan.'
+                  : `${plan.completedActionCount ?? 0} completed · guidance and milestones counted separately`
+                : 'Your consultant will publish your preparation steps.',
+              href: '/app/plan',
+              link: 'Open your Plan',
+            },
+            {
+              label: 'Appointment',
+              value: ['NOT_AVAILABLE', 'NOT_SCHEDULED'].includes(
+                data.foundations.appointment.status,
+              )
+                ? 'Not scheduled'
+                : readable(data.foundations.appointment.status),
+              detail: 'Find your appointment details and scheduling options.',
+              href: '/app/application-rounds',
+              link: 'View round appointments',
+            },
+          ].map((record, index) => (
+            <Grid
+              key={record.label}
+              size={{ xs: 12, md: 4 }}
+              sx={{
+                p: 3,
+                pl: { md: index === 0 ? 0 : 3 },
+                borderLeft: { md: index ? 1 : 0 },
+                borderBottom: { xs: index < 2 ? 1 : 0, md: 0 },
+                borderColor: 'divider',
+              }}
+            >
+              <Stack spacing={1.5} sx={{ height: '100%' }}>
+                <Typography variant="body2" color="text.secondary">
+                  {record.label}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: 26,
+                    fontWeight: 600,
+                    textTransform: 'capitalize',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {record.value}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+                  {record.detail}
+                </Typography>
+                {!staff && (
+                  <Button
+                    component={Link}
+                    to={record.href}
+                    endIcon={<ArrowForwardRounded />}
+                    sx={{ alignSelf: 'flex-start', px: 0 }}
+                  >
+                    {record.link}
+                  </Button>
+                )}
+              </Stack>
+            </Grid>
+          ))}
         </Grid>
-      </ArchetypeCanvas>
-      <ArchetypeCanvas archetype="lifecycle-timeline" role={staff ? 'consultant' : 'client'}>
-        <LifecycleRail
-          title="Your financial journey"
-          items={foundationStages.map((stage, index) => ({
-            key: stage.key,
-            label: stage.label,
-            state: stage.ready ? 'COMPLETED' : index === activeIndex ? 'ACTIVE' : 'LOCKED',
-            detail: stage.ready
-              ? 'Canonical milestone available'
-              : index === activeIndex
-                ? staff
-                  ? 'Client or consultant owns this current prerequisite'
-                  : 'This is the current prerequisite'
-                : 'Available only after earlier verified work',
-          }))}
-        />
-      </ArchetypeCanvas>
-      {data.foundations.plan.status !== 'AVAILABLE' && (
-        <WaitingState
-          prerequisite="Your approved Plan is not ready yet"
-          owner="Your consultant"
-          unavailable="Plan actions"
-          userMustAct={false}
-        />
-      )}
+      </Box>
       {showHistory && (
         <SectionCard>
           <Stack spacing={2} divider={<Divider />}>
@@ -209,7 +305,8 @@ export function JourneySummary({
               )}
             {current.length === 0 ? (
               <Alert severity="info">
-                No application cycle is active. Future steps are not inferred.
+                No application cycle is active. Your completed work and preparation history stay
+                here.
               </Alert>
             ) : (
               current.map((cycle) => (
@@ -270,8 +367,8 @@ export function JourneySummary({
       )}
       {showHistory && (
         <Alert severity="info">
-          Future journey stages appear only after their canonical workflow creates them. No
-          approval, score, or outcome is guaranteed.
+          Your journey continues across application cycles. Completed work stays in your history as
+          you prepare for what comes next.
         </Alert>
       )}
     </Stack>
@@ -288,7 +385,7 @@ export function ClientHomePage() {
       <PageHeader
         eyebrow="Your strategy"
         title={query.data ? `Welcome back, ${query.data.client.firstName}` : 'Welcome back'}
-        description="Your verified current focus and the next honest step."
+        description="Your next step, your credit picture, and the work ahead."
       />
       {query.isLoading && <LinearProgress />}
       {query.isError && (
@@ -344,7 +441,7 @@ export function ClientJourneyPage() {
       <PageHeader
         eyebrow="Lifetime context"
         title="Your journey"
-        description="Current work, read-only history, and only the future states that actually exist."
+        description="Follow your current work and revisit earlier cycles and preparation periods."
       />
       <JourneySummary data={query.data!} />
     </Stack>
