@@ -103,6 +103,8 @@ describe('POAR D7 platform operations foundation', () => {
     const { container } = renderPage(<SystemHealthPage />);
     expect(await screen.findByText('Durable delivery backlog')).toBeInTheDocument();
     expect(await screen.findByText('Two durable events need review.')).toBeInTheDocument();
+    expect(screen.getByText(/Confirmed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Stale/)).not.toBeInTheDocument();
     expect(container.querySelector('[data-archetype="observability-cockpit"]')).not.toBeNull();
     expect(screen.getByRole('link', { name: 'Open owning module' })).toHaveAttribute(
       'href',

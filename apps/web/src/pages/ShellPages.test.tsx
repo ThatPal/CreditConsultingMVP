@@ -56,4 +56,20 @@ describe('ADMIN-01 operational dashboard', () => {
     );
   });
 
+  test('does not present healthy positive inventory counts as operational exceptions', async () => {
+    vi.mocked(apiRequest).mockResolvedValue({
+      asOf: new Date().toISOString(),
+      sections: {
+        products: { status: 'healthy', href: '/admin/services', active: 4 },
+        platform: { status: 'healthy', href: '/admin/system-health', failedOutbox: 0 },
+      },
+    });
+    renderPage();
+    expect(
+      await screen.findByText(
+        'No current monitored exception is reported. Configuration changes remain in their owning modules.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Products attention')).not.toBeInTheDocument();
+  });
 });

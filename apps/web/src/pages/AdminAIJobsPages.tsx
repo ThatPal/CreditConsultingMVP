@@ -132,7 +132,7 @@ export function AdminAIJobsPage() {
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {new Date(job.createdAt).toLocaleString()} · attempt {job.currentAttempt}/
-                  {job.maxAttempts} · client {job.clientId}
+                  {job.maxAttempts} · client-scoped job
                 </Typography>
                 {job.failureCode && (
                   <Typography variant="caption" color="error">

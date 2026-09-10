@@ -103,10 +103,7 @@ export function AdminLandingPage() {
         description: 'Loading operational status',
       }))
     : cards;
-  const attention = cards.filter(({ section, valueKey }) => {
-    const value = section?.[valueKey];
-    return section?.status !== 'healthy' || (typeof value === 'number' && value > 0);
-  });
+  const attention = cards.filter(({ section }) => section?.status !== 'healthy');
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -297,10 +294,7 @@ export function SystemHealthPage() {
                   source="Admin operational summary endpoint"
                 />
               </Box>
-              <FreshnessIndicator
-                state={platform?.status === 'healthy' ? 'confirmed' : 'stale'}
-                at={query.data?.asOf}
-              />
+              <FreshnessIndicator state="confirmed" at={query.data?.asOf} />
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <MetricCard
