@@ -11,6 +11,7 @@ import {
   createPlanDraft,
   executePlanItem,
   getPlanBuilder,
+  getPlanSourcePreview,
   reconcilePlanSources,
   revisePlanDraft,
   verifyPlanItem,
@@ -153,6 +154,8 @@ export function createPlanRouter(
             req.params.clientId as string,
             req.params.planId as string,
             req.auth!.userId,
+            z.object({ expectedVersion: z.number().int().positive() }).parse(req.body)
+              .expectedVersion,
           ),
         );
       } catch (error) {
@@ -167,6 +170,24 @@ export function createPlanRouter(
       next(error);
     }
   });
+  router.get(
+    '/consultant/clients/:clientId/plans/:planId/sources',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
+    async (req, res, next) => {
+      try {
+        res.json(
+          await getPlanSourcePreview(
+            prisma,
+            req.params.clientId as string,
+            req.params.planId as string,
+          ),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.post(
     '/client/plan/items/:itemId/outcomes',
     requireRole('CLIENT'),
@@ -232,13 +253,11 @@ export function createPlanRouter(
       try {
         const parsed = z
           .object({
-            sourceReviewId: z.string().uuid().nullable().optional(),
-            sourceReviewVersion: z.number().int().positive().nullable().optional(),
-            sourceGoalRevisionId: z.string().uuid().nullable().optional(),
-            sourceProfileVersion: z.number().int().positive().nullable().optional(),
-            material: z.boolean(),
-            reason: z.string().min(1).max(1000),
+            expectedVersion: z.number().int().positive(),
+            expectedSourceFingerprint: z.string().length(64),
+            reason: z.string().trim().min(1).max(1000),
           })
+          .strict()
           .parse(req.body);
         res.json(
           await reconcilePlanSources(prisma, {

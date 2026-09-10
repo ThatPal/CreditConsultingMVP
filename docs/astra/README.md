@@ -4,7 +4,7 @@ Audit date: 10 September 2026. Baseline: `ee3b8648b4a61ab76d4b56bd1cfd307b83bd8e
 
 **The project is not ready for real clients. The problem is requirements loss and incomplete workflow implementation as much as visual design.** There is enough valuable infrastructure to rebuild deliberately on this branch; a wholesale framework replacement would consume effort without resolving the product defects.
 
-The audit is independent of the previous versions. Astra has its own worktree, branch, database, Redis, files, application ports, and local environment. Development is now authorized and underway: see [implementation pass 1](IMPLEMENTATION-01.md) for changes, verification, and remaining work, and [workspace instructions](WORKSPACE.md) for isolation.
+The audit is independent of the previous versions. Astra has its own worktree, branch, database, Redis, files, application ports, and local environment. Development is authorized and underway: see [implementation pass 1](IMPLEMENTATION-01.md), [pass 2: Plan authoring and safe revisions](IMPLEMENTATION-02.md), and [workspace instructions](WORKSPACE.md).
 
 ## Read in this order
 

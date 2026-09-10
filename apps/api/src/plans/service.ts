@@ -1,8 +1,15 @@
-import { createHash } from 'node:crypto';
-import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
+import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { validatePlanGraph } from './validation.js';
 import { prerequisitesSatisfied } from './validation.js';
+import {
+  assertPlanSourceOwnership,
+  assertPlanSourcesCurrent,
+  comparePlanSources,
+  currentPlanSources,
+  sourceFingerprint,
+} from './sources.js';
+export { sourceFingerprint } from './sources.js';
 
 export type PlanItemInput = {
   stableKey: string;
@@ -52,30 +59,13 @@ export type PlanDraftInput = {
   dependencies?: PlanDependencyInput[];
 };
 
-export function sourceFingerprint(
-  input: Pick<
-    PlanDraftInput,
-    'sourceReviewId' | 'sourceReviewVersion' | 'sourceGoalRevisionId' | 'sourceProfileVersion'
-  >,
-) {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        sourceReviewId: input.sourceReviewId ?? null,
-        sourceReviewVersion: input.sourceReviewVersion ?? null,
-        sourceGoalRevisionId: input.sourceGoalRevisionId ?? null,
-        sourceProfileVersion: input.sourceProfileVersion ?? null,
-      }),
-    )
-    .digest('hex');
-}
-
 function graphInput(input: PlanDraftInput) {
   return {
     items: input.items.map((item) => ({
       id: item.stableKey,
       type: item.type,
       completionMode: item.completionMode,
+      owner: item.owner,
       required: item.required ?? true,
       pathKeys: item.pathKeys ?? [],
     })),
@@ -92,6 +82,16 @@ function graphInput(input: PlanDraftInput) {
 }
 
 function assertValid(input: PlanDraftInput) {
+  const paths = new Set((input.paths ?? []).map((path) => path.key));
+  if (
+    paths.size !== (input.paths ?? []).length ||
+    input.items.some((item) => (item.pathKeys ?? []).some((key) => !paths.has(key)))
+  )
+    throw new AppError(
+      'PLAN_INVALID',
+      409,
+      'Every path must have a unique identity and every step must reference an existing path.',
+    );
   const result = validatePlanGraph(graphInput(input));
   if (!result.valid)
     throw new AppError(
@@ -103,61 +103,124 @@ function assertValid(input: PlanDraftInput) {
     throw new AppError('PLAN_INVALID', 409, 'Plan must contain at least one item');
 }
 
-async function writeVersion(
-  tx: Prisma.TransactionClient,
-  planId: string,
-  version: number,
-  input: PlanDraftInput,
-  supersedesVersionId?: string,
-) {
-  const record = await tx.planVersion.create({
-    data: {
-      planId,
-      version,
-      status: 'DRAFT',
-      sourceReviewId: input.sourceReviewId ?? null,
-      sourceReviewVersion: input.sourceReviewVersion ?? null,
-      sourceGoalRevisionId: input.sourceGoalRevisionId ?? null,
-      sourceProfileVersion: input.sourceProfileVersion ?? null,
-      sourceFingerprint: sourceFingerprint(input),
-      supersedesVersionId: supersedesVersionId ?? null,
-    },
+async function lockPlan(tx: Prisma.TransactionClient, planId: string) {
+  await tx.$queryRaw`SELECT "id" FROM "Plan" WHERE "id" = ${planId}::uuid FOR UPDATE`;
+}
+
+async function lockItemPlan(tx: Prisma.TransactionClient, itemId: string, clientId: string) {
+  await tx.$queryRaw`SELECT p."id" FROM "Plan" p JOIN "PlanVersion" v ON v."planId" = p."id" JOIN "PlanItem" i ON i."planVersionId" = v."id" WHERE i."id" = ${itemId}::uuid AND p."clientId" = ${clientId}::uuid FOR UPDATE OF p`;
+}
+
+const progressStates = ['COMPLETED', 'AWAITING_VERIFICATION', 'UNABLE', 'IN_PROGRESS', 'CANCELLED'];
+
+function itemContract(item: PlanItemInput, dependencies: PlanDependencyInput[]) {
+  return JSON.stringify({
+    type: item.type,
+    completionMode: item.completionMode,
+    owner: item.owner,
+    clientTitle: item.clientTitle,
+    clientBody: item.clientBody ?? null,
+    required: item.required ?? true,
+    deepLink: item.deepLink ?? null,
+    outcomeSchema: item.outcomeSchema ?? null,
+    pathKeys: [...(item.pathKeys ?? [])].sort(),
+    prerequisites: dependencies
+      .filter((edge) => edge.dependentKey === item.stableKey)
+      .map((edge) => `${edge.prerequisiteKey}:${edge.groupKey ?? 'default'}:${edge.mode ?? 'ALL'}`)
+      .sort(),
   });
-  const itemIds = new Map<string, string>();
-  for (const item of input.items) {
-    const created = await tx.planItem.create({
+}
+
+async function carryProgress(
+  tx: Prisma.TransactionClient,
+  sourceVersionId: string,
+  targetVersionId: string,
+  input: PlanDraftInput,
+) {
+  const previous = await tx.planVersion.findUniqueOrThrow({
+    where: { id: sourceVersionId },
+    include: builderInclude,
+  });
+  const dependencies = previous.items.flatMap((item) =>
+    item.prerequisites.map((edge) => ({
+      dependentKey: item.stableKey,
+      prerequisiteKey: edge.prerequisiteItem.stableKey,
+      groupKey: edge.groupKey,
+      mode: edge.mode,
+    })),
+  );
+  for (const item of previous.items.filter((entry) => progressStates.includes(entry.status))) {
+    const next = input.items.find((entry) => entry.stableKey === item.stableKey);
+    const before = {
+      ...item,
+      outcomeSchema: item.outcomeSchema ?? undefined,
+      pathKeys: item.pathMemberships.map(({ path }) => path.key),
+    };
+    if (
+      !next ||
+      itemContract(before as PlanItemInput, dependencies) !==
+        itemContract(next, input.dependencies ?? [])
+    )
+      throw new AppError(
+        'PLAN_PROGRESS_PROTECTED',
+        409,
+        `"${item.clientTitle}" has recorded progress. Keep this step unchanged and add a new step for different instructions.`,
+      );
+    await tx.planItem.updateMany({
+      where: { planVersionId: targetVersionId, stableKey: item.stableKey },
       data: {
-        planVersionId: record.id,
-        stableKey: item.stableKey,
-        type: item.type,
-        completionMode: item.completionMode,
-        owner: item.owner,
-        clientTitle: item.clientTitle,
-        clientBody: item.clientBody ?? null,
-        consultantRationale: item.consultantRationale ?? null,
-        sortOrder: item.sortOrder,
-        required: item.required ?? true,
-        deepLink: item.deepLink ?? null,
-        ...(item.outcomeSchema === undefined ? {} : { outcomeSchema: item.outcomeSchema }),
-        manuallyProtected: item.manuallyProtected ?? false,
-        status: 'LOCKED',
+        status: item.status,
+        completedAt: item.completedAt,
+        acknowledgedAt: item.acknowledgedAt,
       },
     });
-    itemIds.set(item.stableKey, created.id);
   }
+}
+
+async function writeItems(tx: Prisma.TransactionClient, versionId: string, input: PlanDraftInput) {
+  // Rebuild edges and memberships, but retain item IDs, timestamps and execution
+  // records. A draft save is an edit, not a new publication.
+  await tx.planDependency.deleteMany({ where: { dependentItem: { planVersionId: versionId } } });
+  await tx.planPathItem.deleteMany({ where: { item: { planVersionId: versionId } } });
+  await tx.planPath.deleteMany({ where: { planVersionId: versionId } });
+  const itemIds = new Map<string, string>();
+  for (const item of input.items) {
+    const data = {
+      type: item.type,
+      completionMode: item.completionMode,
+      owner: item.owner,
+      clientTitle: item.clientTitle,
+      clientBody: item.clientBody ?? null,
+      consultantRationale: item.consultantRationale ?? null,
+      sortOrder: item.sortOrder,
+      required: item.required ?? true,
+      deepLink: item.deepLink ?? null,
+      outcomeSchema: item.outcomeSchema ?? Prisma.JsonNull,
+      manuallyProtected: item.manuallyProtected ?? false,
+    };
+    const record = await tx.planItem.upsert({
+      where: { planVersionId_stableKey: { planVersionId: versionId, stableKey: item.stableKey } },
+      create: { ...data, planVersionId: versionId, stableKey: item.stableKey, status: 'LOCKED' },
+      update: data,
+    });
+    itemIds.set(item.stableKey, record.id);
+  }
+  await tx.planItem.deleteMany({
+    where: {
+      planVersionId: versionId,
+      stableKey: { notIn: input.items.map((item) => item.stableKey) },
+    },
+  });
   const paths = new Map<string, string>();
   for (const path of input.paths ?? []) {
-    const created = await tx.planPath.create({
-      data: { planVersionId: record.id, ...path },
-    });
-    paths.set(path.key, created.id);
+    const record = await tx.planPath.create({ data: { planVersionId: versionId, ...path } });
+    paths.set(path.key, record.id);
   }
-  for (const item of input.items) {
+  for (const item of input.items)
     for (const key of item.pathKeys ?? [])
       await tx.planPathItem.create({
         data: { itemId: itemIds.get(item.stableKey)!, pathId: paths.get(key)! },
       });
-  }
   for (const edge of input.dependencies ?? [])
     await tx.planDependency.create({
       data: {
@@ -167,6 +230,34 @@ async function writeVersion(
         mode: edge.mode ?? 'ALL',
       },
     });
+}
+
+async function writeVersion(
+  tx: Prisma.TransactionClient,
+  planId: string,
+  version: number,
+  input: PlanDraftInput,
+  supersedesVersionId?: string,
+  optimisticVersion = 1,
+) {
+  const record = await tx.planVersion.create({
+    data: {
+      planId,
+      version,
+      title: input.title,
+      purpose: input.purpose,
+      status: 'DRAFT',
+      sourceReviewId: input.sourceReviewId ?? null,
+      sourceReviewVersion: input.sourceReviewVersion ?? null,
+      sourceGoalRevisionId: input.sourceGoalRevisionId ?? null,
+      sourceProfileVersion: input.sourceProfileVersion ?? null,
+      sourceFingerprint: sourceFingerprint(input),
+      supersedesVersionId: supersedesVersionId ?? null,
+      optimisticVersion,
+    },
+  });
+  await writeItems(tx, record.id, input);
+  if (supersedesVersionId) await carryProgress(tx, supersedesVersionId, record.id, input);
   return record;
 }
 
@@ -177,6 +268,7 @@ export async function createPlanDraft(
 ) {
   assertValid(input);
   return prisma.$transaction(async (tx) => {
+    await assertPlanSourceOwnership(tx, clientId, input);
     const plan = await tx.plan.create({
       data: { clientId, purpose: input.purpose, title: input.title },
     });
@@ -193,29 +285,30 @@ export async function revisePlanDraft(
 ) {
   assertValid(input);
   return prisma.$transaction(async (tx) => {
+    await lockPlan(tx, planId);
+    const plan = await tx.plan.findUniqueOrThrow({ where: { id: planId } });
+    await assertPlanSourceOwnership(tx, plan.clientId, input);
     const latest = await tx.planVersion.findFirst({
       where: { planId },
       orderBy: { version: 'desc' },
     });
     if (!latest) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
     if (latest.optimisticVersion !== expectedVersion)
-      throw new AppError('VERSION_CONFLICT', 409, 'Plan changed; reload before saving');
+      throw new AppError(
+        'VERSION_CONFLICT',
+        409,
+        'Someone saved a newer Plan. Your edits have not been applied.',
+      );
+    await tx.plan.update({ where: { id: planId }, data: { updatedAt: new Date() } });
     if (latest.status === 'DRAFT') {
-      const claimed = await tx.planVersion.updateMany({
-        where: { id: latest.id, optimisticVersion: expectedVersion, status: 'DRAFT' },
-        data: { optimisticVersion: { increment: 1 } },
-      });
-      if (claimed.count !== 1)
-        throw new AppError('VERSION_CONFLICT', 409, 'Plan changed; reload before saving');
-      await tx.planDependency.deleteMany({
-        where: { dependentItem: { planVersionId: latest.id } },
-      });
-      await tx.planPathItem.deleteMany({ where: { item: { planVersionId: latest.id } } });
-      await tx.planPath.deleteMany({ where: { planVersionId: latest.id } });
-      await tx.planItem.deleteMany({ where: { planVersionId: latest.id } });
-      await tx.planVersion.update({
+      await carryProgress(tx, latest.id, latest.id, input);
+      await writeItems(tx, latest.id, input);
+      const saved = await tx.planVersion.update({
         where: { id: latest.id },
         data: {
+          title: input.title,
+          purpose: input.purpose,
+          optimisticVersion: { increment: 1 },
           sourceReviewId: input.sourceReviewId ?? null,
           sourceReviewVersion: input.sourceReviewVersion ?? null,
           sourceGoalRevisionId: input.sourceGoalRevisionId ?? null,
@@ -223,21 +316,22 @@ export async function revisePlanDraft(
           sourceFingerprint: sourceFingerprint(input),
         },
       });
-      const rebuilt = await writeVersion(
-        tx,
-        planId,
-        latest.version + 1,
-        input,
-        latest.supersedesVersionId ?? undefined,
-      );
-      await tx.planVersion.delete({ where: { id: latest.id } });
       return {
-        versionId: rebuilt.id,
-        version: rebuilt.version,
-        optimisticVersion: rebuilt.optimisticVersion,
+        versionId: saved.id,
+        version: saved.version,
+        optimisticVersion: saved.optimisticVersion,
       };
     }
-    const next = await writeVersion(tx, planId, latest.version + 1, input, latest.id);
+    if (!['ACTIVE', 'APPROVED', 'STALE', 'COMPLETED'].includes(latest.status))
+      throw new AppError('PLAN_IMMUTABLE', 409, 'This Plan cannot be revised.');
+    const next = await writeVersion(
+      tx,
+      planId,
+      latest.version + 1,
+      input,
+      latest.id,
+      latest.optimisticVersion + 1,
+    );
     return { versionId: next.id, version: next.version, optimisticVersion: next.optimisticVersion };
   });
 }
@@ -323,8 +417,8 @@ export async function getClientPlan(prisma: PrismaClient, clientId: string) {
       plan && version
         ? {
             id: plan.id,
-            title: plan.title,
-            purpose: plan.purpose,
+            title: version.title ?? plan.title,
+            purpose: version.purpose ?? plan.purpose,
             status: version.status,
             version: clientSafeVersion(version),
           }
@@ -381,19 +475,28 @@ export async function approvePlan(
   clientId: string,
   planId: string,
   actorId: string,
+  expectedVersion?: number,
 ) {
   return prisma.$transaction(async (tx) => {
+    await lockPlan(tx, planId);
     const plan = await tx.plan.findFirst({
       where: { id: planId, clientId },
       include: { versions: { include: builderInclude, orderBy: { version: 'desc' }, take: 1 } },
     });
     if (!plan || !plan.versions[0]) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
     const version = plan.versions[0];
+    if (expectedVersion !== undefined && version.optimisticVersion !== expectedVersion)
+      throw new AppError(
+        'VERSION_CONFLICT',
+        409,
+        'The draft changed after you reviewed it. Reload before approving.',
+      );
+    await assertPlanSourcesCurrent(tx, clientId, version);
     if (version.status !== 'DRAFT')
       throw new AppError('PLAN_IMMUTABLE', 409, 'Only a draft Plan can be approved');
     const input: PlanDraftInput = {
-      title: plan.title,
-      purpose: plan.purpose,
+      title: version.title ?? plan.title,
+      purpose: version.purpose ?? plan.purpose,
       sourceReviewId: version.sourceReviewId,
       sourceReviewVersion: version.sourceReviewVersion,
       sourceGoalRevisionId: version.sourceGoalRevisionId,
@@ -415,6 +518,10 @@ export async function approvePlan(
         consultantRationale: item.consultantRationale,
         sortOrder: item.sortOrder,
         required: item.required,
+        deepLink: item.deepLink,
+        ...(item.outcomeSchema
+          ? { outcomeSchema: item.outcomeSchema as Prisma.InputJsonValue }
+          : {}),
         pathKeys: item.pathMemberships.map(({ path }) => path.key),
       })),
       dependencies: version.items.flatMap((item) =>
@@ -428,6 +535,8 @@ export async function approvePlan(
     };
     assertValid(input);
     if (version.supersedesVersionId)
+      await carryProgress(tx, version.supersedesVersionId, version.id, input);
+    if (version.supersedesVersionId)
       await tx.planVersion.update({
         where: { id: version.supersedesVersionId },
         data: { status: 'SUPERSEDED' },
@@ -439,11 +548,31 @@ export async function approvePlan(
         approvedById: actorId,
         approvedAt: new Date(),
         activatedAt: new Date(),
+        optimisticVersion: { increment: 1 },
       },
     });
-    await tx.plan.update({ where: { id: planId }, data: { status: 'ACTIVE' } });
+    await tx.plan.update({
+      where: { id: planId },
+      data: { status: 'ACTIVE', title: input.title, purpose: input.purpose },
+    });
+    const reviewedVersions = await tx.planVersion.findMany({
+      where: { planId, version: { lte: version.version } },
+      select: { id: true },
+    });
+    await tx.workItem.updateMany({
+      where: {
+        clientId,
+        sourceType: 'PlanVersion',
+        sourceId: { in: reviewedVersions.map(({ id }) => id) },
+        reasonCode: 'PLAN_RECONCILIATION_REQUIRED',
+        authority: 'ATTENTION_PROJECTION',
+        status: { notIn: ['COMPLETED', 'CANCELLED'] },
+      },
+      data: { status: 'COMPLETED', completedAt: new Date(), resolvedAt: new Date() },
+    });
+    const activationItems = await tx.planItem.findMany({ where: { planVersionId: version.id } });
     const completed = new Set(
-      version.items.filter((item) => item.status === 'COMPLETED').map((item) => item.id),
+      activationItems.filter((item) => item.status === 'COMPLETED').map((item) => item.id),
     );
     const dependencies = version.items.flatMap((item) =>
       item.prerequisites.map((edge) => ({
@@ -453,7 +582,7 @@ export async function approvePlan(
         mode: edge.mode,
       })),
     );
-    const roots = version.items.filter(
+    const roots = activationItems.filter(
       (item) =>
         item.status === 'LOCKED' && prerequisitesSatisfied(item.id, dependencies, completed),
     );
@@ -476,11 +605,74 @@ export async function approvePlan(
         eventKey: `plan-approved:${version.id}`,
         aggregateType: 'Plan',
         aggregateId: planId,
-        payload: { clientId, domains: ['plan', 'journey', 'home'] },
+        payload: { clientId, domains: ['plan', 'journey', 'home', 'work-queue'] },
       },
     });
     return { planId, versionId: version.id, version: version.version };
   });
+}
+
+export async function getPlanSourcePreview(prisma: PrismaClient, clientId: string, planId: string) {
+  const plan = await prisma.plan.findFirst({
+    where: { id: planId, clientId },
+    include: { versions: { include: builderInclude, orderBy: { version: 'desc' }, take: 1 } },
+  });
+  const latest = plan?.versions[0];
+  if (!plan || !latest) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
+  return {
+    ...(await comparePlanSources(prisma, clientId, latest)),
+    expectedVersion: latest.optimisticVersion,
+    versionId: latest.id,
+    version: latest.version,
+    hasPublishedPlan: latest.status !== 'DRAFT' || Boolean(latest.supersedesVersionId),
+    keptSteps: latest.items
+      .filter((item) => progressStates.includes(item.status))
+      .map((item) => ({ title: item.clientTitle, status: item.status })),
+  };
+}
+
+function versionDraft(
+  version: Prisma.PlanVersionGetPayload<{ include: typeof builderInclude }>,
+  plan: { title: string; purpose: PlanDraftInput['purpose'] },
+): PlanDraftInput {
+  return {
+    title: version.title ?? plan.title,
+    purpose: version.purpose ?? plan.purpose,
+    sourceReviewId: version.sourceReviewId,
+    sourceReviewVersion: version.sourceReviewVersion,
+    sourceGoalRevisionId: version.sourceGoalRevisionId,
+    sourceProfileVersion: version.sourceProfileVersion,
+    paths: version.paths.map((path) => ({
+      key: path.key,
+      clientLabel: path.clientLabel,
+      internalLabel: path.internalLabel,
+      status: path.status,
+      sortOrder: path.sortOrder,
+    })),
+    items: version.items.map((item) => ({
+      stableKey: item.stableKey,
+      type: item.type,
+      completionMode: item.completionMode,
+      owner: item.owner,
+      clientTitle: item.clientTitle,
+      clientBody: item.clientBody,
+      consultantRationale: item.consultantRationale,
+      required: item.required,
+      sortOrder: item.sortOrder,
+      deepLink: item.deepLink,
+      manuallyProtected: item.manuallyProtected,
+      ...(item.outcomeSchema ? { outcomeSchema: item.outcomeSchema as Prisma.InputJsonValue } : {}),
+      pathKeys: item.pathMemberships.map(({ path }) => path.key),
+    })),
+    dependencies: version.items.flatMap((item) =>
+      item.prerequisites.map((edge) => ({
+        dependentKey: item.stableKey,
+        prerequisiteKey: edge.prerequisiteItem.stableKey,
+        groupKey: edge.groupKey,
+        mode: edge.mode,
+      })),
+    ),
+  };
 }
 
 export async function reconcilePlanSources(
@@ -489,86 +681,64 @@ export async function reconcilePlanSources(
     clientId: string;
     planId: string;
     actorId: string;
-    sourceReviewId?: string | null;
-    sourceReviewVersion?: number | null;
-    sourceGoalRevisionId?: string | null;
-    sourceProfileVersion?: number | null;
-    material: boolean;
+    expectedVersion: number;
+    expectedSourceFingerprint: string;
     reason: string;
   },
 ) {
   return prisma.$transaction(async (tx) => {
+    await lockPlan(tx, input.planId);
     const plan = await tx.plan.findFirst({
       where: { id: input.planId, clientId: input.clientId },
-      include: {
-        versions: {
-          where: { status: { in: ['ACTIVE', 'APPROVED', 'STALE'] } },
-          include: builderInclude,
-          orderBy: { version: 'desc' },
-          take: 1,
-        },
-      },
+      include: { versions: { include: builderInclude, orderBy: { version: 'desc' }, take: 1 } },
     });
-    const current = plan?.versions[0];
-    if (!plan || !current) throw new AppError('NOT_FOUND', 404, 'An active Plan was not found');
-    const nextSources = {
-      sourceReviewId: input.sourceReviewId ?? current.sourceReviewId,
-      sourceReviewVersion: input.sourceReviewVersion ?? current.sourceReviewVersion,
-      sourceGoalRevisionId: input.sourceGoalRevisionId ?? current.sourceGoalRevisionId,
-      sourceProfileVersion: input.sourceProfileVersion ?? current.sourceProfileVersion,
-    };
-    const nextFingerprint = sourceFingerprint(nextSources);
-    if (!input.material || nextFingerprint === sourceFingerprint(current))
-      return { changed: false, planId: plan.id, versionId: current.id };
-
-    const draft: PlanDraftInput = {
-      title: plan.title,
-      purpose: plan.purpose,
-      ...nextSources,
-      paths: current.paths.map((path) => ({
-        key: path.key,
-        clientLabel: path.clientLabel,
-        internalLabel: path.internalLabel,
-        status: path.status,
-        sortOrder: path.sortOrder,
-      })),
-      items: current.items.map((item) => ({
-        stableKey: item.stableKey,
-        type: item.type,
-        completionMode: item.completionMode,
-        owner: item.owner,
-        clientTitle: item.clientTitle,
-        clientBody: item.clientBody,
-        consultantRationale: item.consultantRationale,
-        sortOrder: item.sortOrder,
-        required: item.required,
-        deepLink: item.deepLink,
-        manuallyProtected: item.manuallyProtected,
-        pathKeys: item.pathMemberships.map(({ path }) => path.key),
-      })),
-      dependencies: current.items.flatMap((item) =>
-        item.prerequisites.map((edge) => ({
-          dependentKey: item.stableKey,
-          prerequisiteKey: edge.prerequisiteItem.stableKey,
-          groupKey: edge.groupKey,
-          mode: edge.mode,
-        })),
-      ),
-    };
-    const replacement = await writeVersion(tx, plan.id, current.version + 1, draft, current.id);
-    const completedKeys = current.items
-      .filter(({ status }) => status === 'COMPLETED')
-      .map(({ stableKey }) => stableKey);
-    if (completedKeys.length)
-      await tx.planItem.updateMany({
-        where: { planVersionId: replacement.id, stableKey: { in: completedKeys } },
-        data: { status: 'COMPLETED', completedAt: new Date() },
+    const latest = plan?.versions[0];
+    if (!plan || !latest) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
+    if (latest.optimisticVersion !== input.expectedVersion)
+      throw new AppError(
+        'VERSION_CONFLICT',
+        409,
+        'The Plan changed. Compare sources again before continuing.',
+      );
+    if (!['DRAFT', 'ACTIVE', 'APPROVED', 'STALE', 'COMPLETED'].includes(latest.status))
+      throw new AppError('PLAN_IMMUTABLE', 409, 'This Plan cannot be reconciled.');
+    const { sources } = await currentPlanSources(tx, input.clientId);
+    const fingerprint = sourceFingerprint(sources);
+    if (fingerprint !== input.expectedSourceFingerprint)
+      throw new AppError(
+        'PLAN_SOURCES_CHANGED',
+        409,
+        'Source information changed after your preview. Compare sources again.',
+      );
+    if (fingerprint === sourceFingerprint(latest))
+      return { changed: false, planId: plan.id, versionId: latest.id };
+    const draft = { ...versionDraft(latest, plan), ...sources };
+    const replacement =
+      latest.status === 'DRAFT'
+        ? await tx.planVersion.update({
+            where: { id: latest.id },
+            data: {
+              ...sources,
+              sourceFingerprint: fingerprint,
+              optimisticVersion: { increment: 1 },
+            },
+          })
+        : await writeVersion(
+            tx,
+            plan.id,
+            latest.version + 1,
+            draft,
+            latest.id,
+            latest.optimisticVersion + 1,
+          );
+    const publishedId = latest.status === 'DRAFT' ? latest.supersedesVersionId : latest.id;
+    if (publishedId) {
+      await tx.planVersion.update({
+        where: { id: publishedId },
+        data: { status: 'STALE', staleAt: new Date(), staleReason: input.reason },
       });
-    await tx.planVersion.update({
-      where: { id: current.id },
-      data: { status: 'STALE', staleAt: new Date(), staleReason: input.reason },
-    });
-    await tx.plan.update({ where: { id: plan.id }, data: { status: 'STALE' } });
+      await tx.plan.update({ where: { id: plan.id }, data: { status: 'STALE' } });
+    }
     await tx.auditEvent.create({
       data: {
         clientId: input.clientId,
@@ -576,36 +746,48 @@ export async function reconcilePlanSources(
         action: 'plan.reconciliation.proposed',
         entityType: 'PlanVersion',
         entityId: replacement.id,
-        metadata: { previousVersionId: current.id, reason: input.reason },
+        metadata: {
+          previousVersionId: publishedId,
+          reason: input.reason,
+          sourceFingerprint: fingerprint,
+        },
       },
     });
     await tx.outboxEvent.create({
       data: {
         eventType: 'plan.reconciliation.proposed',
-        eventKey: `plan-reconciliation:${replacement.id}`,
+        eventKey: `plan-reconciliation:${replacement.id}:${replacement.optimisticVersion}`,
         aggregateType: 'Plan',
         aggregateId: plan.id,
         payload: { clientId: input.clientId, domains: ['plan', 'journey', 'home', 'work-queue'] },
       },
     });
-    await tx.workItem.create({
-      data: {
-        clientId: input.clientId,
-        title: 'Review Plan source changes',
-        domain: 'PLAN',
-        authority: 'ATTENTION_PROJECTION',
-        sourceType: 'PlanVersion',
-        sourceId: replacement.id,
-        reasonCode: 'PLAN_RECONCILIATION_REQUIRED',
-        dedupeKey: `plan-reconciliation:${replacement.id}`,
-        deepLink: { route: `/crm/clients/${input.clientId}/plan` },
-        neededSince: new Date(),
-      },
+    const work = {
+      clientId: input.clientId,
+      title: 'Review Plan source changes',
+      domain: 'PLAN' as const,
+      authority: 'ATTENTION_PROJECTION' as const,
+      sourceType: 'PlanVersion',
+      sourceId: replacement.id,
+      reasonCode: 'PLAN_RECONCILIATION_REQUIRED',
+      dedupeKey: `plan-reconciliation:${replacement.id}`,
+      deepLink: { route: `/crm/clients/${input.clientId}/plan` },
+      neededSince: new Date(),
+    };
+    const existingWork = await tx.workItem.findFirst({
+      where: { dedupeKey: work.dedupeKey },
+      select: { id: true },
     });
+    if (existingWork)
+      await tx.workItem.update({
+        where: { id: existingWork.id },
+        data: { neededSince: work.neededSince },
+      });
+    else await tx.workItem.create({ data: work });
     return {
       changed: true,
       planId: plan.id,
-      previousVersionId: current.id,
+      previousVersionId: publishedId,
       versionId: replacement.id,
       version: replacement.version,
     };
@@ -624,14 +806,17 @@ export async function executePlanItem(
     reason?: string;
   },
 ) {
-  const existing = await prisma.planItemOutcome.findUnique({
+  const existing = await prisma.planItemOutcome.findFirst({
     where: {
-      planItemId_idempotencyKey: { planItemId: input.itemId, idempotencyKey: input.idempotencyKey },
+      planItemId: input.itemId,
+      idempotencyKey: input.idempotencyKey,
+      planItem: { planVersion: { plan: { clientId: input.clientId } } },
     },
   });
   if (existing) return { replayed: true, outcomeId: existing.id };
   try {
     return await prisma.$transaction(async (tx) => {
+      await lockItemPlan(tx, input.itemId, input.clientId);
       const item = await tx.planItem.findFirst({
         where: { id: input.itemId, planVersion: { plan: { clientId: input.clientId } } },
         include: {
@@ -640,11 +825,23 @@ export async function executePlanItem(
         },
       });
       if (!item) throw new AppError('NOT_FOUND', 404, 'Plan item was not found');
+      const replay = await tx.planItemOutcome.findUnique({
+        where: {
+          planItemId_idempotencyKey: { planItemId: item.id, idempotencyKey: input.idempotencyKey },
+        },
+      });
+      if (replay) return { replayed: true, outcomeId: replay.id };
       if (item.planVersion.status !== 'ACTIVE' || item.planVersion.plan.status !== 'ACTIVE')
         throw new AppError(
           'PLAN_NOT_ACTIVE',
           409,
           'This Plan is no longer available for new outcomes',
+        );
+      if (item.owner !== 'CLIENT')
+        throw new AppError(
+          'PLAN_ITEM_VERIFICATION_REQUIRED',
+          403,
+          'This step belongs to your consultant or an automated check.',
         );
       if (item.status !== 'AVAILABLE' && item.status !== 'IN_PROGRESS')
         throw new AppError('PLAN_ITEM_LOCKED', 409, 'Complete the required earlier steps first');
@@ -798,6 +995,7 @@ export async function verifyPlanItem(
   actorId: string,
 ) {
   return prisma.$transaction(async (tx) => {
+    await lockItemPlan(tx, itemId, clientId);
     const item = await tx.planItem.findFirst({
       where: {
         id: itemId,

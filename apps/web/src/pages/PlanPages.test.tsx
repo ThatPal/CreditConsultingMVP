@@ -145,6 +145,9 @@ describe('consultant Plan Builder continuity', () => {
       expect(mockedApi.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(true),
     );
     const saved = mockedApi.mock.calls.find(([, init]) => init?.method === 'PUT')!;
+    // apiRequest supplies Content-Type. A lowercase duplicate combines into an
+    // invalid media type in fetch and Express then leaves req.body undefined.
+    expect(saved[1]?.headers).toBeUndefined();
     const payload = JSON.parse(String(saved[1]?.body));
     expect(payload.draft).toMatchObject({
       purpose: 'NURTURE',

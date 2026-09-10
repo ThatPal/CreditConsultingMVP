@@ -1,6 +1,6 @@
 # Development roadmap: Astra to production
 
-This roadmap retains the full planned product. It is a delivery sequence, not a reduced MVP. **A0 is complete for audit isolation; A1–A13 have not started.** Product development begins only when the user asks to start after reviewing this audit.
+This roadmap retains the full planned product. It is a delivery sequence, not a reduced MVP. **A0 is complete for audit isolation; A1/A2 development is underway, with part of A5's Plan revision contract implemented.** The user authorized development. See [pass 1](IMPLEMENTATION-01.md) and [pass 2](IMPLEMENTATION-02.md) for delivered behavior, evidence, and remaining work. No production wave has been declared complete.
 
 Avoid calendar promises before A1/A3 expose extraction, provider and migration effort. Track accepted workflow outcomes, remaining defects and evidence—not a percentage derived from screens or test counts. Re-estimate each wave after its contracts and dependencies are known.
 

@@ -8,6 +8,7 @@ export type PlanGraphItem = {
     | 'CONSULTANT_VERIFY'
     | 'SYSTEM_VERIFY';
   required: boolean;
+  owner?: 'CLIENT' | 'CONSULTANT' | 'SYSTEM';
   pathKeys: string[];
 };
 
@@ -24,7 +25,10 @@ export type PlanValidationIssue = {
   message: string;
 };
 
-const allowedCompletionModes: Record<PlanGraphItem['type'], Set<PlanGraphItem['completionMode']>> = {
+const allowedCompletionModes: Record<
+  PlanGraphItem['type'],
+  Set<PlanGraphItem['completionMode']>
+> = {
   ACTION: new Set([
     'ACKNOWLEDGEMENT',
     'STRUCTURED_OUTCOME',
@@ -43,9 +47,25 @@ export function validatePlanGraph(input: {
 }) {
   const issues: PlanValidationIssue[] = [];
   const itemById = new Map(input.items.map((item) => [item.id, item]));
+  if (itemById.size !== input.items.length)
+    issues.push({ code: 'DUPLICATE_ITEM', message: 'Each Plan step must have a unique identity.' });
   const outgoing = new Map<string, string[]>();
+  const seenEdges = new Set<string>();
+  const groupModes = new Map<string, string>();
 
   for (const item of input.items) {
+    const expectedOwner =
+      item.completionMode === 'SYSTEM_VERIFY'
+        ? 'SYSTEM'
+        : item.completionMode === 'CONSULTANT_VERIFY'
+          ? 'CONSULTANT'
+          : 'CLIENT';
+    if (item.owner && item.owner !== expectedOwner)
+      issues.push({
+        code: 'INVALID_COMPLETION_OWNER',
+        itemId: item.id,
+        message: 'The step owner must match its completion method.',
+      });
     if (!allowedCompletionModes[item.type].has(item.completionMode))
       issues.push({
         code: 'INVALID_COMPLETION_MODE',
@@ -55,8 +75,25 @@ export function validatePlanGraph(input: {
   }
 
   for (const edge of input.dependencies) {
+    const edgeKey = `${edge.dependentItemId}:${edge.prerequisiteItemId}`;
+    if (seenEdges.has(edgeKey))
+      issues.push({
+        code: 'DUPLICATE_DEPENDENCY',
+        message: 'A prerequisite can appear only once for a step.',
+      });
+    seenEdges.add(edgeKey);
+    const group = `${edge.dependentItemId}:${edge.groupKey}`;
+    if (groupModes.has(group) && groupModes.get(group) !== edge.mode)
+      issues.push({
+        code: 'MIXED_DEPENDENCY_MODE',
+        message: 'All prerequisites in a group must use the same All or Any rule.',
+      });
+    groupModes.set(group, edge.mode);
     if (!itemById.has(edge.dependentItemId) || !itemById.has(edge.prerequisiteItemId)) {
-      issues.push({ code: 'MISSING_REFERENCE', message: 'A dependency references a missing item.' });
+      issues.push({
+        code: 'MISSING_REFERENCE',
+        message: 'A dependency references a missing item.',
+      });
       continue;
     }
     if (edge.dependentItemId === edge.prerequisiteItemId) {
@@ -100,7 +137,10 @@ export function validatePlanGraph(input: {
   };
   for (const item of input.items) {
     if (visit(item.id)) {
-      issues.push({ code: 'CIRCULAR_DEPENDENCY', message: 'The dependency graph contains a cycle.' });
+      issues.push({
+        code: 'CIRCULAR_DEPENDENCY',
+        message: 'The dependency graph contains a cycle.',
+      });
       break;
     }
   }

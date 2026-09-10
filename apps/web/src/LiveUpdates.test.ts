@@ -8,6 +8,7 @@ describe('targeted realtime invalidation', () => {
       'live-session',
       'live-sessions',
       'work-queue',
+      'shell-client-context',
     ]);
     expect(queryRootsForLiveDomains(['live-sessions'])).not.toContain('payments');
     expect(queryRootsForLiveDomains(['live-sessions'])).not.toContain('documents');
@@ -18,6 +19,7 @@ describe('targeted realtime invalidation', () => {
       'plan',
       'client-plan',
       'plan-builder',
+      'plan-sources',
       'post-round',
       'post-round-follow-ups',
       'portal-home',

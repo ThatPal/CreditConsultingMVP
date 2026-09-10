@@ -1814,6 +1814,8 @@ model Plan {
 model PlanVersion {
   id                   String              @id @default(uuid()) @db.Uuid
   planId               String              @db.Uuid
+  title                String?
+  purpose              PlanPurpose?
   version              Int
   status               PlanLifecycleStatus @default(DRAFT)
   sourceReviewId       String?             @db.Uuid
