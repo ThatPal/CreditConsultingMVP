@@ -39,6 +39,11 @@ describe('Plan authoring and approval', () => {
         completionMode: 'STRUCTURED_OUTCOME',
         owner: 'CLIENT',
         clientTitle: 'Report progress',
+        outcomeSchema: {
+          type: 'object',
+          properties: { progress: { type: 'string' } },
+          required: ['progress'],
+        },
         sortOrder: 1,
         pathKeys: [],
       },

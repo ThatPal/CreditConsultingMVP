@@ -28,6 +28,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { apiRequest } from '../../auth/api';
 import { PageHeader } from '../../components/common/PageHeader';
+import { PlanExecutionReview } from './PlanExecutionReview';
+import { ResponseSchemaEditor } from './ResponseSchemaEditor';
 import { RecoveryState } from '../../components/common/InteractionPatterns';
 import {
   draftFromBuilder,
@@ -272,6 +274,7 @@ function PlanBuilder({ clientId }: { clientId: string }) {
         title="Plan workspace"
         description="Shape the client's next steps, connect prerequisites, and review what you publish."
       />
+      <PlanExecutionReview clientId={clientId} />
       <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip
           label={
@@ -519,6 +522,15 @@ function PlanBuilder({ clientId }: { clientId: string }) {
                       ))}
                   </TextField>
                 </Stack>
+                {['STRUCTURED_OUTCOME', 'CLIENT_REPORT_CONSULTANT_VERIFY'].includes(
+                  selected.completionMode,
+                ) && (
+                  <ResponseSchemaEditor
+                    schema={selected.outcomeSchema}
+                    disabled={protectedStep}
+                    onChange={(outcomeSchema) => changeItem({ outcomeSchema })}
+                  />
+                )}
                 <FormControlLabel
                   control={
                     <Checkbox

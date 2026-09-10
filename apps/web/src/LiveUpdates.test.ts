@@ -19,6 +19,7 @@ describe('targeted realtime invalidation', () => {
       'plan',
       'client-plan',
       'plan-builder',
+      'plan-execution',
       'plan-sources',
       'post-round',
       'post-round-follow-ups',

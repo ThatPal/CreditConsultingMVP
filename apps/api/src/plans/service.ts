@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { validatePlanGraph } from './validation.js';
 import { prerequisitesSatisfied } from './validation.js';
+import { clientResponseForm, responseFields, validateResponse } from './outcomes.js';
 import {
   assertPlanSourceOwnership,
   assertPlanSourcesCurrent,
@@ -420,7 +421,15 @@ export async function getClientPlan(prisma: PrismaClient, clientId: string) {
             title: version.title ?? plan.title,
             purpose: version.purpose ?? plan.purpose,
             status: version.status,
-            version: clientSafeVersion(version),
+            version: {
+              ...clientSafeVersion(version),
+              items: await Promise.all(
+                clientSafeVersion(version).items.map(async (item) => ({
+                  ...item,
+                  ...(await itemHistory(prisma, plan.id, version.version, item.stableKey)),
+                })),
+              ),
+            },
           }
         : null,
   };
@@ -458,6 +467,7 @@ export function clientSafeVersion(
         sortOrder: item.sortOrder,
         dueAt: item.dueAt,
         deepLink: item.deepLink,
+        responseForm: clientResponseForm(item.outcomeSchema, item.completionMode),
         prerequisites: item.prerequisites.map(({ prerequisiteItem }) => ({
           id: prerequisiteItem.id,
           title: prerequisiteItem.clientTitle,
@@ -534,6 +544,13 @@ export async function approvePlan(
       ),
     };
     assertValid(input);
+    for (const item of input.items) {
+      if (
+        item.completionMode === 'STRUCTURED_OUTCOME' ||
+        (item.completionMode === 'CLIENT_REPORT_CONSULTANT_VERIFY' && item.outcomeSchema)
+      )
+        responseFields(item.outcomeSchema);
+    }
     if (version.supersedesVersionId)
       await carryProgress(tx, version.supersedesVersionId, version.id, input);
     if (version.supersedesVersionId)
@@ -861,17 +878,40 @@ export async function executePlanItem(
       )
         throw new AppError('OUTCOME_REQUIRED', 422, 'A structured outcome is required');
 
+      if (input.action === 'UNABLE' && !input.reason?.trim())
+        throw new AppError('REASON_REQUIRED', 422, 'Tell your consultant what you need help with.');
+      if (input.action === 'COMPLETE') {
+        if (
+          item.completionMode === 'STRUCTURED_OUTCOME' ||
+          (item.completionMode === 'CLIENT_REPORT_CONSULTANT_VERIFY' && item.outcomeSchema)
+        )
+          validateResponse(item.outcomeSchema, input.outcome);
+        else if (item.completionMode === 'CLIENT_REPORT_CONSULTANT_VERIFY')
+          validateResponse(
+            {
+              type: 'object',
+              properties: {
+                clientReport: { type: 'string', title: 'What did you complete?', maxLength: 2000 },
+              },
+              required: ['clientReport'],
+            },
+            input.outcome,
+          );
+      }
+
       const outcome = await tx.planItemOutcome.create({
         data: {
           planItemId: item.id,
           idempotencyKey: input.idempotencyKey,
           actorId: input.actorId,
           kind: input.action,
-          ...(input.outcome === undefined
-            ? input.reason
-              ? { data: { reason: input.reason } }
-              : {}
-            : { data: input.outcome }),
+          ...(input.action === 'UNABLE'
+            ? { data: { reason: input.reason!.trim() } }
+            : input.outcome === undefined
+              ? input.reason
+                ? { data: { reason: input.reason } }
+                : {}
+              : { data: input.outcome }),
         },
       });
       const nextStatus =
@@ -941,35 +981,7 @@ export async function executePlanItem(
         },
       });
 
-      if (nextStatus === 'COMPLETED') {
-        const versionItems = await tx.planItem.findMany({
-          where: { planVersionId: item.planVersionId },
-          include: { prerequisites: true },
-        });
-        const completed = new Set(
-          versionItems.filter(({ status }) => status === 'COMPLETED').map(({ id }) => id),
-        );
-        const dependencies = versionItems.flatMap((candidate) =>
-          candidate.prerequisites.map((edge) => ({
-            dependentItemId: candidate.id,
-            prerequisiteItemId: edge.prerequisiteItemId,
-            groupKey: edge.groupKey,
-            mode: edge.mode,
-          })),
-        );
-        const unlockIds = versionItems
-          .filter(
-            (candidate) =>
-              candidate.status === 'LOCKED' &&
-              prerequisitesSatisfied(candidate.id, dependencies, completed),
-          )
-          .map(({ id }) => id);
-        if (unlockIds.length)
-          await tx.planItem.updateMany({
-            where: { id: { in: unlockIds } },
-            data: { status: 'AVAILABLE' },
-          });
-      }
+      if (nextStatus === 'COMPLETED') await unlockCompletedDependencies(tx, item.planVersionId);
       return { replayed: false, outcomeId: outcome.id, status: nextStatus };
     });
   } catch (error) {
@@ -993,6 +1005,11 @@ export async function verifyPlanItem(
   clientId: string,
   itemId: string,
   actorId: string,
+  review?: {
+    decision: 'VERIFY' | 'RETURN';
+    expectedOutcomeId: string | null;
+    note?: string | undefined;
+  },
 ) {
   return prisma.$transaction(async (tx) => {
     await lockItemPlan(tx, itemId, clientId);
@@ -1004,8 +1021,29 @@ export async function verifyPlanItem(
       include: { planVersion: true },
     });
     if (!item) throw new AppError('NOT_FOUND', 404, 'Plan item was not found');
+    const evidence = await itemHistory(
+      tx,
+      item.planVersion.planId,
+      item.planVersion.version,
+      item.stableKey,
+    );
+    if (review && review.expectedOutcomeId !== evidence.latestOutcomeId)
+      throw new AppError(
+        'PLAN_EVIDENCE_CHANGED',
+        409,
+        'The submitted evidence changed. Reload before reviewing it.',
+      );
+    const returning = review?.decision === 'RETURN';
+    if (returning && (!review.note?.trim() || item.status !== 'AWAITING_VERIFICATION'))
+      throw new AppError(
+        'PLAN_CORRECTION_INVALID',
+        422,
+        'Explain what the client should correct on the submitted response.',
+      );
     if (
-      !['AWAITING_VERIFICATION', 'AVAILABLE'].includes(item.status) ||
+      !(item.completionMode === 'CLIENT_REPORT_CONSULTANT_VERIFY'
+        ? item.status === 'AWAITING_VERIFICATION'
+        : item.status === 'AVAILABLE') ||
       !['CLIENT_REPORT_CONSULTANT_VERIFY', 'CONSULTANT_VERIFY'].includes(item.completionMode)
     )
       throw new AppError(
@@ -1015,8 +1053,21 @@ export async function verifyPlanItem(
       );
     await tx.planItem.update({
       where: { id: item.id },
-      data: { status: 'COMPLETED', completedAt: new Date() },
+      data: {
+        status: returning ? 'IN_PROGRESS' : 'COMPLETED',
+        completedAt: returning ? null : new Date(),
+      },
     });
+    const decision = await tx.planItemOutcome.create({
+      data: {
+        planItemId: item.id,
+        actorId,
+        idempotencyKey: `review:${evidence.latestOutcomeId ?? 'initial'}`,
+        kind: returning ? 'CORRECTION_REQUESTED' : 'VERIFIED',
+        data: { note: review?.note?.trim() ?? '' },
+      },
+    });
+    if (!returning) await unlockCompletedDependencies(tx, item.planVersionId);
     await tx.workItem.updateMany({
       where: { sourceType: 'PlanItem', sourceId: item.id, status: { not: 'COMPLETED' } },
       data: { status: 'COMPLETED', completedAt: new Date(), resolvedAt: new Date() },
@@ -1025,20 +1076,77 @@ export async function verifyPlanItem(
       data: {
         clientId,
         actorId,
-        action: 'plan.item.verified',
+        action: returning ? 'plan.item.correction_requested' : 'plan.item.verified',
         entityType: 'PlanItem',
         entityId: item.id,
       },
     });
     await tx.outboxEvent.create({
       data: {
-        eventType: 'plan.item.verified',
-        eventKey: `plan-item-verified:${item.id}`,
+        eventType: returning ? 'plan.item.changed' : 'plan.item.verified',
+        eventKey: `plan-item-reviewed:${decision.id}`,
         aggregateType: 'Plan',
         aggregateId: item.planVersion.planId,
         payload: { clientId, domains: ['plan', 'home', 'journey', 'work-queue'] },
       },
     });
-    return { itemId: item.id, status: 'COMPLETED' as const };
+    return {
+      itemId: item.id,
+      status: returning ? ('IN_PROGRESS' as const) : ('COMPLETED' as const),
+    };
   });
+}
+
+async function unlockCompletedDependencies(tx: Prisma.TransactionClient, versionId: string) {
+  const versionItems = await tx.planItem.findMany({
+    where: { planVersionId: versionId },
+    include: { prerequisites: true },
+  });
+  const completed = new Set(
+    versionItems.filter(({ status }) => status === 'COMPLETED').map(({ id }) => id),
+  );
+  const dependencies = versionItems.flatMap((candidate) =>
+    candidate.prerequisites.map((edge) => ({
+      dependentItemId: candidate.id,
+      prerequisiteItemId: edge.prerequisiteItemId,
+      groupKey: edge.groupKey,
+      mode: edge.mode,
+    })),
+  );
+  const unlockIds = versionItems
+    .filter(
+      (candidate) =>
+        candidate.status === 'LOCKED' &&
+        prerequisitesSatisfied(candidate.id, dependencies, completed),
+    )
+    .map(({ id }) => id);
+  if (unlockIds.length)
+    await tx.planItem.updateMany({
+      where: { id: { in: unlockIds } },
+      data: { status: 'AVAILABLE' },
+    });
+}
+
+async function itemHistory(
+  tx: Prisma.TransactionClient,
+  planId: string,
+  version: number,
+  stableKey: string,
+) {
+  const rows = await tx.planItemOutcome.findMany({
+    where: {
+      planItem: {
+        stableKey,
+        planVersion: { planId, version: { lte: version }, status: { not: 'DRAFT' } },
+      },
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: 21,
+    select: { id: true, kind: true, data: true, createdAt: true },
+  });
+  return {
+    latestOutcomeId: rows[0]?.id ?? null,
+    history: rows.slice(0, 20).reverse(),
+    historyLimited: rows.length > 20,
+  };
 }

@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { Alert, Box, Button, CardContent, Stack, TextField, Typography } from '@mui/material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, Box, Button, CardContent, Stack, Typography } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
@@ -15,10 +14,11 @@ import {
   StickyActionBar,
   WaitingState,
 } from '../components/common/ProductFoundation';
+import { PlanResponse, ResponseHistory, type ResponseItem } from '../features/plans/PlanResponse';
 import type { PlanItem as Item } from '../features/plans/editor';
 export { ConsultantPlanBuilderPage } from '../features/plans/ConsultantPlanBuilderPage';
 
-type ClientPlanItem = {
+export type ClientPlanItem = ResponseItem & {
   id: string;
   type: Item['type'];
   completionMode: Item['completionMode'];
@@ -31,7 +31,7 @@ type ClientPlanItem = {
   dueAt?: string | null;
 };
 
-type ClientPlanResponse = {
+export type ClientPlanResponse = {
   plan: null | {
     id: string;
     title: string;
@@ -41,35 +41,9 @@ type ClientPlanResponse = {
 };
 
 export function ClientPlanPage() {
-  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ['client-plan'],
     queryFn: () => apiRequest<ClientPlanResponse>('/api/v1/client/plan'),
-  });
-  const [outcomes, setOutcomes] = useState<Record<string, string>>({});
-  const act = useMutation({
-    mutationFn: ({ item, action }: { item: ClientPlanItem; action: 'COMPLETE' | 'UNABLE' }) =>
-      apiRequest(`/api/v1/client/plan/items/${item.id}/outcomes`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          idempotencyKey: crypto.randomUUID(),
-          action,
-          ...(action === 'UNABLE'
-            ? { reason: outcomes[item.id] || 'I need help completing this step.' }
-            : item.completionMode === 'STRUCTURED_OUTCOME'
-              ? { outcome: { clientReport: outcomes[item.id] } }
-              : {}),
-        }),
-      }),
-    onSuccess: () => {
-      setOutcomes((current) => {
-        const next = { ...current };
-        delete next[act.variables?.item.id ?? ''];
-        return next;
-      });
-      queryClient.invalidateQueries({ queryKey: ['client-plan'] });
-    },
   });
   if (query.isLoading) return <Typography>Loading your Plan…</Typography>;
   if (query.isError)
@@ -86,7 +60,7 @@ export function ClientPlanPage() {
       </Stack>
     );
   const plan = query.data.plan;
-  const canAct = ['ACTIVE', 'APPROVED'].includes(plan.status) && !plan.version.staleAt;
+  const canAct = plan.status === 'ACTIVE' && !plan.version.staleAt;
   const currentFocus = canAct
     ? (plan.version.items.find(
         (item) =>
@@ -112,12 +86,6 @@ export function ClientPlanPage() {
       {plan.version.staleAt && (
         <Alert severity="warning">
           This Plan is being reviewed after a source change. Completed history remains available.
-        </Alert>
-      )}
-      {act.isError && (
-        <Alert severity="error">
-          That outcome was not accepted. Reload the Plan and check prerequisite or verification
-          requirements.
         </Alert>
       )}
       <ArchetypeCanvas
@@ -195,11 +163,13 @@ export function ClientPlanPage() {
                 <Typography>{item.body}</Typography>
                 <Typography variant="caption" color="text.secondary">
                   Owner:{' '}
-                  {item.owner === 'CLIENT'
-                    ? 'You'
-                    : item.owner === 'CONSULTANT'
-                      ? 'Your consultant'
-                      : 'System'}
+                  {['AWAITING_VERIFICATION', 'UNABLE'].includes(item.status)
+                    ? 'Your consultant'
+                    : item.owner === 'CLIENT'
+                      ? 'You'
+                      : item.owner === 'CONSULTANT'
+                        ? 'Your consultant'
+                        : 'System'}
                   {item.dueAt ? ` · Timing: ${new Date(item.dueAt).toLocaleDateString()}` : ''}
                 </Typography>
                 {item.prerequisites.length > 0 && item.status === 'LOCKED' && (
@@ -215,40 +185,13 @@ export function ClientPlanPage() {
                 {canAct &&
                   item.owner === 'CLIENT' &&
                   ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
-                  item.type !== 'MILESTONE' && (
-                    <Stack spacing={1}>
-                      <TextField
-                        label={
-                          item.completionMode === 'STRUCTURED_OUTCOME'
-                            ? 'What changed?'
-                            : 'Optional note'
-                        }
-                        value={outcomes[item.id] ?? ''}
-                        onChange={(event) =>
-                          setOutcomes((current) => ({ ...current, [item.id]: event.target.value }))
-                        }
-                      />
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          variant="contained"
-                          disabled={
-                            act.isPending ||
-                            (item.completionMode === 'STRUCTURED_OUTCOME' &&
-                              !outcomes[item.id]?.trim())
-                          }
-                          onClick={() => act.mutate({ item, action: 'COMPLETE' })}
-                        >
-                          {item.type === 'GUIDANCE' ? 'I understand' : 'Report complete'}
-                        </Button>
-                        <Button
-                          disabled={act.isPending}
-                          onClick={() => act.mutate({ item, action: 'UNABLE' })}
-                        >
-                          I need help
-                        </Button>
-                      </Stack>
-                    </Stack>
-                  )}
+                  item.type !== 'MILESTONE' && <PlanResponse key={item.id} item={item} />}
+                <ResponseHistory item={item} />
+                {item.status === 'UNABLE' && (
+                  <Alert severity="info">
+                    Your help request is saved. Your consultant owns the next step.
+                  </Alert>
+                )}
                 {item.status === 'AWAITING_VERIFICATION' && (
                   <Alert severity="info">
                     Your update was recorded and is awaiting consultant verification.

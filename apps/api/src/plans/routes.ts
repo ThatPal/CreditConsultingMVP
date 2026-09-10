@@ -171,6 +171,18 @@ export function createPlanRouter(
     }
   });
   router.get(
+    '/consultant/clients/:clientId/plan/execution',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
+    async (req, res, next) => {
+      try {
+        res.json(await getClientPlan(prisma, req.params.clientId as string));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
     '/consultant/clients/:clientId/plans/:planId/sources',
     requireRole('CONSULTANT'),
     requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
@@ -232,6 +244,13 @@ export function createPlanRouter(
             req.params.clientId as string,
             req.params.itemId as string,
             req.auth!.userId,
+            z
+              .object({
+                decision: z.enum(['VERIFY', 'RETURN']),
+                expectedOutcomeId: z.string().uuid().nullable(),
+                note: z.string().trim().max(2000).optional(),
+              })
+              .parse(req.body),
           ),
         );
       } catch (error) {

@@ -2,6 +2,8 @@
 
 This roadmap retains the full planned product. It is a delivery sequence, not a reduced MVP. **A0 is complete for audit isolation; A1/A2 development is underway, with part of A5's Plan revision contract implemented.** The user authorized development. See [pass 1](IMPLEMENTATION-01.md) and [pass 2](IMPLEMENTATION-02.md) for delivered behavior, evidence, and remaining work. No production wave has been declared complete.
 
+[Pass 3](IMPLEMENTATION-03.md) adds typed Plan responses, correction/resubmission, evidence-bound verification, and dependent-step unlocking. A5 remains open for attachments, full history and paths, lifecycle coverage, and operational proof.
+
 Avoid calendar promises before A1/A3 expose extraction, provider and migration effort. Track accepted workflow outcomes, remaining defects and evidence—not a percentage derived from screens or test counts. Re-estimate each wave after its contracts and dependencies are known.
 
 ## Dependency sequence
