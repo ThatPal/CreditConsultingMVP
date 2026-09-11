@@ -163,3 +163,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 4
 
 [Plan documents and evidence snapshots](IMPLEMENTATION-04.md) adds private attachment selection/upload, immutable submission metadata/question labels, protected downloads, and unavailable-evidence correction handling. A5 is still in progress: prioritize full history/review access, help resolution, response-aware preview, durable drafts, and remaining lifecycle states. Document scanning, retention, storage integrity, and access qualification remain explicit production gates.
+
+## Latest checkpoint: pass 5
+
+[Help resolution and ongoing review access](IMPLEMENTATION-05.md) closes the client-help reply/reopen loop and keeps completed responses accessible in the selected published Plan. A5 remains in progress. Next: full history pagination, durable drafts, response-aware preview, multi-Plan/path lifecycle, and independent-session realtime verification.

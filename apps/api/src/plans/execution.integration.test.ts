@@ -446,6 +446,122 @@ describe('consequential client Plan execution', () => {
     ).toMatchObject({ fileName: 'Original evidence.pdf' });
   });
 
+  test('answers help requests without completing work, retains repeated requests and rejects stale decisions', async () => {
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'Help lifecycle',
+      purpose: 'NURTURE',
+      items: [
+        {
+          stableKey: 'help-cycle',
+          type: 'GUIDANCE',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'Read the preparation guide',
+          sortOrder: 0,
+        },
+        {
+          stableKey: 'after-help',
+          type: 'ACTION',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'Continue preparation',
+          sortOrder: 1,
+        },
+      ],
+      dependencies: [{ dependentKey: 'after-help', prerequisiteKey: 'help-cycle' }],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const items = (await getClientPlan(prisma, clientId)).plan!.version.items;
+    const guide = items.find((row) => row.stableKey === 'help-cycle')!;
+    const next = items.find((row) => row.stableKey === 'after-help')!;
+    const ask = () =>
+      executePlanItem(prisma, {
+        clientId,
+        itemId: guide.id,
+        actorId: clientUserId,
+        idempotencyKey: randomUUID(),
+        action: 'UNABLE',
+        reason: 'Where do I find the guide?',
+      });
+    const first = await ask();
+    expect(await prisma.planItem.findUniqueOrThrow({ where: { id: guide.id } })).toMatchObject({
+      status: 'UNABLE',
+      acknowledgedAt: null,
+    });
+    await expect(
+      verifyPlanItem(prisma, clientId, guide.id, consultantId, {
+        decision: 'VERIFY',
+        expectedOutcomeId: first.outcomeId,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_PLAN_ITEM_STATE' });
+    await expect(
+      verifyPlanItem(prisma, clientId, guide.id, consultantId, {
+        decision: 'RESUME',
+        expectedOutcomeId: first.outcomeId,
+        note: ' ',
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_HELP_INVALID' });
+    await expect(
+      verifyPlanItem(prisma, randomUUID(), guide.id, consultantId, {
+        decision: 'RESUME',
+        expectedOutcomeId: first.outcomeId,
+        note: 'Read the document.',
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await verifyPlanItem(prisma, clientId, guide.id, consultantId, {
+      decision: 'RESUME',
+      expectedOutcomeId: first.outcomeId,
+      note: 'Open Documents and read the preparation guide.',
+    });
+    expect(await prisma.planItem.findUniqueOrThrow({ where: { id: guide.id } })).toMatchObject({
+      status: 'IN_PROGRESS',
+      completedAt: null,
+      acknowledgedAt: null,
+    });
+    expect(await prisma.planItem.findUniqueOrThrow({ where: { id: next.id } })).toMatchObject({
+      status: 'LOCKED',
+    });
+    expect(
+      await prisma.workItem.count({
+        where: { sourceId: guide.id, status: { in: ['OPEN', 'WAITING', 'IN_PROGRESS'] } },
+      }),
+    ).toBe(0);
+    const second = await ask();
+    await expect(
+      verifyPlanItem(prisma, clientId, guide.id, consultantId, {
+        decision: 'RESUME',
+        expectedOutcomeId: first.outcomeId,
+        note: 'Old reply',
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_EVIDENCE_CHANGED' });
+    expect(
+      await prisma.workItem.count({
+        where: { sourceId: guide.id, status: { in: ['OPEN', 'WAITING', 'IN_PROGRESS'] } },
+      }),
+    ).toBe(1);
+    await verifyPlanItem(prisma, clientId, guide.id, consultantId, {
+      decision: 'RESUME',
+      expectedOutcomeId: second.outcomeId,
+      note: 'The preparation guide is the first file in Documents.',
+    });
+    await executePlanItem(prisma, {
+      clientId,
+      itemId: guide.id,
+      actorId: clientUserId,
+      idempotencyKey: randomUUID(),
+      action: 'COMPLETE',
+    });
+    const final = (await getClientPlan(prisma, clientId)).plan!.version.items;
+    expect(final.find((row) => row.id === guide.id)!.history.map((row) => row.kind)).toEqual([
+      'UNABLE',
+      'HELP_RESOLVED',
+      'UNABLE',
+      'HELP_RESOLVED',
+      'COMPLETE',
+    ]);
+    expect(final.find((row) => row.id === next.id)!.status).toBe('AVAILABLE');
+  });
+
   test('records unable state and one meaningful Attention projection without false completion', async () => {
     const key = randomUUID();
     await executePlanItem(prisma, {

@@ -931,7 +931,9 @@ export async function executePlanItem(
         data: {
           status: nextStatus,
           ...(nextStatus === 'COMPLETED' ? { completedAt: new Date() } : {}),
-          ...(item.type === 'GUIDANCE' ? { acknowledgedAt: new Date() } : {}),
+          ...(item.type === 'GUIDANCE' && input.action === 'COMPLETE'
+            ? { acknowledgedAt: new Date() }
+            : {}),
         },
       });
       if (item.completionMode === 'STRUCTURED_OUTCOME' && input.action === 'COMPLETE')
@@ -1012,7 +1014,7 @@ export async function verifyPlanItem(
   itemId: string,
   actorId: string,
   review?: {
-    decision: 'VERIFY' | 'RETURN';
+    decision: 'VERIFY' | 'RETURN' | 'RESUME';
     expectedOutcomeId: string | null;
     note?: string | undefined;
   },
@@ -1040,7 +1042,15 @@ export async function verifyPlanItem(
         'The submitted evidence changed. Reload before reviewing it.',
       );
     const returning = review?.decision === 'RETURN';
-    if (!returning && evidence.latestOutcomeId) {
+    const resuming = review?.decision === 'RESUME';
+    const reopen = returning || resuming;
+    if (resuming && (item.status !== 'UNABLE' || item.owner !== 'CLIENT' || !review.note?.trim()))
+      throw new AppError(
+        'PLAN_HELP_INVALID',
+        422,
+        'Explain how the client can continue before reopening a step that needs help.',
+      );
+    if (!reopen && evidence.latestOutcomeId) {
       await tx.$queryRaw(
         Prisma.sql`SELECT d."id" FROM "Document" d INNER JOIN "PlanOutcomeAttachment" a ON a."documentId" = d."id" WHERE a."outcomeId" = ${evidence.latestOutcomeId}::uuid ORDER BY d."id" FOR SHARE OF d`,
       );
@@ -1069,10 +1079,11 @@ export async function verifyPlanItem(
         'Explain what the client should correct on the submitted response.',
       );
     if (
-      !(item.completionMode === 'CLIENT_REPORT_CONSULTANT_VERIFY'
+      !resuming &&
+      (!(item.completionMode === 'CLIENT_REPORT_CONSULTANT_VERIFY'
         ? item.status === 'AWAITING_VERIFICATION'
         : item.status === 'AVAILABLE') ||
-      !['CLIENT_REPORT_CONSULTANT_VERIFY', 'CONSULTANT_VERIFY'].includes(item.completionMode)
+        !['CLIENT_REPORT_CONSULTANT_VERIFY', 'CONSULTANT_VERIFY'].includes(item.completionMode))
     )
       throw new AppError(
         'INVALID_PLAN_ITEM_STATE',
@@ -1082,8 +1093,8 @@ export async function verifyPlanItem(
     await tx.planItem.update({
       where: { id: item.id },
       data: {
-        status: returning ? 'IN_PROGRESS' : 'COMPLETED',
-        completedAt: returning ? null : new Date(),
+        status: reopen ? 'IN_PROGRESS' : 'COMPLETED',
+        completedAt: reopen ? null : new Date(),
       },
     });
     const decision = await tx.planItemOutcome.create({
@@ -1091,11 +1102,11 @@ export async function verifyPlanItem(
         planItemId: item.id,
         actorId,
         idempotencyKey: `review:${evidence.latestOutcomeId ?? 'initial'}`,
-        kind: returning ? 'CORRECTION_REQUESTED' : 'VERIFIED',
+        kind: resuming ? 'HELP_RESOLVED' : returning ? 'CORRECTION_REQUESTED' : 'VERIFIED',
         data: { note: review?.note?.trim() ?? '' },
       },
     });
-    if (!returning) await unlockCompletedDependencies(tx, item.planVersionId);
+    if (!reopen) await unlockCompletedDependencies(tx, item.planVersionId);
     await tx.workItem.updateMany({
       where: { sourceType: 'PlanItem', sourceId: item.id, status: { not: 'COMPLETED' } },
       data: { status: 'COMPLETED', completedAt: new Date(), resolvedAt: new Date() },
@@ -1104,14 +1115,18 @@ export async function verifyPlanItem(
       data: {
         clientId,
         actorId,
-        action: returning ? 'plan.item.correction_requested' : 'plan.item.verified',
+        action: resuming
+          ? 'plan.item.help_resolved'
+          : returning
+            ? 'plan.item.correction_requested'
+            : 'plan.item.verified',
         entityType: 'PlanItem',
         entityId: item.id,
       },
     });
     await tx.outboxEvent.create({
       data: {
-        eventType: returning ? 'plan.item.changed' : 'plan.item.verified',
+        eventType: reopen ? 'plan.item.changed' : 'plan.item.verified',
         eventKey: `plan-item-reviewed:${decision.id}`,
         aggregateType: 'Plan',
         aggregateId: item.planVersion.planId,
@@ -1120,7 +1135,7 @@ export async function verifyPlanItem(
     });
     return {
       itemId: item.id,
-      status: returning ? ('IN_PROGRESS' as const) : ('COMPLETED' as const),
+      status: reopen ? ('IN_PROGRESS' as const) : ('COMPLETED' as const),
     };
   });
 }

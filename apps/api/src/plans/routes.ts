@@ -247,7 +247,7 @@ export function createPlanRouter(
             req.auth!.userId,
             z
               .object({
-                decision: z.enum(['VERIFY', 'RETURN']),
+                decision: z.enum(['VERIFY', 'RETURN', 'RESUME']),
                 expectedOutcomeId: z.string().uuid().nullable(),
                 note: z.string().trim().max(2000).optional(),
               })

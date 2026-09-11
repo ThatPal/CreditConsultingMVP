@@ -44,6 +44,7 @@ export function ResponseHistory({
     COMPLETE: consultant ? 'Client submitted an update' : 'You submitted an update',
     UNABLE: consultant ? 'Client requested help' : 'You requested help',
     VERIFIED: 'Consultant verified',
+    HELP_RESOLVED: 'Consultant provided guidance and reopened this step',
     CORRECTION_REQUESTED: 'Consultant requested a correction',
   };
   return (
@@ -198,6 +199,12 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
       }}
       sx={{ pt: 2 }}
     >
+      {item.history?.at(-1)?.kind === 'HELP_RESOLVED' && (
+        <Alert severity="info">
+          Your consultant has replied: {String(item.history.at(-1)?.data?.note ?? '')} You can
+          continue this step below.
+        </Alert>
+      )}
       {item.history?.at(-1)?.kind === 'CORRECTION_REQUESTED' && (
         <Alert severity="warning">
           Your consultant requested a correction: {String(item.history.at(-1)?.data?.note ?? '')}

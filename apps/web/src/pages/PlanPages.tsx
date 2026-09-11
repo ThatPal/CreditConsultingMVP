@@ -67,7 +67,8 @@ export function ClientPlanPage() {
           item.owner === 'CLIENT' &&
           item.type !== 'MILESTONE' &&
           ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
-      ) ?? plan.version.items.find((item) => item.status === 'AWAITING_VERIFICATION'))
+      ) ??
+      plan.version.items.find((item) => ['AWAITING_VERIFICATION', 'UNABLE'].includes(item.status)))
     : undefined;
   const visibleItems = plan.version.items.filter((item) => item.status !== 'CANCELLED');
   const openActions = visibleItems.filter(
@@ -109,10 +110,12 @@ export function ClientPlanPage() {
                     : 'Your consultant owns the next step'))}
             </Typography>
             <Typography color="text.secondary">
-              {currentFocus?.body ??
+              {(currentFocus?.status === 'UNABLE'
+                ? 'Your consultant will reply with guidance before you continue this step. Your help request is saved below.'
+                : currentFocus?.body) ??
                 (completed === visibleItems.length && visibleItems.length > 0
                   ? 'Your completed work is saved below. Return Home to see what comes next in your journey.'
-                  : 'Your completed work is saved below. Check the owner and status of each remaining step.')}
+                  : 'Check the owner and status of each remaining step below.')}
             </Typography>
             <Typography variant="body2">
               Actions remaining: {openActions} · {completed} of {visibleItems.length} total steps
@@ -158,7 +161,11 @@ export function ClientPlanPage() {
                     </Typography>
                     <Typography variant="h6">{item.title}</Typography>
                   </Stack>
-                  <StatusChip {...presentStatus(item.status)} />
+                  <StatusChip
+                    {...(item.status === 'UNABLE'
+                      ? { label: 'Help requested', tone: 'info' as const }
+                      : presentStatus(item.status))}
+                  />
                 </Stack>
                 <Typography>{item.body}</Typography>
                 <Typography variant="caption" color="text.secondary">

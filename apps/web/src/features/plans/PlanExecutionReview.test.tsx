@@ -63,3 +63,70 @@ test('requires a client-visible correction message and binds review to the displ
   });
   expect(screen.getByText('Client submitted an update')).toBeInTheDocument();
 });
+
+function reviewFixture(status: string) {
+  vi.mocked(apiRequest).mockReset();
+  vi.mocked(apiRequest).mockResolvedValue({
+    plan: {
+      status: 'ACTIVE',
+      version: {
+        items: [
+          {
+            id: 'help-step',
+            title: 'Read guidance',
+            body: 'Prepare for review.',
+            status,
+            completionMode: 'ACKNOWLEDGEMENT',
+            latestOutcomeId: 'help-event',
+            history: [
+              {
+                id: 'help-event',
+                kind: status === 'COMPLETED' ? 'COMPLETE' : 'UNABLE',
+                data: { reason: 'I cannot find the guide.' },
+                createdAt: '2026-09-10T12:00:00Z',
+              },
+            ],
+          },
+        ],
+      },
+    },
+  });
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <PlanExecutionReview clientId="client" />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+}
+test('requires helpful guidance and reopens the exact request without offering verification', async () => {
+  reviewFixture('UNABLE');
+  const send = await screen.findByRole('button', { name: 'Send guidance & reopen step' });
+  expect(screen.queryByRole('button', { name: 'Verify completion' })).not.toBeInTheDocument();
+  fireEvent.click(send);
+  expect(await screen.findByText('Explain how the client can continue.')).toBeVisible();
+  fireEvent.change(screen.getByRole('textbox', { name: 'Message to the client' }), {
+    target: { value: 'Open the preparation guide in Documents.' },
+  });
+  fireEvent.click(send);
+  await waitFor(() =>
+    expect(vi.mocked(apiRequest).mock.calls.some(([, options]) => options?.method === 'POST')).toBe(
+      true,
+    ),
+  );
+  const call = vi.mocked(apiRequest).mock.calls.find(([, options]) => options?.method === 'POST')!;
+  expect(JSON.parse(String(call[1]?.body))).toEqual({
+    decision: 'RESUME',
+    expectedOutcomeId: 'help-event',
+    note: 'Open the preparation guide in Documents.',
+  });
+});
+test('keeps completed responses accessible with no decision controls', async () => {
+  reviewFixture('COMPLETED');
+  fireEvent.click(await screen.findByRole('button', { name: 'All steps (1)' }));
+  expect(await screen.findByText('Client submitted an update')).toBeVisible();
+  expect(screen.queryByRole('textbox', { name: 'Message to the client' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Verify completion' })).not.toBeInTheDocument();
+});
