@@ -151,7 +151,12 @@ export function PlanExecutionReview({ clientId }: { clientId: string }) {
         {item && (
           <>
             <Typography>{item.body}</Typography>
-            <ResponseHistory key={item.id} item={item} consultant />
+            <ResponseHistory
+              key={`${item.id}:${item.latestOutcomeId}`}
+              item={item}
+              consultant
+              clientId={clientId}
+            />
             {!item.history?.length && (
               <Typography color="text.secondary">
                 No responses have been submitted for this step.

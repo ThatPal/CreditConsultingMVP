@@ -35,11 +35,42 @@ export type ResponseItem = {
 export function ResponseHistory({
   item,
   consultant = false,
+  clientId,
 }: {
   item: ResponseItem;
   consultant?: boolean;
+  clientId?: string;
 }) {
-  if (!item.history?.length) return null;
+  const [older, setOlder] = useState<Evidence[]>([]);
+  const [hasMore, setHasMore] = useState(Boolean(item.historyLimited));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const history = [...older, ...(item.history ?? [])];
+  async function loadOlder() {
+    if (loading || !history[0]) return;
+    setLoading(true);
+    setError('');
+    try {
+      const base = consultant
+        ? `/api/v1/consultant/clients/${clientId}/plan`
+        : '/api/v1/client/plan';
+      const page = await apiRequest<{ history: Evidence[]; historyLimited: boolean }>(
+        `${base}/items/${item.id}/history?before=${encodeURIComponent(history[0].id)}`,
+      );
+      setOlder((current) => [
+        ...page.history.filter((row) => !history.some((existing) => existing.id === row.id)),
+        ...current,
+      ]);
+      setHasMore(page.historyLimited);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Older history could not be loaded. Try again.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+  if (!history.length) return null;
   const labels: Record<string, string> = {
     COMPLETE: consultant ? 'Client submitted an update' : 'You submitted an update',
     UNABLE: consultant ? 'Client requested help' : 'You requested help',
@@ -50,11 +81,38 @@ export function ResponseHistory({
   return (
     <Box component="details" open={consultant} sx={{ mt: 2 }}>
       <Typography component="summary" sx={{ cursor: 'pointer', fontWeight: 600 }}>
-        Response history · {item.history.length}
-        {item.historyLimited ? ' most recent' : ''}
+        Response history · {history.length}
+        {hasMore ? ' most recent' : ''}
       </Typography>
-      <Stack spacing={2} divider={<Divider />} sx={{ mt: 2 }}>
-        {item.history.map((entry) => (
+      {hasMore && (
+        <Button disabled={loading} onClick={() => void loadOlder()} sx={{ mt: 1 }}>
+          {loading ? 'Loading older responses...' : 'Load older responses'}
+        </Button>
+      )}
+      {error && (
+        <Alert severity="error">
+          {error} Your loaded history is still available. Retry with Load older responses.
+        </Alert>
+      )}
+      <Stack
+        spacing={2}
+        divider={<Divider />}
+        role="region"
+        aria-label="Response events"
+        tabIndex={0}
+        sx={{
+          mt: 2,
+          maxHeight: 'min(60vh, 560px)',
+          overflowY: 'auto',
+          pr: 1,
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2,
+          },
+        }}
+      >
+        {history.map((entry) => (
           <Box key={entry.id}>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {labels[entry.kind] ?? 'Recorded update'}

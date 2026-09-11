@@ -193,7 +193,7 @@ export function ClientPlanPage() {
                   item.owner === 'CLIENT' &&
                   ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
                   item.type !== 'MILESTONE' && <PlanResponse key={item.id} item={item} />}
-                <ResponseHistory item={item} />
+                <ResponseHistory key={`${item.id}:${item.latestOutcomeId}`} item={item} />
                 {item.status === 'UNABLE' && (
                   <Alert severity="info">
                     Your help request is saved. Your consultant owns the next step.

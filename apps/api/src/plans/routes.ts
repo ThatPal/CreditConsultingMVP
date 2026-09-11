@@ -8,6 +8,7 @@ import { AppError } from '../http/errors.js';
 import {
   approvePlan,
   getClientPlan,
+  getPlanItemHistory,
   createPlanDraft,
   executePlanItem,
   getPlanBuilder,
@@ -156,6 +157,43 @@ export function createPlanRouter(
             req.auth!.userId,
             z.object({ expectedVersion: z.number().int().positive() }).parse(req.body)
               .expectedVersion,
+          ),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
+    '/client/plan/items/:itemId/history',
+    requireRole('CLIENT'),
+    async (req, res, next) => {
+      try {
+        res.json(
+          await getPlanItemHistory(
+            prisma,
+            req.auth!.clientId!,
+            z.string().uuid().parse(req.params.itemId),
+            z.string().uuid().optional().parse(req.query.before),
+          ),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
+    '/consultant/clients/:clientId/plan/items/:itemId/history',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
+    async (req, res, next) => {
+      try {
+        res.json(
+          await getPlanItemHistory(
+            prisma,
+            req.params.clientId as string,
+            z.string().uuid().parse(req.params.itemId),
+            z.string().uuid().optional().parse(req.query.before),
           ),
         );
       } catch (error) {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
-import { getClientPlan } from './service.js';
+import { getClientPlan, getPlanItemHistory } from './service.js';
 import { preparePlanAttachments } from './attachments.js';
 import {
   approvePlan,
@@ -560,6 +560,93 @@ describe('consequential client Plan execution', () => {
       'COMPLETE',
     ]);
     expect(final.find((row) => row.id === next.id)!.status).toBe('AVAILABLE');
+  });
+
+  test('paginates stable history without duplicates at equal timestamps and rejects foreign cursors', async () => {
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'History pagination',
+      purpose: 'NURTURE',
+      items: [
+        {
+          stableKey: 'history',
+          type: 'GUIDANCE',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'History fixture',
+          sortOrder: 0,
+        },
+        {
+          stableKey: 'other-history',
+          type: 'GUIDANCE',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'Other step',
+          sortOrder: 1,
+        },
+      ],
+      dependencies: [],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const items = (await getClientPlan(prisma, clientId)).plan!.version.items;
+    const step = items.find((row) => row.stableKey === 'history')!;
+    const other = items.find((row) => row.stableKey === 'other-history')!;
+    const records = Array.from({ length: 45 }, () => ({
+      id: randomUUID(),
+      planItemId: step.id,
+      actorId: clientUserId,
+      idempotencyKey: randomUUID(),
+      kind: 'UNABLE',
+      data: { reason: 'Synthetic history event' },
+      createdAt: new Date('2026-09-01T00:00:00.000Z'),
+    }));
+    await prisma.planItemOutcome.createMany({ data: records });
+    const first = await getPlanItemHistory(prisma, clientId, step.id);
+    expect(first.history).toHaveLength(20);
+    expect(first.historyLimited).toBe(true);
+    await prisma.planItemOutcome.create({
+      data: {
+        planItemId: step.id,
+        actorId: clientUserId,
+        idempotencyKey: randomUUID(),
+        kind: 'HELP_RESOLVED',
+        data: { note: 'New event during pagination' },
+      },
+    });
+    const second = await getPlanItemHistory(prisma, clientId, step.id, first.history[0]!.id);
+    const third = await getPlanItemHistory(prisma, clientId, step.id, second.history[0]!.id);
+    expect(third.history).toHaveLength(5);
+    expect(third.historyLimited).toBe(false);
+    const ids = [...third.history, ...second.history, ...first.history].map((row) => row.id);
+    expect(new Set(ids).size).toBe(45);
+    expect(ids).toEqual(records.map((row) => row.id).sort());
+    await expect(getPlanItemHistory(prisma, randomUUID(), step.id)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    await expect(
+      getPlanItemHistory(prisma, clientId, other.id, first.history[0]!.id),
+    ).rejects.toMatchObject({ code: 'PLAN_HISTORY_CURSOR_INVALID' });
+    const draft = await createPlanDraft(prisma, clientId, {
+      title: 'Private draft',
+      purpose: 'NURTURE',
+      items: [
+        {
+          stableKey: 'history',
+          type: 'GUIDANCE',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'Private instructions',
+          sortOrder: 0,
+        },
+      ],
+      dependencies: [],
+    });
+    const draftItem = await prisma.planItem.findFirstOrThrow({
+      where: { planVersion: { planId: draft.planId } },
+    });
+    await expect(getPlanItemHistory(prisma, clientId, draftItem.id)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    expect((await getPlanItemHistory(prisma, clientId, step.id)).history).toHaveLength(20);
   });
 
   test('records unable state and one meaningful Attention projection without false completion', async () => {

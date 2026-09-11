@@ -2,7 +2,7 @@
 
 This roadmap retains the full planned product. It is a delivery sequence, not a reduced MVP. **A0 is complete for audit isolation; A1/A2 development is underway, with part of A5's Plan revision contract implemented.** The user authorized development. See [pass 1](IMPLEMENTATION-01.md) and [pass 2](IMPLEMENTATION-02.md) for delivered behavior, evidence, and remaining work. No production wave has been declared complete.
 
-[Pass 3](IMPLEMENTATION-03.md) adds typed Plan responses, correction/resubmission, evidence-bound verification, and dependent-step unlocking. A5 remains open for attachments, full history and paths, lifecycle coverage, and operational proof.
+Plan work through [pass 6](IMPLEMENTATION-06.md) includes typed responses, correction/resubmission, evidence-bound verification, private attachments, help resolution, and paginated response history. A5 remains open for durable drafts, response-aware preview, multi-Plan/path lifecycle, and operational proof.
 
 Avoid calendar promises before A1/A3 expose extraction, provider and migration effort. Track accepted workflow outcomes, remaining defects and evidence—not a percentage derived from screens or test counts. Re-estimate each wave after its contracts and dependencies are known.
 
@@ -167,3 +167,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 5
 
 [Help resolution and ongoing review access](IMPLEMENTATION-05.md) closes the client-help reply/reopen loop and keeps completed responses accessible in the selected published Plan. A5 remains in progress. Next: full history pagination, durable drafts, response-aware preview, multi-Plan/path lifecycle, and independent-session realtime verification.
+
+## Latest checkpoint: pass 6
+
+[Paginated Plan history](IMPLEMENTATION-06.md) removes the 20-event access limit for visible steps in the current published Plan, with scoped cursor pagination, retained evidence on retry, and a bounded history region. Next: durable draft recovery, response-aware preview, path lifecycle and independent-session realtime verification.

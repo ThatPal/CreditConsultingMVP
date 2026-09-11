@@ -195,3 +195,47 @@ test('prefills only current available files when correcting a response', async (
   expect(screen.queryByRole('button', { name: 'Remove Old.pdf' })).not.toBeInTheDocument();
   expect(screen.getByText(/Some files from your previous response/)).toBeVisible();
 });
+
+test('loads older history through the scoped endpoint and retains evidence after a failed page', async () => {
+  request
+    .mockRejectedValueOnce(new Error('Connection interrupted'))
+    .mockResolvedValueOnce({
+      history: [
+        {
+          id: 'old',
+          kind: 'UNABLE',
+          data: { reason: 'Earlier question' },
+          createdAt: '2026-09-09',
+        },
+      ],
+      historyLimited: false,
+    });
+  setup(
+    <ResponseHistory
+      consultant
+      clientId="client-1"
+      item={{
+        ...item,
+        historyLimited: true,
+        history: [
+          {
+            id: 'new',
+            kind: 'HELP_RESOLVED',
+            data: { note: 'Latest reply' },
+            createdAt: '2026-09-10',
+          },
+        ],
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Load older responses' }));
+  expect(await screen.findByText(/Connection interrupted/)).toBeVisible();
+  expect(screen.getByText('Note: Latest reply')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Load older responses' }));
+  expect(await screen.findByText('Note: Earlier question')).toBeVisible();
+  expect(screen.getByText('Note: Latest reply')).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Load older responses' })).not.toBeInTheDocument();
+  expect(request).toHaveBeenLastCalledWith(
+    '/api/v1/consultant/clients/client-1/plan/items/step/history?before=new',
+  );
+});

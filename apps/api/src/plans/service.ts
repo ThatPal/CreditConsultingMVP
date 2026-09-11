@@ -396,8 +396,8 @@ export async function getPlanBuilder(prisma: PrismaClient, clientId: string) {
 
 // Select the published version directly. A newer draft must not hide the
 // client's existing Plan, and an arbitrary version window is not a visibility rule.
-export async function getClientPlan(prisma: PrismaClient, clientId: string) {
-  const plan = await prisma.plan.findFirst({
+async function publishedPlan(prisma: PrismaClient, clientId: string) {
+  return prisma.plan.findFirst({
     where: {
       clientId,
       status: { notIn: ['CANCELLED', 'SUPERSEDED'] },
@@ -413,6 +413,10 @@ export async function getClientPlan(prisma: PrismaClient, clientId: string) {
     },
     orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
   });
+}
+
+export async function getClientPlan(prisma: PrismaClient, clientId: string) {
+  const plan = await publishedPlan(prisma, clientId);
   const version = plan?.versions[0];
   return {
     plan:
@@ -1170,18 +1174,56 @@ async function unlockCompletedDependencies(tx: Prisma.TransactionClient, version
     });
 }
 
+export async function getPlanItemHistory(
+  prisma: PrismaClient,
+  clientId: string,
+  itemId: string,
+  before?: string,
+) {
+  const plan = await publishedPlan(prisma, clientId);
+  const version = plan?.versions[0];
+  const item = version && clientSafeVersion(version).items.find((row) => row.id === itemId);
+  if (!plan || !version || !item)
+    throw new AppError('NOT_FOUND', 404, 'Published Plan step was not found.');
+  return itemHistory(prisma, plan.id, version.version, item.stableKey, before);
+}
+
 async function itemHistory(
   tx: Prisma.TransactionClient,
   planId: string,
   version: number,
   stableKey: string,
+  before?: string,
 ) {
+  const scope = {
+    planItem: {
+      stableKey,
+      planVersion: { planId, version: { lte: version }, status: { not: 'DRAFT' as const } },
+    },
+  };
+  const cursor = before
+    ? await tx.planItemOutcome.findFirst({
+        where: { ...scope, id: before },
+        select: { id: true, createdAt: true },
+      })
+    : null;
+  if (before && !cursor)
+    throw new AppError(
+      'PLAN_HISTORY_CURSOR_INVALID',
+      422,
+      'This history position is no longer available. Reload the Plan and try again.',
+    );
   const rows = await tx.planItemOutcome.findMany({
     where: {
-      planItem: {
-        stableKey,
-        planVersion: { planId, version: { lte: version }, status: { not: 'DRAFT' } },
-      },
+      ...scope,
+      ...(cursor
+        ? {
+            OR: [
+              { createdAt: { lt: cursor.createdAt } },
+              { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+            ],
+          }
+        : {}),
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: 21,
