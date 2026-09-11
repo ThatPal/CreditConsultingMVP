@@ -8,6 +8,8 @@ import { AppError } from '../http/errors.js';
 import {
   approvePlan,
   getClientPlan,
+  getResponseDraft,
+  saveResponseDraft,
   getPlanItemHistory,
   createPlanDraft,
   executePlanItem,
@@ -201,6 +203,48 @@ export function createPlanRouter(
       }
     },
   );
+  router.get('/client/plan/items/:itemId/draft', requireRole('CLIENT'), async (req, res, next) => {
+    try {
+      res.json(
+        await getResponseDraft(
+          prisma,
+          req.auth!.clientId!,
+          z.string().uuid().parse(req.params.itemId),
+          req.auth!.userId,
+        ),
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.put('/client/plan/items/:itemId/draft', requireRole('CLIENT'), async (req, res, next) => {
+    try {
+      const input = z
+        .object({
+          expectedRevision: z.number().int().min(0),
+          contextVersion: z.string().datetime(),
+          values: z
+            .record(z.string().max(100), z.string().max(10000))
+            .refine((value) => Object.keys(value).length <= 100),
+          note: z.string().max(2000),
+          help: z.boolean(),
+          documentIds: z.array(z.string().uuid()).max(5),
+        })
+        .strict()
+        .parse(req.body);
+      res.json(
+        await saveResponseDraft(
+          prisma,
+          req.auth!.clientId!,
+          z.string().uuid().parse(req.params.itemId),
+          req.auth!.userId,
+          input,
+        ),
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
   router.get('/client/plan', requireRole('CLIENT'), async (req, res, next) => {
     try {
       res.json(await getClientPlan(prisma, req.auth!.clientId!));
@@ -248,6 +292,8 @@ export function createPlanRouter(
             idempotencyKey: z.string().min(8).max(160),
             action: z.enum(['COMPLETE', 'UNABLE']),
             documentIds: z.array(z.string().uuid()).max(5).optional(),
+            draftRevision: z.number().int().min(0).optional(),
+            draftContextVersion: z.string().datetime().optional(),
             outcome: z.record(z.string(), z.unknown()).optional(),
             reason: z.string().min(1).max(1000).optional(),
           })

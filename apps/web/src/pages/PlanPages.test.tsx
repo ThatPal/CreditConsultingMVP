@@ -171,3 +171,72 @@ describe('consultant Plan Builder continuity', () => {
     });
   });
 });
+
+test('removes the draft form after successful client completion while retaining history', async () => {
+  let completed = false;
+  mockedApi.mockReset();
+  mockedApi.mockImplementation(async (path) => {
+    if (path.endsWith('/draft'))
+      return { active: true, contextVersion: '2026-09-10T00:00:00.000Z', draft: null };
+    if (path.endsWith('/outcomes')) {
+      completed = true;
+      return { outcomeId: 'done' };
+    }
+    return {
+      plan: {
+        id: 'plan',
+        title: 'Draft lifecycle',
+        status: 'ACTIVE',
+        version: {
+          staleAt: null,
+          items: [
+            {
+              id: 'step',
+              type: 'ACTION',
+              completionMode: 'ACKNOWLEDGEMENT',
+              status: completed ? 'COMPLETED' : 'AVAILABLE',
+              owner: 'CLIENT',
+              title: 'Gather questions',
+              body: 'Prepare your questions',
+              prerequisites: [],
+              deepLink: null,
+              latestOutcomeId: completed ? 'done' : null,
+              history: completed
+                ? [
+                    {
+                      id: 'done',
+                      kind: 'COMPLETE',
+                      data: { note: 'My questions' },
+                      createdAt: '2026-09-10',
+                    },
+                  ]
+                : [],
+            },
+          ],
+        },
+      },
+    };
+  });
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <ClientPlanPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  fireEvent.change(
+    await screen.findByRole('textbox', { name: 'Optional note for your consultant' }),
+    { target: { value: 'My questions' } },
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Save completed step' }));
+  await screen.findByRole('heading', { name: 'Your Plan steps are complete' });
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('textbox', { name: 'Optional note for your consultant' }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(screen.queryByRole('button', { name: 'Save draft' })).not.toBeInTheDocument();
+  expect(screen.getByText('Response history · 1')).toBeInTheDocument();
+});

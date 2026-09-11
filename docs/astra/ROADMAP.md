@@ -171,3 +171,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 6
 
 [Paginated Plan history](IMPLEMENTATION-06.md) removes the 20-event access limit for visible steps in the current published Plan, with scoped cursor pagination, retained evidence on retry, and a bounded history region. Next: durable draft recovery, response-aware preview, path lifecycle and independent-session realtime verification.
+
+## Latest checkpoint: pass 7
+
+[Private client response drafts](IMPLEMENTATION-07.md) adds explicit server save/restore, revision/context conflicts, and atomic removal on submission. Autosave, unsaved in-app navigation, consultant authoring recovery, replacement-version draft review and retention/discard controls remain open. A1/A2/A5 are still in progress.

@@ -1873,6 +1873,7 @@ model PlanItem {
   prerequisites       PlanDependency[]        @relation("PlanDependent")
   dependents          PlanDependency[]        @relation("PlanPrerequisite")
   outcomes            PlanItemOutcome[]
+  responseDrafts      PlanResponseDraft[]
 
   @@unique([planVersionId, stableKey])
   @@index([planVersionId, status, sortOrder, id])
@@ -3347,4 +3348,18 @@ model PasswordResetToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+}
+
+model PlanResponseDraft {
+  id String @id @default(uuid()) @db.Uuid
+  itemId String @db.Uuid
+  actorId String @db.Uuid
+  revision Int @default(1)
+  values Json
+  note String
+  help Boolean
+  documentIds String[] @db.Uuid
+  updatedAt DateTime @updatedAt
+  item PlanItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  @@unique([itemId, actorId])
 }

@@ -14,7 +14,8 @@ import {
   StickyActionBar,
   WaitingState,
 } from '../components/common/ProductFoundation';
-import { PlanResponse, ResponseHistory, type ResponseItem } from '../features/plans/PlanResponse';
+import { SavedPlanResponse } from '../features/plans/SavedPlanResponse';
+import { ResponseHistory, type ResponseItem } from '../features/plans/PlanResponse';
 import type { PlanItem as Item } from '../features/plans/editor';
 export { ConsultantPlanBuilderPage } from '../features/plans/ConsultantPlanBuilderPage';
 
@@ -192,7 +193,12 @@ export function ClientPlanPage() {
                 {canAct &&
                   item.owner === 'CLIENT' &&
                   ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
-                  item.type !== 'MILESTONE' && <PlanResponse key={item.id} item={item} />}
+                  item.type !== 'MILESTONE' && (
+                    <SavedPlanResponse
+                      key={`response:${item.id}:${item.latestOutcomeId}`}
+                      item={item}
+                    />
+                  )}
                 <ResponseHistory key={`${item.id}:${item.latestOutcomeId}`} item={item} />
                 {item.status === 'UNABLE' && (
                   <Alert severity="info">

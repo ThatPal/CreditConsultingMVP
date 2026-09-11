@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../auth/api';
+import type { ResponseDraft } from './SavedPlanResponse';
 import { EvidenceFile, PlanAttachments, type PlanFile } from './PlanAttachments';
 
 export type ResponseField = {
@@ -153,9 +154,22 @@ export function ResponseHistory({
   );
 }
 
-export function PlanResponse({ item }: { item: ResponseItem }) {
+export function PlanResponse({
+  item,
+  draft,
+  onSaveDraft,
+  draftRevision,
+  draftContextVersion,
+}: {
+  item: ResponseItem;
+  draft?: ResponseDraft | undefined;
+  draftRevision?: number;
+  draftContextVersion?: string;
+  onSaveDraft?: (draft: ResponseDraft) => Promise<void>;
+}) {
   const client = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>(() => {
+    if (draft) return draft.values;
     const previous = item.history?.filter((entry) => entry.kind === 'COMPLETE').at(-1)?.data;
     return Object.fromEntries(
       Object.entries(previous ?? {})
@@ -165,12 +179,45 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
   });
   const previousFiles =
     item.history?.filter((entry) => entry.kind === 'COMPLETE').at(-1)?.attachments ?? [];
-  const [files, setFiles] = useState<PlanFile[]>(() =>
-    previousFiles.filter((file) => file.available && file.status === 'AVAILABLE'),
+  const [files, setFiles] = useState<PlanFile[]>(
+    () =>
+      draft?.files ?? previousFiles.filter((file) => file.available && file.status === 'AVAILABLE'),
   );
   const [uploading, setUploading] = useState(false);
-  const [note, setNote] = useState('');
-  const [help, setHelp] = useState(false);
+  const [note, setNote] = useState(draft?.note ?? '');
+  const [help, setHelp] = useState(draft?.help ?? false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const serialized = JSON.stringify({ values, note, help, files });
+  const [savedPayload, setSavedPayload] = useState(serialized);
+  const [hasSaved, setHasSaved] = useState(Boolean(draft));
+  const dirty = serialized !== savedPayload;
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    if (dirty || uploading) window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty, uploading]);
+  async function saveDraft() {
+    if (!onSaveDraft || saving || uploading) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await onSaveDraft({ values, note, help, files });
+      setSavedPayload(serialized);
+      setHasSaved(true);
+    } catch (cause) {
+      setSaveError(
+        cause instanceof Error
+          ? cause.message
+          : 'The draft could not be saved. Your answers are still here.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const attempt = useRef<{ payload: string; key: string } | null>(null);
   const fields = item.responseForm?.fields ?? [];
@@ -191,10 +238,17 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
         attempt.current = { payload: serialized, key: crypto.randomUUID() };
       return apiRequest(`/api/v1/client/plan/items/${item.id}/outcomes`, {
         method: 'POST',
-        body: JSON.stringify({ ...payload, idempotencyKey: attempt.current.key }),
+        body: JSON.stringify({
+          ...payload,
+          idempotencyKey: attempt.current.key,
+          draftRevision,
+          draftContextVersion,
+        }),
       });
     },
     onSuccess: async () => {
+      setSavedPayload(serialized);
+      client.removeQueries({ queryKey: ['plan-response-draft', item.id] });
       await Promise.all(
         ['client-plan', 'portal-home', 'portal-journey'].map((root) =>
           client.invalidateQueries({ queryKey: [root] }),
@@ -203,7 +257,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
     },
   });
   const submit = () => {
-    if (uploading || mutation.isPending) return;
+    if (uploading || saving || mutation.isPending) return;
     const issues: Record<string, string> = {};
     if (help) {
       if (!note.trim()) {
@@ -282,7 +336,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
           multiline
           minRows={3}
           value={note}
-          disabled={mutation.isPending}
+          disabled={saving || mutation.isPending}
           onChange={(e) => setNote(e.target.value)}
           error={Boolean(errors.note)}
           helperText={errors.note ?? 'Your consultant will see this message and own the next step.'}
@@ -295,7 +349,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
               key={field.key}
               label={field.label}
               required={field.required}
-              disabled={mutation.isPending}
+              disabled={saving || mutation.isPending}
               select={field.type === 'boolean' || Boolean(field.options)}
               type={['number', 'integer'].includes(field.type) ? 'number' : 'text'}
               multiline={field.type === 'string' && !field.options}
@@ -343,7 +397,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
               multiline
               minRows={2}
               value={note}
-              disabled={mutation.isPending}
+              disabled={saving || mutation.isPending}
               onChange={(e) => setNote(e.target.value)}
               slotProps={{ htmlInput: { maxLength: 2000 } }}
             />
@@ -365,9 +419,26 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
       <PlanAttachments
         value={files}
         onChange={setFiles}
-        disabled={mutation.isPending}
+        disabled={saving || mutation.isPending}
         onBusyChange={setUploading}
       />
+      {onSaveDraft && (
+        <Stack spacing={1}>
+          <Button
+            disabled={saving || uploading || mutation.isPending || (hasSaved && !dirty)}
+            onClick={() => void saveDraft()}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            {saving ? 'Saving draft...' : 'Save draft'}
+          </Button>
+          <Typography variant="caption" role="status">
+            {hasSaved && !dirty
+              ? 'Draft saved privately. Your consultant has not received it.'
+              : 'Save your draft before leaving to keep these answers. Submitting sends them to your consultant.'}
+          </Typography>
+          {saveError && <Alert severity="error">{saveError}</Alert>}
+        </Stack>
+      )}
       {mutation.isError && (
         <Alert severity="error">
           {mutation.error.message} Your response is still here. You can retry.
@@ -377,7 +448,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
         <Button
           type="submit"
           variant="contained"
-          disabled={uploading || mutation.isPending || (!help && Boolean(formError))}
+          disabled={saving || uploading || mutation.isPending || (!help && Boolean(formError))}
         >
           {mutation.isPending
             ? 'Saving…'
@@ -390,7 +461,7 @@ export function PlanResponse({ item }: { item: ResponseItem }) {
                   : 'Save completed step'}
         </Button>
         <Button
-          disabled={mutation.isPending}
+          disabled={saving || mutation.isPending}
           onClick={() => {
             setHelp(!help);
             setErrors({});

@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
-import { getClientPlan, getPlanItemHistory } from './service.js';
+import {
+  getClientPlan,
+  getPlanItemHistory,
+  getResponseDraft,
+  saveResponseDraft,
+} from './service.js';
 import { preparePlanAttachments } from './attachments.js';
 import {
   approvePlan,
@@ -649,6 +654,97 @@ describe('consequential client Plan execution', () => {
     expect((await getPlanItemHistory(prisma, clientId, step.id)).history).toHaveLength(20);
   });
 
+  test('saves private drafts, rejects stale revisions/context and clears the draft on submission', async () => {
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'Draft recovery',
+      purpose: 'NURTURE',
+      items: [
+        {
+          stableKey: 'draft-step',
+          type: 'ACTION',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'Prepare your response',
+          sortOrder: 0,
+        },
+      ],
+      dependencies: [],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const draftStepId = (await getClientPlan(prisma, clientId)).plan!.version.items[0]!.id;
+    const context = await getResponseDraft(prisma, clientId, draftStepId, clientUserId);
+    const input = {
+      contextVersion: context.contextVersion,
+      expectedRevision: 0,
+      values: { unfinished: 'Partial answer' },
+      note: 'Work in progress',
+      help: false,
+      documentIds: [],
+    };
+    const first = await saveResponseDraft(prisma, clientId, draftStepId, clientUserId, input);
+    expect(first.draft).toMatchObject({ revision: 1, note: 'Work in progress' });
+    expect(
+      (await getResponseDraft(prisma, clientId, draftStepId, clientUserId)).draft?.values,
+    ).toEqual({
+      unfinished: 'Partial answer',
+    });
+    expect((await getResponseDraft(prisma, clientId, draftStepId, consultantId)).draft).toBeNull();
+    await expect(
+      getResponseDraft(prisma, randomUUID(), draftStepId, clientUserId),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(
+      saveResponseDraft(prisma, clientId, draftStepId, clientUserId, input),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONFLICT' });
+    await expect(
+      saveResponseDraft(prisma, clientId, draftStepId, clientUserId, {
+        ...input,
+        expectedRevision: 1,
+        contextVersion: '2000-01-01T00:00:00.000Z',
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONTEXT_CHANGED' });
+    expect(await prisma.planItemOutcome.count({ where: { planItemId: draftStepId } })).toBe(0);
+    expect(await prisma.workItem.count({ where: { sourceId: draftStepId } })).toBe(0);
+    await saveResponseDraft(prisma, clientId, draftStepId, clientUserId, {
+      ...input,
+      expectedRevision: 1,
+      note: 'Updated privately',
+    });
+    await expect(
+      executePlanItem(prisma, {
+        clientId,
+        itemId: draftStepId,
+        actorId: clientUserId,
+        idempotencyKey: randomUUID(),
+        action: 'COMPLETE',
+        draftRevision: 1,
+        draftContextVersion: context.contextVersion,
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONFLICT' });
+    await executePlanItem(prisma, {
+      clientId,
+      itemId: draftStepId,
+      actorId: clientUserId,
+      idempotencyKey: randomUUID(),
+      action: 'UNABLE',
+      reason: 'Need help after saving draft',
+      draftRevision: 2,
+      draftContextVersion: context.contextVersion,
+    });
+    expect(await prisma.planResponseDraft.count({ where: { itemId: draftStepId } })).toBe(0);
+    const latest = (await getClientPlan(prisma, clientId)).plan;
+    // A submitted draft remains cleared when the step is reopened.
+    const outcome = await prisma.planItemOutcome.findFirstOrThrow({
+      where: { planItemId: draftStepId },
+      orderBy: { createdAt: 'desc' },
+    });
+    await verifyPlanItem(prisma, clientId, draftStepId, consultantId, {
+      decision: 'RESUME',
+      expectedOutcomeId: outcome.id,
+      note: 'Please try again.',
+    });
+    expect(latest).not.toBeNull();
+  });
+
   test('records unable state and one meaningful Attention projection without false completion', async () => {
     const key = randomUUID();
     await executePlanItem(prisma, {
@@ -673,7 +769,12 @@ describe('consequential client Plan execution', () => {
     });
     expect(
       await prisma.workItem.count({
-        where: { sourceType: 'PlanItem', sourceId: helpId, reasonCode: 'UNABLE' },
+        where: {
+          sourceType: 'PlanItem',
+          sourceId: helpId,
+          reasonCode: 'UNABLE',
+          status: { not: 'COMPLETED' },
+        },
       }),
     ).toBe(1);
   });

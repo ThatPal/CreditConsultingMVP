@@ -396,7 +396,7 @@ export async function getPlanBuilder(prisma: PrismaClient, clientId: string) {
 
 // Select the published version directly. A newer draft must not hide the
 // client's existing Plan, and an arbitrary version window is not a visibility rule.
-async function publishedPlan(prisma: PrismaClient, clientId: string) {
+async function publishedPlan(prisma: Prisma.TransactionClient, clientId: string) {
   return prisma.plan.findFirst({
     where: {
       clientId,
@@ -827,6 +827,8 @@ export async function executePlanItem(
     outcome?: Prisma.InputJsonValue;
     reason?: string;
     documentIds?: string[];
+    draftRevision?: number;
+    draftContextVersion?: string;
   },
 ) {
   const existing = await prisma.planItemOutcome.findFirst({
@@ -859,6 +861,24 @@ export async function executePlanItem(
           'PLAN_NOT_ACTIVE',
           409,
           'This Plan is no longer available for new outcomes',
+        );
+      const savedDraft = await tx.planResponseDraft.findUnique({
+        where: { itemId_actorId: { itemId: item.id, actorId: input.actorId } },
+      });
+      if (
+        (savedDraft || input.draftRevision !== undefined) &&
+        (savedDraft?.revision ?? 0) !== input.draftRevision
+      )
+        throw new AppError(
+          'PLAN_DRAFT_CONFLICT',
+          409,
+          'The saved response changed. Reload and review the latest draft before submitting.',
+        );
+      if (input.draftContextVersion && item.updatedAt.toISOString() !== input.draftContextVersion)
+        throw new AppError(
+          'PLAN_DRAFT_CONTEXT_CHANGED',
+          409,
+          'This Plan step changed. Reload it before submitting your response.',
         );
       if (item.owner !== 'CLIENT')
         throw new AppError(
@@ -924,6 +944,7 @@ export async function executePlanItem(
               : { data: input.outcome }),
         },
       });
+      await tx.planResponseDraft.deleteMany({ where: { itemId: item.id, actorId: input.actorId } });
       const nextStatus =
         input.action === 'UNABLE'
           ? 'UNABLE'
@@ -1263,4 +1284,110 @@ async function itemHistory(
       })),
     historyLimited: rows.length > 20,
   };
+}
+
+async function responseDraftContext(
+  tx: Prisma.TransactionClient,
+  clientId: string,
+  itemId: string,
+) {
+  const plan = await publishedPlan(tx, clientId);
+  const version = plan?.versions[0];
+  const safeItem = version && clientSafeVersion(version).items.find((row) => row.id === itemId);
+  const item = version?.items.find((row) => row.id === itemId);
+  if (!safeItem || !item || item.owner !== 'CLIENT')
+    throw new AppError('NOT_FOUND', 404, 'Client Plan step was not found.');
+  return {
+    item,
+    active:
+      plan?.status === 'ACTIVE' &&
+      version?.status === 'ACTIVE' &&
+      ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
+  };
+}
+export async function getResponseDraft(
+  tx: Prisma.TransactionClient,
+  clientId: string,
+  itemId: string,
+  actorId: string,
+) {
+  const { item, active } = await responseDraftContext(tx, clientId, itemId);
+  const draft = await tx.planResponseDraft.findUnique({
+    where: { itemId_actorId: { itemId, actorId } },
+  });
+  const documents = draft
+    ? await tx.document.findMany({
+        where: {
+          id: { in: draft.documentIds },
+          clientId,
+          clientVisible: true,
+          status: 'AVAILABLE',
+        },
+      })
+    : [];
+  return {
+    contextVersion: item.updatedAt.toISOString(),
+    active,
+    draft: draft
+      ? {
+          ...draft,
+          contextChanged: item.updatedAt > draft.updatedAt,
+          files: documents.map((file) => ({
+            documentId: file.id,
+            fileName: file.displayFileName,
+            sizeBytes: file.sizeBytes,
+            status: file.status,
+            available: true,
+          })),
+          unavailableFiles: draft.documentIds.length - documents.length,
+        }
+      : null,
+  };
+}
+export async function saveResponseDraft(
+  prisma: PrismaClient,
+  clientId: string,
+  itemId: string,
+  actorId: string,
+  input: {
+    expectedRevision: number;
+    contextVersion: string;
+    values: Record<string, string>;
+    note: string;
+    help: boolean;
+    documentIds: string[];
+  },
+) {
+  return prisma.$transaction(async (tx) => {
+    await lockItemPlan(tx, itemId, clientId);
+    const { item, active } = await responseDraftContext(tx, clientId, itemId);
+    if (!active || item.updatedAt.toISOString() !== input.contextVersion)
+      throw new AppError(
+        'PLAN_DRAFT_CONTEXT_CHANGED',
+        409,
+        'This Plan step changed. Reload it before saving a response draft.',
+      );
+    const existing = await tx.planResponseDraft.findUnique({
+      where: { itemId_actorId: { itemId, actorId } },
+    });
+    if ((existing?.revision ?? 0) !== input.expectedRevision)
+      throw new AppError(
+        'PLAN_DRAFT_CONFLICT',
+        409,
+        'A newer draft was saved in another tab. Your current answers are still here. Reload to review the saved draft.',
+      );
+    await preparePlanAttachments(tx, clientId, input.documentIds);
+    const data = {
+      values: input.values,
+      note: input.note,
+      help: input.help,
+      documentIds: input.documentIds,
+    };
+    await tx.planResponseDraft.upsert({
+      where: { itemId_actorId: { itemId, actorId } },
+      create: { itemId, actorId, ...data },
+      update: { ...data, revision: { increment: 1 } },
+    });
+    return getResponseDraft(tx, clientId, itemId, actorId);
+  });
 }
