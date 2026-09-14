@@ -281,3 +281,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 39: Legacy request coverage and MFA handoff](IMPLEMENTATION-39.md) extends the account check beyond v1 and verifies a real synthetic Admin authenticator challenge, cross-tab cleanup and exact staff return path. Enrollment/recovery, event-stream revocation and broader production qualification remain open.
+
+[Pass 40: Live-session revocation](IMPLEMENTATION-40.md) revalidates open update streams and clears idle private editors after server revocation. Real-browser heartbeat recovery passed in 4.3 seconds; staff recovery, stream load and broader production qualification remain open.

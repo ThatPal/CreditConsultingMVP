@@ -1,3 +1,5 @@
+import { createLiveSessionGuard } from '../auth/liveSessionGuard.js';
+import type { AuthPrincipal } from '../auth/types.js';
 import { resolvePlanWorkLinks } from '../plans/workLinks.js';
 import { Router } from 'express';
 import { createHash } from 'node:crypto';
@@ -250,7 +252,7 @@ async function getSupportNotificationRecipients(
 export function createOperationsRouter(
   prisma: PrismaClient,
   auth: AuthService,
-  options: { heartbeatIntervalMs?: number } = {},
+  options: { heartbeatIntervalMs?: number; resolveStreamPrincipal?: (request: import('express').Request) => Promise<AuthPrincipal | null> } = {},
   authorization: AuthorizationService = createPrismaAuthorizationService(prisma),
   denialRecorder: AuthorizationDenialRecorder = createPrismaAuthorizationDenialRecorder(prisma),
   aiRuntime?: DurableAIRuntime,
@@ -395,17 +397,27 @@ export function createOperationsRouter(
     res.write(`event: ready\ndata: ${JSON.stringify({ at: new Date().toISOString() })}\n\n`);
 
     let active = true;
+    const end = (expired: boolean) => {
+      if (!active || res.writableEnded) return;
+      active = false;
+      if (expired) res.write('event: session-ended\ndata: {}\n\n');
+      res.end();
+    };
+    const session = options.resolveStreamPrincipal ? createLiveSessionGuard(req.auth!, () => options.resolveStreamPrincipal!(req), () => end(true), () => end(false)) : null;
     const send = async (update: LiveUpdate) => {
       if (!active || res.writableEnded) return;
+      if (session && !(await session.check())) return;
       const allowed = await realtimeAuthorization.canSubscribeToClient(req.auth!, update.clientId);
-      if (allowed) res.write(`event: refresh\ndata: ${JSON.stringify(update)}\n\n`);
+      if (allowed && active && !res.writableEnded) res.write(`event: refresh\ndata: ${JSON.stringify(update)}\n\n`);
     };
-    const unsubscribe = subscribeToLiveUpdates((update) => void send(update));
-    const heartbeat = setInterval(() => {
-      if (!res.writableEnded) res.write(`: heartbeat ${new Date().toISOString()}\n\n`);
+    const unsubscribe = subscribeToLiveUpdates((update) => void send(update).catch(() => end(false)));
+    const heartbeat = setInterval(async () => {
+      if (session && !(await session.check())) return;
+      if (active && !res.writableEnded) res.write(`: heartbeat ${new Date().toISOString()}\n\n`);
     }, options.heartbeatIntervalMs ?? 5000);
-    req.on('close', () => {
+    res.on('close', () => {
       active = false;
+      session?.stop();
       clearInterval(heartbeat);
       unsubscribe();
     });

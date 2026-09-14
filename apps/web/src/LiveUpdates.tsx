@@ -1,3 +1,5 @@
+import { apiRequest, type CurrentUser } from './auth/api';
+import { signalSessionLoss } from './auth/sessionLoss';
 import { useQueryClient } from '@tanstack/react-query';
 import { type PropsWithChildren, useEffect } from 'react';
 import { useAuth } from './auth/AuthProvider';
@@ -82,6 +84,12 @@ export function LiveUpdates({ children }: PropsWithChildren) {
       withCredentials: true,
     });
     let connected = false;
+    let active = true;
+    let checking = false;
+    const ended = () => {
+      source.close();
+      signalSessionLoss();
+    };
     const refresh = (message: MessageEvent<string>) => {
       const update = JSON.parse(message.data) as LiveEventEnvelope;
       const roots = queryRootsForLiveDomains(update.domains);
@@ -101,12 +109,36 @@ export function LiveUpdates({ children }: PropsWithChildren) {
       );
     };
     source.onerror = () => {
+      if (!checking && active) {
+        checking = true;
+        void apiRequest<{ user: CurrentUser }>('/api/me')
+          .then(({ user: current }) => {
+            if (
+              active &&
+              (current.userId !== user.userId ||
+                current.role !== user.role ||
+                current.clientId !== user.clientId ||
+                current.status !== 'ACTIVE' ||
+                (user.role !== 'CLIENT' && !current.staffMfaVerified))
+            )
+              ended();
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            checking = false;
+          });
+      }
       window.dispatchEvent(
         new CustomEvent<LiveConnectionState>(LIVE_CONNECTION_EVENT, { detail: 'reconnecting' }),
       );
     };
     source.addEventListener('refresh', refresh);
+    source.addEventListener('session-ended', ended);
     return () => {
+      active = false;
+      source.onopen = null;
+      source.onerror = null;
+      source.removeEventListener('session-ended', ended);
       source.removeEventListener('refresh', refresh);
       source.close();
     };

@@ -214,7 +214,11 @@ export function createApp(
       );
       app.use(
         '/api/v1',
-        createOperationsRouter(prisma, auth, {}, authorization, denialRecorder, aiRuntime),
+        createOperationsRouter(prisma, auth, {
+          resolveStreamPrincipal: (request) => betterAuth
+            ? resolveBetterAuthPrincipal(betterAuth, prisma, request.headers, env.MFA_STEP_UP_TTL_MINUTES)
+            : auth.authenticate(request.cookies?.[env.SESSION_COOKIE_NAME] as string | undefined),
+        }, authorization, denialRecorder, aiRuntime),
       );
       app.use(
         '/api/v1/major-readiness-v2',
