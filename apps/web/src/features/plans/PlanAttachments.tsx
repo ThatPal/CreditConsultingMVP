@@ -167,6 +167,11 @@ export function PlanAttachments({
               </TextField>
               <DocumentUploadDropzone
                 documentType={selectedType}
+                onCheckExisting={() => {
+                  setUpload(false);
+                  void client.invalidateQueries({ queryKey: ['document-picker'] });
+                  void client.invalidateQueries({ queryKey: ['client-documents'] });
+                }}
                 disabled={disabled || value.length >= 5}
                 onBusyChange={(next) => {
                   setBusy(next);

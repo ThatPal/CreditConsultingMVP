@@ -17,7 +17,7 @@ type AuthState = {
   loading: boolean;
   sessionExpired: boolean;
   error: boolean;
-  refresh: () => Promise<void>;
+  refresh: (notifyOtherTabs?: boolean) => Promise<void>;
   logout: () => Promise<void>;
 };
 const AuthContext = createContext<AuthState | null>(null);
@@ -37,16 +37,30 @@ export function AuthProvider({
       sessionTabs.current = null;
     };
   }, []);
+  const userRef = useRef<CurrentUser | null>(initialUser ?? null);
   const [sessionLost, setSessionLost] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
   const query = useQuery({
     queryKey: ['current-user'],
-    queryFn: () => apiRequest<{ user: CurrentUser }>('/api/me'),
+    queryFn: async () => {
+      const result = await apiRequest<{ user: CurrentUser }>('/api/me');
+      const previous = userRef.current;
+      if (
+        previous &&
+        (previous.userId !== result.user.userId ||
+          previous.clientId !== result.user.clientId ||
+          previous.role !== result.user.role ||
+          previous.status !== result.user.status)
+      ) {
+        signalSessionLoss();
+        return null;
+      }
+      return result;
+    },
     retry: false,
     enabled: initialUser === undefined,
   });
   const resolvedUser = sessionLost ? null : (initialUser ?? query.data?.user ?? null);
-  const userRef = useRef<CurrentUser | null>(resolvedUser);
   useEffect(() => {
     userRef.current = resolvedUser;
   }, [resolvedUser]);
@@ -68,7 +82,8 @@ export function AuthProvider({
       }),
     [queryClient],
   );
-  const refresh = async () => {
+  const refresh = async (notifyOtherTabs = false) => {
+    if (notifyOtherTabs) sessionTabs.current?.publish();
     setSessionExpired(false);
     setSessionLost(false);
     await queryClient.invalidateQueries({ queryKey: ['current-user'] });

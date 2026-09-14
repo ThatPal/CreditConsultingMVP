@@ -220,3 +220,36 @@ test.each([200, 503])(
     }
   },
 );
+
+test.each([
+  { userId: 'different-user' },
+  { clientId: 'different-client' },
+  { role: 'ADMIN' as const },
+  { status: 'DISABLED' as const },
+])('changed session identity or authority clears old private state: %j', async (change) => {
+  const replacement = { ...clientUser, ...change };
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValue(new Response(JSON.stringify({ user: clientUser }), { status: 200 }));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(['private-record'], { note: 'Previous account answer' });
+  render(
+    <QueryClientProvider client={client}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/app/plan']}>
+          <Routes>
+            <Route path="/login" element={<div>Identity reauthentication required</div>} />
+            <Route element={<ProtectedRoute roles={['CLIENT', 'ADMIN']} />}>
+              <Route path="/app/plan" element={<LogoutProbe />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByText('Session active')).toBeInTheDocument();
+  fetcher.mockResolvedValue(new Response(JSON.stringify({ user: replacement }), { status: 200 }));
+  await client.invalidateQueries({ queryKey: ['current-user'] });
+  expect(await screen.findByText('Identity reauthentication required')).toBeInTheDocument();
+  expect(client.getQueryData(['private-record'])).toBeUndefined();
+});

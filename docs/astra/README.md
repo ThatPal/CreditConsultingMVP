@@ -95,3 +95,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 36: Cross-tab sign-out and accepted draft recovery](IMPLEMENTATION-36.md) propagates confirmed logout without private payloads and verifies accepted-save recovery in two real browser tabs with storage fallback. Account switching, missed notifications, accepted-upload recovery and broader qualification remain open.
+
+
+[Pass 37: Identity refresh and uncertain uploads](IMPLEMENTATION-37.md) clears old private state on detected account/authority changes and exposes existing-document recovery after uncertain upload confirmation. Real-browser recovery found one accepted file without re-uploading; per-request identity fencing, MFA transitions and broader qualification remain open.

@@ -220,7 +220,7 @@ test('upload rejection permits retry and a successful retry releases navigation'
       target: { files: [new File(['proof'], 'proof.txt', { type: 'text/plain' })] },
     });
   select();
-  expect(await screen.findByRole('alert')).toHaveTextContent('Upload unavailable');
+  expect(await screen.findByText('Upload unavailable')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Select file' })).toBeEnabled();
   select();
   expect(await screen.findByText('proof.txt uploaded successfully.')).toBeVisible();

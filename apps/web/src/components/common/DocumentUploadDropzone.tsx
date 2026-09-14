@@ -2,7 +2,7 @@ import CloudUploadRounded from '@mui/icons-material/CloudUploadRounded';
 import InsertDriveFileRounded from '@mui/icons-material/InsertDriveFileRounded';
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
-import { apiFileRequest } from '../../auth/api';
+import { ApiRequestError, apiFileRequest } from '../../auth/api';
 
 export type UploadDocumentType = {
   key: string;
@@ -35,6 +35,7 @@ export function DocumentUploadDropzone({
   onUploaded,
   onBusyChange,
   title = 'Upload a document',
+  onCheckExisting,
   disabled = false,
 }: {
   documentType: UploadDocumentType;
@@ -42,6 +43,7 @@ export function DocumentUploadDropzone({
   onBusyChange?: (busy: boolean) => void;
   title?: string;
   disabled?: boolean;
+  onCheckExisting?: () => void;
 }) {
   const activeUpload = useRef<AbortController | null>(null);
   useEffect(
@@ -55,6 +57,7 @@ export function DocumentUploadDropzone({
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const guidance = `${documentType.allowedExtensions.join(', ')} up to ${formatSize(documentType.maximumSizeBytes)}`;
@@ -63,6 +66,7 @@ export function DocumentUploadDropzone({
     if (!file || activeUpload.current || uploading || disabled) return;
     setError(null);
     setSuccess(null);
+    setRecovery(null);
     const extension = extensionOf(file.name);
     if (
       !documentType.allowedMimeTypes.includes(file.type.toLowerCase()) ||
@@ -79,6 +83,7 @@ export function DocumentUploadDropzone({
     }
     const controller = new AbortController();
     activeUpload.current = controller;
+    let confirmed = false;
     try {
       setUploading(true);
       onBusyChange?.(true);
@@ -90,11 +95,19 @@ export function DocumentUploadDropzone({
         controller.signal,
       );
       if (controller.signal.aborted) return;
+      confirmed = true;
       await onUploaded(result.document);
       if (!controller.signal.aborted)
         setSuccess(`${result.document.displayFileName} uploaded successfully.`);
     } catch (uploadError) {
       if (controller.signal.aborted) return;
+      if (confirmed || !(uploadError instanceof ApiRequestError) || uploadError.status >= 500) {
+        setRecovery(
+          confirmed
+            ? 'Your file uploaded, but this page could not finish adding it. Check existing documents before uploading it again.'
+            : 'We could not confirm the upload. Your file may already be in Documents. Check existing documents before uploading it again.',
+        );
+      }
       setError(
         uploadError instanceof Error
           ? uploadError.message
@@ -181,6 +194,18 @@ export function DocumentUploadDropzone({
       </Box>
       {uploading && <LinearProgress aria-label="Document upload progress" />}
       {error && <Alert severity="error">{error}</Alert>}
+      {recovery && (
+        <Alert
+          severity="warning"
+          action={
+            onCheckExisting ? (
+              <Button onClick={onCheckExisting}>Check existing documents</Button>
+            ) : undefined
+          }
+        >
+          {recovery}
+        </Alert>
+      )}
       {success && <Alert severity="success">{success}</Alert>}
     </Stack>
   );

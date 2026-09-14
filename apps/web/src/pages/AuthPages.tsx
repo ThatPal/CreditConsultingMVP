@@ -108,7 +108,7 @@ export function LoginPage() {
         navigate(`/mfa?mode=challenge&returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
         return;
       }
-      await refresh();
+      await refresh(true);
       const result = await apiRequest<{ user: CurrentUser }>('/api/me');
       if (result.user.role === 'CLIENT' && intakeToken) {
         await apiRequest(`/api/v1/client/goal-intakes/${encodeURIComponent(intakeToken)}/bind`, {
