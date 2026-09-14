@@ -215,3 +215,6 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 
 
 Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEMENTATION-17.md). Private edits no longer change the selected publication; selected-Plan response review and new work-item links stay scoped. Cancellation/replacement commands remain open; A1/A2/A5 remain in progress.
+
+
+[Pass 18: Start a separate Plan](IMPLEMENTATION-18.md) adds blank draft context, guarded entry, independent recovery and first-save identity handoff. Next: creation request replay protection, cancellation/replacement policy and remaining A5 qualification.

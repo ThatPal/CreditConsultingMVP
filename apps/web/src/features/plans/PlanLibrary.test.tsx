@@ -52,6 +52,10 @@ test('retains loaded Plans on paging failure and guards query navigation with un
   );
   fireEvent.click(await screen.findByRole('button', { name: 'Browse client Plans' }));
   await screen.findByText('Older preparation');
+  expect(screen.getByRole('link', { name: 'Start a separate Plan' })).toHaveAttribute(
+    'href',
+    '/plan?view=work&planId=new',
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Load more Plans' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Retry Plans' }));
   expect(screen.getByText('Older preparation')).toBeVisible();

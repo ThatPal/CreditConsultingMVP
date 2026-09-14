@@ -63,6 +63,14 @@ export function PlanLibrary({
           <Button component={Link} to={destination()} onClick={() => setOpen(false)}>
             Open most recently updated Plan
           </Button>
+          <Button
+            component={Link}
+            to={destination('new')}
+            onClick={() => setOpen(false)}
+            variant="contained"
+          >
+            Start a separate Plan
+          </Button>
           {query.isPending && <Typography role="status">Loading Plans...</Typography>}
           {query.isError && (
             <Alert

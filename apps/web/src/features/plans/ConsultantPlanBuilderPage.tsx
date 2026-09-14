@@ -122,7 +122,10 @@ function PlanBuilder({
   actorId: string;
   selectedPlanId?: string | undefined;
 }) {
-  const recoveryKey = planRecoveryKey(actorId, clientId, selectedPlanId);
+  const [createdPlanId, setCreatedPlanId] = useState<string | null>(null);
+  const [search, setSearch] = useSearchParams();
+  const activePlanId = createdPlanId ?? selectedPlanId;
+  const recoveryKey = planRecoveryKey(actorId, clientId, activePlanId);
   const [recovery, setRecovery] = useState<Editor | null>(() => {
     try {
       const raw = sessionStorage.getItem(recoveryKey);
@@ -156,12 +159,10 @@ function PlanBuilder({
   const [recoveryError, setRecoveryError] = useState(false);
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: selectedPlanId
-      ? ['plan-builder', clientId, selectedPlanId]
-      : ['plan-builder', clientId],
+    queryKey: activePlanId ? ['plan-builder', clientId, activePlanId] : ['plan-builder', clientId],
     queryFn: () =>
       apiRequest<BuilderResponse>(
-        `/api/v1/consultant/clients/${clientId}/plan${selectedPlanId ? `?planId=${encodeURIComponent(selectedPlanId)}` : ''}`,
+        `/api/v1/consultant/clients/${clientId}/plan${activePlanId === 'new' ? '?mode=new' : activePlanId ? `?planId=${encodeURIComponent(activePlanId)}` : ''}`,
       ),
     enabled: Boolean(clientId),
   });
@@ -227,7 +228,7 @@ function PlanBuilder({
   const save = useMutation({
     mutationFn: async () => {
       if (!editor) throw new Error('The Plan is not loaded.');
-      return apiRequest(
+      return apiRequest<{ planId?: string; optimisticVersion: number; version: number }>(
         `/api/v1/consultant/clients/${clientId}/plans${editor.planId ? `/${editor.planId}` : ''}`,
         {
           method: editor.planId ? 'PUT' : 'POST',
@@ -239,8 +240,29 @@ function PlanBuilder({
         },
       );
     },
-    onSuccess: async () => {
-      await refresh();
+    onSuccess: async (result) => {
+      if (!editor?.planId && result.planId) {
+        // Bind a successful creation immediately. A failed follow-up read must not turn retry into another POST.
+        setEditor((current) =>
+          current
+            ? {
+                ...current,
+                planId: result.planId!,
+                status: 'DRAFT',
+                revision: result.optimisticVersion,
+                version: result.version,
+                baseline: JSON.stringify(draftPayload(current.draft)),
+              }
+            : current,
+        );
+        setCreatedPlanId(result.planId);
+        try {
+          sessionStorage.removeItem(recoveryKey);
+        } catch {
+          /* The server copy is already saved. */
+        }
+        await queryClient.invalidateQueries({ queryKey: ['plan-library', clientId] });
+      } else await refresh();
       setNotice('Draft saved. These changes stay private until approval.');
     },
   });
@@ -284,6 +306,13 @@ function PlanBuilder({
   });
   const busy = save.isPending || approve.isPending || reconcile.isPending;
   useNavigationProtection(dirty, busy);
+  useEffect(() => {
+    if (!createdPlanId || busy || dirty) return;
+    const next = new URLSearchParams(search);
+    next.set('planId', createdPlanId);
+    setSearch(next, { replace: true });
+  }, [createdPlanId, busy, dirty, query.data, search, setSearch]);
+
   const edit = (change: (draft: PlanDraft) => PlanDraft) => {
     if (!busy) {
       setNotice('');
@@ -405,6 +434,13 @@ function PlanBuilder({
         title="Plan workspace"
         description="Shape the client's next steps, connect prerequisites, and review what you publish."
       />
+      {activePlanId === 'new' && (
+        <Alert severity="info">
+          You are creating a separate Plan. Choose its purpose and add the client's steps. Nothing
+          is created until you save, and the current client Plan stays published until you approve
+          this one.
+        </Alert>
+      )}
       {query.data?.clientPublication !== undefined && (
         <Alert
           severity={
@@ -434,11 +470,9 @@ function PlanBuilder({
           )}
         </Alert>
       )}
-      <PlanExecutionReview
-        key={editor.planId ?? 'current'}
-        clientId={clientId}
-        {...(editor.planId ? { planId: editor.planId } : {})}
-      />
+      {editor.planId && (
+        <PlanExecutionReview key={editor.planId} clientId={clientId} planId={editor.planId} />
+      )}
       {editor.planId && (
         <PlanVersionHistory
           key={`${editor.planId}:${editor.revision}`}

@@ -430,12 +430,22 @@ export async function listClientPlans(prisma: PrismaClient, clientId: string, be
   return { plans: plans.slice(0, 20), nextBefore: plans.length > 20 ? plans[19]!.id : null };
 }
 
-export async function getPlanBuilder(prisma: PrismaClient, clientId: string, planId?: string) {
-  const plan = await prisma.plan.findFirst({
-    where: { clientId, ...(planId ? { id: planId } : { status: { not: 'CANCELLED' as const } }) },
-    include: { versions: { include: builderInclude, orderBy: { version: 'desc' }, take: 2 } },
-    orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
-  });
+export async function getPlanBuilder(
+  prisma: PrismaClient,
+  clientId: string,
+  planId?: string,
+  newDraft = false,
+) {
+  const plan = newDraft
+    ? null
+    : await prisma.plan.findFirst({
+        where: {
+          clientId,
+          ...(planId ? { id: planId } : { status: { not: 'CANCELLED' as const } }),
+        },
+        include: { versions: { include: builderInclude, orderBy: { version: 'desc' }, take: 2 } },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      });
   if (planId && !plan) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
   const [goal, review, journey] = await Promise.all([
     prisma.clientGoal.findFirst({

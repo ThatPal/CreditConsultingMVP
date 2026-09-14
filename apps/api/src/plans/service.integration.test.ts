@@ -225,4 +225,13 @@ describe('Plan authoring and approval', () => {
       expect((await getPlanBuilder(prisma, clientId, closed.planId)).plan?.status).toBe(status);
     }
   });
+  test('new draft context stays blank without creating records or hiding the current publication', async () => {
+    const count = await prisma.plan.count({ where: { clientId } });
+    const publication = (await getPlanBuilder(prisma, clientId)).clientPublication;
+    const context = await getPlanBuilder(prisma, clientId, undefined, true);
+    expect(context.plan).toBeNull();
+    expect(context.clientPublication).toEqual(publication);
+    expect(context.context.sources).toBeDefined();
+    expect(await prisma.plan.count({ where: { clientId } })).toBe(count);
+  });
 });

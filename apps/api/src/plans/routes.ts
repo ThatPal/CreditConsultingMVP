@@ -158,7 +158,12 @@ export function createPlanRouter(
       try {
         const planId =
           req.query.planId === undefined ? undefined : z.string().uuid().parse(req.query.planId);
-        res.json(await getPlanBuilder(prisma, req.params.clientId as string, planId));
+        const mode = z.enum(['new']).optional().parse(req.query.mode);
+        if (mode && planId)
+          throw new AppError('INVALID_REQUEST', 400, 'Choose a saved Plan or a new draft.');
+        res.json(
+          await getPlanBuilder(prisma, req.params.clientId as string, planId, mode === 'new'),
+        );
       } catch (error) {
         next(error);
       }

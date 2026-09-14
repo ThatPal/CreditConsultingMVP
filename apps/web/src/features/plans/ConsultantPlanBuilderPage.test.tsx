@@ -291,3 +291,48 @@ test('approval preview explains when a different Plan will become current withou
   ).toBeVisible();
   expect(request.mock.calls.some(([path]) => path.endsWith('/approve'))).toBe(false);
 });
+
+test('starts a blank separate Plan and binds successful creation before retrying a failed read', async () => {
+  let reads = 0;
+  request.mockImplementation(async (path, options) => {
+    if (options?.method === 'POST' && path.endsWith('/plans'))
+      return { planId: 'created', optimisticVersion: 1, version: 1 };
+    if (path.endsWith('?mode=new')) return { plan: null, context: {} };
+    if (path.endsWith('?planId=created')) {
+      reads++;
+      if (reads === 1) throw new Error('Read temporarily unavailable');
+      const saved = fixture(1, 'Separate preparation');
+      saved.plan.id = 'created';
+      return saved;
+    }
+    return { plan: null };
+  });
+  const view = setup('/crm/clients/client/plan?planId=new');
+  await screen.findByDisplayValue('Credit preparation plan');
+  expect(request.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(false);
+  fireEvent.change(screen.getByRole('textbox', { name: 'Plan title' }), {
+    target: { value: 'Separate preparation' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Add step' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Client title' }), {
+    target: { value: 'Review your next steps' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  await waitFor(() =>
+    expect(
+      request.mock.calls.filter(
+        ([path, options]) => path.endsWith('/plans') && options?.method === 'POST',
+      ),
+    ).toHaveLength(1),
+  );
+  await waitFor(() => expect(reads).toBeGreaterThan(0));
+  await act(async () => {
+    await view.invalidateQueries({ queryKey: ['plan-builder', 'client', 'created'] });
+  });
+  await screen.findByDisplayValue('Separate preparation');
+  expect(
+    request.mock.calls.filter(
+      ([path, options]) => path.endsWith('/plans') && options?.method === 'POST',
+    ),
+  ).toHaveLength(1);
+});
