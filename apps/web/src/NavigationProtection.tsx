@@ -18,6 +18,12 @@ import {
 import { useBlocker } from 'react-router-dom';
 
 type PendingWork = { dirty: boolean; busy: boolean };
+const PendingStatus = createContext<PendingWork>({ dirty: false, busy: false });
+export const ResponseWritePause = createContext(false);
+export function usePendingNavigationWork() {
+  return useContext(PendingStatus);
+}
+
 const Registration = createContext<((id: string, work: PendingWork | null) => void) | null>(null);
 
 // One router blocker aggregates every mounted response, including multi-step Plans.
@@ -44,7 +50,7 @@ export function NavigationProtection({ children }: PropsWithChildren) {
   };
   return (
     <Registration.Provider value={register}>
-      {children}
+      <PendingStatus.Provider value={{ dirty, busy }}>{children}</PendingStatus.Provider>
       <Dialog
         open={blocker.state === 'blocked'}
         onClose={stay}

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigationProtection } from '../../NavigationProtection';
+import { ResponseWritePause, useNavigationProtection } from '../../NavigationProtection';
 import { apiRequest } from '../../auth/api';
 import type { ResponseDraft } from './SavedPlanResponse';
 import { EvidenceFile, PlanAttachments, type PlanFile } from './PlanAttachments';
@@ -169,6 +169,7 @@ export function PlanResponse({
   onSaveDraft?: (draft: ResponseDraft) => Promise<void>;
 }) {
   const client = useQueryClient();
+  const writesPaused = useContext(ResponseWritePause);
   const [values, setValues] = useState<Record<string, string>>(() => {
     if (draft) return draft.values;
     const previous = item.history?.filter((entry) => entry.kind === 'COMPLETE').at(-1)?.data;
@@ -203,7 +204,7 @@ export function PlanResponse({
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, uploading]);
   const saveDraft = useCallback(async () => {
-    if (!onSaveDraft || writePending.current || uploading) return;
+    if (writesPaused || !onSaveDraft || writePending.current || uploading) return;
     writePending.current = true;
     setSaving(true);
     setSaveError('');
@@ -221,7 +222,7 @@ export function PlanResponse({
       writePending.current = false;
       setSaving(false);
     }
-  }, [onSaveDraft, uploading, values, note, help, files, serialized]);
+  }, [writesPaused, onSaveDraft, uploading, values, note, help, files, serialized]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const attempt = useRef<{ payload: string; key: string } | null>(null);
   const fields = item.responseForm?.fields ?? [];
@@ -266,6 +267,7 @@ export function PlanResponse({
   useNavigationProtection(dirty && !mutation.isSuccess, saving || uploading || mutation.isPending);
   useEffect(() => {
     if (
+      writesPaused ||
       !onSaveDraft ||
       !dirty ||
       saving ||
@@ -278,6 +280,7 @@ export function PlanResponse({
     const timer = window.setTimeout(() => void saveDraft(), 800);
     return () => window.clearTimeout(timer);
   }, [
+    writesPaused,
     onSaveDraft,
     dirty,
     saving,
@@ -288,7 +291,7 @@ export function PlanResponse({
     saveDraft,
   ]);
   const submit = () => {
-    if (uploading || writePending.current || mutation.isPending) return;
+    if (writesPaused || uploading || writePending.current || mutation.isPending) return;
     const issues: Record<string, string> = {};
     if (help) {
       if (!note.trim()) {
@@ -452,28 +455,32 @@ export function PlanResponse({
       <PlanAttachments
         value={files}
         onChange={setFiles}
-        disabled={mutation.isPending}
+        disabled={writesPaused || mutation.isPending}
         onBusyChange={setUploading}
       />
       {onSaveDraft && (
         <Stack spacing={1}>
           <Button
-            disabled={saving || uploading || mutation.isPending || (hasSaved && !dirty)}
+            disabled={
+              writesPaused || saving || uploading || mutation.isPending || (hasSaved && !dirty)
+            }
             onClick={() => void saveDraft()}
             sx={{ alignSelf: 'flex-start' }}
           >
             {saving ? 'Saving draft...' : 'Save draft'}
           </Button>
           <Typography variant="caption" role="status">
-            {saving
-              ? 'Saving changes privately...'
-              : saveError
-                ? 'Changes are not saved. Use Save draft to retry before leaving.'
-                : hasSaved && !dirty
-                  ? 'Draft saved privately. Your consultant has not received it.'
-                  : dirty
-                    ? 'Changes will save automatically. Wait for Saved before leaving.'
-                    : 'Your changes will save automatically as a private draft.'}
+            {writesPaused
+              ? 'A Plan update is waiting. Copy any unsaved text before loading it.'
+              : saving
+                ? 'Saving changes privately...'
+                : saveError
+                  ? 'Changes are not saved. Use Save draft to retry before leaving.'
+                  : hasSaved && !dirty
+                    ? 'Draft saved privately. Your consultant has not received it.'
+                    : dirty
+                      ? 'Changes will save automatically. Wait for Saved before leaving.'
+                      : 'Your changes will save automatically as a private draft.'}
           </Typography>
           {saveError && <Alert severity="error">{saveError}</Alert>}
         </Stack>
@@ -487,7 +494,13 @@ export function PlanResponse({
         <Button
           type="submit"
           variant="contained"
-          disabled={saving || uploading || mutation.isPending || (!help && Boolean(formError))}
+          disabled={
+            writesPaused ||
+            saving ||
+            uploading ||
+            mutation.isPending ||
+            (!help && Boolean(formError))
+          }
         >
           {mutation.isPending
             ? 'Saving…'
@@ -500,7 +513,7 @@ export function PlanResponse({
                   : 'Save completed step'}
         </Button>
         <Button
-          disabled={mutation.isPending}
+          disabled={writesPaused || mutation.isPending}
           onClick={() => {
             setHelp(!help);
             setErrors({});

@@ -251,3 +251,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 29: Saved response library](IMPLEMENTATION-29.md) adds paginated client-owned draft inspection/discard across Plan history, including removed steps and no-current-Plan states. Unsaved live-transition recovery and browser/operational qualification remain open.
+
+
+[Pass 30: Guarded live Plan updates](IMPLEMENTATION-30.md) retains displayed answers during dirty/busy response work, pauses writes when an update arrives, and requires explicit loading. Independent draft-query/session transitions and broader qualification remain open.
