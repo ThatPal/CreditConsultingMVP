@@ -1,3 +1,4 @@
+import { PlanDraftComparison } from './PlanDraftComparison';
 import { useAuth } from '../../auth/AuthProvider';
 import { planRecoveryKey } from '../../auth/tabRecovery';
 import { useNavigationProtection } from '../../NavigationProtection';
@@ -1046,12 +1047,23 @@ function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string 
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={discardOpen} onClose={() => setDiscardOpen(false)} fullWidth>
-        <DialogTitle>A newer Plan is saved</DialogTitle>
+      <Dialog
+        open={discardOpen}
+        onClose={() => setDiscardOpen(false)}
+        fullWidth
+        maxWidth="lg"
+        aria-labelledby="plan-conflict-title"
+      >
+        <DialogTitle id="plan-conflict-title">Compare your edits with the saved Plan</DialogTitle>
         <DialogContent>
-          <Typography>
-            Saved title: {query.data?.plan?.versions[0]?.title ?? query.data?.plan?.title}
+          <Typography sx={{ mb: 2 }}>
+            Your editing revision: {editor.revision}. Latest loaded revision:{' '}
+            {query.data?.plan?.versions[0]?.optimisticVersion ?? 'Unavailable'}. Comparing does not
+            change either version.
           </Typography>
+          {query.data && (
+            <PlanDraftComparison local={editor.draft} saved={draftFromBuilder(query.data)} />
+          )}
           <Typography sx={{ mt: 2 }}>
             Loading it will discard your unsaved edits in this editor.
           </Typography>

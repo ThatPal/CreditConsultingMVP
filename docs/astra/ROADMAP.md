@@ -187,3 +187,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 10
 
 [Consultant tab recovery](IMPLEMENTATION-10.md) retains unfinished authoring edits within the current browser tab, with explicit restore/discard and original revision conflict protection. Consultant navigation now participates in the shared guard. Cross-device/server authoring autosave, conflict comparison/merge, browser MFA verification and offline/upload qualification remain open, along with preview/lifecycle work. A1/A2/A5 remain in progress.
+
+## Latest checkpoint: pass 11
+
+[Consultant draft comparison](IMPLEMENTATION-11.md) expands the saved-version review into field-level comparison of unfinished and loaded server content. It preserves local edits while comparing. Selective conflict resolution/merge, authenticated browser review and response-aware publication preview remain open. A1/A2/A5 remain in progress.

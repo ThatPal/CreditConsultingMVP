@@ -176,3 +176,21 @@ test('ignores an expired recovery copy and shows the server version', async () =
     screen.queryByRole('button', { name: 'Restore unfinished edits' }),
   ).not.toBeInTheDocument();
 });
+
+test('compares conflicting content without discarding local edits', async () => {
+  const client = setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Plan title' }), {
+    target: { value: 'My proposed title' },
+  });
+  await act(async () => {
+    client.setQueryData(['plan-builder', 'client'], fixture(4, 'Shared revised title'));
+  });
+  fireEvent.click(await screen.findByRole('button', { name: 'Review saved version' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByText('My proposed title')).toBeVisible();
+  expect(within(dialog).getByText('Shared revised title')).toBeVisible();
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Keep my edits' }));
+  expect(await screen.findByDisplayValue('My proposed title')).toBeInTheDocument();
+  expect(request.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false);
+});
