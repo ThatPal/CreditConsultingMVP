@@ -22,6 +22,7 @@ export const liveEventDomains = [
   'work-queue',
   'major-readiness',
   'plan',
+  'plan-drafts',
   'strategy',
   'appointments',
   'live-sessions',
@@ -36,6 +37,7 @@ export type LiveEventEnvelope = {
   publishedAt?: string;
   clientId: string;
   domains: LiveEventDomain[];
+  targetUserId?: string;
   refetch?: true;
 };
 

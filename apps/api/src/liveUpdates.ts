@@ -10,3 +10,11 @@ export function publishLiveUpdate(clientId: string, ...domains: LiveEventDomain[
 export function subscribeToLiveUpdates(listener: (update: LiveUpdate) => void) {
   return domainEventBus.subscribe(listener);
 }
+
+export function publishPrivateLiveUpdate(
+  clientId: string,
+  targetUserId: string,
+  ...domains: LiveEventDomain[]
+) {
+  void domainEventBus.publish(clientId, domains, targetUserId);
+}

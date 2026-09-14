@@ -50,7 +50,11 @@ export function bullConnection(redisUrl: string) {
 }
 
 export function toClientEnvelope(event: ClaimedEvent) {
-  const payload = event.payload as { clientId?: unknown; domains?: unknown };
+  const payload = event.payload as {
+    clientId?: unknown;
+    domains?: unknown;
+    targetUserId?: unknown;
+  };
   if (
     event.eventType.startsWith('commerce.gateway.') &&
     Array.isArray(payload?.domains) &&
@@ -59,7 +63,21 @@ export function toClientEnvelope(event: ClaimedEvent) {
     return null;
   if (typeof payload?.clientId !== 'string' || !Array.isArray(payload.domains))
     throw new Error('OUTBOX_PAYLOAD_UNSAFE');
+  if (
+    event.eventType.startsWith('plan.response-draft.') &&
+    (!payload.domains.includes('plan-drafts') ||
+      typeof payload.targetUserId !== 'string' ||
+      !payload.targetUserId)
+  )
+    throw new Error('OUTBOX_PAYLOAD_UNSAFE');
+  if (
+    !payload.domains.every((domain) => typeof domain === 'string') ||
+    ((payload.domains.includes('plan-drafts') || payload.targetUserId !== undefined) &&
+      (typeof payload.targetUserId !== 'string' || !payload.targetUserId))
+  )
+    throw new Error('OUTBOX_PAYLOAD_UNSAFE');
   return {
+    ...(typeof payload.targetUserId === 'string' ? { targetUserId: payload.targetUserId } : {}),
     id: event.id,
     version: 1 as const,
     type: 'resource.changed' as const,

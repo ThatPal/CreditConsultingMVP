@@ -20,3 +20,13 @@ describe('domain event boundary', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 });
+
+test('preserves the private recipient through the in-process transport', async () => {
+  const bus = new InProcessDomainEventBus();
+  const receive = vi.fn();
+  bus.subscribe(receive);
+  await bus.publish('client', ['plan-drafts'], 'owner');
+  expect(receive).toHaveBeenCalledWith(
+    expect.objectContaining({ targetUserId: 'owner', domains: ['plan-drafts'] }),
+  );
+});

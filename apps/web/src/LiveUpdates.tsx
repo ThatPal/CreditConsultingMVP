@@ -14,6 +14,7 @@ type LiveEventDomain =
   | 'support'
   | 'work-queue'
   | 'major-readiness'
+  | 'plan-drafts'
   | 'plan'
   | 'strategy'
   | 'appointments'
@@ -62,6 +63,7 @@ const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
   support: ['support', 'support-cases'],
   'work-queue': ['work-queue', 'shell-client-context'],
   'major-readiness': ['major-readiness'],
+  'plan-drafts': ['plan-response-draft', 'plan-draft-library'],
   plan: [
     'plan',
     'client-plan',

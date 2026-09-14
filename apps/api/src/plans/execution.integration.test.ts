@@ -686,6 +686,8 @@ describe('consequential client Plan execution', () => {
     };
     const first = await saveResponseDraft(prisma, clientId, draftStepId, clientUserId, input);
     expect(first.draft).toMatchObject({ revision: 1, note: 'Work in progress' });
+    const savedEvent = await prisma.outboxEvent.findUnique({ where: { eventKey: `plan.response-draft.saved:${first.draft!.id}:1` } });
+    expect(savedEvent?.payload).toEqual({ clientId, targetUserId: clientUserId, domains: ['plan-drafts'] });
     expect(
       (await getResponseDraft(prisma, clientId, draftStepId, clientUserId)).draft?.values,
     ).toEqual({
@@ -705,6 +707,7 @@ describe('consequential client Plan execution', () => {
         contextVersion: '2000-01-01T00:00:00.000Z',
       }),
     ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONTEXT_CHANGED' });
+    expect(await prisma.outboxEvent.count({ where: { aggregateId: first.draft!.id, eventType: 'plan.response-draft.saved' } })).toBe(1);
     expect(await prisma.planItemOutcome.count({ where: { planItemId: draftStepId } })).toBe(0);
     expect(await prisma.workItem.count({ where: { sourceId: draftStepId } })).toBe(0);
     await saveResponseDraft(prisma, clientId, draftStepId, clientUserId, {
@@ -1107,6 +1110,9 @@ describe('consequential client Plan execution', () => {
         revision: updated.revision,
       }),
     ).toEqual({ discarded: true });
+    const discardedEvents = await prisma.outboxEvent.findMany({ where: { aggregateId: updated.id, eventType: 'plan.response-draft.discarded' } });
+    expect(discardedEvents).toHaveLength(1);
+    expect(discardedEvents[0]!.payload).toEqual({ clientId, targetUserId: clientUserId, domains: ['plan-drafts'] });
     const recreated = (await saveResponseDraft(prisma, clientId, item.id, clientUserId, input))
       .draft!;
     expect(recreated.revision).toBe(1);

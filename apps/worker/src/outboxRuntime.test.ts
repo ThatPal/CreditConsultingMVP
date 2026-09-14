@@ -84,3 +84,34 @@ describe('outbox runtime contract', () => {
     });
   });
 });
+
+test('private draft envelopes retain only routing metadata and reject missing recipients', () => {
+  const event = {
+    id: 'event',
+    eventType: 'plan.response-draft.saved',
+    aggregateId: 'draft',
+    payloadVersion: 1,
+    createdAt: new Date(),
+    attemptCount: 0,
+    payload: {
+      clientId: 'client',
+      domains: ['plan-drafts'],
+      targetUserId: 'owner',
+      note: 'Private answers',
+      values: { balance: '123' },
+    },
+  };
+  expect(toClientEnvelope(event)).toMatchObject({
+    targetUserId: 'owner',
+    domains: ['plan-drafts'],
+  });
+  expect(toClientEnvelope(event)).not.toHaveProperty('note');
+  expect(toClientEnvelope(event)).not.toHaveProperty('values');
+  for (const targetUserId of [undefined, null, '', 12])
+    expect(() =>
+      toClientEnvelope({ ...event, payload: { ...event.payload, targetUserId } }),
+    ).toThrow('OUTBOX_PAYLOAD_UNSAFE');
+  expect(() =>
+    toClientEnvelope({ ...event, payload: { ...event.payload, domains: ['plan'] } }),
+  ).toThrow('OUTBOX_PAYLOAD_UNSAFE');
+});

@@ -1837,11 +1837,17 @@ export async function saveResponseDraft(
       help: input.help,
       documentIds: input.documentIds,
     };
-    await tx.planResponseDraft.upsert({
+    const saved = await tx.planResponseDraft.upsert({
       where: { itemId_actorId: { itemId, actorId } },
       create: { itemId, actorId, ...data },
       update: { ...data, revision: { increment: 1 } },
     });
+    await tx.outboxEvent.create({ data: {
+      eventType: 'plan.response-draft.saved',
+      eventKey: `plan.response-draft.saved:${saved.id}:${saved.revision}`,
+      aggregateType: 'PlanResponseDraft', aggregateId: saved.id,
+      payload: { clientId, targetUserId: actorId, domains: ['plan-drafts'] },
+    } });
     return getResponseDraft(tx, clientId, itemId, actorId);
   });
 }
@@ -1876,6 +1882,12 @@ export async function discardResponseDraft(
         'The saved response changed in another tab. Refresh and review it before discarding.',
       );
     await tx.planResponseDraft.delete({ where: { id: draft.id } });
+    await tx.outboxEvent.create({ data: {
+      eventType: 'plan.response-draft.discarded',
+      eventKey: `plan.response-draft.discarded:${draft.id}:${draft.revision}`,
+      aggregateType: 'PlanResponseDraft', aggregateId: draft.id,
+      payload: { clientId, targetUserId: actorId, domains: ['plan-drafts'] },
+    } });
     return { discarded: true };
   });
 }

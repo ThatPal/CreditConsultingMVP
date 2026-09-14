@@ -4,20 +4,25 @@ import type { LiveEventDomain, LiveEventEnvelope } from '@credit/shared';
 
 export type EventSubscription = (event: LiveEventEnvelope) => void;
 export interface DomainEventBus {
-  publish(clientId: string, domains: LiveEventDomain[]): Promise<LiveEventEnvelope>;
+  publish(
+    clientId: string,
+    domains: LiveEventDomain[],
+    targetUserId?: string,
+  ): Promise<LiveEventEnvelope>;
   subscribe(listener: EventSubscription): () => void;
 }
 
 export class InProcessDomainEventBus implements DomainEventBus {
   private readonly emitter = new EventEmitter().setMaxListeners(500);
 
-  async publish(clientId: string, domains: LiveEventDomain[]) {
+  async publish(clientId: string, domains: LiveEventDomain[], targetUserId?: string) {
     const event: LiveEventEnvelope = {
       id: randomUUID(),
       version: 1,
       type: 'resource.changed',
       occurredAt: new Date().toISOString(),
       clientId,
+      ...(targetUserId ? { targetUserId } : {}),
       domains: [...new Set(domains)],
     };
     this.emitter.emit('event', event);

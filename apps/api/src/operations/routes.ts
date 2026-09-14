@@ -20,6 +20,7 @@ import type {
 } from '../generated/prisma/client.js';
 import type { DurableAIRuntime } from '../ai/durableRuntime.js';
 import { AppError } from '../http/errors.js';
+import { matchesLiveAudience } from '../events/audience.js';
 import { publishLiveUpdate, subscribeToLiveUpdates, type LiveUpdate } from '../liveUpdates.js';
 import {
   createPrismaAuthorizationService,
@@ -405,6 +406,7 @@ export function createOperationsRouter(
     };
     const session = options.resolveStreamPrincipal ? createLiveSessionGuard(req.auth!, () => options.resolveStreamPrincipal!(req), () => end(true), () => end(false)) : null;
     const send = async (update: LiveUpdate) => {
+      if (!matchesLiveAudience(req.auth!, update)) return;
       if (!active || res.writableEnded) return;
       if (session && !(await session.check())) return;
       const allowed = await realtimeAuthorization.canSubscribeToClient(req.auth!, update.clientId);

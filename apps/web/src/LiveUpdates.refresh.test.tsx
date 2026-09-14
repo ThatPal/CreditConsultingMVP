@@ -116,7 +116,7 @@ test('a live saved-response conflict preserves local text and requires explicit 
   fireEvent.click(await screen.findByRole('button', { name: 'Resume saved response' }));
   const input = screen.getByRole('textbox', { name: 'Optional note for your consultant' });
   await act(async () => {
-    emit({ domains: ['plan'] });
+    emit({ domains: ['plan-drafts'] });
   });
   expect(input).toHaveValue('Original note');
   expect(
@@ -125,7 +125,7 @@ test('a live saved-response conflict preserves local text and requires explicit 
   fireEvent.change(input, { target: { value: 'My local answers' } });
   revision = 2;
   await act(async () => {
-    emit({ domains: ['plan'] });
+    emit({ domains: ['plan-drafts'] });
   });
   const review = await screen.findByRole('button', { name: 'Review saved response update' });
   expect(input).toHaveValue('My local answers');

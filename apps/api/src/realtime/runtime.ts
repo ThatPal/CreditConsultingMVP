@@ -6,7 +6,8 @@ import { Server } from 'socket.io';
 import { z } from 'zod';
 import type { Logger } from 'pino';
 import type { AuthPrincipal } from '../auth/types.js';
-import { publishLiveUpdate } from '../liveUpdates.js';
+import { matchesLiveAudience } from '../events/audience.js';
+import { publishLiveUpdate, publishPrivateLiveUpdate } from '../liveUpdates.js';
 
 export const REALTIME_CHANNEL = 'credit:realtime:events';
 export const PRESENCE_TTL_SECONDS = 90;
@@ -82,12 +83,30 @@ export async function startRealtimeRuntime(options: {
       options.logger.warn('Rejected malformed realtime envelope');
       return;
     }
-    publishLiveUpdate(event.clientId, ...event.domains);
+    if (
+      !event ||
+      typeof event.clientId !== 'string' ||
+      !Array.isArray(event.domains) ||
+      !event.domains.every((domain) => typeof domain === 'string')
+    )
+      return;
+    if (
+      event.domains.includes('plan-drafts') &&
+      (typeof event.targetUserId !== 'string' || !event.targetUserId)
+    )
+      return;
+    if (event.targetUserId !== undefined) {
+      if (typeof event.targetUserId !== 'string' || !event.targetUserId) return;
+      publishPrivateLiveUpdate(event.clientId, event.targetUserId, ...event.domains);
+    } else publishLiveUpdate(event.clientId, ...event.domains);
     // Every runtime instance receives the canonical event subscription and must
     // authorize only its own connected sockets. A distributed fetch introduces
     // an unnecessary adapter round-trip and can race consecutive revocation
     // events while also asking this process to authorize remote socket proxies.
-    const socketIds = io.sockets.adapter.rooms.get(clientRoom(event.clientId)) ?? new Set<string>();
+    const socketIds =
+      io.sockets.adapter.rooms.get(
+        event.targetUserId ? userRoom(event.targetUserId) : clientRoom(event.clientId),
+      ) ?? new Set<string>();
     const sockets = [...socketIds].flatMap((socketId) => {
       const socket = io.sockets.sockets.get(socketId);
       return socket ? [socket] : [];
@@ -100,7 +119,7 @@ export async function startRealtimeRuntime(options: {
           socket.emit('access.revoked', { clientId: event.clientId, refetch: true });
           return;
         }
-        socket.emit('resource.changed', event);
+        if (matchesLiveAudience(principal, event)) socket.emit('resource.changed', event);
       }),
     );
   });
