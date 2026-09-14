@@ -194,3 +194,32 @@ test('compares conflicting content without discarding local edits', async () => 
   expect(await screen.findByDisplayValue('My proposed title')).toBeInTheDocument();
   expect(request.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false);
 });
+
+test('selected wording uses the newer revision only after explicit save', async () => {
+  const client = setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Plan title' }), {
+    target: { value: 'Chosen wording' },
+  });
+  await act(async () => {
+    client.setQueryData(['plan-builder', 'client'], fixture(4, 'New saved title'));
+  });
+  fireEvent.click(await screen.findByRole('button', { name: 'Review saved version' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Keep my Plan title' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Use selected wording in a new working copy' }),
+  );
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(screen.getByRole('textbox', { name: 'Plan title' })).toHaveValue('Chosen wording');
+  expect(request.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false);
+  expect(screen.getByRole('button', { name: 'Review & approve' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  await waitFor(() =>
+    expect(request.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(true),
+  );
+  const write = request.mock.calls.find(([, options]) => options?.method === 'PUT')!;
+  expect(JSON.parse(String(write[1]?.body))).toMatchObject({
+    expectedVersion: 4,
+    draft: { title: 'Chosen wording' },
+  });
+});

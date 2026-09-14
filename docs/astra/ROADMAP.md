@@ -191,3 +191,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 11
 
 [Consultant draft comparison](IMPLEMENTATION-11.md) expands the saved-version review into field-level comparison of unfinished and loaded server content. It preserves local edits while comparing. Selective conflict resolution/merge, authenticated browser review and response-aware publication preview remain open. A1/A2/A5 remain in progress.
+
+## Latest checkpoint: pass 12
+
+[Selective wording resolution](IMPLEMENTATION-12.md) lets consultants carry selected title/instruction/rationale changes into a working copy based on the newer saved revision. Structural merging, authenticated browser review and response-aware publication preview remain open. A1/A2/A5 remain in progress.

@@ -1,3 +1,4 @@
+import { PlanConflictResolution } from './PlanConflictResolution';
 import { PlanDraftComparison } from './PlanDraftComparison';
 import { useAuth } from '../../auth/AuthProvider';
 import { planRecoveryKey } from '../../auth/tabRecovery';
@@ -1064,8 +1065,23 @@ function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string 
           {query.data && (
             <PlanDraftComparison local={editor.draft} saved={draftFromBuilder(query.data)} />
           )}
+          {query.data && (
+            <PlanConflictResolution
+              key={JSON.stringify(query.data)}
+              local={editor.draft}
+              saved={draftFromBuilder(query.data)}
+              onResolve={(draft) => {
+                setEditor({ ...hydrate(query.data!), draft });
+                setDiscardOpen(false);
+                save.reset();
+                setNotice(
+                  'Selected wording restored into a working copy of the saved Plan. Review all changes, then Save draft.',
+                );
+              }}
+            />
+          )}
           <Typography sx={{ mt: 2 }}>
-            Loading it will discard your unsaved edits in this editor.
+            Loading the saved Plan without a selection discards all unfinished edits.
           </Typography>
         </DialogContent>
         <DialogActions>
