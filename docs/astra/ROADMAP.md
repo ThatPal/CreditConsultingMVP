@@ -299,3 +299,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 47: Consultant access and Plan drawer accessibility](IMPLEMENTATION-47.md) verifies authorized synthetic consultant MFA recovery/enrollment, desktop/mobile discovery and version inspection; adds named dialogs and focus handling. Broader staff and production qualification remain open.
 
 [Pass 48: Consultant decision recovery](IMPLEMENTATION-48.md) requires history refresh after an unconfirmed decision, distinguishes accepted decisions from failed follow-up reads, and improves unsent-message recovery. Sixteen component tests and a controlled authenticated browser failure scenario passed; approval/publication qualification remains open.
+
+[Pass 49: Approval confirmation and real staff recovery](IMPLEMENTATION-49.md) separates accepted approval from failed follow-up reads and gates further changes on publication recovery. Thirty-five tests and real API/browser approval plus completion recovery passed with one write each; broader lifecycle qualification remains open.

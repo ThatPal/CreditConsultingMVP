@@ -452,3 +452,54 @@ test('approval keeps the preview publication snapshot when background context ch
   await screen.findByText(/Publication context refreshed/);
   expect(request.mock.calls.filter(([path]) => path.endsWith('/approve'))).toHaveLength(1);
 });
+
+test.each(['accepted', 'unknown'])(
+  'approval recovery reloads publication without repeating the write (%s)',
+  async (outcome) => {
+    let attempted = false;
+    let failRead = true;
+    request.mockImplementation(async (path) => {
+      if (path.includes('/plan/execution')) return { plan: null };
+      if (path.endsWith('/approve')) {
+        attempted = true;
+        if (outcome === 'unknown') throw new Error('Connection lost');
+        return {};
+      }
+      if (path === '/api/v1/consultant/clients/client/plan' && attempted && failRead)
+        throw new Error('Read interrupted');
+      const data = fixture();
+      if (attempted) {
+        data.plan.status = 'ACTIVE';
+        data.plan.versions[0]!.status = 'ACTIVE';
+      }
+      return data;
+    });
+    setup();
+    await screen.findByDisplayValue('Prepare for your review');
+    fireEvent.click(screen.getByRole('button', { name: 'Review & approve' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Approve this version' }),
+    );
+    if (outcome === 'unknown') {
+      await screen.findByText('Connection lost');
+      expect(screen.getByRole('button', { name: 'Approve this version' })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh publication context' }));
+      await screen.findByText('Publication could not be loaded. Retry the refresh.');
+      fireEvent.click(screen.getByRole('button', { name: 'Back to editing' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    } else {
+      await screen.findByText(
+        /Approval was accepted, but the latest publication still needs to be checked/,
+      );
+      expect(screen.getByText(/Approval accepted. This version was published/)).toBeVisible();
+    }
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Review & approve' })).toBeDisabled();
+    failRead = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh publication context' }));
+    await screen.findByText(/Publication context refreshed/);
+    expect(screen.getByRole('button', { name: 'Review & approve' })).toBeDisabled();
+    expect(request.mock.calls.filter(([path]) => path.endsWith('/approve'))).toHaveLength(1);
+  },
+);

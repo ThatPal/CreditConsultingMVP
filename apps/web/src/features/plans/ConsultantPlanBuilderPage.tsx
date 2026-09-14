@@ -186,6 +186,7 @@ function PlanBuilder({
   const [discardOpen, setDiscardOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState('');
+  const [approvalRecovery, setApprovalRecovery] = useState<'idle' | 'unknown' | 'accepted'>('idle');
   const editorRef = useRef(editor);
   editorRef.current = editor;
   useEffect(() => {
@@ -314,10 +315,17 @@ function PlanBuilder({
             : null,
         }),
       }),
+    onError: () => setApprovalRecovery('unknown'),
     onSuccess: async () => {
       setPreviewOpen(false);
-      await refresh();
-      setNotice('Plan approved. The client can now see this version.');
+      setApprovalRecovery('accepted');
+      setNotice('Approval accepted. This version was published to the client.');
+      try {
+        await refresh();
+        setApprovalRecovery('idle');
+      } catch {
+        // The write succeeded. A read failure must not be reported as rejected approval.
+      }
     },
   });
   const sources = useQuery({
@@ -347,6 +355,20 @@ function PlanBuilder({
     },
   });
   const busy = save.isPending || approve.isPending || reconcile.isPending;
+  const publicationUnresolved = approvalRecovery !== 'idle';
+  const recoverPublication = async () => {
+    try {
+      await refresh();
+      setApprovalRecovery('idle');
+      setPreviewOpen(false);
+      approve.reset();
+      setNotice(
+        'Publication context refreshed. Review the current status before making further changes.',
+      );
+    } catch {
+      // Keep the recovery gate until a successful explicit read.
+    }
+  };
   useNavigationProtection(dirty, busy);
   useEffect(() => {
     if (!createdPlanId || busy || dirty) return;
@@ -357,7 +379,7 @@ function PlanBuilder({
 
   const creationUnresolved = Boolean(editor?.creationKey && !editor.planId);
   const edit = (change: (draft: PlanDraft) => PlanDraft) => {
-    if (!busy && !creationUnresolved) {
+    if (!busy && !creationUnresolved && !publicationUnresolved) {
       setNotice('');
       setEditor((value) => (value ? { ...value, draft: change(value.draft) } : value));
     }
@@ -478,6 +500,8 @@ function PlanBuilder({
     query.data?.clientPublication !== undefined &&
     !dirty &&
     !conflict &&
+    !publicationUnresolved &&
+    !query.isError &&
     editor.status === 'DRAFT' &&
     !issues.length &&
     !busy;
@@ -549,12 +573,12 @@ function PlanBuilder({
             planId={editor.planId}
             title={draft.title}
             revision={editor.revision}
-            disabled={busy || dirty || conflict}
+            disabled={busy || publicationUnresolved || dirty || conflict}
           />
         )}
       <PlanPathEditor
         draft={editor.draft}
-        disabled={busy || creationUnresolved}
+        disabled={busy || publicationUnresolved || creationUnresolved}
         onChange={(draft) => edit(() => draft)}
       />
       <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -576,7 +600,7 @@ function PlanBuilder({
         </Typography>
         <Box sx={{ flex: 1 }} />
         <Button
-          disabled={!editor.planId || dirty || conflict || busy}
+          disabled={!editor.planId || dirty || conflict || busy || publicationUnresolved}
           onClick={() => {
             reconcile.reset();
             setSourceOpen(true);
@@ -593,6 +617,17 @@ function PlanBuilder({
           {recoveryError
             ? 'This browser could not keep a recovery copy. Keep this page open and use Save draft to protect your work.'
             : 'Unfinished edits are kept in this browser tab for up to 24 hours. Use Save draft to keep them on the server. Signing out clears the tab copy.'}
+        </Alert>
+      )}
+      {publicationUnresolved && !previewOpen && (
+        <Alert severity="warning">
+          {approvalRecovery === 'accepted'
+            ? 'Approval was accepted, but the latest publication still needs to be checked.'
+            : 'Approval could not be confirmed. Check the publication before changing or approving this Plan again.'}
+          {' Reloading reads the current state; it does not submit another approval.'}
+          <Button disabled={busy || query.isFetching} onClick={() => void recoverPublication()}>
+            Refresh publication context
+          </Button>
         </Alert>
       )}
       {notice && (
@@ -623,7 +658,7 @@ function PlanBuilder({
       )}
       <Box
         component="fieldset"
-        disabled={busy || creationUnresolved}
+        disabled={busy || publicationUnresolved || creationUnresolved}
         sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}
       >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
@@ -1070,7 +1105,7 @@ function PlanBuilder({
         </Typography>
         <Button
           variant="outlined"
-          disabled={busy || conflict || Boolean(issues.length)}
+          disabled={busy || publicationUnresolved || conflict || Boolean(issues.length)}
           onClick={() => save.mutate()}
         >
           Save draft
@@ -1159,7 +1194,7 @@ function PlanBuilder({
                   />
                   <Button
                     variant="contained"
-                    disabled={!reason.trim() || busy || dirty || conflict}
+                    disabled={!reason.trim() || busy || publicationUnresolved || dirty || conflict}
                     onClick={() => reconcile.mutate()}
                   >
                     Update draft sources
@@ -1205,22 +1240,17 @@ function PlanBuilder({
           {approve.isError && (
             <Alert severity="error" sx={{ mt: 3 }}>
               {message(approve.error)}
-              {'code' in approve.error && approve.error.code === 'PLAN_PUBLICATION_CHANGED' && (
-                <Button
-                  disabled={busy}
-                  onClick={async () => {
-                    const result = await query.refetch();
-                    if (!result.isError) {
-                      setPreviewOpen(false);
-                      approve.reset();
-                      setNotice(
-                        'Publication context refreshed. Open Review & approve again to review the new impact.',
-                      );
-                    }
-                  }}
-                >
-                  Refresh publication context
-                </Button>
+              <Typography sx={{ mt: 1 }}>
+                Check the latest publication before retrying. The request may have reached the
+                server. Refreshing does not submit another approval.
+              </Typography>
+              <Button disabled={busy || query.isFetching} onClick={() => void recoverPublication()}>
+                Refresh publication context
+              </Button>
+              {query.isError && (
+                <Typography role="alert">
+                  Publication could not be loaded. Retry the refresh.
+                </Typography>
               )}
               {'status' in approve.error && approve.error.status === 403 && (
                 <Stack spacing={1} sx={{ mt: 1 }}>
