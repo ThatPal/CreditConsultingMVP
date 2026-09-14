@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
 import {
   approvePlan,
+  getPlanVersionHistory,
   createPlanDraft,
   executePlanItem,
   getClientPlan,
@@ -279,5 +280,82 @@ describe('Astra Plan revision and source review', () => {
     await expect(
       createPlanDraft(prisma, clientId, { ...original, sourceReviewId: randomUUID() }),
     ).rejects.toMatchObject({ code: 'PLAN_SOURCE_INVALID' });
+  });
+  test('path revisions preserve visible progress and paginated history stays client-scoped', async () => {
+    const input: PlanDraftInput = {
+      ...(await payload()),
+      title: 'Path history',
+      items: [{ ...original.items[0]!, required: false, pathKeys: ['chosen'] }],
+      dependencies: [],
+      paths: [{ key: 'chosen', clientLabel: 'Chosen path', status: 'ACTIVE', sortOrder: 0 }],
+    };
+    const created = await createPlanDraft(prisma, clientId, input);
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const version = (await getPlanVersionHistory(prisma, clientId, created.planId)).versions[0]!;
+    await executePlanItem(prisma, {
+      clientId,
+      itemId: version.items[0]!.id,
+      actorId: clientUserId,
+      idempotencyKey: randomUUID(),
+      action: 'COMPLETE',
+    });
+    await expect(
+      revisePlanDraft(prisma, created.planId, version.optimisticVersion, {
+        ...input,
+        paths: [{ ...input.paths![0]!, status: 'INACTIVE' }],
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_PROGRESS_PROTECTED' });
+    expect((await getPlanVersionHistory(prisma, clientId, created.planId)).versions).toHaveLength(
+      1,
+    );
+    for (let count = 0; count < 6; count++) {
+      const latest = (await getPlanVersionHistory(prisma, clientId, created.planId)).versions[0]!;
+      await revisePlanDraft(prisma, created.planId, latest.optimisticVersion, {
+        ...input,
+        title: `Revision ${count}`,
+      });
+      await approvePlan(prisma, clientId, created.planId, consultantId);
+    }
+    const first = await getPlanVersionHistory(prisma, clientId, created.planId);
+    expect(first.versions.map((row) => row.version)).toEqual([7, 6, 5, 4, 3]);
+    const older = await getPlanVersionHistory(prisma, clientId, created.planId, first.nextBefore!);
+    expect(older.versions.map((row) => row.version)).toEqual([2, 1]);
+    expect(older.nextBefore).toBeNull();
+    expect(first.versions[0]!.items[0]!.status).toBe('COMPLETED');
+    await expect(getPlanVersionHistory(prisma, randomUUID(), created.planId)).rejects.toMatchObject(
+      { code: 'NOT_FOUND' },
+    );
+  });
+  test('approval rechecks progress recorded after a path-hiding draft was saved', async () => {
+    const input: PlanDraftInput = {
+      ...(await payload()),
+      title: 'Path race',
+      items: [{ ...original.items[0]!, required: false, pathKeys: ['chosen'] }],
+      dependencies: [],
+      paths: [{ key: 'chosen', clientLabel: 'Chosen path', status: 'ACTIVE', sortOrder: 0 }],
+    };
+    const created = await createPlanDraft(prisma, clientId, input);
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const published = (await getPlanVersionHistory(prisma, clientId, created.planId)).versions[0]!;
+    const replacement = await revisePlanDraft(prisma, created.planId, published.optimisticVersion, {
+      ...input,
+      paths: [{ ...input.paths![0]!, status: 'INACTIVE' }],
+    });
+    await executePlanItem(prisma, {
+      clientId,
+      itemId: published.items[0]!.id,
+      actorId: clientUserId,
+      idempotencyKey: randomUUID(),
+      action: 'COMPLETE',
+    });
+    await expect(
+      approvePlan(prisma, clientId, created.planId, consultantId, replacement.optimisticVersion),
+    ).rejects.toMatchObject({ code: 'PLAN_PROGRESS_PROTECTED' });
+    const versions = (await getPlanVersionHistory(prisma, clientId, created.planId)).versions;
+    expect(versions[0]!.status).toBe('DRAFT');
+    expect(versions[1]!.status).not.toBe('SUPERSEDED');
+    const context = await getPlanBuilder(prisma, clientId);
+    expect(context.plan!.versions[0]!.version).toBe(2);
+    expect(context.clientPublication).toMatchObject({ planId: created.planId, version: 1 });
   });
 });

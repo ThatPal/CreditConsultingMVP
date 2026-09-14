@@ -52,6 +52,13 @@ export type PlanDraft = Sources & {
   groups: Group[];
 };
 export type BuilderResponse = {
+  clientPublication?: {
+    planId: string;
+    title: string;
+    version: number;
+    status: string;
+    staleAt: string | null;
+  } | null;
   plan: null | {
     id: string;
     title: string;
@@ -157,6 +164,25 @@ export function editorIssues(draft: PlanDraft) {
   if (!draft.items.length) issues.push('Add at least one step.');
   if (draft.items.some((item) => !item.clientTitle.trim()))
     issues.push('Give every step a client-facing title.');
+  if (draft.paths.some((path) => !path.clientLabel.trim()))
+    issues.push('Give every path a client-facing label.');
+  const active = new Set(
+    draft.paths.filter((path) => path.status === 'ACTIVE').map((path) => path.key),
+  );
+  const visible = new Set(
+    draft.paths
+      .filter((path) => ['ACTIVE', 'AVAILABLE'].includes(path.status))
+      .map((path) => path.key),
+  );
+  if (active.size > 1) issues.push('Choose at most one active path.');
+  for (const item of draft.items) {
+    if (item.required && item.pathKeys.length && !item.pathKeys.some((key) => active.has(key)))
+      issues.push(
+        `Required step "${item.clientTitle}" must belong to the active path or be shared.`,
+      );
+    if (hasProgress(item) && item.pathKeys.length && !item.pathKeys.some((key) => visible.has(key)))
+      issues.push(`Keep "${item.clientTitle}" visible: it has recorded progress.`);
+  }
   const outgoing = new Map<string, string[]>();
   for (const edge of draftPayload(draft).dependencies)
     outgoing.set(edge.dependentKey, [

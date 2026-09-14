@@ -26,40 +26,40 @@ describe('APC Wave 3 client product contracts', () => {
   beforeEach(() => mockedApi.mockReset());
 
   test('keeps typed Plan outcomes isolated by item', async () => {
-    mockedApi.mockResolvedValue({
-      plan: {
-        id: 'plan',
-        title: 'Preparation path',
-        status: 'ACTIVE',
-        version: {
-          staleAt: null,
-          items: [
-            {
-              id: 'one',
+    mockedApi.mockImplementation(async (path) => {
+      if (String(path).endsWith('/draft'))
+        return { active: true, contextVersion: '2026-09-10T00:00:00Z', draft: null };
+      return {
+        plan: {
+          id: 'plan',
+          title: 'Preparation path',
+          status: 'ACTIVE',
+          version: {
+            staleAt: null,
+            items: ['one', 'two'].map((id) => ({
+              id,
               type: 'ACTION',
+              owner: 'CLIENT',
               completionMode: 'STRUCTURED_OUTCOME',
               status: 'AVAILABLE',
-              title: 'First balance',
-              body: 'First',
+              title: `${id} balance`,
+              body: 'Report progress',
               deepLink: null,
               prerequisites: [],
-            },
-            {
-              id: 'two',
-              type: 'ACTION',
-              completionMode: 'STRUCTURED_OUTCOME',
-              status: 'AVAILABLE',
-              title: 'Second balance',
-              body: 'Second',
-              deepLink: null,
-              prerequisites: [],
-            },
-          ],
+              responseForm: {
+                fields: [
+                  { key: 'change', label: 'What changed?', type: 'string', required: false },
+                ],
+                error: null,
+              },
+            })),
+          },
         },
-      },
+      };
     });
     wrap(<ClientPlanPage />);
-    const inputs = await screen.findAllByLabelText('What changed?');
+    await waitFor(() => expect(screen.getAllByRole('textbox', { name: 'What changed?' })).toHaveLength(2), { timeout: 5000 });
+    const inputs = screen.getAllByRole('textbox', { name: 'What changed?' });
     fireEvent.change(inputs[0]!, { target: { value: 'First account updated' } });
     expect(inputs[0]).toHaveValue('First account updated');
     expect(inputs[1]).toHaveValue('');

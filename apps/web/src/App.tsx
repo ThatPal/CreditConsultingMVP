@@ -57,7 +57,7 @@ import {
 import { ConsultantDashboardPage, ReadinessPage, WorkQueuePage } from './pages/PlatformPages';
 import { Client360Page, ClientsPage } from './pages/ClientContextPages';
 import { ClientHomePage, ClientJourneyPage } from './pages/JourneyPages';
-import { ClientPlanPage, ConsultantPlanBuilderPage } from './pages/PlanPages';
+import { ClientPlanPage } from './pages/PlanPages';
 import {
   ClientReviewPage,
   ConsultantReviewsPage,
@@ -67,6 +67,10 @@ import {
   ConsultantClientCreditCenterPage,
   PublishedCreditCenterPage,
 } from './pages/PublishedCreditCenterPages';
+
+const ConsultantPlanBuilderPage = lazy(() =>
+  import('./features/plans/ConsultantPlanBuilderPage').then((module) => ({ default: module.ConsultantPlanBuilderPage })),
+);
 
 const DesignSystemPage = lazy(() =>
   import('./pages/dev/DesignSystemPage').then((module) => ({ default: module.DesignSystemPage })),
@@ -216,7 +220,7 @@ export function App() {
           <Route path="work-queue" element={<WorkQueuePage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:clientId" element={<Client360Page />} />
-          <Route path="clients/:clientId/plan" element={<ConsultantPlanBuilderPage />} />
+          <Route path="clients/:clientId/plan" element={<Suspense fallback={<LoadingSkeleton />}><ConsultantPlanBuilderPage /></Suspense>} />
           <Route path="clients/:clientId/cards" element={<ConsultantClientCardsPage />} />
           <Route
             path="clients/:clientId/rounds/:roundId/strategy"

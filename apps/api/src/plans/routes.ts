@@ -8,6 +8,7 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import {
   approvePlan,
+  getPlanVersionHistory,
   getClientPlan,
   getResponseDraft,
   saveResponseDraft,
@@ -81,6 +82,29 @@ export function createPlanRouter(
   recorder?: AuthorizationDenialRecorder,
 ) {
   const router = Router();
+  router.get(
+    '/consultant/clients/:clientId/plans/:planId/history',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
+    async (req, res, next) => {
+      try {
+        const before =
+          req.query.before === undefined
+            ? undefined
+            : z.coerce.number().int().positive().parse(req.query.before);
+        res.json(
+          await getPlanVersionHistory(
+            prisma,
+            req.params.clientId as string,
+            req.params.planId as string,
+            before,
+          ),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.post(
     '/consultant/clients/:clientId/plan/response-preview',
     requireRole('CONSULTANT'),

@@ -5,13 +5,18 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { apiRequest } from '../auth/api';
 import { theme } from '../theme';
-import { ClientPlanPage, ConsultantPlanBuilderPage } from './PlanPages';
+import { ClientPlanPage } from './PlanPages';
+import { ConsultantPlanBuilderPage } from '../features/plans/ConsultantPlanBuilderPage';
 
+vi.mock('../auth/AuthProvider', () => ({ useAuth: () => ({ user: { userId: 'consultant' } }) }));
 vi.mock('../auth/api', () => ({ apiRequest: vi.fn() }));
 const mockedApi = vi.mocked(apiRequest);
 
 describe('consultant Plan Builder continuity', () => {
-  beforeEach(() => mockedApi.mockReset());
+  beforeEach(() => {
+    sessionStorage.clear();
+    mockedApi.mockReset();
+  });
 
   test.each([
     { status: 'STALE', owner: 'CLIENT', staleAt: '2026-09-10T12:00:00Z' },
@@ -67,6 +72,7 @@ describe('consultant Plan Builder continuity', () => {
         versions: [
           {
             version: 4,
+            status: 'DRAFT',
             optimisticVersion: 7,
             sourceProfileVersion: 3,
             sourceReviewId: 'saved-review',

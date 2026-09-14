@@ -1,3 +1,5 @@
+import { PlanPathEditor } from './PlanPathEditor';
+import { PlanVersionHistory } from './PlanVersionHistory';
 import { PlanLifecyclePreview } from './PlanLifecyclePreview';
 import { PlanConflictResolution } from './PlanConflictResolution';
 import { PlanDraftComparison } from './PlanDraftComparison';
@@ -365,7 +367,49 @@ function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string 
         title="Plan workspace"
         description="Shape the client's next steps, connect prerequisites, and review what you publish."
       />
+      {query.data?.clientPublication !== undefined && (
+        <Alert
+          severity={
+            query.data.clientPublication?.staleAt ||
+            query.data.clientPublication?.status === 'STALE'
+              ? 'warning'
+              : 'info'
+          }
+        >
+          {query.data.clientPublication ? (
+            <>
+              Client publication: {query.data.clientPublication.title}, version{' '}
+              {query.data.clientPublication.version}.
+              {query.data.clientPublication.planId !== editor.planId
+                ? ' This is a different Plan from the one you are editing.'
+                : ''}
+              {query.data.clientPublication.staleAt ||
+              query.data.clientPublication.status === 'STALE'
+                ? ' Client actions are paused for source review.'
+                : ' This is the version currently available to the client.'}
+              {editor.status === 'DRAFT' || dirty
+                ? ' Your current edits remain private until approval.'
+                : ''}
+            </>
+          ) : (
+            'No Plan is currently published for this client. Save and approve a draft when it is ready.'
+          )}
+        </Alert>
+      )}
       <PlanExecutionReview clientId={clientId} />
+      {editor.planId && (
+        <PlanVersionHistory
+          key={`${editor.planId}:${editor.revision}`}
+          clientId={clientId}
+          planId={editor.planId}
+          workingDraft={editor.draft}
+        />
+      )}
+      <PlanPathEditor
+        draft={editor.draft}
+        disabled={busy}
+        onChange={(draft) => edit(() => draft)}
+      />
       <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip
           label={

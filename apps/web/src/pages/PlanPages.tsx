@@ -17,7 +17,6 @@ import {
 import { SavedPlanResponse } from '../features/plans/SavedPlanResponse';
 import { ResponseHistory, type ResponseItem } from '../features/plans/PlanResponse';
 import type { PlanItem as Item } from '../features/plans/editor';
-export { ConsultantPlanBuilderPage } from '../features/plans/ConsultantPlanBuilderPage';
 
 export type ClientPlanItem = ResponseItem & {
   id: string;

@@ -158,6 +158,26 @@ async function carryProgress(
       outcomeSchema: item.outcomeSchema ?? undefined,
       pathKeys: item.pathMemberships.map(({ path }) => path.key),
     };
+    const wasVisible =
+      !before.pathKeys.length ||
+      previous.paths.some(
+        (path) =>
+          before.pathKeys.includes(path.key) && ['ACTIVE', 'AVAILABLE'].includes(path.status),
+      );
+    const staysVisible =
+      next &&
+      (!(next.pathKeys ?? []).length ||
+        (input.paths ?? []).some(
+          (path) =>
+            (next.pathKeys ?? []).includes(path.key) &&
+            ['ACTIVE', 'AVAILABLE'].includes(path.status),
+        ));
+    if (wasVisible && !staysVisible)
+      throw new AppError(
+        'PLAN_PROGRESS_PROTECTED',
+        409,
+        `"${item.clientTitle}" has recorded progress and must remain visible in the revised Plan.`,
+      );
     if (
       !next ||
       itemContract(before as PlanItemInput, dependencies) !==
@@ -349,6 +369,29 @@ const builderInclude = {
   paths: { orderBy: [{ sortOrder: 'asc' as const }, { id: 'asc' as const }] },
 };
 
+export async function getPlanVersionHistory(
+  prisma: PrismaClient,
+  clientId: string,
+  planId: string,
+  before?: number,
+) {
+  const plan = await prisma.plan.findFirst({
+    where: { id: planId, clientId },
+    select: { id: true },
+  });
+  if (!plan) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
+  const versions = await prisma.planVersion.findMany({
+    where: { planId, ...(before ? { version: { lt: before } } : {}) },
+    orderBy: { version: 'desc' },
+    take: 6,
+    include: builderInclude,
+  });
+  return {
+    versions: versions.slice(0, 5),
+    nextBefore: versions.length > 5 ? versions[4]!.version : null,
+  };
+}
+
 export async function getPlanBuilder(prisma: PrismaClient, clientId: string) {
   const plan = await prisma.plan.findFirst({
     where: { clientId, status: { not: 'CANCELLED' } },
@@ -391,7 +434,19 @@ export async function getPlanBuilder(prisma: PrismaClient, clientId: string) {
     sourceGoalRevisionId: goalRevision?.id ?? null,
     sourceProfileVersion: null,
   };
-  return { plan, context: { goal, review, journey, sources } };
+  const clientPlan = await publishedPlan(prisma, clientId);
+  const clientVersion = clientPlan?.versions[0];
+  const clientPublication =
+    clientPlan && clientVersion
+      ? {
+          planId: clientPlan.id,
+          title: clientVersion.title ?? clientPlan.title,
+          version: clientVersion.version,
+          status: clientVersion.status,
+          staleAt: clientVersion.staleAt,
+        }
+      : null;
+  return { plan, clientPublication, context: { goal, review, journey, sources } };
 }
 
 // Select the published version directly. A newer draft must not hide the

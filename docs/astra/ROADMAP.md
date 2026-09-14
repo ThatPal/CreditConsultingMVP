@@ -203,3 +203,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 14
 
 [Plan readiness scenarios](IMPLEMENTATION-14.md) adds path visibility counts, prerequisite explanations and a non-mutating completion scenario to publication preview. Full path/version lifecycle editing, current-source/readiness qualification and authenticated browser review remain open. A1/A2/A5 remain in progress.
+
+## Latest checkpoint: pass 15
+
+[Paths and version lifecycle batch](IMPLEMENTATION-15.md) adds path authoring, visibility/progress safeguards at save and approval, paginated version inspection/comparison, explicit client-publication context and a separately loaded consultant workbench. Continue in related batches. Multi-Plan selection/lifecycle, full graph conflict resolution, operational proof and consultant browser qualification remain open alongside the full roadmap. A1/A2/A5 remain in progress.

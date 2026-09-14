@@ -54,3 +54,13 @@ test('uses client schema interpretation and default report fields without databa
   });
   expect(result.body.items[1].error).toContain('configure');
 });
+
+test('version history enforces consultant and client scope before reading versions', async () => {
+  const history = '/consultant/clients/allowed/plans/plan/history';
+  await request(app).get(history).expect(401);
+  await request(app).get(history).set('x-role', 'CLIENT').expect(403);
+  await request(app)
+    .get(history.replace('allowed', 'denied'))
+    .set('x-role', 'CONSULTANT')
+    .expect(403);
+});

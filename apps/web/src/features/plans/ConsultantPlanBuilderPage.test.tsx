@@ -223,3 +223,12 @@ test('selected wording uses the newer revision only after explicit save', async 
     draft: { title: 'Chosen wording' },
   });
 });
+
+
+test('distinguishes the private working version from a paused client publication', async () => {
+  request.mockResolvedValue({ ...fixture(), clientPublication: { planId: 'plan', title: 'Published preparation', version: 1, status: 'STALE', staleAt: '2026-09-10T00:00:00Z' } });
+  setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  expect(screen.getByText(/Client publication: Published preparation, version 1/)).toBeVisible();
+  expect(screen.getByText(/Client actions are paused for source review/)).toBeVisible();
+});
