@@ -1,3 +1,4 @@
+import { clientResponseForm } from './outcomes.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
@@ -80,6 +81,36 @@ export function createPlanRouter(
   recorder?: AuthorizationDenialRecorder,
 ) {
   const router = Router();
+  router.post(
+    '/consultant/clients/:clientId/plan/response-preview',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
+    async (req, res, next) => {
+      try {
+        const input = z
+          .object({
+            items: z
+              .array(
+                z.object({
+                  stableKey: z.string().min(1).max(80),
+                  completionMode: itemSchema.shape.completionMode,
+                  outcomeSchema: z.record(z.string(), z.unknown()).optional(),
+                }),
+              )
+              .max(200),
+          })
+          .parse(req.body);
+        res.json({
+          items: input.items.map((item) => ({
+            stableKey: item.stableKey,
+            ...clientResponseForm(item.outcomeSchema, item.completionMode),
+          })),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.get(
     '/consultant/clients/:clientId/plan',
     requireRole('CONSULTANT'),

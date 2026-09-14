@@ -1,3 +1,4 @@
+import { PlanResponsePreview, PlanResponsePreviewProvider } from './PlanResponsePreview';
 import { PlanConflictResolution } from './PlanConflictResolution';
 import { PlanDraftComparison } from './PlanDraftComparison';
 import { useAuth } from '../../auth/AuthProvider';
@@ -991,33 +992,42 @@ function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string 
           <Typography variant="h2" sx={{ mb: 3 }}>
             {draft.title}
           </Typography>
-          <Stack divider={<Divider />} spacing={2}>
-            {draft.items
-              .filter(
-                (item) =>
-                  !item.pathKeys.length ||
-                  item.pathKeys.some((key) =>
-                    draft.paths.some(
-                      (path) => path.key === key && ['ACTIVE', 'AVAILABLE'].includes(path.status),
+          <PlanResponsePreviewProvider
+            clientId={clientId}
+            items={draft.items}
+            enabled={previewOpen}
+          >
+            <Stack divider={<Divider />} spacing={2}>
+              {draft.items
+                .filter(
+                  (item) =>
+                    !item.pathKeys.length ||
+                    item.pathKeys.some((key) =>
+                      draft.paths.some(
+                        (path) => path.key === key && ['ACTIVE', 'AVAILABLE'].includes(path.status),
+                      ),
                     ),
-                  ),
-              )
-              .map((item) => (
-                <Box key={item.stableKey}>
-                  <Typography variant="overline">{item.type.toLowerCase()}</Typography>
-                  <Typography variant="h3">{item.clientTitle || 'Untitled step'}</Typography>
-                  <Typography sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>{item.clientBody}</Typography>
-                  <Typography variant="caption">
-                    Owner:{' '}
-                    {item.owner === 'CLIENT'
-                      ? 'You'
-                      : item.owner === 'CONSULTANT'
-                        ? 'Your consultant'
-                        : 'Automated check'}
-                  </Typography>
-                </Box>
-              ))}
-          </Stack>
+                )
+                .map((item) => (
+                  <Box key={item.stableKey}>
+                    <Typography variant="overline">{item.type.toLowerCase()}</Typography>
+                    <Typography variant="h3">{item.clientTitle || 'Untitled step'}</Typography>
+                    <Typography sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                      {item.clientBody}
+                    </Typography>
+                    <Typography variant="caption">
+                      Owner:{' '}
+                      {item.owner === 'CLIENT'
+                        ? 'You'
+                        : item.owner === 'CONSULTANT'
+                          ? 'Your consultant'
+                          : 'Automated check'}
+                    </Typography>
+                    {previewOpen && <PlanResponsePreview item={item} />}
+                  </Box>
+                ))}
+            </Stack>
+          </PlanResponsePreviewProvider>
           {approve.isError && (
             <Alert severity="error" sx={{ mt: 3 }}>
               {message(approve.error)}
