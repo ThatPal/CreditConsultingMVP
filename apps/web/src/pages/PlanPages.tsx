@@ -190,13 +190,13 @@ export function ClientPlanPage() {
                     Go to the related step
                   </Button>
                 )}
-                {canAct &&
-                  item.owner === 'CLIENT' &&
+                {item.owner === 'CLIENT' &&
                   ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
                   item.type !== 'MILESTONE' && (
                     <SavedPlanResponse
                       key={`response:${item.id}:${item.latestOutcomeId}`}
                       item={item}
+                      readOnly={!canAct}
                     />
                   )}
                 <ResponseHistory key={`${item.id}:${item.latestOutcomeId}`} item={item} />

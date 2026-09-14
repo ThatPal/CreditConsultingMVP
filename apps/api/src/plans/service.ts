@@ -1191,7 +1191,14 @@ export async function executePlanItem(
     return await prisma.$transaction(async (tx) => {
       await lockItemPlan(tx, input.itemId, input.clientId);
       const item = await tx.planItem.findFirst({
-        where: { id: input.itemId, planVersion: { plan: { clientId: input.clientId } } },
+        where: {
+          id: input.itemId,
+          planVersion: { plan: { clientId: input.clientId } },
+          OR: [
+            { pathMemberships: { none: {} } },
+            { pathMemberships: { some: { path: { status: { in: ['ACTIVE', 'AVAILABLE'] } } } } },
+          ],
+        },
         include: {
           planVersion: { include: { plan: true } },
           prerequisites: true,
@@ -1671,6 +1678,7 @@ async function responseDraftContext(
     active:
       plan?.status === 'ACTIVE' &&
       version?.status === 'ACTIVE' &&
+      !version.staleAt &&
       ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
   };
 }

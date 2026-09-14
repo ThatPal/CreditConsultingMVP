@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Alert, Button, Stack, Typography } from '@mui/material';
+import { Alert, Button, Stack, TextField, Typography } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../auth/api';
 import { PlanResponse, type ResponseItem } from './PlanResponse';
-import type { PlanFile } from './PlanAttachments';
+import { EvidenceFile, type PlanFile } from './PlanAttachments';
 
 export type ResponseDraft = {
   values: Record<string, string>;
@@ -24,7 +24,13 @@ export type DraftResult = {
     | null;
 };
 
-export function SavedPlanResponse({ item }: { item: ResponseItem }) {
+export function SavedPlanResponse({
+  item,
+  readOnly = false,
+}: {
+  item: ResponseItem;
+  readOnly?: boolean;
+}) {
   const client = useQueryClient();
   const [choice, setChoice] = useState<'resume' | 'blank' | null>(null);
   const queryKey = ['plan-response-draft', item.id];
@@ -44,14 +50,51 @@ export function SavedPlanResponse({ item }: { item: ResponseItem }) {
         Your saved response could not be loaded.
       </Alert>
     );
-  if (!query.data.active)
-    return (
-      <Alert severity="info">
-        This step has changed and cannot accept a response right now. Reload the Plan to see the
-        latest status.
-      </Alert>
-    );
   const saved = query.data.draft;
+  if (readOnly || !query.data.active)
+    return (
+      <Stack spacing={2}>
+        <Alert severity="info">
+          Responses are paused for this step. Your consultant owns the next review.
+          {saved && ' Your saved draft is still private and has not been submitted.'}
+        </Alert>
+        {saved && (
+          <>
+            <Typography variant="subtitle2">Your saved response</Typography>
+            {Object.entries(saved.values).map(([key, value], index) => (
+              <TextField
+                key={key}
+                label={
+                  item.responseForm?.fields.find((field) => field.key === key)?.label ??
+                  `Saved answer ${index + 1}`
+                }
+                value={value}
+                multiline
+                fullWidth
+                slotProps={{ input: { readOnly: true } }}
+              />
+            ))}
+            {saved.note && (
+              <TextField
+                label={saved.help ? 'Saved help request' : 'Saved note'}
+                value={saved.note}
+                multiline
+                fullWidth
+                slotProps={{ input: { readOnly: true } }}
+              />
+            )}
+            {saved.files.map((file) => (
+              <EvidenceFile key={file.documentId} file={file} />
+            ))}
+            {Boolean(saved.unavailableFiles) && (
+              <Alert severity="warning">
+                Some saved attachments are no longer available. Your saved answers remain here.
+              </Alert>
+            )}
+          </>
+        )}
+      </Stack>
+    );
   if (saved && !choice)
     return (
       <Alert severity="info">

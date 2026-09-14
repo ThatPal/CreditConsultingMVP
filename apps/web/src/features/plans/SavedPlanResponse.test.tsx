@@ -20,7 +20,7 @@ const saved: DraftResult = {
     unavailableFiles: 0,
   },
 };
-function setup() {
+function setup(readOnly = false) {
   return render(
     <ThemeProvider theme={theme}>
       <QueryClientProvider
@@ -28,6 +28,7 @@ function setup() {
       >
         <SavedPlanResponse
           item={{ id: 'step', type: 'ACTION', completionMode: 'ACKNOWLEDGEMENT' }}
+          readOnly={readOnly}
         />
       </QueryClientProvider>
     </ThemeProvider>,
@@ -128,3 +129,30 @@ test('pauses automatic retries after a save failure and keeps the latest edits',
     'Keep newer edits too',
   );
 });
+
+test.each([false, true])(
+  'paused drafts remain readable without save or submission controls (parent pause %s)',
+  async (parentPause) => {
+    request.mockResolvedValue({
+      ...saved,
+      active: parentPause,
+      draft: {
+        ...saved.draft!,
+        values: { answer: 'Saved preparation details' },
+        unavailableFiles: 1,
+      },
+    });
+    setup(parentPause);
+    const note = await screen.findByRole('textbox', { name: 'Saved note' });
+    expect(note).toHaveValue('My unfinished response');
+    expect(note).toHaveAttribute('readonly');
+    expect(screen.getByRole('textbox', { name: 'Saved answer 1' })).toHaveValue(
+      'Saved preparation details',
+    );
+    expect(screen.getByText(/Some saved attachments are no longer available/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Resume saved response' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save draft' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save completed step' })).not.toBeInTheDocument();
+    expect(request.mock.calls.every(([, options]) => !options?.method)).toBe(true);
+  },
+);

@@ -239,3 +239,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 25: Approved revision follow-up handoff](IMPLEMENTATION-25.md) carries pending response reminders into approved revisions, preserves assignment and timing, scopes decision resolution, and refreshes response/Journey views. Separate-Plan replacement policy and broader qualification remain open.
+
+
+[Pass 26: Client response boundaries and paused draft inspection](IMPLEMENTATION-26.md) blocks direct hidden-step submissions, prevents paused draft overwrites, and exposes saved answers read-only during pauses. Runtime transition/recovery qualification and separate-Plan replacement remain open.

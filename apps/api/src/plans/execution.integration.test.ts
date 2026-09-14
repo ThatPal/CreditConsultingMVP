@@ -842,4 +842,118 @@ describe('consequential client Plan execution', () => {
       'AWAITING_VERIFICATION',
     );
   });
+  test('hidden alternative steps reject direct responses without creating outcomes or attention', async () => {
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'Private alternative boundary',
+      purpose: 'PREPARATION',
+      paths: [
+        { key: 'chosen', clientLabel: 'Current path', status: 'ACTIVE', sortOrder: 0 },
+        { key: 'private', clientLabel: 'Private alternative', status: 'INACTIVE', sortOrder: 1 },
+      ],
+      items: [
+        {
+          stableKey: 'visible',
+          type: 'GUIDANCE',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'Current guidance',
+          sortOrder: 0,
+          pathKeys: ['chosen'],
+        },
+        {
+          stableKey: 'hidden',
+          type: 'GUIDANCE',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'Private alternative guidance',
+          sortOrder: 1,
+          pathKeys: ['private'],
+          required: false,
+        },
+      ],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const steps = (await getPlanBuilder(prisma, clientId, created.planId)).plan!.versions[0]!.items;
+    const hidden = steps.find((step) => step.stableKey === 'hidden')!;
+    const visible = steps.find((step) => step.stableKey === 'visible')!;
+    expect(hidden.status).toBe('AVAILABLE');
+    expect(
+      (await getClientPlan(prisma, clientId)).plan!.version.items.map((step) => step.id),
+    ).not.toContain(hidden.id);
+    for (const action of ['COMPLETE', 'UNABLE'] as const) {
+      await expect(
+        executePlanItem(prisma, {
+          clientId,
+          itemId: hidden.id,
+          actorId: clientUserId,
+          idempotencyKey: randomUUID(),
+          action,
+          reason: 'Need help',
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    }
+    await expect(getResponseDraft(prisma, clientId, hidden.id, clientUserId)).rejects.toMatchObject(
+      { code: 'NOT_FOUND' },
+    );
+    await expect(getPlanItemHistory(prisma, clientId, hidden.id)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    expect(await prisma.planItemOutcome.count({ where: { planItemId: hidden.id } })).toBe(0);
+    expect(
+      await prisma.workItem.count({ where: { sourceType: 'PlanItem', sourceId: hidden.id } }),
+    ).toBe(0);
+    await executePlanItem(prisma, {
+      clientId,
+      itemId: visible.id,
+      actorId: clientUserId,
+      idempotencyKey: randomUUID(),
+      action: 'COMPLETE',
+    });
+  });
+  test('source-paused drafts remain readable but cannot overwrite the saved response', async () => {
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'Paused draft recovery',
+      purpose: 'PREPARATION',
+      items: [
+        {
+          stableKey: 'response',
+          type: 'ACTION',
+          owner: 'CLIENT',
+          completionMode: 'CLIENT_REPORT_CONSULTANT_VERIFY',
+          clientTitle: 'Report preparation',
+          sortOrder: 0,
+        },
+      ],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const item = (await getPlanBuilder(prisma, clientId, created.planId)).plan!.versions[0]!
+      .items[0]!;
+    const context = await getResponseDraft(prisma, clientId, item.id, clientUserId);
+    const input = {
+      expectedRevision: 0,
+      contextVersion: context.contextVersion,
+      values: { clientReport: 'Keep my draft' },
+      note: '',
+      help: false,
+      documentIds: [],
+    };
+    const saved = await saveResponseDraft(prisma, clientId, item.id, clientUserId, input);
+    await prisma.planVersion.update({
+      where: { id: created.versionId },
+      data: { staleAt: new Date(), staleReason: 'Source review required' },
+    });
+    const paused = await getResponseDraft(prisma, clientId, item.id, clientUserId);
+    expect(paused.active).toBe(false);
+    expect(paused.draft?.values).toEqual(input.values);
+    await expect(
+      saveResponseDraft(prisma, clientId, item.id, clientUserId, {
+        ...input,
+        expectedRevision: saved.draft!.revision,
+        values: { clientReport: 'Overwrite attempt' },
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONTEXT_CHANGED' });
+    const retained = await getResponseDraft(prisma, clientId, item.id, clientUserId);
+    expect(retained.draft?.values).toEqual(input.values);
+    expect(retained.draft?.revision).toBe(saved.draft!.revision);
+  });
 });
