@@ -199,3 +199,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 13
 
 [Response-form publication preview](IMPLEMENTATION-13.md) shows client fields, required answers, constraints and verification guidance using the server's existing schema interpreter. Full interactive/lifecycle preview, consultant browser verification and remaining Plan path/version work remain open. A1/A2/A5 remain in progress.
+
+## Latest checkpoint: pass 14
+
+[Plan readiness scenarios](IMPLEMENTATION-14.md) adds path visibility counts, prerequisite explanations and a non-mutating completion scenario to publication preview. Full path/version lifecycle editing, current-source/readiness qualification and authenticated browser review remain open. A1/A2/A5 remain in progress.
