@@ -197,19 +197,17 @@ test('prefills only current available files when correcting a response', async (
 });
 
 test('loads older history through the scoped endpoint and retains evidence after a failed page', async () => {
-  request
-    .mockRejectedValueOnce(new Error('Connection interrupted'))
-    .mockResolvedValueOnce({
-      history: [
-        {
-          id: 'old',
-          kind: 'UNABLE',
-          data: { reason: 'Earlier question' },
-          createdAt: '2026-09-09',
-        },
-      ],
-      historyLimited: false,
-    });
+  request.mockRejectedValueOnce(new Error('Connection interrupted')).mockResolvedValueOnce({
+    history: [
+      {
+        id: 'old',
+        kind: 'UNABLE',
+        data: { reason: 'Earlier question' },
+        createdAt: '2026-09-09',
+      },
+    ],
+    historyLimited: false,
+  });
   setup(
     <ResponseHistory
       consultant
@@ -238,4 +236,45 @@ test('loads older history through the scoped endpoint and retains evidence after
   expect(request).toHaveBeenLastCalledWith(
     '/api/v1/consultant/clients/client-1/plan/items/step/history?before=new',
   );
+});
+
+test('names excluded evidence and submits a replacement without changing original history', async () => {
+  const original = {
+    documentId: 'superseded',
+    fileName: 'Earlier statement.pdf',
+    sizeBytes: 100,
+    status: 'SUPERSEDED',
+    available: true,
+  };
+  const unavailable = {
+    ...original,
+    documentId: 'deleted',
+    fileName: 'Removed proof.pdf',
+    status: 'DELETED',
+    available: false,
+  };
+  const history = [
+    {
+      id: 'submission',
+      kind: 'COMPLETE',
+      data: {},
+      createdAt: '2026-09-10',
+      attachments: [original, unavailable],
+    },
+  ];
+  setup(<PlanResponse item={{ ...item, history }} />);
+  expect(screen.getByText(/Earlier statement.pdf — a newer version exists/)).toBeVisible();
+  expect(screen.getByText(/Removed proof.pdf — no longer available/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Add supporting documents (optional)' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Attach existing documents' }));
+  fireEvent.click(await screen.findByText('Statement.pdf'));
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Save completed step' }));
+  await waitFor(() =>
+    expect(request.mock.calls.some(([path]) => path.includes('/outcomes'))).toBe(true),
+  );
+  const call = request.mock.calls.find(([path]) => path.includes('/outcomes'))!;
+  expect(JSON.parse(String(call[1]?.body)).documentIds).toEqual(['file-1']);
+  expect(history[0]!.attachments).toEqual([original, unavailable]);
+  expect(request.mock.calls.some(([, options]) => options?.method === 'DELETE')).toBe(false);
 });

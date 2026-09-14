@@ -185,6 +185,9 @@ export function PlanResponse({
   });
   const previousFiles =
     item.history?.filter((entry) => entry.kind === 'COMPLETE').at(-1)?.attachments ?? [];
+  const excludedPreviousFiles = previousFiles.filter(
+    (file) => !file.available || file.status !== 'AVAILABLE',
+  );
   const [files, setFiles] = useState<PlanFile[]>(
     () =>
       draft?.files ?? previousFiles.filter((file) => file.available && file.status === 'AVAILABLE'),
@@ -439,11 +442,26 @@ export function PlanResponse({
           )}
         </>
       )}
-      {previousFiles.some((file) => !file.available || file.status !== 'AVAILABLE') && (
+      {excludedPreviousFiles.length > 0 && (
         <Alert severity="info">
-          Some files from your previous response are no longer current. Their submission records
-          remain in the history below. Select an available replacement if it supports your
-          correction.
+          Some files from your previous response were not carried into this response:
+          <Box component="ul" sx={{ my: 1, pl: 2.5 }}>
+            {excludedPreviousFiles.map((file) => (
+              <Typography
+                component="li"
+                variant="body2"
+                key={file.documentId}
+                sx={{ overflowWrap: 'anywhere' }}
+              >
+                {file.fileName} —{' '}
+                {file.available && file.status === 'SUPERSEDED'
+                  ? 'a newer version exists in Documents'
+                  : 'no longer available for attachment'}
+              </Typography>
+            ))}
+          </Box>
+          Choose available replacements below if they support your update. Earlier submissions keep
+          their original attachment records; selecting a replacement does not rewrite that history.
         </Alert>
       )}
       <PlanAttachments

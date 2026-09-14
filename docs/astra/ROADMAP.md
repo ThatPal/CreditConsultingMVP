@@ -303,3 +303,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 49: Approval confirmation and real staff recovery](IMPLEMENTATION-49.md) separates accepted approval from failed follow-up reads and gates further changes on publication recovery. Thirty-five tests and real API/browser approval plus completion recovery passed with one write each; broader lifecycle qualification remains open.
 
 [Pass 50: Client follow-up clarity and correction roundtrip](IMPLEMENTATION-50.md) consolidates correction/help feedback above the response form and verifies real browser submission, correction, resubmission and verification. Forty tests passed, including database competing-approval coverage; separate-consultant browser contention remains open.
+
+[Pass 51: Attachment replacement and competing previews](IMPLEMENTATION-51.md) names excluded prior evidence, verifies real upload/replacement correction history, and checks stale approval recovery in two tabs. Twenty-seven web tests and both builds passed; distinct-consultant browser qualification remains open.
