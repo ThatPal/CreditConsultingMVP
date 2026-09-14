@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../auth/api';
@@ -188,6 +188,7 @@ export function PlanResponse({
   const [help, setHelp] = useState(draft?.help ?? false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const writePending = useRef(false);
   const serialized = JSON.stringify({ values, note, help, files });
   const [savedPayload, setSavedPayload] = useState(serialized);
   const [hasSaved, setHasSaved] = useState(Boolean(draft));
@@ -200,8 +201,9 @@ export function PlanResponse({
     if (dirty || uploading) window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, uploading]);
-  async function saveDraft() {
-    if (!onSaveDraft || saving || uploading) return;
+  const saveDraft = useCallback(async () => {
+    if (!onSaveDraft || writePending.current || uploading) return;
+    writePending.current = true;
     setSaving(true);
     setSaveError('');
     try {
@@ -215,9 +217,10 @@ export function PlanResponse({
           : 'The draft could not be saved. Your answers are still here.',
       );
     } finally {
+      writePending.current = false;
       setSaving(false);
     }
-  }
+  }, [onSaveDraft, uploading, values, note, help, files, serialized]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const attempt = useRef<{ payload: string; key: string } | null>(null);
   const fields = item.responseForm?.fields ?? [];
@@ -246,6 +249,9 @@ export function PlanResponse({
         }),
       });
     },
+    onSettled: () => {
+      writePending.current = false;
+    },
     onSuccess: async () => {
       setSavedPayload(serialized);
       client.removeQueries({ queryKey: ['plan-response-draft', item.id] });
@@ -256,14 +262,38 @@ export function PlanResponse({
       );
     },
   });
+  useEffect(() => {
+    if (
+      !onSaveDraft ||
+      !dirty ||
+      saving ||
+      uploading ||
+      mutation.isPending ||
+      mutation.isSuccess ||
+      saveError
+    )
+      return;
+    const timer = window.setTimeout(() => void saveDraft(), 800);
+    return () => window.clearTimeout(timer);
+  }, [
+    onSaveDraft,
+    dirty,
+    saving,
+    uploading,
+    mutation.isPending,
+    mutation.isSuccess,
+    saveError,
+    saveDraft,
+  ]);
   const submit = () => {
-    if (uploading || saving || mutation.isPending) return;
+    if (uploading || writePending.current || mutation.isPending) return;
     const issues: Record<string, string> = {};
     if (help) {
       if (!note.trim()) {
         setErrors({ note: 'Tell your consultant where you got stuck.' });
         return;
       }
+      writePending.current = true;
       mutation.mutate({
         action: 'UNABLE',
         reason: note.trim(),
@@ -295,6 +325,7 @@ export function PlanResponse({
     }
     setErrors(issues);
     if (Object.keys(issues).length) return;
+    writePending.current = true;
     mutation.mutate({
       action: 'COMPLETE',
       documentIds: files.map((file) => file.documentId),
@@ -336,7 +367,7 @@ export function PlanResponse({
           multiline
           minRows={3}
           value={note}
-          disabled={saving || mutation.isPending}
+          disabled={mutation.isPending}
           onChange={(e) => setNote(e.target.value)}
           error={Boolean(errors.note)}
           helperText={errors.note ?? 'Your consultant will see this message and own the next step.'}
@@ -349,7 +380,7 @@ export function PlanResponse({
               key={field.key}
               label={field.label}
               required={field.required}
-              disabled={saving || mutation.isPending}
+              disabled={mutation.isPending}
               select={field.type === 'boolean' || Boolean(field.options)}
               type={['number', 'integer'].includes(field.type) ? 'number' : 'text'}
               multiline={field.type === 'string' && !field.options}
@@ -397,7 +428,7 @@ export function PlanResponse({
               multiline
               minRows={2}
               value={note}
-              disabled={saving || mutation.isPending}
+              disabled={mutation.isPending}
               onChange={(e) => setNote(e.target.value)}
               slotProps={{ htmlInput: { maxLength: 2000 } }}
             />
@@ -419,7 +450,7 @@ export function PlanResponse({
       <PlanAttachments
         value={files}
         onChange={setFiles}
-        disabled={saving || mutation.isPending}
+        disabled={mutation.isPending}
         onBusyChange={setUploading}
       />
       {onSaveDraft && (
@@ -432,9 +463,15 @@ export function PlanResponse({
             {saving ? 'Saving draft...' : 'Save draft'}
           </Button>
           <Typography variant="caption" role="status">
-            {hasSaved && !dirty
-              ? 'Draft saved privately. Your consultant has not received it.'
-              : 'Save your draft before leaving to keep these answers. Submitting sends them to your consultant.'}
+            {saving
+              ? 'Saving changes privately...'
+              : saveError
+                ? 'Changes are not saved. Use Save draft to retry before leaving.'
+                : hasSaved && !dirty
+                  ? 'Draft saved privately. Your consultant has not received it.'
+                  : dirty
+                    ? 'Changes will save automatically. Wait for Saved before leaving.'
+                    : 'Your changes will save automatically as a private draft.'}
           </Typography>
           {saveError && <Alert severity="error">{saveError}</Alert>}
         </Stack>
@@ -461,7 +498,7 @@ export function PlanResponse({
                   : 'Save completed step'}
         </Button>
         <Button
-          disabled={saving || mutation.isPending}
+          disabled={mutation.isPending}
           onClick={() => {
             setHelp(!help);
             setErrors({});

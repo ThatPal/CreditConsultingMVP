@@ -175,3 +175,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 7
 
 [Private client response drafts](IMPLEMENTATION-07.md) adds explicit server save/restore, revision/context conflicts, and atomic removal on submission. Autosave, unsaved in-app navigation, consultant authoring recovery, replacement-version draft review and retention/discard controls remain open. A1/A2/A5 are still in progress.
+
+## Latest checkpoint: pass 8
+
+[Client response autosave](IMPLEMENTATION-08.md) saves private edits after a short pause, preserves typing during a pending save, and pauses retries after failure. Saved responses survive reload and can be submitted normally. Next: protect unsaved in-app navigation, consultant authoring recovery, response-aware preview, path/multi-Plan lifecycle and independent-session verification. A1/A2/A5 remain in progress; the full production roadmap is unchanged.

@@ -76,3 +76,55 @@ test('retains local answers when another tab has saved a newer draft', async () 
     'Local edits',
   );
 });
+
+test('autosaves after editing and queues edits made during a pending save', async () => {
+  let finish!: (value: unknown) => void;
+  let writes = 0;
+  request.mockImplementation(async (_path, options) => {
+    if (options?.method !== 'PUT') return saved;
+    writes++;
+    const body = JSON.parse(String(options.body));
+    if (writes === 1)
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    return { ...saved, draft: { ...saved.draft!, revision: 3, note: body.note } };
+  });
+  setup();
+  fireEvent.click(await screen.findByRole('button', { name: 'Resume saved response' }));
+  const input = screen.getByRole('textbox', { name: 'Optional note for your consultant' });
+  fireEvent.change(input, { target: { value: 'First edit' } });
+  await waitFor(() => expect(writes).toBe(1), { timeout: 3000 });
+  expect(input).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Save completed step' })).toBeDisabled();
+  fireEvent.change(input, { target: { value: 'Second edit while saving' } });
+  finish({ ...saved, draft: { ...saved.draft!, revision: 2, note: 'First edit' } });
+  await waitFor(() => expect(writes).toBe(2), { timeout: 3000 });
+  const calls = request.mock.calls.filter(([, options]) => options?.method === 'PUT');
+  expect(JSON.parse(String(calls[1]![1]?.body))).toMatchObject({
+    expectedRevision: 2,
+    note: 'Second edit while saving',
+  });
+  await screen.findByText('Draft saved privately. Your consultant has not received it.');
+  expect(input).toHaveValue('Second edit while saving');
+});
+test('pauses automatic retries after a save failure and keeps the latest edits', async () => {
+  request.mockImplementation(async (_path, options) => {
+    if (options?.method === 'PUT') throw new Error('Save connection interrupted');
+    return saved;
+  });
+  setup();
+  fireEvent.click(await screen.findByRole('button', { name: 'Resume saved response' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Optional note for your consultant' }), {
+    target: { value: 'Keep these edits' },
+  });
+  await screen.findByText('Save connection interrupted', {}, { timeout: 3000 });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Optional note for your consultant' }), {
+    target: { value: 'Keep newer edits too' },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+  expect(request.mock.calls.filter(([, options]) => options?.method === 'PUT')).toHaveLength(1);
+  expect(screen.getByRole('textbox', { name: 'Optional note for your consultant' })).toHaveValue(
+    'Keep newer edits too',
+  );
+});
