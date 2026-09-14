@@ -1,3 +1,4 @@
+import { PlanFollowUp } from '../features/plans/PlanFollowUp';
 import { useEffect, useState } from 'react';
 import { ResponseWritePause, usePendingNavigationWork } from '../NavigationProtection';
 import { PlanDraftLibrary } from '../features/plans/PlanDraftLibrary';
@@ -265,6 +266,7 @@ export function ClientPlanPage() {
                       Go to the related step
                     </Button>
                   )}
+                  <PlanFollowUp item={item} canAct={canAct} />
                   {item.owner === 'CLIENT' &&
                     ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
                     item.type !== 'MILESTONE' && (

@@ -352,17 +352,6 @@ export function PlanResponse({
       }}
       sx={{ pt: 2 }}
     >
-      {item.history?.at(-1)?.kind === 'HELP_RESOLVED' && (
-        <Alert severity="info">
-          Your consultant has replied: {String(item.history.at(-1)?.data?.note ?? '')} You can
-          continue this step below.
-        </Alert>
-      )}
-      {item.history?.at(-1)?.kind === 'CORRECTION_REQUESTED' && (
-        <Alert severity="warning">
-          Your consultant requested a correction: {String(item.history.at(-1)?.data?.note ?? '')}
-        </Alert>
-      )}
       <Typography variant="h3">
         {help
           ? 'Tell us where you need help'
