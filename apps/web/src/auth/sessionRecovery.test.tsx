@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { apiRequest, type CurrentUser } from './api';
 import { AuthProvider, useAuth } from './AuthProvider';
 import { ProtectedRoute } from './ProtectedRoute';
+import { LoginPage } from '../pages/AuthPages';
 
 const clientUser: CurrentUser = {
   userId: 'client-user',
@@ -16,8 +17,9 @@ const clientUser: CurrentUser = {
 
 function LocationProbe() {
   const location = useLocation();
+  const expired = (location.state as { sessionExpired?: boolean } | null)?.sessionExpired;
   return (
-    <div data-testid="location">
+    <div data-testid="location" data-expired={String(expired === true)}>
       {`${location.pathname}${location.search}${location.hash}|${String((location.state as { from?: string } | null)?.from ?? '')}`}
     </div>
   );
@@ -64,7 +66,62 @@ function renderProtected(entry: string, status: number) {
 afterEach(() => vi.restoreAllMocks());
 
 describe('expired authenticated session recovery', () => {
+  test('real authentication refresh returns to the Plan after an expired request and sign-in', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = String(input);
+      const expired = path.endsWith('/expire-proof');
+      return new Response(JSON.stringify(path.endsWith('/api/me') ? { user: clientUser } : {}), {
+        status: expired ? 401 : 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <MemoryRouter initialEntries={['/app/plan?step=review#response']}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route element={<ProtectedRoute roles={['CLIENT']} />}>
+                <Route
+                  path="/app/plan"
+                  element={
+                    <>
+                      <LocationProbe />
+                      <button
+                        onClick={() => {
+                          void apiRequest('/expire-proof').catch(() => undefined);
+                        }}
+                      >
+                        Expire session
+                      </button>
+                    </>
+                  }
+                />
+                <Route path="/app" element={<div>Unexpected home redirect</div>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Expire session' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your session ended');
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: clientUser.email } });
+    fireEvent.change(screen.getByLabelText(/^Password/), {
+      target: { value: 'synthetic-password' },
+    });
+    fireEvent.submit(screen.getByRole('button', { name: 'Sign in' }).closest('form')!);
+    expect(await screen.findByTestId('location')).toHaveTextContent(
+      '/app/plan?step=review#response',
+    );
+    expect(screen.queryByText('Unexpected home redirect')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   test('authoritative 401 clears protected state and preserves the exact internal return path', async () => {
+    sessionStorage.setItem('astra:plan-authoring:v1:proof', 'private notes');
+    sessionStorage.setItem('astra:plan-review-notes:v1:proof', 'private review');
     const queryClient = renderProtected('/app/services/active?view=credits#ledger', 401);
     expect(
       await screen.findByText('/login|/app/services/active?view=credits#ledger', undefined, {
@@ -73,6 +130,9 @@ describe('expired authenticated session recovery', () => {
     ).toBeInTheDocument();
     expect(queryClient.getQueryData(['another-protected-client-record'])).toBeUndefined();
     expect(queryClient.getQueryData(['public-proof'])).toEqual({ harmless: true });
+    expect(screen.getByTestId('location')).toHaveAttribute('data-expired', 'true');
+    expect(sessionStorage.getItem('astra:plan-authoring:v1:proof')).toBeNull();
+    expect(sessionStorage.getItem('astra:plan-review-notes:v1:proof')).toBeNull();
     expect(screen.queryByText(/request error/i)).not.toBeInTheDocument();
   });
 

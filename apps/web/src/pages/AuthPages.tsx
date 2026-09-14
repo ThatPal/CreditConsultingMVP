@@ -85,7 +85,13 @@ export function LoginPage() {
   const [verificationEmail, setVerificationEmail] = useState('');
   const [resendState, setResendState] = useState<'idle' | 'busy' | 'success' | 'error'>('idle');
   const intakeToken = params.get('intake');
-  if (user) return <Navigate to={homeFor(user)} replace />;
+  if (user && !busy)
+    return (
+      <Navigate
+        to={safeReturnPath((location.state as { from?: unknown } | null)?.from, homeFor(user))}
+        replace
+      />
+    );
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -132,6 +138,13 @@ export function LoginPage() {
   return (
     <AuthFrame title="Welcome back" subtitle="Sign in to your private credit strategy workspace.">
       <Stack component="form" spacing={2} onSubmit={submit}>
+        {(location.state as { sessionExpired?: unknown } | null)?.sessionExpired === true && (
+          <Alert severity="info">
+            Your session ended. Sign in again to return to your previous page. Responses already
+            saved to your account remain available. Unsaved edits and temporary notes in this tab
+            were cleared; check your saved response before continuing.
+          </Alert>
+        )}
         {params.get('verified') === '1' && (
           <Alert severity="success">Email verified. You can sign in now.</Alert>
         )}

@@ -260,3 +260,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 32: Transport recovery and server draft identity](IMPLEMENTATION-32.md) verifies real API-wrapper failure/retry behavior and protects updated-client saves/submissions from recreated draft identities. Session-loss, legacy-caller migration and browser qualification remain open.
+
+
+[Pass 33: Session expiry and return navigation](IMPLEMENTATION-33.md) adds explicit recovery copy, protects the sign-in return path and verifies real-provider recovery with controlled 401 responses. Full-browser dirty/busy expiry and broader production qualification remain open.

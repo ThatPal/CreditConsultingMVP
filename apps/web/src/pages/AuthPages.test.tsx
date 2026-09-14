@@ -57,6 +57,30 @@ afterEach(() => {
 });
 
 describe('client authentication pages', () => {
+  test('expiry explains saved versus cleared work, while ordinary login stays quiet', () => {
+    const view = renderPage(<LoginPage />, { pathname: '/login', state: { from: '/app/plan', sessionExpired: true } });
+    expect(screen.getByRole('alert')).toHaveTextContent(/Your session ended/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Unsaved edits and temporary notes/);
+    view.unmount();
+    renderPage(<LoginPage />, '/login');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('an already restored session follows its safe return destination', async () => {
+    authState.user = { role: 'CLIENT', userId: 'u', status: 'ACTIVE' };
+    render(
+      <ThemeProvider theme={theme}>
+        <MemoryRouter initialEntries={[{ pathname: '/login', state: { from: '/app/plan?step=review#response' } }]}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/app/plan" element={<LocationProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/app/plan?step=review#response'));
+  });
+
   test('staff two-factor challenge has accessible retry and recovery states', async () => {
     authState.user = null;
     vi.spyOn(globalThis, 'fetch').mockImplementation(() =>

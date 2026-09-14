@@ -5,7 +5,7 @@ import { homeFor } from './api';
 import { useAuth } from './AuthProvider';
 
 export function ProtectedRoute({ roles }: { roles: Array<'CLIENT' | 'CONSULTANT' | 'ADMIN'> }) {
-  const { user, loading, error, refresh } = useAuth();
+  const { user, loading, error, refresh, sessionExpired } = useAuth();
   const location = useLocation();
   if (loading) return <LoadingSkeleton />;
   if (error)
@@ -17,7 +17,14 @@ export function ProtectedRoute({ roles }: { roles: Array<'CLIENT' | 'CONSULTANT'
       </Stack>
     );
   const returnPath = `${location.pathname}${location.search}${location.hash}`;
-  if (!user) return <Navigate to="/login" state={{ from: returnPath }} replace />;
+  if (!user)
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: returnPath, ...(sessionExpired ? { sessionExpired: true } : {}) }}
+        replace
+      />
+    );
   if (!roles.includes(user.role)) return <Navigate to={homeFor(user)} replace />;
   if (user.role !== 'CLIENT' && !user.staffMfaVerified) {
     const mode = user.staffMfaEnabled ? 'challenge' : 'enroll';
