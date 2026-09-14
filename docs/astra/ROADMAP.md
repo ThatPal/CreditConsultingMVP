@@ -289,3 +289,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 42: Live collection refresh and document search recovery](IMPLEMENTATION-42.md) connects events to the actual Plan/document/Review collections, validates incoming hints, and keeps empty-search controls usable. Real API upload/deletion updated two open screens; private draft notification delivery remains open.
 
 [Pass 43: Owner-targeted private draft notifications](IMPLEMENTATION-43.md) records save/discard hints transactionally and routes them only to the owning client account. Separate-session browser recovery and recipient tests passed; ordering, staff/multi-node evidence and coordinated rollout remain open.
+
+[Pass 44: Draft acknowledgment ordering](IMPLEMENTATION-44.md) prevents delayed save responses and obsolete reads from hiding newer draft state. Four controlled races and a real committed-write browser scenario passed; broader delivery and workflow qualification remain open.

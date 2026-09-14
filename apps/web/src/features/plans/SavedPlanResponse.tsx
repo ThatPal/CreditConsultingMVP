@@ -226,10 +226,20 @@ export function SavedPlanResponse({
                 }),
               });
               if (!active.current) return;
+              // A read started before this acknowledgment may be obsolete. Keep
+              // any changed observation, then confirm the current server state.
+              await client.cancelQueries({ queryKey, exact: true }, { revert: false });
+              if (!active.current) return;
+              const observed = client.getQueryData<DraftResult>(queryKey);
+              const changedWhileSaving =
+                observed &&
+                identity(observed) !== identity(current) &&
+                identity(observed) !== identity(result);
               setCheckNeeded(false);
               setChoice('resume');
               setAccepted(result);
-              client.setQueryData(queryKey, result);
+              client.setQueryData(queryKey, changedWhileSaving ? observed : result);
+              void client.invalidateQueries({ queryKey, exact: true });
             } catch (error) {
               if (active.current) setCheckNeeded(true);
               throw error;

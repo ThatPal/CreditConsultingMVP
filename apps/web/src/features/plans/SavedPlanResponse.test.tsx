@@ -82,15 +82,20 @@ test('retains local answers when another tab has saved a newer draft', async () 
 test('autosaves after editing and queues edits made during a pending save', async () => {
   let finish!: (value: unknown) => void;
   let writes = 0;
+  let server = saved;
   request.mockImplementation(async (_path, options) => {
-    if (options?.method !== 'PUT') return saved;
+    if (options?.method !== 'PUT') return server;
     writes++;
     const body = JSON.parse(String(options.body));
     if (writes === 1)
       return new Promise((resolve) => {
-        finish = resolve;
+        finish = (value) => {
+          server = value as typeof saved;
+          resolve(value);
+        };
       });
-    return { ...saved, draft: { ...saved.draft!, revision: 3, note: body.note } };
+    server = { ...saved, draft: { ...saved.draft!, revision: 3, note: body.note } };
+    return server;
   });
   setup();
   fireEvent.click(await screen.findByRole('button', { name: 'Resume saved response' }));
