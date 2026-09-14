@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { expect, test, vi } from 'vitest';
 import { NavigationProtection, useNavigationProtection } from '../../NavigationProtection';
@@ -78,4 +78,45 @@ test('recovery keys isolate selected Plans, clients and actors', () => {
       planRecoveryKey('a', 'd', 'p'),
     ]).size,
   ).toBe(5);
+});
+
+test('searches the server, retains empty-result controls and clears filters without navigation', async () => {
+  vi.mocked(apiRequest).mockResolvedValue({ plans: [], nextBefore: null });
+  const router = createMemoryRouter(
+    [{ path: '*', element: <PlanLibrary clientId="search-client" /> }],
+    { initialEntries: ['/plan?planId=selected&view=work'] },
+  );
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Browse client Plans' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search Plan titles' }), {
+    target: { value: 'Renamed & retained' },
+  });
+  await waitFor(() =>
+    expect(
+      vi
+        .mocked(apiRequest)
+        .mock.calls.some(([path]) => path.includes('search=Renamed+%26+retained')),
+    ).toBe(true),
+  );
+  expect(await screen.findByText(/No Plans match/)).toBeInTheDocument();
+  expect(screen.getByRole('textbox', { name: 'Search Plan titles' })).toHaveValue(
+    'Renamed & retained',
+  );
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Plan status' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Cancelled' }));
+  await waitFor(() =>
+    expect(
+      vi
+        .mocked(apiRequest)
+        .mock.calls.some(([path]) => path.includes('status=CANCELLED') && path.includes('search=')),
+    ).toBe(true),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Clear search and status' }));
+  await screen.findByText(/No saved Plans yet/);
+  expect(router.state.location.search).toBe('?planId=selected&view=work');
+  expect(screen.getByRole('textbox', { name: 'Search Plan titles' })).toHaveValue('');
 });

@@ -120,7 +120,11 @@ export function createPlanRouter(
       try {
         const before =
           req.query.before === undefined ? undefined : z.string().uuid().parse(req.query.before);
-        res.json(await listClientPlans(prisma, req.params.clientId as string, before));
+        const filters = z.object({
+          search: z.string().trim().max(120).optional(),
+          status: z.enum(['DRAFT', 'APPROVED', 'ACTIVE', 'STALE', 'SUPERSEDED', 'COMPLETED', 'CANCELLED']).optional(),
+        }).parse(req.query);
+        res.json(await listClientPlans(prisma, req.params.clientId as string, before, filters));
       } catch (error) {
         next(error);
       }

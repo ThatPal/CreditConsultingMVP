@@ -1,6 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Alert, Button, Chip, Drawer, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Drawer,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../auth/api';
 
@@ -12,6 +22,24 @@ type Plan = {
   updatedAt: string;
   versions: { title: string | null; version: number; status: string }[];
 };
+const lifecycleLabels: Record<string, string> = {
+  DRAFT: 'Private draft',
+  APPROVED: 'Approved',
+  ACTIVE: 'Active',
+  STALE: 'Needs source review',
+  SUPERSEDED: 'Replaced',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+const lifecycleCopy: Record<string, string> = {
+  DRAFT: 'Private work; not yet published to the client.',
+  APPROVED: 'Approved Plan. Open it to inspect its publication context.',
+  ACTIVE: 'Active Plan. Open it to check the current client publication.',
+  STALE: 'Source review is needed before this Plan can move forward.',
+  SUPERSEDED: 'Retained for history after replacement.',
+  COMPLETED: 'Completed work retained for reference.',
+  CANCELLED: 'Closed without publication; retained for history.',
+};
 type Library = { plans: Plan[]; nextBefore: string | null };
 export function PlanLibrary({
   clientId,
@@ -22,13 +50,25 @@ export function PlanLibrary({
 }) {
   const [open, setOpen] = useState(false);
   const [search] = useSearchParams();
+  const [titleSearch, setTitleSearch] = useState('');
+  const [term, setTerm] = useState('');
+  const [status, setStatus] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => setTerm(titleSearch.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [titleSearch]);
   const query = useInfiniteQuery({
-    queryKey: ['plan-library', clientId],
+    queryKey: ['plan-library', clientId, term, status],
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }) =>
-      apiRequest<Library>(
-        `/api/v1/consultant/clients/${clientId}/plans${pageParam ? `?before=${encodeURIComponent(pageParam)}` : ''}`,
-      ),
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.set('before', pageParam);
+      if (term) params.set('search', term);
+      if (status) params.set('status', status);
+      return apiRequest<Library>(
+        `/api/v1/consultant/clients/${clientId}/plans${params.size ? `?${params}` : ''}`,
+      );
+    },
     getNextPageParam: (last) => last.nextBefore ?? undefined,
     enabled: open,
     retry: false,
@@ -49,13 +89,60 @@ export function PlanLibrary({
         anchor="right"
         open={open}
         onClose={() => setOpen(false)}
-        slotProps={{ paper: { sx: { width: { xs: '100%', md: 620 }, p: 3 } } }}
+        slotProps={{ paper: { sx: { width: { xs: '100%', md: 620 } } } }}
       >
-        <Stack spacing={3}>
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            bgcolor: 'background.paper',
+            p: 3,
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
           <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h2">Client Plans</Typography>
             <Button onClick={() => setOpen(false)}>Close library</Button>
           </Stack>
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            <TextField
+              size="small"
+              label="Search Plan titles"
+              value={titleSearch}
+              onChange={(event) => setTitleSearch(event.target.value)}
+              helperText="Includes earlier saved titles."
+              slotProps={{ htmlInput: { maxLength: 120 } }}
+            />
+            <TextField
+              select
+              size="small"
+              label="Plan status"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+            >
+              <MenuItem value="">All statuses</MenuItem>
+              {Object.entries(lifecycleLabels).map(([value, label]) => (
+                <MenuItem key={value} value={value}>
+                  {label}
+                </MenuItem>
+              ))}
+            </TextField>
+            {(titleSearch || status) && (
+              <Button
+                onClick={() => {
+                  setTitleSearch('');
+                  setTerm('');
+                  setStatus('');
+                }}
+              >
+                Clear search and status
+              </Button>
+            )}
+          </Stack>
+        </Box>
+        <Stack spacing={3} sx={{ p: 3 }}>
           <Typography color="text.secondary">
             Resume a saved Plan or inspect a closed Plan's history. Opening a Plan does not publish
             it or change the client's instructions.
@@ -90,7 +177,9 @@ export function PlanLibrary({
           )}
           {!query.isPending && !query.isError && !plans.length && (
             <Alert severity="info">
-              No saved Plans yet. Your first Plan starts in the workspace.
+              {term || status
+                ? 'No Plans match this search and status. Try another title or clear the filters.'
+                : 'No saved Plans yet. Your first Plan starts in the workspace.'}
             </Alert>
           )}
           {plans.map((plan) => (
@@ -100,8 +189,8 @@ export function PlanLibrary({
               sx={{ borderBottom: 1, borderColor: 'divider', pb: 3 }}
             >
               <Typography variant="h3">{plan.versions[0]?.title ?? plan.title}</Typography>
-              <Stack direction="row" spacing={1}>
-                <Chip size="small" label={plan.status.toLowerCase()} />
+              <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+                <Chip size="small" label={lifecycleLabels[plan.status] ?? plan.status} />
                 {plan.versions[0] && (
                   <Chip
                     size="small"
@@ -109,6 +198,7 @@ export function PlanLibrary({
                   />
                 )}
               </Stack>
+              <Typography variant="body2">{lifecycleCopy[plan.status]}</Typography>
               <Typography variant="body2" color="text.secondary">
                 Updated {new Date(plan.updatedAt).toLocaleString()}
               </Typography>

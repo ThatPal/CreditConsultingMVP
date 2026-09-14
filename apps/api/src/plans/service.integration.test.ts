@@ -121,13 +121,28 @@ describe('Plan authoring and approval', () => {
       ids.push(
         (await createPlanDraft(prisma, clientId, { ...draft, title: `Library ${index}` })).planId,
       );
-    const first = await listClientPlans(prisma, clientId);
+    const first = await listClientPlans(prisma, clientId, undefined, { search: 'Library', status: 'DRAFT' });
     expect(first.plans).toHaveLength(20);
     expect(first.nextBefore).toBeTruthy();
-    const second = await listClientPlans(prisma, clientId, first.nextBefore!);
+    const second = await listClientPlans(prisma, clientId, first.nextBefore!, { search: 'Library', status: 'DRAFT' });
     expect(second.plans).toHaveLength(1);
     expect(second.nextBefore).toBeNull();
     expect([...first.plans, ...second.plans].map((plan) => plan.id).sort()).toEqual(ids.sort());
+    await prisma.plan.deleteMany({ where: { clientId } });
+  });
+
+  test('searches saved version titles within the client and combines lifecycle filters', async () => {
+    const first = await createPlanDraft(prisma, clientId, { ...draft, title: 'Earlier name' });
+    const builder = await getPlanBuilder(prisma, clientId, first.planId);
+    await revisePlanDraft(prisma, first.planId, builder.plan!.versions[0]!.optimisticVersion, { ...draft, title: 'Updated research title' });
+    const closed = await createPlanDraft(prisma, clientId, { ...draft, title: 'Updated closed title' });
+    await prisma.plan.update({ where: { id: closed.planId }, data: { status: 'CANCELLED' } });
+    const matching = await listClientPlans(prisma, clientId, undefined, { search: '  UPDATED  ', status: 'DRAFT' });
+    expect(matching.plans.map(plan => plan.id)).toEqual([first.planId]);
+    expect(matching.plans[0]!.versions[0]!.title).toBe('Updated research title');
+    expect((await listClientPlans(prisma, clientId, undefined, { search: 'Earlier name' })).plans.map(plan => plan.id)).toEqual([first.planId]);
+    expect((await listClientPlans(prisma, clientId, undefined, { search: 'Updated', status: 'CANCELLED' })).plans.map(plan => plan.id)).toEqual([closed.planId]);
+    expect((await listClientPlans(prisma, randomUUID(), undefined, { search: 'Updated' })).plans).toEqual([]);
     await prisma.plan.deleteMany({ where: { clientId } });
   });
 

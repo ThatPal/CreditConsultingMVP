@@ -1,3 +1,4 @@
+import type { PlanLifecycleStatus } from '../generated/prisma/enums.js';
 import { createHash } from 'node:crypto';
 import {
   executeConsequentialCommand,
@@ -588,14 +589,20 @@ export async function getPlanVersionHistory(
   };
 }
 
-export async function listClientPlans(prisma: PrismaClient, clientId: string, before?: string) {
+export async function listClientPlans(prisma: PrismaClient, clientId: string, before?: string, filters: { search?: string | undefined; status?: PlanLifecycleStatus | undefined } = {}) {
   if (
     before &&
     !(await prisma.plan.findFirst({ where: { id: before, clientId }, select: { id: true } }))
   )
     throw new AppError('NOT_FOUND', 404, 'Plan was not found');
+  const search = filters.search?.trim();
   const plans = await prisma.plan.findMany({
-    where: { clientId },
+    where: { clientId, ...(filters.status ? { status: filters.status } : {}),
+      ...(search ? { OR: [
+        { title: { contains: search, mode: 'insensitive' as const } },
+        { versions: { some: { title: { contains: search, mode: 'insensitive' as const } } } },
+      ] } : {}),
+    },
     orderBy: { id: 'desc' },
     ...(before ? { cursor: { id: before }, skip: 1 } : {}),
     take: 21,
