@@ -9,7 +9,8 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { ApiRequestError, apiRequest, type CurrentUser } from './api';
-import { subscribeToSessionLoss } from './sessionLoss';
+import { signalSessionLoss, subscribeToSessionLoss } from './sessionLoss';
+import { connectSessionTabs } from './sessionTabs';
 
 type AuthState = {
   user: CurrentUser | null;
@@ -27,6 +28,15 @@ export function AuthProvider({
   initialUser,
 }: PropsWithChildren<{ initialUser?: CurrentUser }>) {
   const queryClient = useQueryClient();
+  const sessionTabs = useRef<ReturnType<typeof connectSessionTabs> | null>(null);
+  useEffect(() => {
+    const connection = connectSessionTabs(signalSessionLoss);
+    sessionTabs.current = connection;
+    return () => {
+      connection.close();
+      sessionTabs.current = null;
+    };
+  }, []);
   const [sessionLost, setSessionLost] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
   const query = useQuery({
@@ -65,6 +75,8 @@ export function AuthProvider({
   };
   const logout = async () => {
     await apiRequest<void>('/api/auth/sign-out', { method: 'POST' });
+    signalSessionLoss();
+    sessionTabs.current?.publish();
     userRef.current = null;
     setSessionExpired(false);
     clearPlanTabRecovery();

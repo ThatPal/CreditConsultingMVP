@@ -269,3 +269,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 35: Real-browser expiry and upload authentication](IMPLEMENTATION-35.md) verifies editing/upload sign-out recovery against the real API, fixes anonymous upload 403 versus 401, and compacts the mobile action bar with keyboard focus transfer. Cross-tab/accepted-write behavior and broader production qualification remain open.
+
+
+[Pass 36: Cross-tab sign-out and accepted draft recovery](IMPLEMENTATION-36.md) propagates confirmed logout without private payloads and verifies accepted-save recovery in two real browser tabs with storage fallback. Account switching, missed notifications, accepted-upload recovery and broader qualification remain open.

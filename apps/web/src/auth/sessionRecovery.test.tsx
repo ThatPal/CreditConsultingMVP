@@ -173,3 +173,50 @@ describe('expired authenticated session recovery', () => {
     expect(screen.getByText('login remains authoritative')).toBeInTheDocument();
   });
 });
+
+function LogoutProbe() {
+  const { user, logout } = useAuth();
+  return (
+    <>
+      <div>{user ? 'Session active' : 'Session cleared'}</div>
+      <button
+        onClick={() => {
+          void logout().catch(() => undefined);
+        }}
+      >
+        Sign out test
+      </button>
+    </>
+  );
+}
+
+test.each([200, 503])(
+  'sign-out status %s broadcasts only after server confirmation',
+  async (status) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status }));
+    const storageWrite = vi.spyOn(Storage.prototype, 'setItem');
+    const client = new QueryClient();
+    client.setQueryData(['private-record'], { private: true });
+    render(
+      <QueryClientProvider client={client}>
+        <AuthProvider initialUser={clientUser}>
+          <LogoutProbe />
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out test' }));
+    if (status === 200) {
+      expect(await screen.findByText('Session cleared')).toBeInTheDocument();
+      expect(client.getQueryData(['private-record'])).toBeUndefined();
+      expect(storageWrite).toHaveBeenCalledWith(
+        'astra:session-ended:v1',
+        expect.stringMatching(/^[0-9a-f-]{36}$/i),
+      );
+    } else {
+      await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+      expect(screen.getByText('Session active')).toBeInTheDocument();
+      expect(client.getQueryData(['private-record'])).toEqual({ private: true });
+      expect(storageWrite).not.toHaveBeenCalled();
+    }
+  },
+);
