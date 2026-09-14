@@ -1,3 +1,4 @@
+import { PlanDraftLibrary } from '../features/plans/PlanDraftLibrary';
 import { Alert, Box, Button, CardContent, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -58,6 +59,7 @@ export function ClientPlanPage() {
           description="An approved Plan will appear here when it is ready."
         />
         <Alert severity="info">No approved Plan is available yet.</Alert>
+        <PlanDraftLibrary />
       </Stack>
     );
   const plan = query.data.plan;
@@ -85,6 +87,7 @@ export function ClientPlanPage() {
         title={plan.title}
         description="Your preparation steps, supporting guidance, and consultant checkpoints in one place."
       />
+      <PlanDraftLibrary />
       {plan.version.staleAt && (
         <Alert severity="warning">
           This Plan is being reviewed after a source change. Completed history remains available.

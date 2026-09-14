@@ -1,3 +1,4 @@
+import { listResponseDrafts } from './draftLibrary.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
@@ -1118,5 +1119,55 @@ describe('consequential client Plan execution', () => {
     expect((await getResponseDraft(prisma, clientId, item.id, clientUserId)).draft?.id).toBe(
       recreated.id,
     );
+  });
+  test('draft library recovers removed steps and paginates after its cursor record is discarded', async () => {
+    const input: PlanDraftInput = {
+      title: 'Draft library original',
+      purpose: 'PREPARATION',
+      items: Array.from({ length: 22 }, (_, index) => ({
+        stableKey: `library-${index}`,
+        type: 'ACTION',
+        owner: 'CLIENT',
+        completionMode: 'ACKNOWLEDGEMENT',
+        clientTitle: `Saved step ${index}`,
+        consultantRationale: 'Never client-visible',
+        sortOrder: index,
+      })),
+    };
+    const created = await createPlanDraft(prisma, clientId, input);
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const version = (await getPlanBuilder(prisma, clientId, created.planId)).plan!.versions[0]!;
+    await prisma.planResponseDraft.createMany({
+      data: version.items.map((item) => ({
+        itemId: item.id,
+        actorId: clientUserId,
+        values: {},
+        note: 'Saved library answer',
+        help: false,
+        documentIds: [],
+      })),
+    });
+    await revisePlanDraft(prisma, created.planId, version.optimisticVersion, {
+      ...input,
+      items: input.items.slice(1),
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const first = await listResponseDrafts(prisma, clientId, clientUserId);
+    expect(first.drafts).toHaveLength(20);
+    expect(first.nextBefore).toBeTruthy();
+    const cursor = first.drafts.at(-1)!;
+    await discardResponseDraft(prisma, clientId, cursor.itemId, clientUserId, {
+      draftId: cursor.id,
+      revision: cursor.revision,
+    });
+    const second = await listResponseDrafts(prisma, clientId, clientUserId, first.nextBefore!);
+    const all = [...first.drafts, ...second.drafts];
+    expect(new Set(all.map((row) => row.id)).size).toBe(all.length);
+    expect(
+      all.some((row) => row.itemId === version.items[0]!.id && row.title === 'Saved step 0'),
+    ).toBe(true);
+    expect(JSON.stringify(all)).not.toContain('Never client-visible');
+    expect((await listResponseDrafts(prisma, randomUUID(), clientUserId)).drafts).toEqual([]);
+    expect((await listResponseDrafts(prisma, clientId, randomUUID())).drafts).toEqual([]);
   });
 });

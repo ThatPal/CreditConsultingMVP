@@ -7,18 +7,25 @@ import type { DraftResult } from './SavedPlanResponse';
 export function PreviousPlanDraft({
   draft,
   onRefresh,
+  earlier = true,
 }: {
   draft: NonNullable<DraftResult['previousDraft']>;
   onRefresh: () => Promise<void>;
+  earlier?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Alert
         severity="info"
-        action={<Button onClick={() => setOpen(true)}>View earlier draft</Button>}
+        action={
+          <Button onClick={() => setOpen(true)}>
+            {earlier ? 'View earlier draft' : 'Inspect saved draft'}
+          </Button>
+        }
       >
-        You have a private unfinished response from Plan version {draft.version}.
+        {earlier ? 'You have a private unfinished response from' : 'Private saved response for'}{' '}
+        Plan version {draft.version}.
       </Alert>
       <Drawer
         anchor="right"
@@ -26,9 +33,15 @@ export function PreviousPlanDraft({
         onClose={() => setOpen(false)}
         slotProps={{ paper: { sx: { width: { xs: '100%', sm: 520 }, p: 3 } } }}
       >
-        <Stack spacing={2} role="region" aria-label="Earlier saved response">
+        <Stack
+          spacing={2}
+          role="region"
+          aria-label={earlier ? 'Earlier saved response' : 'Saved response'}
+        >
           <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">Earlier saved response</Typography>
+            <Typography variant="h6">
+              {earlier ? 'Earlier saved response' : 'Saved response'}
+            </Typography>
             <Button onClick={() => setOpen(false)}>Close</Button>
           </Stack>
           <Typography variant="caption">

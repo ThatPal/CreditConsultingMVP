@@ -1,3 +1,4 @@
+import { listResponseDrafts } from './draftLibrary.js';
 import { clientResponseForm } from './outcomes.js';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -320,6 +321,15 @@ export function createPlanRouter(
       }
     },
   );
+  router.get('/client/plan/drafts', requireRole('CLIENT'), async (req, res, next) => {
+    try {
+      const before =
+        req.query.before === undefined ? undefined : z.string().uuid().parse(req.query.before);
+      res.json(await listResponseDrafts(prisma, req.auth!.clientId!, req.auth!.userId, before));
+    } catch (error) {
+      next(error);
+    }
+  });
   router.get('/client/plan/items/:itemId/draft', requireRole('CLIENT'), async (req, res, next) => {
     try {
       res.json(

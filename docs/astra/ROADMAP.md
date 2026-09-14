@@ -248,3 +248,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 28: Explicit private draft discard](IMPLEMENTATION-28.md) adds confirmation, draft identity/revision protection, deletion replay, earlier/current isolation and conflict refresh. Removed-step recovery and unsaved-edit transitions remain open.
+
+
+[Pass 29: Saved response library](IMPLEMENTATION-29.md) adds paginated client-owned draft inspection/discard across Plan history, including removed steps and no-current-Plan states. Unsaved live-transition recovery and browser/operational qualification remain open.
