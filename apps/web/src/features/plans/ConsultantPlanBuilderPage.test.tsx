@@ -11,6 +11,7 @@ vi.mock('../../auth/AuthProvider', () => ({ useAuth: () => ({ user: { userId: 'c
 vi.mock('../../auth/api', () => ({ apiRequest: vi.fn() }));
 const request = vi.mocked(apiRequest);
 const fixture = (revision = 3, title = 'Prepare for your review') => ({
+  clientPublication: null,
   plan: {
     id: 'plan',
     title,
@@ -125,7 +126,10 @@ test('approval preview excludes private rationale and sends the reviewed revisio
     expect(request.mock.calls.some(([path]) => path.endsWith('/approve'))).toBe(true),
   );
   const call = request.mock.calls.find(([path]) => path.endsWith('/approve'))!;
-  expect(JSON.parse(String(call[1]?.body))).toEqual({ expectedVersion: 3 });
+  expect(JSON.parse(String(call[1]?.body))).toEqual({
+    expectedVersion: 3,
+    expectedPublication: null,
+  });
   expect(call[1]?.headers).toBeUndefined();
 });
 
@@ -395,4 +399,56 @@ test('unlocks a draft after the server confirms that creation rolled back', asyn
     expect(screen.getByRole('textbox', { name: 'Plan title' })).not.toBeDisabled(),
   );
   expect(screen.queryByText(/The first save needs confirmation/)).not.toBeInTheDocument();
+});
+
+test('approval keeps the preview publication snapshot when background context changes', async () => {
+  const publication = {
+    planId: 'old-published',
+    title: 'Previously published',
+    version: 2,
+    status: 'ACTIVE',
+    staleAt: null,
+  };
+  request.mockResolvedValue({ ...fixture(), clientPublication: publication });
+  const client = setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  fireEvent.click(screen.getByRole('button', { name: 'Review & approve' }));
+  await act(async () => {
+    client.setQueryData(['plan-builder', 'client'], {
+      ...fixture(),
+      clientPublication: {
+        ...publication,
+        planId: 'new-published',
+        title: 'Newly published',
+        version: 1,
+      },
+    });
+  });
+  request.mockImplementation(async (path) => {
+    if (path.endsWith('/approve'))
+      throw Object.assign(new Error('Publication changed'), {
+        code: 'PLAN_PUBLICATION_CHANGED',
+        status: 409,
+      });
+    return {
+      ...fixture(),
+      clientPublication: {
+        ...publication,
+        planId: 'new-published',
+        title: 'Newly published',
+        version: 1,
+      },
+    };
+  });
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: 'Approve this version' }),
+  );
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh publication context' }));
+  const approval = request.mock.calls.find(([path]) => path.endsWith('/approve'));
+  expect(JSON.parse(approval![1]!.body as string).expectedPublication).toEqual({
+    planId: 'old-published',
+    version: 2,
+  });
+  await screen.findByText(/Publication context refreshed/);
+  expect(request.mock.calls.filter(([path]) => path.endsWith('/approve'))).toHaveLength(1);
 });

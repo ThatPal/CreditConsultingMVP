@@ -259,14 +259,22 @@ export function createPlanRouter(
     ),
     async (req, res, next) => {
       try {
+        const input = z
+          .object({
+            expectedVersion: z.number().int().positive(),
+            expectedPublication: z
+              .object({ planId: z.string().uuid(), version: z.number().int().positive() })
+              .nullable(),
+          })
+          .parse(req.body);
         res.json(
           await approvePlan(
             prisma,
             req.params.clientId as string,
             req.params.planId as string,
             req.auth!.userId,
-            z.object({ expectedVersion: z.number().int().positive() }).parse(req.body)
-              .expectedVersion,
+            input.expectedVersion,
+            input.expectedPublication,
           ),
         );
       } catch (error) {

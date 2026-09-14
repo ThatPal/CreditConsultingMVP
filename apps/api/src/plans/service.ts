@@ -784,9 +784,27 @@ export async function approvePlan(
   planId: string,
   actorId: string,
   expectedVersion?: number,
+  expectedPublication?: { planId: string; version: number } | null,
 ) {
   return prisma.$transaction(async (tx) => {
+    // Different Plans for one client share the publication boundary.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`plan-publication:${clientId}`}))`;
     await lockPlan(tx, planId);
+    if (expectedPublication !== undefined) {
+      const current = await publishedPlan(tx, clientId);
+      const currentVersion = current?.versions[0];
+      const matches =
+        expectedPublication === null
+          ? !currentVersion
+          : current?.id === expectedPublication.planId &&
+            currentVersion?.version === expectedPublication.version;
+      if (!matches)
+        throw new AppError(
+          'PLAN_PUBLICATION_CHANGED',
+          409,
+          'The client publication changed after you opened this preview. Refresh the publication context and review the impact before approving.',
+        );
+    }
     const plan = await tx.plan.findFirst({
       where: { id: planId, clientId },
       include: { versions: { include: builderInclude, orderBy: { version: 'desc' }, take: 1 } },

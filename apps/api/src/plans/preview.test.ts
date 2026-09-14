@@ -93,3 +93,11 @@ test('draft cancellation requires consultant client access and a valid request',
     .send({ expectedVersion: 1, reason: '' })
     .expect(400);
 });
+
+test('approval refuses a request that omits the reviewed publication context', async () => {
+  await request(app)
+    .post('/consultant/clients/allowed/plans/plan/approve')
+    .set('x-role', 'CONSULTANT')
+    .send({ expectedVersion: 1 })
+    .expect(400);
+});

@@ -364,4 +364,44 @@ describe('Plan authoring and approval', () => {
     expect(['CANCELLED', 'DRAFT']).toContain(saved.status);
     expect(saved.versions[0]?.optimisticVersion).toBe(2);
   });
+  test('serializes different-Plan approvals against the publication both reviewers saw', async () => {
+    const current = (await getPlanBuilder(prisma, clientId)).clientPublication;
+    const expectedPublication = current
+      ? { planId: current.planId, version: current.version }
+      : null;
+    const left = await createPlanDraft(prisma, clientId, { ...draft, title: 'Candidate left' });
+    const right = await createPlanDraft(prisma, clientId, { ...draft, title: 'Candidate right' });
+    // Earlier fixtures deliberately use future approval dates. Normalize only this isolated test client's metadata.
+    await prisma.planVersion.updateMany({
+      where: { plan: { clientId }, approvedAt: { not: null } },
+      data: { approvedAt: new Date('2020-01-01') },
+    });
+    const refreshed = (await getPlanBuilder(prisma, clientId)).clientPublication;
+    const baseline = refreshed
+      ? { planId: refreshed.planId, version: refreshed.version }
+      : expectedPublication;
+    const results = await Promise.allSettled([
+      approvePlan(prisma, clientId, left.planId, actorId, 1, baseline),
+      approvePlan(prisma, clientId, right.planId, actorId, 1, baseline),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({
+      reason: { code: 'PLAN_PUBLICATION_CHANGED' },
+    });
+    const versions = await prisma.planVersion.findMany({
+      where: { planId: { in: [left.planId, right.planId] } },
+    });
+    expect(versions.filter((version) => version.status === 'DRAFT')).toHaveLength(1);
+    expect(versions.filter((version) => version.status === 'ACTIVE')).toHaveLength(1);
+    await expect(
+      approvePlan(
+        prisma,
+        clientId,
+        versions.find((version) => version.status === 'DRAFT')!.planId,
+        actorId,
+        1,
+        null,
+      ),
+    ).rejects.toMatchObject({ code: 'PLAN_PUBLICATION_CHANGED' });
+  });
 });

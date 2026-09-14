@@ -227,3 +227,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 21: Queue-to-Plan navigation](IMPLEMENTATION-21.md) resolves legacy source links at read time, focuses stable response steps, handles unavailable sources and protects unsent review notes. Published-Plan replacement and operational/browser qualification remain open.
+
+
+[Pass 22: Approval-context concurrency](IMPLEMENTATION-22.md) guards the reviewed client publication, serializes competing approvals and provides explicit refresh/re-review. Formal published-Plan replacement and operational/browser qualification remain open.

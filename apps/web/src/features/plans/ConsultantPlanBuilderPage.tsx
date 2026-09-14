@@ -177,6 +177,12 @@ function PlanBuilder({
   const [selectedKey, setSelectedKey] = useState('');
   const [sourceOpen, setSourceOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewPublication, setPreviewPublication] =
+    useState<BuilderResponse['clientPublication']>(undefined);
+  const openPreview = () => {
+    setPreviewPublication(query.data?.clientPublication);
+    setPreviewOpen(true);
+  };
   const [discardOpen, setDiscardOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState('');
@@ -299,7 +305,12 @@ function PlanBuilder({
     mutationFn: () =>
       apiRequest(`/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/approve`, {
         method: 'POST',
-        body: JSON.stringify({ expectedVersion: editor!.revision }),
+        body: JSON.stringify({
+          expectedVersion: editor!.revision,
+          expectedPublication: previewPublication
+            ? { planId: previewPublication.planId, version: previewPublication.version }
+            : null,
+        }),
       }),
     onSuccess: async () => {
       setPreviewOpen(false);
@@ -461,7 +472,13 @@ function PlanBuilder({
         />
       </Stack>
     );
-  const canApprove = !dirty && !conflict && editor.status === 'DRAFT' && !issues.length && !busy;
+  const canApprove =
+    query.data?.clientPublication !== undefined &&
+    !dirty &&
+    !conflict &&
+    editor.status === 'DRAFT' &&
+    !issues.length &&
+    !busy;
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -514,7 +531,7 @@ function PlanBuilder({
       )}
       {editor.planId && (
         <PlanVersionHistory
-          key={`${editor.planId}:${editor.revision}`}
+          key={`history:${editor.planId}:${editor.revision}`}
           clientId={clientId}
           planId={editor.planId}
           workingDraft={editor.draft}
@@ -524,7 +541,7 @@ function PlanBuilder({
         query.data?.plan?.status === 'DRAFT' &&
         query.data.plan.versions.every((version) => version.status === 'DRAFT') && (
           <CancelPrivatePlan
-            key={`${editor.planId}:${editor.revision}`}
+            key={`cancel:${editor.planId}:${editor.revision}`}
             clientId={clientId}
             planId={editor.planId}
             title={draft.title}
@@ -564,7 +581,7 @@ function PlanBuilder({
         >
           Compare sources
         </Button>
-        <Button onClick={() => setPreviewOpen(true)} disabled={busy}>
+        <Button onClick={openPreview} disabled={busy}>
           Client preview
         </Button>
       </Stack>
@@ -1060,7 +1077,7 @@ function PlanBuilder({
           disabled={!canApprove}
           onClick={() => {
             approve.reset();
-            setPreviewOpen(true);
+            openPreview();
           }}
         >
           Review & approve
@@ -1173,11 +1190,11 @@ function PlanBuilder({
           <Typography variant="h2" sx={{ mb: 3 }}>
             {draft.title}
           </Typography>
-          {editor.status === 'DRAFT' && query.data?.clientPublication && (
+          {editor.status === 'DRAFT' && previewPublication && (
             <Alert severity="info" sx={{ mb: 3 }}>
-              {query.data.clientPublication.planId !== editor.planId
-                ? `Approving this version will make ${draft.title} the client's current Plan, replacing ${query.data.clientPublication.title} in the current Plan view. The earlier Plan and its recorded history remain saved.`
-                : `Approving this version will replace version ${query.data.clientPublication.version} in the client's current Plan view. Completed work remains in the version history.`}
+              {previewPublication.planId !== editor.planId
+                ? `Approving this version will make ${draft.title} the client's current Plan, replacing ${previewPublication.title} in the current Plan view. The earlier Plan and its recorded history remain saved.`
+                : `Approving this version will replace version ${previewPublication.version} in the client's current Plan view. Completed work remains in the version history.`}
               {' Saving or previewing these edits does not change the client publication.'}
             </Alert>
           )}
@@ -1185,6 +1202,23 @@ function PlanBuilder({
           {approve.isError && (
             <Alert severity="error" sx={{ mt: 3 }}>
               {message(approve.error)}
+              {'code' in approve.error && approve.error.code === 'PLAN_PUBLICATION_CHANGED' && (
+                <Button
+                  disabled={busy}
+                  onClick={async () => {
+                    const result = await query.refetch();
+                    if (!result.isError) {
+                      setPreviewOpen(false);
+                      approve.reset();
+                      setNotice(
+                        'Publication context refreshed. Open Review & approve again to review the new impact.',
+                      );
+                    }
+                  }}
+                >
+                  Refresh publication context
+                </Button>
+              )}
               {'status' in approve.error && approve.error.status === 403 && (
                 <Stack spacing={1} sx={{ mt: 1 }}>
                   <Typography variant="body2">
@@ -1207,7 +1241,11 @@ function PlanBuilder({
           <Button onClick={() => setPreviewOpen(false)} disabled={busy}>
             Back to editing
           </Button>
-          <Button variant="contained" disabled={!canApprove} onClick={() => approve.mutate()}>
+          <Button
+            variant="contained"
+            disabled={!canApprove || previewPublication === undefined}
+            onClick={() => approve.mutate()}
+          >
             Approve this version
           </Button>
         </DialogActions>
