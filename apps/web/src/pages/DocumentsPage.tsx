@@ -140,7 +140,7 @@ export function DocumentsPage() {
         </SectionCard>
       ) : null}
 
-      {documents.length === 0 ? (
+      {documents.length === 0 && !search && !type && !status && page === 1 ? (
         <SectionCard>
           <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
             <DescriptionRounded color="primary" sx={{ fontSize: 40 }} />
@@ -212,6 +212,19 @@ export function DocumentsPage() {
               </TextField>
             </DataNavigationToolbar>
             <Stack divider={<Divider flexItem />}>
+              {documents.length === 0 && (
+                <Stack spacing={1.5} sx={{ py: 3, alignItems: 'flex-start' }}>
+                  <Typography variant="h3">No matching documents</Typography>
+                  <Typography color="text.secondary">
+                    Try another search or clear your filters to see the rest of your library.
+                  </Typography>
+                  <Button
+                    onClick={() => updateListState({ search: '', type: '', status: '', page: '1' })}
+                  >
+                    Clear search and filters
+                  </Button>
+                </Stack>
+              )}
               {documents.map((document) => (
                 <Stack
                   key={document.id}

@@ -10,12 +10,12 @@ vi.mock('./ReviewPages', () => ({
   SecureReportViewer: () => <div>Secure viewer</div>,
 }));
 
-function renderPage() {
+function renderPage(path = '/app/documents') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <ThemeProvider theme={theme}>
       <QueryClientProvider client={client}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[path]}>
           <DocumentsPage />
         </MemoryRouter>
       </QueryClientProvider>
@@ -219,4 +219,34 @@ describe('PORTAL-42 document foundation', () => {
     expect(await screen.findByText(/unable to load your document history/i)).toBeInTheDocument();
     expect(screen.queryByText(/private storage root/i)).not.toBeInTheDocument();
   });
+});
+
+test('an empty filtered library retains search and offers a route back to all documents', async () => {
+  const requests: URL[] = [];
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = new URL(String(input));
+    requests.push(url);
+    if (url.pathname.endsWith('/types')) return json({ documentTypes: [] });
+    return json({ documents: [], total: 0, hasMore: false });
+  });
+  renderPage(
+    '/app/documents?search=unmatched&type=GENERAL_CLIENT_DOCUMENT&status=AVAILABLE&page=2',
+  );
+  expect(await screen.findByText('No matching documents')).toBeInTheDocument();
+  expect(screen.getByRole('textbox', { name: 'Search documents' })).toHaveValue('unmatched');
+  expect(screen.queryByText('No documents yet')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Clear search and filters' }));
+  await waitFor(() =>
+    expect(
+      requests.some(
+        (url) =>
+          url.pathname.endsWith('/documents') &&
+          url.searchParams.get('page') === '1' &&
+          !url.searchParams.has('search') &&
+          !url.searchParams.has('type') &&
+          !url.searchParams.has('status'),
+      ),
+    ).toBe(true),
+  );
+  expect(await screen.findByText('No documents yet')).toBeInTheDocument();
 });

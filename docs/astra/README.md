@@ -108,3 +108,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 40: Live-session revocation](IMPLEMENTATION-40.md) revalidates open update streams and clears idle private editors after server revocation. Real-browser heartbeat recovery passed in 4.3 seconds; staff recovery, stream load and broader production qualification remain open.
 
 [Pass 41: On-demand feature loading and mobile foundation](IMPLEMENTATION-41.md) defers 42 authenticated page exports, verifies failed/slow chunk recovery, and adds the missing mobile viewport and document metadata. Home requested approximately 23% less uncompressed JavaScript in the controlled comparison; broader performance and workflow qualification remain open.
+
+[Pass 42: Live collection refresh and document search recovery](IMPLEMENTATION-42.md) connects events to the actual Plan/document/Review collections, validates incoming hints, and keeps empty-search controls usable. Real API upload/deletion updated two open screens; private draft notification delivery remains open.

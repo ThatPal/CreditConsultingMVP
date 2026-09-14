@@ -25,8 +25,8 @@ export type LiveConnectionState = 'connected' | 'reconnecting';
 export const LIVE_CONNECTION_EVENT = 'credit:live-connection';
 export const liveConnectionCopy = (state: LiveConnectionState) =>
   state === 'connected'
-    ? 'Realtime updates are connected; committed server state remains authoritative.'
-    : 'Realtime updates are reconnecting. The last confirmed state remains visible; new releases stay governed.';
+    ? 'Live updates are connected.'
+    : 'Reconnecting to live updates. You are viewing the last confirmed state; recent changes may not appear yet.';
 
 const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
   'application-cycles': ['application-cycles', 'rounds', 'portal-home', 'portal-journey'],
@@ -37,10 +37,20 @@ const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
     'portal-home',
     'portal-journey',
   ],
-  documents: ['documents', 'review-documents'],
+  documents: [
+    'documents',
+    'review-documents',
+    'client-documents',
+    'document-picker',
+    'plan-response-draft',
+    'plan-draft-library',
+  ],
   notifications: ['notifications'],
   review: [
     'reviews',
+    'review',
+    'review-eligibility',
+    'consultant-reviews',
     'review-workspace',
     'credit-center',
     'published-credit-center',
@@ -58,6 +68,10 @@ const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
     'plan-builder',
     'plan-execution',
     'plan-sources',
+    'plan-library',
+    'plan-version-history',
+    'plan-draft-library',
+    'plan-response-draft',
     'post-round',
     'post-round-follow-ups',
     'portal-home',
@@ -66,13 +80,45 @@ const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
   strategy: ['strategy', 'portal-home', 'portal-journey'],
   appointments: ['appointments', 'calendar', 'portal-home', 'portal-journey'],
   'live-sessions': ['live-session', 'live-sessions'],
-  journey: ['journey', 'portal-home', 'portal-journey'],
+  journey: [
+    'journey',
+    'portal-home',
+    'portal-journey',
+    'client-360',
+    'consultant-client-journey',
+    'consultant-client-timeline',
+  ],
   home: ['portal-home', 'portal-journey'],
 };
 
 export const queryRootsForLiveDomains = (domains: LiveEventDomain[]) => [
   ...new Set(domains.flatMap((domain) => queryRootsByDomain[domain] ?? [])),
 ];
+
+// Events are refresh hints, never replacements for authenticated query data.
+export function parseLiveUpdate(raw: string): LiveEventEnvelope | null {
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      !('domains' in value) ||
+      !Array.isArray(value.domains) ||
+      !value.domains.every((domain) => typeof domain === 'string')
+    )
+      return null;
+    const domains = [
+      ...new Set(
+        value.domains.filter((domain): domain is LiveEventDomain =>
+          Object.hasOwn(queryRootsByDomain, domain),
+        ),
+      ),
+    ];
+    return domains.length ? { ...value, domains } : null;
+  } catch {
+    return null;
+  }
+}
 
 export function LiveUpdates({ children }: PropsWithChildren) {
   const { user } = useAuth();
@@ -91,7 +137,9 @@ export function LiveUpdates({ children }: PropsWithChildren) {
       signalSessionLoss();
     };
     const refresh = (message: MessageEvent<string>) => {
-      const update = JSON.parse(message.data) as LiveEventEnvelope;
+      if (!active) return;
+      const update = parseLiveUpdate(message.data);
+      if (!update) return;
       const roots = queryRootsForLiveDomains(update.domains);
       void queryClient.invalidateQueries({
         predicate: (query) => roots.includes(String(query.queryKey[0])),
