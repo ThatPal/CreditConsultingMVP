@@ -5,47 +5,16 @@ import { LoadingSkeleton } from './components/common/Feedback';
 import { AdminAppShell } from './layouts/AdminAppShell';
 import { ClientAppShell } from './layouts/ClientAppShell';
 import { ConsultantAppShell } from './layouts/ConsultantAppShell';
-import { AccountPage } from './pages/AccountPage';
-import { MajorApplicationCheckPage, RoundPage, SeasonalCyclePage } from './pages/Phase11Pages';
-import { ClientStrategyPage, ConsultantStrategyPage } from './pages/StrategyPages';
-import {
-  PostRoundFollowUpPage,
-  PostRoundPage,
-  RoundAnalysisPage,
-  RoundFinalizationPage,
-} from './pages/PostRoundPages';
-import { ConsultantMajorReadinessPage, MajorReadinessPage } from './pages/MajorReadinessPages';
-import {
-  AppointmentDetailPage,
-  ConsultantCalendarPage,
-  LiveSessionPage,
-  LiveSessionsPage,
-  ScheduleRoundPage,
-} from './pages/LivePages';
-import { CardsPage } from './pages/CardsPage';
-import {
-  CardDetailPage,
-  CardWishlistPage,
-  CatalogOperationsPage,
-  ConsultantClientCardsPage,
-  ExploreCardsPage,
-  InsightOperationsPage,
-} from './pages/CardCatalogPages';
-import { ConsultantSupportPage } from './pages/ConsultantSupportPage';
-import { DocumentsPage } from './pages/DocumentsPage';
-import { NotificationsPage } from './pages/NotificationsPage';
-import { GoalsPage } from './pages/GoalsPage';
+
 import { GoalIntakePage } from './pages/GoalIntakePage';
-import { ActiveServicesPage, PurchaseHistoryPage, ServicesPage } from './pages/ServicesPage';
-import { CheckoutPage } from './pages/CheckoutPage';
-import { SecurityPage } from './pages/SecurityPage';
+
 import {
   AdminLandingPage,
   FoundationPage,
   StaffAccountPage,
   SystemHealthPage,
 } from './pages/ShellPages';
-import { SupportPage } from './pages/SupportPage';
+
 import {
   ForgotPasswordPage,
   LoginPage,
@@ -55,21 +24,153 @@ import {
   VerifyEmailPage,
 } from './pages/AuthPages';
 import { ConsultantDashboardPage, ReadinessPage, WorkQueuePage } from './pages/PlatformPages';
-import { Client360Page, ClientsPage } from './pages/ClientContextPages';
+
 import { ClientHomePage, ClientJourneyPage } from './pages/JourneyPages';
-import { ClientPlanPage } from './pages/PlanPages';
-import {
-  ClientReviewPage,
-  ConsultantReviewsPage,
-  ConsultantReviewWorkspacePage,
-} from './pages/ReviewPages';
-import {
-  ConsultantClientCreditCenterPage,
-  PublishedCreditCenterPage,
-} from './pages/PublishedCreditCenterPages';
+
+// Load authenticated feature families when opened; shell navigation stays available.
+const AccountPage = lazy(() =>
+  import('./pages/AccountPage').then((module) => ({ default: module.AccountPage })),
+);
+const MajorApplicationCheckPage = lazy(() =>
+  import('./pages/Phase11Pages').then((module) => ({ default: module.MajorApplicationCheckPage })),
+);
+const RoundPage = lazy(() =>
+  import('./pages/Phase11Pages').then((module) => ({ default: module.RoundPage })),
+);
+const SeasonalCyclePage = lazy(() =>
+  import('./pages/Phase11Pages').then((module) => ({ default: module.SeasonalCyclePage })),
+);
+const ClientStrategyPage = lazy(() =>
+  import('./pages/StrategyPages').then((module) => ({ default: module.ClientStrategyPage })),
+);
+const ConsultantStrategyPage = lazy(() =>
+  import('./pages/StrategyPages').then((module) => ({ default: module.ConsultantStrategyPage })),
+);
+const PostRoundFollowUpPage = lazy(() =>
+  import('./pages/PostRoundPages').then((module) => ({ default: module.PostRoundFollowUpPage })),
+);
+const PostRoundPage = lazy(() =>
+  import('./pages/PostRoundPages').then((module) => ({ default: module.PostRoundPage })),
+);
+const RoundAnalysisPage = lazy(() =>
+  import('./pages/PostRoundPages').then((module) => ({ default: module.RoundAnalysisPage })),
+);
+const RoundFinalizationPage = lazy(() =>
+  import('./pages/PostRoundPages').then((module) => ({ default: module.RoundFinalizationPage })),
+);
+const ConsultantMajorReadinessPage = lazy(() =>
+  import('./pages/MajorReadinessPages').then((module) => ({
+    default: module.ConsultantMajorReadinessPage,
+  })),
+);
+const MajorReadinessPage = lazy(() =>
+  import('./pages/MajorReadinessPages').then((module) => ({ default: module.MajorReadinessPage })),
+);
+const AppointmentDetailPage = lazy(() =>
+  import('./pages/LivePages').then((module) => ({ default: module.AppointmentDetailPage })),
+);
+const ConsultantCalendarPage = lazy(() =>
+  import('./pages/LivePages').then((module) => ({ default: module.ConsultantCalendarPage })),
+);
+const LiveSessionPage = lazy(() =>
+  import('./pages/LivePages').then((module) => ({ default: module.LiveSessionPage })),
+);
+const LiveSessionsPage = lazy(() =>
+  import('./pages/LivePages').then((module) => ({ default: module.LiveSessionsPage })),
+);
+const ScheduleRoundPage = lazy(() =>
+  import('./pages/LivePages').then((module) => ({ default: module.ScheduleRoundPage })),
+);
+const CardsPage = lazy(() =>
+  import('./pages/CardsPage').then((module) => ({ default: module.CardsPage })),
+);
+const CardDetailPage = lazy(() =>
+  import('./pages/CardCatalogPages').then((module) => ({ default: module.CardDetailPage })),
+);
+const CardWishlistPage = lazy(() =>
+  import('./pages/CardCatalogPages').then((module) => ({ default: module.CardWishlistPage })),
+);
+const CatalogOperationsPage = lazy(() =>
+  import('./pages/CardCatalogPages').then((module) => ({ default: module.CatalogOperationsPage })),
+);
+const ConsultantClientCardsPage = lazy(() =>
+  import('./pages/CardCatalogPages').then((module) => ({
+    default: module.ConsultantClientCardsPage,
+  })),
+);
+const ExploreCardsPage = lazy(() =>
+  import('./pages/CardCatalogPages').then((module) => ({ default: module.ExploreCardsPage })),
+);
+const InsightOperationsPage = lazy(() =>
+  import('./pages/CardCatalogPages').then((module) => ({ default: module.InsightOperationsPage })),
+);
+const ConsultantSupportPage = lazy(() =>
+  import('./pages/ConsultantSupportPage').then((module) => ({
+    default: module.ConsultantSupportPage,
+  })),
+);
+const DocumentsPage = lazy(() =>
+  import('./pages/DocumentsPage').then((module) => ({ default: module.DocumentsPage })),
+);
+const NotificationsPage = lazy(() =>
+  import('./pages/NotificationsPage').then((module) => ({ default: module.NotificationsPage })),
+);
+const GoalsPage = lazy(() =>
+  import('./pages/GoalsPage').then((module) => ({ default: module.GoalsPage })),
+);
+const ActiveServicesPage = lazy(() =>
+  import('./pages/ServicesPage').then((module) => ({ default: module.ActiveServicesPage })),
+);
+const PurchaseHistoryPage = lazy(() =>
+  import('./pages/ServicesPage').then((module) => ({ default: module.PurchaseHistoryPage })),
+);
+const ServicesPage = lazy(() =>
+  import('./pages/ServicesPage').then((module) => ({ default: module.ServicesPage })),
+);
+const CheckoutPage = lazy(() =>
+  import('./pages/CheckoutPage').then((module) => ({ default: module.CheckoutPage })),
+);
+const SecurityPage = lazy(() =>
+  import('./pages/SecurityPage').then((module) => ({ default: module.SecurityPage })),
+);
+const SupportPage = lazy(() =>
+  import('./pages/SupportPage').then((module) => ({ default: module.SupportPage })),
+);
+const Client360Page = lazy(() =>
+  import('./pages/ClientContextPages').then((module) => ({ default: module.Client360Page })),
+);
+const ClientsPage = lazy(() =>
+  import('./pages/ClientContextPages').then((module) => ({ default: module.ClientsPage })),
+);
+const ClientPlanPage = lazy(() =>
+  import('./pages/PlanPages').then((module) => ({ default: module.ClientPlanPage })),
+);
+const ClientReviewPage = lazy(() =>
+  import('./pages/ReviewPages').then((module) => ({ default: module.ClientReviewPage })),
+);
+const ConsultantReviewsPage = lazy(() =>
+  import('./pages/ReviewPages').then((module) => ({ default: module.ConsultantReviewsPage })),
+);
+const ConsultantReviewWorkspacePage = lazy(() =>
+  import('./pages/ReviewPages').then((module) => ({
+    default: module.ConsultantReviewWorkspacePage,
+  })),
+);
+const ConsultantClientCreditCenterPage = lazy(() =>
+  import('./pages/PublishedCreditCenterPages').then((module) => ({
+    default: module.ConsultantClientCreditCenterPage,
+  })),
+);
+const PublishedCreditCenterPage = lazy(() =>
+  import('./pages/PublishedCreditCenterPages').then((module) => ({
+    default: module.PublishedCreditCenterPage,
+  })),
+);
 
 const ConsultantPlanBuilderPage = lazy(() =>
-  import('./features/plans/ConsultantPlanBuilderPage').then((module) => ({ default: module.ConsultantPlanBuilderPage })),
+  import('./features/plans/ConsultantPlanBuilderPage').then((module) => ({
+    default: module.ConsultantPlanBuilderPage,
+  })),
 );
 
 const DesignSystemPage = lazy(() =>
@@ -82,29 +183,75 @@ const ShellEvidencePage = lazy(() =>
 // One domain-family boundary keeps the initial authenticated shell small while
 // avoiding a waterfall of per-widget chunks. D0's shell boundary owns loading
 // and render-failure recovery for every component in this family.
-const AdminUsersPage = lazy(() => import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminUsersPage })));
-const AdminUserDetailPage = lazy(() => import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminUserDetailPage })));
-const AdminAccessGrantsPage = lazy(() => import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminAccessGrantsPage })));
-const AdminEventListPage = lazy(() => import('./pages/AdminAuditPages').then((m) => ({ default: m.AdminEventListPage })));
-const AdminEventDetailPage = lazy(() => import('./pages/AdminAuditPages').then((m) => ({ default: m.AdminEventDetailPage })));
-const AdminAIJobsPage = lazy(() => import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIJobsPage })));
-const AdminAIJobDetailPage = lazy(() => import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIJobDetailPage })));
-const AdminAIProcessesPage = lazy(() => import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIProcessesPage })));
-const AdminPaymentsPage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPaymentsPage })));
-const AdminPaymentDetailPage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPaymentDetailPage })));
-const AdminPayPalPage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPayPalPage })));
-const AdminStripePage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminStripePage })));
-const AdminBofaPage = lazy(() => import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminBofaPage })));
-const AdminServicesPage = lazy(() => import('./pages/AdminServicesPages').then((m) => ({ default: m.AdminServicesPage })));
-const AdminServiceDetailPage = lazy(() => import('./pages/AdminServicesPages').then((m) => ({ default: m.AdminServiceDetailPage })));
-const AdminSourcesPage = lazy(() => import('./pages/AdminSourcesPage').then((m) => ({ default: m.AdminSourcesPage })));
-const AdminWorkflowPage = lazy(() => import('./pages/AdminWorkflowPage').then((m) => ({ default: m.AdminWorkflowPage })));
-const AdminNotificationsPage = lazy(() => import('./pages/AdminNotificationsPage').then((m) => ({ default: m.AdminNotificationsPage })));
-const AdminIntegrationsPage = lazy(() => import('./pages/AdminIntegrationsPage').then((m) => ({ default: m.AdminIntegrationsPage })));
-const AdminScheduledJobsPage = lazy(() => import('./pages/AdminScheduledJobsPage').then((m) => ({ default: m.AdminScheduledJobsPage })));
-const AdminRetentionPage = lazy(() => import('./pages/AdminRetentionPage').then((m) => ({ default: m.AdminRetentionPage })));
-const AdminReportsPage = lazy(() => import('./pages/AdminReportsPage').then((m) => ({ default: m.AdminReportsPage })));
-const AdminSettingsPage = lazy(() => import('./pages/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage })));
+const AdminUsersPage = lazy(() =>
+  import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminUsersPage })),
+);
+const AdminUserDetailPage = lazy(() =>
+  import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminUserDetailPage })),
+);
+const AdminAccessGrantsPage = lazy(() =>
+  import('./pages/AdminIdentityPages').then((m) => ({ default: m.AdminAccessGrantsPage })),
+);
+const AdminEventListPage = lazy(() =>
+  import('./pages/AdminAuditPages').then((m) => ({ default: m.AdminEventListPage })),
+);
+const AdminEventDetailPage = lazy(() =>
+  import('./pages/AdminAuditPages').then((m) => ({ default: m.AdminEventDetailPage })),
+);
+const AdminAIJobsPage = lazy(() =>
+  import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIJobsPage })),
+);
+const AdminAIJobDetailPage = lazy(() =>
+  import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIJobDetailPage })),
+);
+const AdminAIProcessesPage = lazy(() =>
+  import('./pages/AdminAIJobsPages').then((m) => ({ default: m.AdminAIProcessesPage })),
+);
+const AdminPaymentsPage = lazy(() =>
+  import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPaymentsPage })),
+);
+const AdminPaymentDetailPage = lazy(() =>
+  import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPaymentDetailPage })),
+);
+const AdminPayPalPage = lazy(() =>
+  import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminPayPalPage })),
+);
+const AdminStripePage = lazy(() =>
+  import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminStripePage })),
+);
+const AdminBofaPage = lazy(() =>
+  import('./pages/AdminPaymentsPages').then((m) => ({ default: m.AdminBofaPage })),
+);
+const AdminServicesPage = lazy(() =>
+  import('./pages/AdminServicesPages').then((m) => ({ default: m.AdminServicesPage })),
+);
+const AdminServiceDetailPage = lazy(() =>
+  import('./pages/AdminServicesPages').then((m) => ({ default: m.AdminServiceDetailPage })),
+);
+const AdminSourcesPage = lazy(() =>
+  import('./pages/AdminSourcesPage').then((m) => ({ default: m.AdminSourcesPage })),
+);
+const AdminWorkflowPage = lazy(() =>
+  import('./pages/AdminWorkflowPage').then((m) => ({ default: m.AdminWorkflowPage })),
+);
+const AdminNotificationsPage = lazy(() =>
+  import('./pages/AdminNotificationsPage').then((m) => ({ default: m.AdminNotificationsPage })),
+);
+const AdminIntegrationsPage = lazy(() =>
+  import('./pages/AdminIntegrationsPage').then((m) => ({ default: m.AdminIntegrationsPage })),
+);
+const AdminScheduledJobsPage = lazy(() =>
+  import('./pages/AdminScheduledJobsPage').then((m) => ({ default: m.AdminScheduledJobsPage })),
+);
+const AdminRetentionPage = lazy(() =>
+  import('./pages/AdminRetentionPage').then((m) => ({ default: m.AdminRetentionPage })),
+);
+const AdminReportsPage = lazy(() =>
+  import('./pages/AdminReportsPage').then((m) => ({ default: m.AdminReportsPage })),
+);
+const AdminSettingsPage = lazy(() =>
+  import('./pages/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage })),
+);
 
 export const isDesignSystemShowcaseEnabled = import.meta.env.DEV || import.meta.env.MODE === 'test';
 
@@ -220,7 +367,14 @@ export function App() {
           <Route path="work-queue" element={<WorkQueuePage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:clientId" element={<Client360Page />} />
-          <Route path="clients/:clientId/plan" element={<Suspense fallback={<LoadingSkeleton />}><ConsultantPlanBuilderPage /></Suspense>} />
+          <Route
+            path="clients/:clientId/plan"
+            element={
+              <Suspense fallback={<LoadingSkeleton />}>
+                <ConsultantPlanBuilderPage />
+              </Suspense>
+            }
+          />
           <Route path="clients/:clientId/cards" element={<ConsultantClientCardsPage />} />
           <Route
             path="clients/:clientId/rounds/:roundId/strategy"

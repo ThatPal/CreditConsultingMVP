@@ -10,8 +10,10 @@ export type RouteReadyCopy = {
 };
 
 export function routeReadyCopy(pathname: string): RouteReadyCopy {
-  if (pathname.startsWith('/crm')) return { label: 'CRM workspace', home: '/crm', homeLabel: 'Return to CRM home' };
-  if (pathname.startsWith('/admin')) return { label: 'Admin workspace', home: '/admin', homeLabel: 'Return to Admin home' };
+  if (pathname.startsWith('/crm'))
+    return { label: 'CRM workspace', home: '/crm', homeLabel: 'Return to CRM home' };
+  if (pathname.startsWith('/admin'))
+    return { label: 'Admin workspace', home: '/admin', homeLabel: 'Return to Admin home' };
   return { label: 'client portal page', home: '/app', homeLabel: 'Return to portal home' };
 }
 
@@ -26,11 +28,17 @@ function RouteLoading({ copy }: { copy: RouteReadyCopy }) {
       <Typography variant="h2">Loading {copy.label}</Typography>
       <Typography color="text.secondary">
         {slow
-          ? `This ${copy.label} is taking longer than expected. No submitted or saved state was changed.`
+          ? `This ${copy.label} is taking longer than expected. You can wait here or use the navigation to open another page.`
           : `Preparing this ${copy.label}.`}
       </Typography>
-      <LoadingSkeleton label={`Loading ${copy.label}`} />
-      {slow && <Button component={Link} to={copy.home}>{copy.homeLabel}</Button>}
+      <div aria-hidden="true">
+        <LoadingSkeleton label={`Loading ${copy.label}`} />
+      </div>
+      {slow && (
+        <Button component={Link} to={copy.home}>
+          {copy.homeLabel}
+        </Button>
+      )}
     </Stack>
   );
 }
@@ -40,21 +48,34 @@ class RouteRenderBoundary extends Component<
   { failed: boolean }
 > {
   state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
   componentDidCatch(error: Error) {
     // Deliberately bounded telemetry: never include URL/query data, component props,
     // response bodies, or credential-bearing values in route failure evidence.
-    console.error('Route render failure', { event: 'route_render_failure', routeFamily: this.props.copy.label, errorName: error.name });
+    console.error('Route render failure', {
+      event: 'route_render_failure',
+      routeFamily: this.props.copy.label,
+      errorName: error.name,
+    });
   }
   render() {
     if (!this.state.failed) return this.props.children;
     return (
       <Alert severity="error">
         <Typography sx={{ fontWeight: 850 }}>{this.props.copy.label} couldn’t be loaded</Typography>
-        <Typography>No submitted or saved state was changed. Retry this page or return to a known location.</Typography>
-        <Stack direction="row" sx={{ gap: 1, mt: 1 }}>
-          <Button size="small" onClick={() => location.reload()}>Retry page</Button>
-          <Button size="small" component={Link} to={this.props.copy.home}>{this.props.copy.homeLabel}</Button>
+        <Typography>
+          Reload to try again, or return home. Reloading clears unsaved changes in this tab; check
+          saved work before repeating a submission.
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 1, mt: 1 }}>
+          <Button size="small" onClick={() => location.reload()}>
+            Retry page
+          </Button>
+          <Button size="small" component={Link} to={this.props.copy.home}>
+            {this.props.copy.homeLabel}
+          </Button>
         </Stack>
       </Alert>
     );
