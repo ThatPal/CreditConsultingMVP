@@ -118,3 +118,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 45: Accepted-save confirmation recovery](IMPLEMENTATION-45.md) distinguishes a successful save from a failed follow-up check, preserves local work and retries without repeating the save. Controlled network/server failures and a real accepted-save browser scenario passed.
 
 [Pass 46: Consultant Plan discovery and lifecycle clarity](IMPLEMENTATION-46.md) adds server-backed title/status search, retained empty-result controls and a sticky library header. Filtered pagination and guarded navigation passed; consultant browser/visual qualification remains open.
+
+[Pass 47: Consultant access and Plan drawer accessibility](IMPLEMENTATION-47.md) verifies authorized synthetic consultant MFA recovery/enrollment, desktop/mobile discovery and version inspection; adds named dialogs and focus handling. Broader staff and production qualification remain open.

@@ -120,3 +120,26 @@ test('searches the server, retains empty-result controls and clears filters with
   expect(router.state.location.search).toBe('?planId=selected&view=work');
   expect(screen.getByRole('textbox', { name: 'Search Plan titles' })).toHaveValue('');
 });
+
+test('names the library dialog, focuses search, and restores focus after Escape', async () => {
+  vi.mocked(apiRequest).mockResolvedValue({ plans: [], nextBefore: null });
+  const router = createMemoryRouter([
+    { path: '*', element: <PlanLibrary clientId="keyboard-client" /> },
+  ]);
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  const trigger = screen.getByRole('button', { name: 'Browse client Plans' });
+  trigger.focus();
+  fireEvent.click(trigger);
+  expect(await screen.findByRole('dialog', { name: 'Client Plans' })).toBeVisible();
+  const search = screen.getByRole('textbox', { name: 'Search Plan titles' });
+  await waitFor(() => expect(search).toHaveFocus());
+  fireEvent.keyDown(search, { key: 'Escape' });
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Client Plans' })).not.toBeInTheDocument(),
+  );
+  expect(trigger).toHaveFocus();
+});

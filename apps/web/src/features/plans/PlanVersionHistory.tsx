@@ -1,5 +1,5 @@
 import { PlanDraftComparison } from './PlanDraftComparison';
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Alert, Box, Button, Divider, Drawer, Stack, Typography } from '@mui/material';
 import { apiRequest } from '../../auth/api';
@@ -24,8 +24,14 @@ export function PlanVersionHistory({
   workingDraft: PlanDraft;
 }) {
   const [open, setOpen] = useState(false);
+  const titleId = useId();
+  const detailsRef = useRef<HTMLDivElement>(null);
+  const inspectTrigger = useRef<HTMLButtonElement | null>(null);
   const [compare, setCompare] = useState(false);
   const [selected, setSelected] = useState<Version | null>(null);
+  useEffect(() => {
+    if (open && selected) detailsRef.current?.focus();
+  }, [open, selected]);
   const query = useInfiniteQuery({
     queryKey: ['plan-version-history', clientId, planId],
     initialPageParam: null as number | null,
@@ -48,13 +54,38 @@ export function PlanVersionHistory({
         anchor="right"
         open={open}
         onClose={() => setOpen(false)}
-        slotProps={{ paper: { sx: { width: { xs: '100%', md: 760 }, p: 3 } } }}
+        slotProps={{
+          paper: {
+            role: 'dialog',
+            'aria-modal': true,
+            'aria-labelledby': titleId,
+            sx: { width: { xs: '100%', md: 760 } },
+          },
+        }}
       >
-        <Stack spacing={2}>
-          <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-            <Typography variant="h2">Plan version history</Typography>
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            flexShrink: 0,
+            zIndex: 1,
+            bgcolor: 'background.paper',
+            p: 3,
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Stack
+            direction="row"
+            sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}
+          >
+            <Typography id={titleId} variant="h2">
+              Plan version history
+            </Typography>
             <Button onClick={() => setOpen(false)}>Close history</Button>
           </Stack>
+        </Box>
+        <Stack spacing={2} sx={{ p: 3 }}>
           <Alert severity="info">
             Inspect saved versions without replacing your working copy. Recorded progress belongs to
             each version. Historical snapshots are not current client instructions.
@@ -99,7 +130,8 @@ export function PlanVersionHistory({
                     : ' · Not approved'}
                 </Typography>
                 <Button
-                  onClick={() => {
+                  onClick={(event) => {
+                    inspectTrigger.current = event.currentTarget;
                     setSelected(version);
                     setCompare(false);
                   }}
@@ -115,7 +147,13 @@ export function PlanVersionHistory({
             </Button>
           )}
           {selected && (
-            <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 2 }}>
+            <Box
+              ref={detailsRef}
+              role="region"
+              aria-label={`Version ${selected.version} details`}
+              tabIndex={-1}
+              sx={{ borderTop: 1, borderColor: 'divider', pt: 2 }}
+            >
               <Typography variant="h2">Inspecting version {selected.version}</Typography>
               <Button onClick={() => setCompare(!compare)}>
                 {compare ? 'Hide comparison' : 'Compare with working copy'}
@@ -136,7 +174,14 @@ export function PlanVersionHistory({
                 />
               )}
 
-              <Button onClick={() => setSelected(null)}>Close version inspection</Button>
+              <Button
+                onClick={() => {
+                  setSelected(null);
+                  inspectTrigger.current?.focus();
+                }}
+              >
+                Close version inspection
+              </Button>
               <PlanLifecyclePreview
                 key={selected.id}
                 clientId={clientId}

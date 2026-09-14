@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import {
   Alert,
@@ -49,6 +49,7 @@ export function PlanLibrary({
   selectedId?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
+  const titleId = useId();
   const [search] = useSearchParams();
   const [titleSearch, setTitleSearch] = useState('');
   const [term, setTerm] = useState('');
@@ -89,10 +90,18 @@ export function PlanLibrary({
         anchor="right"
         open={open}
         onClose={() => setOpen(false)}
-        slotProps={{ paper: { sx: { width: { xs: '100%', md: 620 } } } }}
+        slotProps={{
+          paper: {
+            role: 'dialog',
+            'aria-modal': true,
+            'aria-labelledby': titleId,
+            sx: { width: { xs: '100%', md: 620 } },
+          },
+        }}
       >
         <Box
           sx={{
+            flexShrink: 0,
             position: 'sticky',
             top: 0,
             zIndex: 1,
@@ -103,12 +112,15 @@ export function PlanLibrary({
           }}
         >
           <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h2">Client Plans</Typography>
+            <Typography id={titleId} variant="h2">
+              Client Plans
+            </Typography>
             <Button onClick={() => setOpen(false)}>Close library</Button>
           </Stack>
           <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
               size="small"
+              autoFocus
               label="Search Plan titles"
               value={titleSearch}
               onChange={(event) => setTitleSearch(event.target.value)}

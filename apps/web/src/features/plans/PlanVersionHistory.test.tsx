@@ -49,7 +49,9 @@ test('retains version inspection on pagination failure, retries and compares wit
   );
   expect(apiRequest).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Version history' }));
+  expect(await screen.findByRole('dialog', { name: 'Plan version history' })).toBeVisible();
   fireEvent.click(await screen.findByRole('button', { name: 'Inspect version 2' }));
+  expect(screen.getByRole('region', { name: 'Version 2 details' })).toHaveFocus();
   expect(screen.getByText(/Duplicate draft retained for history/)).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Compare with working copy' }));
   expect(screen.getByText('Unfinished title')).toBeVisible();
@@ -57,6 +59,8 @@ test('retains version inspection on pagination failure, retries and compares wit
   fireEvent.click(await screen.findByRole('button', { name: 'Retry history' }));
   expect(await screen.findByRole('button', { name: 'Inspect version 1' })).toBeVisible();
   expect(screen.getByText('Inspecting version 2')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Close version inspection' }));
+  expect(screen.getByRole('button', { name: 'Inspect version 2' })).toHaveFocus();
   expect(workingDraft.title).toBe('Unfinished title');
   expect(vi.mocked(apiRequest).mock.calls.every(([, options]) => !options?.method)).toBe(true);
 });
