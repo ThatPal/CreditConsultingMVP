@@ -72,7 +72,12 @@ describe('Plan authoring and approval', () => {
     await prisma.outboxEvent.deleteMany({
       where: { payload: { path: ['clientId'], equals: clientId } },
     });
-    await prisma.auditEvent.deleteMany({ where: { clientId, action: 'plan.approved' } });
+    await prisma.auditEvent.deleteMany({
+      where: { clientId, action: { in: ['plan.approved', 'plan.draft.created'] } },
+    });
+    await prisma.idempotencyRecord.deleteMany({
+      where: { subjectId: clientId, operation: 'create' },
+    });
     await prisma.plan.deleteMany({ where: { clientId } });
     await prisma.client.delete({ where: { id: clientId } });
     await prisma.user.delete({ where: { id: actorId } });
@@ -233,5 +238,42 @@ describe('Plan authoring and approval', () => {
     expect(context.clientPublication).toEqual(publication);
     expect(context.context.sources).toBeDefined();
     expect(await prisma.plan.count({ where: { clientId } })).toBe(count);
+  });
+  test('concurrent creation retries return one Plan and reject changed request content', async () => {
+    const key = randomUUID();
+    const before = await prisma.plan.count({ where: { clientId } });
+    const results = await Promise.all(
+      Array.from({ length: 3 }, () => createPlanDraft(prisma, clientId, draft, { key, actorId })),
+    );
+    expect(new Set(results.map((result) => result.planId)).size).toBe(1);
+    expect(await prisma.plan.count({ where: { clientId } })).toBe(before + 1);
+    expect(
+      await prisma.auditEvent.count({
+        where: { entityId: results[0]!.planId, action: 'plan.draft.created' },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.outboxEvent.count({
+        where: { aggregateId: results[0]!.planId, eventType: 'plan.draft.created' },
+      }),
+    ).toBe(1);
+    await expect(
+      createPlanDraft(prisma, clientId, { ...draft, title: 'Different content' }, { key, actorId }),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+    expect(await createPlanDraft(prisma, clientId, draft, { key, actorId })).toEqual(results[0]);
+  });
+  test('definitive creation rejection leaves no Plan and permits a corrected request', async () => {
+    const before = await prisma.plan.count({ where: { clientId } });
+    await expect(
+      createPlanDraft(
+        prisma,
+        clientId,
+        { ...draft, sourceReviewId: randomUUID() },
+        { key: randomUUID(), actorId },
+      ),
+    ).rejects.toMatchObject({ code: 'PLAN_CREATE_REJECTED' });
+    expect(await prisma.plan.count({ where: { clientId } })).toBe(before);
+    await createPlanDraft(prisma, clientId, draft, { key: randomUUID(), actorId });
+    expect(await prisma.plan.count({ where: { clientId } })).toBe(before + 1);
   });
 });

@@ -59,6 +59,7 @@ type SourcePreview = {
   keptSteps: Array<{ title: string; status: string }>;
 };
 type Editor = {
+  creationKey?: string;
   draft: PlanDraft;
   baseline: string;
   revision: number;
@@ -148,6 +149,11 @@ function PlanBuilder({
         !(value.planId === null || typeof value.planId === 'string')
       )
         return null;
+      if (
+        value.creationKey !== undefined &&
+        (typeof value.creationKey !== 'string' || !/^[0-9a-f-]{36}$/i.test(value.creationKey))
+      )
+        return null;
       // Exercise the normal draft readers before offering data from browser storage.
       draftPayload(value.draft);
       editorIssues(value.draft);
@@ -228,10 +234,21 @@ function PlanBuilder({
   const save = useMutation({
     mutationFn: async () => {
       if (!editor) throw new Error('The Plan is not loaded.');
+      const creationKey = editor.planId ? undefined : (editor.creationKey ?? crypto.randomUUID());
+      if (creationKey) {
+        const recoverable = { ...editor, creationKey };
+        // Persist before sending: retry after reload must reuse the same request identity.
+        sessionStorage.setItem(
+          recoveryKey,
+          JSON.stringify({ format: 1, savedAt: Date.now(), editor: recoverable }),
+        );
+        setEditor(recoverable);
+      }
       return apiRequest<{ planId?: string; optimisticVersion: number; version: number }>(
         `/api/v1/consultant/clients/${clientId}/plans${editor.planId ? `/${editor.planId}` : ''}`,
         {
           method: editor.planId ? 'PUT' : 'POST',
+          ...(creationKey ? { headers: { 'Idempotency-Key': creationKey } } : {}),
           body: JSON.stringify(
             editor.planId
               ? { expectedVersion: editor.revision, draft: draftPayload(editor.draft) }
@@ -239,6 +256,17 @@ function PlanBuilder({
           ),
         },
       );
+    },
+    onError: (error) => {
+      if ('code' in error && error.code === 'PLAN_CREATE_REJECTED') {
+        // This code is emitted only after the creation transaction rolled back.
+        setEditor((current) => {
+          if (!current) return current;
+          const next = { ...current };
+          delete next.creationKey;
+          return next;
+        });
+      }
     },
     onSuccess: async (result) => {
       if (!editor?.planId && result.planId) {
@@ -313,8 +341,9 @@ function PlanBuilder({
     setSearch(next, { replace: true });
   }, [createdPlanId, busy, dirty, query.data, search, setSearch]);
 
+  const creationUnresolved = Boolean(editor?.creationKey && !editor.planId);
   const edit = (change: (draft: PlanDraft) => PlanDraft) => {
-    if (!busy) {
+    if (!busy && !creationUnresolved) {
       setNotice('');
       setEditor((value) => (value ? { ...value, draft: change(value.draft) } : value));
     }
@@ -329,7 +358,11 @@ function PlanBuilder({
       <Stack spacing={2}>
         <PageHeader
           title="Recover your unfinished Plan"
-          description="Unfinished edits from this browser tab are available. They have not been saved to the shared Plan or published to the client."
+          description={
+            recovery.creationKey
+              ? 'A first save may have reached the server. Restore this request and retry to recover the same Plan.'
+              : 'Unfinished edits from this browser tab are available. They have not been saved to the shared Plan or published to the client.'
+          }
         />
         <Alert severity="info">
           Restore your edits to review them against the current server version, or discard this
@@ -346,6 +379,7 @@ function PlanBuilder({
             Restore unfinished edits
           </Button>
           <Button
+            disabled={Boolean(recovery.creationKey && !recovery.planId)}
             onClick={() => {
               setEditor(hydrate(query.data!));
               setRecovery(null);
@@ -483,7 +517,7 @@ function PlanBuilder({
       )}
       <PlanPathEditor
         draft={editor.draft}
-        disabled={busy}
+        disabled={busy || creationUnresolved}
         onChange={(draft) => edit(() => draft)}
       />
       <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -536,6 +570,12 @@ function PlanBuilder({
           <Button onClick={() => setDiscardOpen(true)}>Review saved version</Button>
         </Alert>
       )}
+      {creationUnresolved && (
+        <Alert severity="warning">
+          The first save needs confirmation. Retry Save draft to recover the same Plan before
+          changing its contents. Your request is kept in this tab for recovery.
+        </Alert>
+      )}
       {save.isError && (
         <Alert severity="error">{message(save.error)} Your local edits are still available.</Alert>
       )}
@@ -544,7 +584,11 @@ function PlanBuilder({
           The server could not be refreshed. Your current edits are still here.
         </Alert>
       )}
-      <Box component="fieldset" disabled={busy} sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
+      <Box
+        component="fieldset"
+        disabled={busy || creationUnresolved}
+        sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}
+      >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
           <TextField
             label="Plan title"

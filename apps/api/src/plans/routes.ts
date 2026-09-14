@@ -182,6 +182,12 @@ export function createPlanRouter(
               prisma,
               req.params.clientId as string,
               draftSchema.parse(req.body) as Parameters<typeof createPlanDraft>[2],
+              req.get('Idempotency-Key')
+                ? {
+                    key: z.string().uuid().parse(req.get('Idempotency-Key')),
+                    actorId: req.auth!.userId,
+                  }
+                : undefined,
             ),
           );
       } catch (error) {

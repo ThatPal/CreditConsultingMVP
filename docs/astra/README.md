@@ -41,3 +41,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 18: Start a separate Plan](IMPLEMENTATION-18.md) adds blank draft context, guarded entry, independent recovery and first-save identity handoff. Next: creation request replay protection, cancellation/replacement policy and remaining A5 qualification.
+
+
+[Pass 19: First-save replay protection](IMPLEMENTATION-19.md) adds consultant/client-scoped creation keys, atomic replay, tab recovery and confirmed-rejection handling. Next: source-grounded lifecycle commands and remaining operational/visual qualification. A1/A2/A5 remain in progress.

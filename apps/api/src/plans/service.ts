@@ -1,3 +1,8 @@
+import { createHash } from 'node:crypto';
+import {
+  executeConsequentialCommand,
+  IdempotencyConflictError,
+} from '../transactions/consequentialCommand.js';
 import { publishedVersionOrder } from './publication.js';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
@@ -288,16 +293,69 @@ export async function createPlanDraft(
   prisma: PrismaClient,
   clientId: string,
   input: PlanDraftInput,
+  request?: { key: string; actorId: string },
 ) {
   assertValid(input);
-  return prisma.$transaction(async (tx) => {
+  const mutate = async (tx: Prisma.TransactionClient) => {
     await assertPlanSourceOwnership(tx, clientId, input);
     const plan = await tx.plan.create({
       data: { clientId, purpose: input.purpose, title: input.title },
     });
     const version = await writeVersion(tx, plan.id, 1, input);
     return { planId: plan.id, versionId: version.id, version: 1, optimisticVersion: 1 };
-  });
+  };
+  if (!request) return prisma.$transaction(mutate);
+  const canonical = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(canonical)
+      : value && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.entries(value)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([key, child]) => [key, canonical(child)]),
+          )
+        : value;
+  try {
+    const saved = await executeConsequentialCommand(prisma, {
+      idempotency: {
+        scope: `plan-draft:${request.actorId}`,
+        subjectId: clientId,
+        operation: 'create',
+        key: request.key,
+        requestHash: createHash('sha256')
+          .update(JSON.stringify(canonical(input)))
+          .digest('hex'),
+      },
+      audit: (result) => ({
+        action: 'plan.draft.created',
+        entityType: 'Plan',
+        entityId: result.planId,
+        clientId,
+        actorId: request.actorId,
+      }),
+      outbox: {
+        eventType: 'plan.draft.created',
+        eventKey: `plan-draft:${clientId}:${request.actorId}:${request.key}`,
+        aggregateType: 'Plan',
+        aggregateId: (result) => result.planId,
+        payload: { clientId, domains: ['plan', 'work-queue'] },
+      },
+      mutate,
+    });
+    return saved.result;
+  } catch (error) {
+    if (error instanceof IdempotencyConflictError)
+      throw new AppError(
+        error.code,
+        409,
+        error.code === 'IDEMPOTENCY_KEY_REUSED'
+          ? 'This save request belongs to different Plan content. Recover the original save before making changes.'
+          : 'This Plan save is still processing. Retry the same save shortly.',
+      );
+    if (error instanceof AppError)
+      throw new AppError('PLAN_CREATE_REJECTED', error.status, error.message);
+    throw error;
+  }
 }
 
 function assertPlanOpen(plan: { status: string }) {

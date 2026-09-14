@@ -336,3 +336,63 @@ test('starts a blank separate Plan and binds successful creation before retrying
     ),
   ).toHaveLength(1);
 });
+
+test('reuses the first-save request after an uncertain response and a tab reload', async () => {
+  const keys: string[] = [];
+  request.mockImplementation(async (path, options) => {
+    if (options?.method === 'POST' && path.endsWith('/plans')) {
+      keys.push((options.headers as Record<string, string>)['Idempotency-Key']!);
+      if (keys.length === 1) throw new Error('Connection interrupted');
+      return { planId: 'recovered', optimisticVersion: 1, version: 1 };
+    }
+    if (path.endsWith('?mode=new')) return { plan: null, context: {} };
+    if (path.endsWith('?planId=recovered')) {
+      const saved = fixture(1, 'Recovered plan');
+      saved.plan.id = 'recovered';
+      return saved;
+    }
+    return { plan: null };
+  });
+  const first = setup('/crm/clients/client/plan?planId=new');
+  await screen.findByDisplayValue('Credit preparation plan');
+  fireEvent.click(screen.getByRole('button', { name: 'Add step' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Client title' }), {
+    target: { value: 'Read the guidance' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  await screen.findByText(/Connection interrupted/);
+  expect(screen.getByRole('textbox', { name: 'Plan title' })).toBeDisabled();
+  first.unmount();
+  setup('/crm/clients/client/plan?planId=new');
+  expect(await screen.findByRole('button', { name: 'Discard tab copy' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Restore unfinished edits' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Save draft' }));
+  await screen.findByDisplayValue('Recovered plan');
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBeTruthy();
+  expect(keys[1]).toBe(keys[0]);
+});
+
+test('unlocks a draft after the server confirms that creation rolled back', async () => {
+  request.mockImplementation(async (path, options) => {
+    if (options?.method === 'POST')
+      throw Object.assign(new Error('Choose a valid source'), {
+        code: 'PLAN_CREATE_REJECTED',
+        status: 409,
+      });
+    if (path.endsWith('?mode=new')) return { plan: null, context: {} };
+    return { plan: null };
+  });
+  setup('/crm/clients/client/plan?planId=new');
+  await screen.findByDisplayValue('Credit preparation plan');
+  fireEvent.click(screen.getByRole('button', { name: 'Add step' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Client title' }), {
+    target: { value: 'Read the guidance' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  await screen.findByText(/Choose a valid source/);
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: 'Plan title' })).not.toBeDisabled(),
+  );
+  expect(screen.queryByText(/The first save needs confirmation/)).not.toBeInTheDocument();
+});
