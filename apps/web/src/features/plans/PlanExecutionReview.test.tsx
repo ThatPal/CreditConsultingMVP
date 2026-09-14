@@ -459,3 +459,90 @@ test('tab recovery can be retried after temporary storage denial without losing 
     read.mockRestore();
   }
 });
+
+test('an uncertain decision stays blocked across filters until a successful history refresh', async () => {
+  let failRead = false;
+  vi.mocked(apiRequest).mockImplementation(async (_path, options) => {
+    if (options?.method === 'POST') throw new Error('Connection lost');
+    if (failRead) throw new Error('History unavailable');
+    return notePlan('evidence');
+  });
+  const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={cache}>
+      <MemoryRouter>
+        <PlanExecutionReview clientId="client" planId="plan" actorId="consultant" />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Message to the client' }), {
+    target: { value: 'Please confirm the total' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Request correction' }));
+  await screen.findByText(/The decision could not be confirmed/);
+  expect(screen.getByRole('button', { name: 'Verify completion' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'All steps (1)' }));
+  expect(screen.getByRole('button', { name: 'Request correction' })).toBeDisabled();
+  failRead = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh response and history' }));
+  await screen.findByText(/Plan responses could not be loaded/);
+  expect(screen.getByText(/The decision could not be confirmed/)).toBeVisible();
+  failRead = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByRole('textbox', { name: 'Message to the client' })).toHaveValue(
+    'Please confirm the total',
+  );
+  expect(screen.getByRole('button', { name: 'Request correction' })).toBeEnabled();
+  expect(
+    vi.mocked(apiRequest).mock.calls.filter(([, options]) => options?.method === 'POST'),
+  ).toHaveLength(1);
+});
+
+test.each(['completed', 'unavailable'])(
+  'accepted decision with failed follow-up read recovers without another write (%s)',
+  async (state) => {
+    let accepted = false;
+    let failRead = true;
+    vi.mocked(apiRequest).mockImplementation(async (_path, options) => {
+      if (options?.method === 'POST') {
+        accepted = true;
+        return {};
+      }
+      if (accepted && failRead) throw new Error('History unavailable');
+      const result = notePlan(accepted ? 'decision' : 'evidence');
+      if (accepted) {
+        result.plan.version.items[0]!.status = 'COMPLETED';
+        if (state === 'unavailable') result.plan.version.items = [];
+      }
+      return result;
+    });
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <MemoryRouter>
+          <PlanExecutionReview clientId="client" planId="plan" actorId="consultant" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Message to the client' }), {
+      target: { value: 'Reviewed the supplied details' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify completion' }));
+    await screen.findByText(
+      /The decision was accepted, but the updated history could not be loaded/,
+    );
+    expect(sessionStorage.getItem('astra:plan-review-notes:v1:consultant:client:plan')).toBeNull();
+    failRead = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    if (state === 'completed') await screen.findByText(/No steps need your attention/);
+    else
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument(),
+      );
+    expect(screen.getByText(/Completion verified/)).toBeVisible();
+    expect(
+      vi.mocked(apiRequest).mock.calls.filter(([, options]) => options?.method === 'POST'),
+    ).toHaveLength(1);
+  },
+);

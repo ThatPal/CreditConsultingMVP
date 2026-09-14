@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { reviewNotesKey, useReviewNotes } from './reviewNotes';
 import { Alert, Box, Button, Drawer, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +26,9 @@ export function PlanExecutionReview({
   const storageKey = actorId && planId ? reviewNotesKey(actorId, clientId, planId) : undefined;
   const { notes, put, retry: retryStorage, failed: storageFailed } = useReviewNotes(storageKey);
   const [localError, setLocalError] = useState('');
+  const [needsRecheck, setNeedsRecheck] = useState(false);
+  const [acceptedDecision, setAcceptedDecision] = useState('');
+  const notesTitleId = useId();
   const query = useQuery({
     queryKey: planId ? ['plan-execution', clientId, planId] : ['plan-execution', clientId],
     queryFn: () =>
@@ -76,7 +79,16 @@ export function PlanExecutionReview({
         method: 'POST',
         body: JSON.stringify({ decision, expectedOutcomeId: evidenceId, note: note.trim() }),
       }),
+    onError: () => setNeedsRecheck(true),
     onSuccess: async (_result, variables) => {
+      setNeedsRecheck(false);
+      setAcceptedDecision(
+        variables.decision === 'VERIFY'
+          ? 'Completion verified.'
+          : variables.decision === 'RETURN'
+            ? 'Correction request sent to the client.'
+            : 'Guidance sent and the step reopened.',
+      );
       put(variables.itemId, null);
       setLocalError('');
       await Promise.all(
@@ -105,6 +117,40 @@ export function PlanExecutionReview({
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [notes]);
+  const refreshReview = async () => {
+    const result = await query.refetch();
+    if (!result.isError) {
+      setNeedsRecheck(false);
+      review.reset();
+      setLocalError('');
+    }
+  };
+  const decisionRecovery = (
+    <>
+      {acceptedDecision && (
+        <Alert severity={query.isError ? 'warning' : 'success'} role="status">
+          {acceptedDecision}{' '}
+          {query.isError
+            ? 'The decision was accepted, but the updated history could not be loaded. Refresh history before taking another action; refreshing will not resend the decision.'
+            : review.isPending
+              ? 'Checking the updated history…'
+              : 'The updated response history is available.'}
+        </Alert>
+      )}
+      {needsRecheck && (
+        <Alert severity="warning">
+          The decision could not be confirmed. Refresh response and history to check what was
+          recorded before making another decision. Your unsent message is retained.
+          <Button
+            disabled={review.isPending || query.isFetching}
+            onClick={() => void refreshReview()}
+          >
+            Refresh response and history
+          </Button>
+        </Alert>
+      )}
+    </>
+  );
   const noteRecovery = (
     <>
       {Object.keys(notes).length > 0 && (
@@ -124,11 +170,33 @@ export function PlanExecutionReview({
         anchor="right"
         open={notesOpen}
         onClose={() => setNotesOpen(false)}
-        slotProps={{ paper: { sx: { width: { xs: '100%', md: 520 }, p: 3 } } }}
+        slotProps={{
+          paper: {
+            role: 'dialog',
+            'aria-modal': true,
+            'aria-labelledby': notesTitleId,
+            sx: { width: { xs: '100%', md: 520 } },
+          },
+        }}
       >
-        <Stack spacing={2}>
-          <Typography variant="h2">Unsent review messages</Typography>
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            flexShrink: 0,
+            bgcolor: 'background.paper',
+            p: 3,
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Typography id={notesTitleId} variant="h2">
+            Unsent review messages
+          </Typography>
           <Button onClick={() => setNotesOpen(false)}>Close messages</Button>
+        </Box>
+        <Stack spacing={2} sx={{ p: 3 }}>
           {Object.entries(notes).map(([id, saved]) => (
             <Stack key={id} spacing={1}>
               <Typography variant="h3">{saved.title}</Typography>
@@ -150,15 +218,28 @@ export function PlanExecutionReview({
   );
   if (query.isError)
     return (
-      <Alert severity="error">
+      <Stack spacing={2}>
+        {decisionRecovery}
         {noteRecovery}
-        Plan responses could not be loaded.{' '}
-        <Button onClick={() => void query.refetch()}>Retry</Button>
-      </Alert>
+        <Alert severity="error">
+          Plan responses could not be loaded.{' '}
+          <Button disabled={query.isFetching} onClick={() => void refreshReview()}>
+            Retry
+          </Button>
+        </Alert>
+      </Stack>
     );
   if (query.isLoading) return <Typography role="status">Loading Plan responses...</Typography>;
-  if (!plan?.version?.items.length && Object.keys(notes).length)
-    return <Stack spacing={2}>{noteRecovery}</Stack>;
+  if (
+    !plan?.version?.items.length &&
+    (Object.keys(notes).length || acceptedDecision || needsRecheck)
+  )
+    return (
+      <Stack spacing={2}>
+        {decisionRecovery}
+        {noteRecovery}
+      </Stack>
+    );
   if (!plan?.version?.items.length)
     return requestedStep ? (
       <Alert severity="info">
@@ -178,6 +259,7 @@ export function PlanExecutionReview({
       }}
     >
       <Stack spacing={2}>
+        {decisionRecovery}
         {noteRecovery}
         {requestedStep && !item && (
           <Alert severity="info">
@@ -300,20 +382,6 @@ export function PlanExecutionReview({
                 {(localError || review.isError) && (
                   <Alert severity="error">
                     {localError || review.error?.message}
-                    {review.isError && (
-                      <Button
-                        disabled={review.isPending || query.isFetching}
-                        onClick={async () => {
-                          const result = await query.refetch();
-                          if (!result.isError) {
-                            review.reset();
-                            setLocalError('');
-                          }
-                        }}
-                      >
-                        Refresh response and history
-                      </Button>
-                    )}
                     {review.error && 'status' in review.error && review.error.status === 403 && (
                       <Button
                         component={Link}
@@ -327,12 +395,15 @@ export function PlanExecutionReview({
                 <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                   <Button
                     variant="contained"
-                    disabled={review.isPending || query.isFetching || staleNote || paused}
+                    disabled={
+                      review.isPending || query.isFetching || needsRecheck || staleNote || paused
+                    }
                     onClick={() => {
                       if (needsHelp && !note.trim()) {
                         setLocalError('Explain how the client can continue.');
                         return;
                       }
+                      setAcceptedDecision('');
                       review.mutate({
                         decision: needsHelp ? 'RESUME' : 'VERIFY',
                         itemId: item.id,
@@ -344,12 +415,15 @@ export function PlanExecutionReview({
                   </Button>
                   {item.status === 'AWAITING_VERIFICATION' && (
                     <Button
-                      disabled={review.isPending || query.isFetching || staleNote || paused}
+                      disabled={
+                        review.isPending || query.isFetching || needsRecheck || staleNote || paused
+                      }
                       onClick={() => {
                         if (!note.trim()) {
                           setLocalError('Explain what the client should correct.');
                           return;
                         }
+                        setAcceptedDecision('');
                         review.mutate({
                           decision: 'RETURN',
                           itemId: item.id,
