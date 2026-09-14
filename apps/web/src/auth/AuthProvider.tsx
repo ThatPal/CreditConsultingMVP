@@ -1,9 +1,11 @@
+import { bindRequestActor } from './requestActor';
 import { clearPlanTabRecovery } from './tabRecovery';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PropsWithChildren,
@@ -55,13 +57,15 @@ export function AuthProvider({
         signalSessionLoss();
         return null;
       }
+      bindRequestActor(result.user.userId);
       return result;
     },
     retry: false,
     enabled: initialUser === undefined,
   });
   const resolvedUser = sessionLost ? null : (initialUser ?? query.data?.user ?? null);
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (resolvedUser) bindRequestActor(resolvedUser.userId);
     userRef.current = resolvedUser;
   }, [resolvedUser]);
   useEffect(

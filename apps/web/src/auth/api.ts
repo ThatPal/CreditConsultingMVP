@@ -1,3 +1,4 @@
+import { expectedActorHeaders } from './requestActor';
 import { webEnv } from '../config/env';
 import { signalSessionLoss } from './sessionLoss';
 
@@ -21,7 +22,7 @@ type ApiErrorBody = { error?: { code?: string; message?: string }; message?: str
 
 async function requestError(response: Response, fallback: string) {
   const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-  if (response.status === 401) signalSessionLoss();
+  if (response.status === 401 || body.error?.code === 'SESSION_ACTOR_CHANGED') signalSessionLoss();
   return new ApiRequestError(
     body.error?.message ?? body.message ?? fallback,
     response.status,
@@ -43,7 +44,11 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   const response = await fetch(`${webEnv.VITE_API_URL}${path}`, {
     ...init,
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      ...init?.headers,
+      ...expectedActorHeaders(path),
+    },
   });
   if (!response.ok) {
     throw await requestError(response, 'Something went wrong. Please try again.');
@@ -67,6 +72,7 @@ export async function apiFileRequest<T>(
       'X-File-Name': encodeURIComponent(file.name),
       ...(documentType ? { 'X-Document-Type': documentType } : {}),
       ...metadataHeaders,
+      ...expectedActorHeaders(path),
     },
     body: file,
   });
@@ -77,7 +83,10 @@ export async function apiFileRequest<T>(
 }
 
 export async function apiBlobRequest(path: string): Promise<Blob> {
-  const response = await fetch(`${webEnv.VITE_API_URL}${path}`, { credentials: 'include' });
+  const response = await fetch(`${webEnv.VITE_API_URL}${path}`, {
+    credentials: 'include',
+    headers: expectedActorHeaders(path),
+  });
   if (!response.ok) {
     throw await requestError(response, 'The document could not be opened.');
   }

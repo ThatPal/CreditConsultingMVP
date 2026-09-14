@@ -275,3 +275,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 37: Identity refresh and uncertain uploads](IMPLEMENTATION-37.md) clears old private state on detected account/authority changes and exposes existing-document recovery after uncertain upload confirmation. Real-browser recovery found one accepted file without re-uploading; per-request identity fencing, MFA transitions and broader qualification remain open.
+
+
+[Pass 38: Request account expectation](IMPLEMENTATION-38.md) rejects updated-client requests from stale account tabs before protected v1 operations, covers JSON/files/downloads, and propagates successful MFA verification. Real-browser wrong-account upload rejection passed; legacy/direct callers and broader qualification remain open.

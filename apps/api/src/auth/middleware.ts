@@ -121,3 +121,19 @@ export function requireCapability(
     return next(new AppError('FORBIDDEN', 403, 'You do not have permission to access this client'));
   };
 }
+
+// An account expectation is a consistency check, never authentication or authorization.
+export const requireExpectedActor: RequestHandler = (req, _res, next) => {
+  const expected = req.get('X-Credit-Actor');
+  if (!expected) return next();
+  if (!req.auth) return next(new AppError('AUTH_REQUIRED', 401, 'Authentication is required'));
+  if (expected !== req.auth.userId)
+    return next(
+      new AppError(
+        'SESSION_ACTOR_CHANGED',
+        409,
+        'Your account changed. Sign in again before continuing.',
+      ),
+    );
+  next();
+};

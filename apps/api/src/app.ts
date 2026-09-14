@@ -7,7 +7,7 @@ import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import type { DestinationStream, Logger } from 'pino';
 import type { AuthService } from './auth/authService.js';
-import { authenticate, authenticatePrincipal } from './auth/middleware.js';
+import { authenticate, authenticatePrincipal, requireExpectedActor } from './auth/middleware.js';
 import type { BetterAuthInstance } from './auth/betterAuth.js';
 import { resolveBetterAuthPrincipal } from './auth/betterAuth.js';
 import { createAuthFailureAuditMiddleware } from './auth/authAudit.js';
@@ -145,6 +145,7 @@ export function createApp(
     );
     if (!betterAuth) app.use('/api/auth', createAuthRouter(auth, env));
     app.use('/api/me', createMeRouter(auth, prisma));
+    app.use('/api/v1', requireExpectedActor);
     if (goals) {
       app.use('/api/goals', createGoalRouter(goals));
       app.use('/api/v1/client/goals', createGoalRouter(goals));

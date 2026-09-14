@@ -275,7 +275,7 @@ export function StaffMfaPage() {
         method: 'POST',
         body: JSON.stringify({ code, trustDevice: false }),
       });
-      await refresh();
+      await refresh(true);
       navigate(returnTo, { replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That code could not be verified');
