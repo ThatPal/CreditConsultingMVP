@@ -1,6 +1,6 @@
 import { ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { apiRequest } from '../../auth/api';
 import { theme } from '../../theme';
@@ -20,12 +20,13 @@ const saved: DraftResult = {
     unavailableFiles: 0,
   },
 };
-function setup(readOnly = false) {
+function setup(
+  readOnly = false,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <ThemeProvider theme={theme}>
-      <QueryClientProvider
-        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-      >
+      <QueryClientProvider client={client}>
         <SavedPlanResponse
           item={{ id: 'step', type: 'ACTION', completionMode: 'ACKNOWLEDGEMENT' }}
           readOnly={readOnly}
@@ -232,4 +233,60 @@ test('a discard conflict keeps the draft and allows refresh without retrying del
   );
   expect(request.mock.calls.filter(([, options]) => options?.method === 'DELETE')).toHaveLength(1);
   expect(screen.getByRole('button', { name: 'Resume saved response' })).toBeVisible();
+});
+
+test.each(['newer', 'deleted'] as const)(
+  'a %s cached draft cannot silently replace or overwrite local answers',
+  async (change) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    request.mockResolvedValue(saved);
+    setup(false, client);
+    fireEvent.click(await screen.findByRole('button', { name: 'Resume saved response' }));
+    const input = screen.getByRole('textbox', { name: 'Optional note for your consultant' });
+    fireEvent.change(input, { target: { value: 'Keep my local text' } });
+    const updated = {
+      ...saved,
+      draft:
+        change === 'deleted' ? null : { ...saved.draft!, revision: 2, note: 'Other tab answer' },
+    };
+    await act(async () => {
+      client.setQueryData(['plan-response-draft', 'step'], updated);
+    });
+    await screen.findByRole('button', { name: 'Review saved response update' });
+    expect(input).toHaveValue('Keep my local text');
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save completed step' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Review saved response update' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load saved response' }));
+    if (change === 'newer')
+      fireEvent.click(await screen.findByRole('button', { name: 'Resume saved response' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Optional note for your consultant' }),
+      ).toHaveValue(change === 'newer' ? 'Other tab answer' : ''),
+    );
+    expect(request.mock.calls.every(([, options]) => !options?.method)).toBe(true);
+  },
+);
+
+test('a failed draft refresh preserves local text and pauses writes until lookup recovers', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  request.mockResolvedValue(saved);
+  setup(false, client);
+  fireEvent.click(await screen.findByRole('button', { name: 'Resume saved response' }));
+  const input = screen.getByRole('textbox', { name: 'Optional note for your consultant' });
+  fireEvent.change(input, { target: { value: 'Local response survives' } });
+  await act(async () => {
+    client
+      .getQueryCache()
+      .find({ queryKey: ['plan-response-draft', 'step'] })!
+      .setState({
+        status: 'error',
+        fetchStatus: 'idle',
+        error: new Error('Lookup unavailable'),
+      });
+  });
+  await screen.findByRole('button', { name: 'Retry draft lookup' });
+  expect(input).toHaveValue('Local response survives');
+  expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
 });

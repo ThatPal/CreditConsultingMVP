@@ -254,3 +254,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 30: Guarded live Plan updates](IMPLEMENTATION-30.md) retains displayed answers during dirty/busy response work, pauses writes when an update arrives, and requires explicit loading. Independent draft-query/session transitions and broader qualification remain open.
+
+
+[Pass 31: Reviewed draft context and refresh guard](IMPLEMENTATION-31.md) binds edits to reviewed draft state, preserves text across cached changes and requires explicit reload. Rejected-lookup transport qualification, server draft identity and session-loss recovery remain open.

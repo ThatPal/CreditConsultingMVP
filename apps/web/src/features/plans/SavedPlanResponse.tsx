@@ -1,5 +1,16 @@
-import { useState } from 'react';
-import { Alert, Button, Stack, TextField, Typography } from '@mui/material';
+import { ResponseWritePause, usePendingNavigationWork } from '../../NavigationProtection';
+import { useContext, useEffect, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../auth/api';
 import { PlanResponse, type ResponseItem } from './PlanResponse';
@@ -50,6 +61,14 @@ export function SavedPlanResponse({
 }) {
   const client = useQueryClient();
   const [choice, setChoice] = useState<'resume' | 'blank' | null>(null);
+  const [accepted, setAccepted] = useState<DraftResult | null>(null);
+  const [generation, setGeneration] = useState(0);
+  const [confirmReload, setConfirmReload] = useState(false);
+  const [writeBusy, setWriteBusy] = useState(false);
+  const [checkNeeded, setCheckNeeded] = useState(false);
+  const pending = usePendingNavigationWork();
+  const inheritedPause = useContext(ResponseWritePause);
+
   const queryKey = ['plan-response-draft', item.id];
   const path = `/api/v1/client/plan/items/${item.id}/draft`;
   const query = useQuery({
@@ -58,10 +77,25 @@ export function SavedPlanResponse({
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: Infinity,
+    throwOnError: false,
   });
-  if (query.isLoading)
+  useEffect(() => {
+    // A recovery prompt has no editable local answers; an open form does.
+    if (query.data && (!accepted || (choice === null && accepted.draft))) setAccepted(query.data);
+  }, [query.data, accepted, choice]);
+  const identity = (value: DraftResult | null | undefined) =>
+    JSON.stringify([
+      value?.contextVersion,
+      value?.active,
+      value?.draft?.id,
+      value?.draft?.revision ?? 0,
+    ]);
+  const changed = Boolean(accepted && query.data && identity(accepted) !== identity(query.data));
+  const blocked = inheritedPause || changed || query.isError;
+  const busy = pending.busy || writeBusy;
+  if (query.isLoading && !accepted)
     return <Typography role="status">Checking for a saved response...</Typography>;
-  if (query.isError || !query.data)
+  if ((query.isError || !query.data) && !accepted)
     return (
       <Alert severity="error" action={<Button onClick={() => void query.refetch()}>Retry</Button>}>
         Your saved response could not be loaded.
@@ -71,8 +105,8 @@ export function SavedPlanResponse({
     const result = await query.refetch();
     if (result.isError) throw result.error;
   };
-  const saved = query.data.draft;
-  const data = query.data;
+  const data = accepted ?? query.data!;
+  const saved = data.draft;
   const discardSaved =
     saved?.id && saved.itemId ? (
       <DiscardPlanDraft
@@ -153,34 +187,112 @@ export function SavedPlanResponse({
           </Alert>
         )}
         <PlanResponse
+          key={generation}
           draftRevision={data.draft?.revision ?? 0}
           draftContextVersion={data.contextVersion}
           item={item}
           draft={choice === 'resume' && saved ? saved : undefined}
           onSaveDraft={async (draft) => {
-            const current = client.getQueryData<DraftResult>(queryKey) ?? query.data!;
-            const result = await apiRequest<DraftResult>(path, {
-              method: 'PUT',
-              body: JSON.stringify({
-                expectedRevision: current.draft?.revision ?? 0,
-                contextVersion: current.contextVersion,
-                values: draft.values,
-                note: draft.note,
-                help: draft.help,
-                documentIds: draft.files.map((file) => file.documentId),
-              }),
-            });
-            setChoice('resume');
-            client.setQueryData(queryKey, result);
+            if (blocked)
+              throw new Error(
+                'Review the saved response update before saving. Your local answers are still here.',
+              );
+            const current = data;
+            setWriteBusy(true);
+            try {
+              const result = await apiRequest<DraftResult>(path, {
+                method: 'PUT',
+                body: JSON.stringify({
+                  expectedRevision: current.draft?.revision ?? 0,
+                  contextVersion: current.contextVersion,
+                  values: draft.values,
+                  note: draft.note,
+                  help: draft.help,
+                  documentIds: draft.files.map((file) => file.documentId),
+                }),
+              });
+              setCheckNeeded(false);
+              setChoice('resume');
+              setAccepted(result);
+              client.setQueryData(queryKey, result);
+            } catch (error) {
+              setCheckNeeded(true);
+              throw error;
+            } finally {
+              setWriteBusy(false);
+            }
           }}
         />
       </>
     );
   };
   return (
-    <Stack spacing={2}>
-      {data.previousDraft && <PreviousPlanDraft draft={data.previousDraft} onRefresh={refresh} />}
-      {renderCurrent()}
-    </Stack>
+    <ResponseWritePause.Provider value={blocked}>
+      <Stack spacing={2}>
+        {checkNeeded && !changed && (
+          <Button disabled={busy || query.isFetching} onClick={() => void query.refetch()}>
+            Check latest saved response
+          </Button>
+        )}
+        {changed && (
+          <Alert
+            severity="warning"
+            action={
+              <Button disabled={busy} onClick={() => setConfirmReload(true)}>
+                Review saved response update
+              </Button>
+            }
+          >
+            The saved response changed outside this form. Your local answers are still here. Saving
+            and submission are paused.
+          </Alert>
+        )}
+        {query.isError && accepted && (
+          <Alert
+            severity="error"
+            action={
+              <Button disabled={busy} onClick={() => void query.refetch()}>
+                Retry draft lookup
+              </Button>
+            }
+          >
+            The saved response could not be refreshed. Your local answers remain here.
+          </Alert>
+        )}
+        <Dialog
+          open={confirmReload}
+          onClose={() => {
+            if (!busy) setConfirmReload(false);
+          }}
+          aria-label="Load saved response update"
+        >
+          <DialogTitle>Load the saved response update?</DialogTitle>
+          <DialogContent>
+            Copy any local text you want to keep. Loading this update replaces this form with the
+            saved response and discards unsaved edits.
+          </DialogContent>
+          <DialogActions>
+            <Button disabled={busy} onClick={() => setConfirmReload(false)}>
+              Keep local answers
+            </Button>
+            <Button
+              disabled={busy || !query.data || query.isError}
+              onClick={() => {
+                setAccepted(query.data!);
+                setChoice(null);
+                setGeneration((value) => value + 1);
+                setConfirmReload(false);
+              }}
+            >
+              Load saved response
+            </Button>
+          </DialogActions>
+        </Dialog>
+        {query.data?.previousDraft && (
+          <PreviousPlanDraft draft={query.data.previousDraft} onRefresh={refresh} />
+        )}
+        {renderCurrent()}
+      </Stack>
+    </ResponseWritePause.Provider>
   );
 }
