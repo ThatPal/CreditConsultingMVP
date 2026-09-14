@@ -81,3 +81,28 @@ describe('CRM-02 Work Queue', () => {
     );
   });
 });
+
+test('does not offer navigation to a guessed workspace for an unavailable source', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        ...response,
+        items: [{ ...response.items[0], deepLink: null, navigationUnavailable: true }],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    ),
+  );
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <WorkQueuePage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  await screen.findByText(/Deadline question/);
+  expect(screen.queryByRole('link', { name: 'Open workspace' })).not.toBeInTheDocument();
+  for (const action of screen.getAllByText('Source unavailable'))
+    expect(action.closest('a')).toHaveAttribute('aria-disabled', 'true');
+});

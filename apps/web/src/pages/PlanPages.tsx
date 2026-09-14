@@ -19,6 +19,7 @@ import { ResponseHistory, type ResponseItem } from '../features/plans/PlanRespon
 import type { PlanItem as Item } from '../features/plans/editor';
 
 export type ClientPlanItem = ResponseItem & {
+  stableKey?: string;
   id: string;
   type: Item['type'];
   completionMode: Item['completionMode'];

@@ -1,3 +1,4 @@
+import { resolvePlanWorkLinks } from '../plans/workLinks.js';
 import { Router } from 'express';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -2093,7 +2094,7 @@ export function createOperationsRouter(
         }),
       ]);
       res.json({
-        items,
+        items: await resolvePlanWorkLinks(prisma, items),
         page: query.page,
         pageSize: query.pageSize,
         total,

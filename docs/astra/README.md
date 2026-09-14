@@ -47,3 +47,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 20: Grouped private-Plan lifecycle](IMPLEMENTATION-20.md) delivers cancellation controls, scoped replay-safe cancellation, retained history/reasons and related reminder closure together. API/web each built once at the batch boundary. Published-Plan replacement and A5 qualification remain open.
+
+
+[Pass 21: Queue-to-Plan navigation](IMPLEMENTATION-21.md) resolves legacy source links at read time, focuses stable response steps, handles unavailable sources and protects unsent review notes. Published-Plan replacement and operational/browser qualification remain open.

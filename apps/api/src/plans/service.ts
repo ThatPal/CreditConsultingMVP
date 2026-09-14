@@ -1283,7 +1283,7 @@ export async function executePlanItem(
             reasonCode: nextStatus,
             dedupeKey: `plan-item:${item.id}:${nextStatus}`,
             deepLink: {
-              route: `/crm/clients/${input.clientId}/plan?planId=${item.planVersion.planId}`,
+              route: `/crm/clients/${input.clientId}/plan?planId=${item.planVersion.planId}&stepKey=${encodeURIComponent(item.stableKey)}`,
             },
             neededSince: new Date(),
           },

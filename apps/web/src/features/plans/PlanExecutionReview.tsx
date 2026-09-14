@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useNavigationProtection } from '../../NavigationProtection';
 import { apiRequest } from '../../auth/api';
 import type { ClientPlanResponse } from '../../pages/PlanPages';
 import { ResponseHistory } from './PlanResponse';
 
 export function PlanExecutionReview({ clientId, planId }: { clientId: string; planId?: string }) {
   const client = useQueryClient();
+  const [search] = useSearchParams();
+  const requestedStep = search.get('stepKey');
   const [selected, setSelected] = useState('');
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(Boolean(requestedStep));
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [localError, setLocalError] = useState('');
   const query = useQuery({
@@ -28,7 +31,11 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
         (item.status === 'AVAILABLE' && item.completionMode === 'CONSULTANT_VERIFY'),
     ) ?? [];
   const visibleItems = showAll ? (plan?.version?.items ?? []) : pending;
-  const item = visibleItems.find((item) => item.id === selected) ?? visibleItems[0];
+  const item = selected
+    ? visibleItems.find((item) => item.id === selected)
+    : requestedStep
+      ? visibleItems.find((item) => item.stableKey === requestedStep)
+      : visibleItems[0];
   const canReview = Boolean(item && pending.some((row) => row.id === item.id));
   const needsHelp = item?.status === 'UNABLE';
   const note = notes[item?.id ?? ''] ?? '';
@@ -64,6 +71,10 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
       );
     },
   });
+  useNavigationProtection(
+    Object.values(notes).some((note) => Boolean(note.trim())),
+    review.isPending,
+  );
   if (query.isError)
     return (
       <Alert severity="error">
@@ -72,7 +83,13 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
       </Alert>
     );
   if (query.isLoading) return <Typography role="status">Loading Plan responses...</Typography>;
-  if (!plan?.version?.items.length) return null;
+  if (!plan?.version?.items.length)
+    return requestedStep ? (
+      <Alert severity="info">
+        This linked step is not available in the Plan's current published version. Review the saved
+        version history for earlier work.
+      </Alert>
+    ) : null;
   return (
     <Box
       component="section"
@@ -85,6 +102,12 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
       }}
     >
       <Stack spacing={2}>
+        {requestedStep && !item && (
+          <Alert severity="info">
+            The linked step is not in this view. Choose another step or inspect the saved version
+            history.
+          </Alert>
+        )}
         <Typography variant="overline">Published Plan · Response review</Typography>
         <Typography variant="h3">
           {showAll
@@ -107,7 +130,6 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
               onClick={() => {
                 setShowAll(all);
                 setSelected('');
-                setNote('');
                 setLocalError('');
                 review.reset();
               }}
@@ -137,7 +159,6 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
             disabled={review.isPending}
             onChange={(e) => {
               setSelected(e.target.value);
-              setNote('');
               setLocalError('');
               review.reset();
             }}

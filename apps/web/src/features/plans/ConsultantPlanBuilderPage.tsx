@@ -506,7 +506,11 @@ function PlanBuilder({
         </Alert>
       )}
       {editor.planId && (
-        <PlanExecutionReview key={editor.planId} clientId={clientId} planId={editor.planId} />
+        <PlanExecutionReview
+          key={`${editor.planId}:${search.get('stepKey') ?? ''}`}
+          clientId={clientId}
+          planId={editor.planId}
+        />
       )}
       {editor.planId && (
         <PlanVersionHistory

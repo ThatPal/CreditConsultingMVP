@@ -208,6 +208,7 @@ export function WorkQueuePage() {
     version: number;
     assigneeId: string | null;
     reasonCode: string | null;
+    navigationUnavailable?: boolean;
     deepLink: { route?: string; params?: { caseId?: string } } | null;
     client: { firstName: string; lastName: string };
     assignee: { name: string | null; email: string } | null;
@@ -249,6 +250,7 @@ export function WorkQueuePage() {
         actions={
           queue.data?.items[0] ? (
             <Button
+              disabled={queue.data.items[0].navigationUnavailable}
               component={Link}
               to={
                 queue.data.items[0].deepLink?.route
@@ -259,7 +261,7 @@ export function WorkQueuePage() {
               }
               variant="contained"
             >
-              Start highest priority
+              {queue.data.items[0].navigationUnavailable ? 'Source unavailable' : 'Start highest priority'}
             </Button>
           ) : undefined
         }
@@ -443,8 +445,8 @@ export function WorkQueuePage() {
                           Claim
                         </Button>
                       )}
-                      <Button component={Link} to={href} variant="contained">
-                        Open workspace
+                      <Button component={Link} to={href} variant="contained" disabled={item.navigationUnavailable}>
+                        {item.navigationUnavailable ? 'Source unavailable' : 'Open workspace'}
                       </Button>
                     </Stack>
                   </Stack>

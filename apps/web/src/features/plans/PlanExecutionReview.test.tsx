@@ -1,7 +1,8 @@
 import { ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, createMemoryRouter, RouterProvider, Link } from 'react-router-dom';
+import { NavigationProtection } from '../../NavigationProtection';
 import { expect, test, vi } from 'vitest';
 import { apiRequest } from '../../auth/api';
 import { theme } from '../../theme';
@@ -45,7 +46,9 @@ test('requires a client-visible correction message and binds review to the displ
     </ThemeProvider>,
   );
   await screen.findByText('1 step needs verification');
-  expect(request).toHaveBeenCalledWith('/api/v1/consultant/clients/client/plan/execution?planId=selected-plan');
+  expect(request).toHaveBeenCalledWith(
+    '/api/v1/consultant/clients/client/plan/execution?planId=selected-plan',
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Request correction' }));
   await screen.findByText('Explain what the client should correct.');
   expect(request.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
@@ -130,4 +133,132 @@ test('keeps completed responses accessible with no decision controls', async () 
   expect(await screen.findByText('Client submitted an update')).toBeVisible();
   expect(screen.queryByRole('textbox', { name: 'Message to the client' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Verify completion' })).not.toBeInTheDocument();
+});
+
+test('opens a stable linked step instead of silently reviewing the first step', async () => {
+  vi.mocked(apiRequest).mockReset();
+  vi.mocked(apiRequest).mockResolvedValue({
+    plan: {
+      status: 'ACTIVE',
+      version: {
+        items: [
+          {
+            id: 'first',
+            stableKey: 'first',
+            title: 'First response',
+            status: 'COMPLETED',
+            completionMode: 'ACKNOWLEDGEMENT',
+            history: [],
+          },
+          {
+            id: 'new-version-id',
+            stableKey: 'linked',
+            title: 'Linked response',
+            body: 'This is the requested response.',
+            status: 'COMPLETED',
+            completionMode: 'ACKNOWLEDGEMENT',
+            history: [],
+          },
+        ],
+      },
+    },
+  });
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={['/plan?stepKey=linked']}>
+          <PlanExecutionReview clientId="client" planId="plan" />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  expect(await screen.findByText('This is the requested response.')).toBeVisible();
+  expect(screen.getByRole('combobox', { name: 'Step to review' })).toHaveTextContent(
+    'Linked response',
+  );
+});
+
+test('a stale step link explains the missing source instead of selecting another response', async () => {
+  vi.mocked(apiRequest).mockResolvedValue({
+    plan: {
+      status: 'ACTIVE',
+      version: {
+        items: [
+          {
+            id: 'other',
+            stableKey: 'other',
+            title: 'Other response',
+            body: 'Do not select this automatically',
+            status: 'COMPLETED',
+            history: [],
+          },
+        ],
+      },
+    },
+  });
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={['/plan?stepKey=missing']}>
+          <PlanExecutionReview clientId="client" planId="plan" />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  expect(await screen.findByText(/The linked step is not in this view/)).toBeVisible();
+  expect(screen.queryByText('Do not select this automatically')).not.toBeInTheDocument();
+});
+
+test('keeps unsent review notes across filters and guards leaving the Plan', async () => {
+  vi.mocked(apiRequest).mockResolvedValue({
+    plan: {
+      status: 'ACTIVE',
+      version: {
+        items: [
+          {
+            id: 'pending',
+            stableKey: 'pending',
+            title: 'Pending review',
+            status: 'AWAITING_VERIFICATION',
+            completionMode: 'CLIENT_REPORT_CONSULTANT_VERIFY',
+            latestOutcomeId: 'evidence',
+            history: [],
+          },
+        ],
+      },
+    },
+  });
+  const router = createMemoryRouter(
+    [
+      {
+        path: '*',
+        element: (
+          <NavigationProtection>
+            <PlanExecutionReview clientId="client" planId="plan" />
+            <Link to="/elsewhere">Leave Plan</Link>
+          </NavigationProtection>
+        ),
+      },
+    ],
+    { initialEntries: ['/plan'] },
+  );
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  const field = await screen.findByRole('textbox', { name: 'Message to the client' });
+  fireEvent.change(field, { target: { value: 'Please clarify the amount' } });
+  fireEvent.click(screen.getByRole('button', { name: 'All steps (1)' }));
+  expect(screen.getByRole('textbox', { name: 'Message to the client' })).toHaveValue(
+    'Please clarify the amount',
+  );
+  fireEvent.click(screen.getByRole('link', { name: 'Leave Plan' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Stay on this page' }));
+  expect(router.state.location.pathname).toBe('/plan');
+  expect(await screen.findByRole('textbox', { name: 'Message to the client' })).toHaveValue(
+    'Please clarify the amount',
+  );
 });
