@@ -8,10 +8,12 @@ test('recovery keys isolate actors and clients; sign-out cleanup preserves unrel
   expect(first).not.toBe(planRecoveryKey('first', 'other'));
   sessionStorage.setItem(first, 'private');
   sessionStorage.setItem(second, 'private');
+  sessionStorage.setItem('astra:plan-review-notes:v1:actor:client:plan', 'private');
   sessionStorage.setItem('unrelated', 'keep');
   clearPlanTabRecovery();
   expect(sessionStorage.getItem(first)).toBeNull();
   expect(sessionStorage.getItem(second)).toBeNull();
+  expect(sessionStorage.getItem('astra:plan-review-notes:v1:actor:client:plan')).toBeNull();
   expect(sessionStorage.getItem('unrelated')).toBe('keep');
   sessionStorage.clear();
 });

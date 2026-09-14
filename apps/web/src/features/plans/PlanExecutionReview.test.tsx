@@ -3,10 +3,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, createMemoryRouter, RouterProvider, Link } from 'react-router-dom';
 import { NavigationProtection } from '../../NavigationProtection';
-import { expect, test, vi } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 import { apiRequest } from '../../auth/api';
 import { theme } from '../../theme';
 import { PlanExecutionReview } from './PlanExecutionReview';
+beforeEach(() => {
+  sessionStorage.clear();
+  vi.mocked(apiRequest).mockReset();
+});
 vi.mock('../../auth/api', () => ({ apiRequest: vi.fn() }));
 test('requires a client-visible correction message and binds review to the displayed evidence', async () => {
   const request = vi.mocked(apiRequest);
@@ -261,4 +265,135 @@ test('keeps unsent review notes across filters and guards leaving the Plan', asy
   expect(await screen.findByRole('textbox', { name: 'Message to the client' })).toHaveValue(
     'Please clarify the amount',
   );
+});
+
+const notePlan = (evidenceId: string) => ({
+  plan: {
+    id: 'plan',
+    status: 'ACTIVE',
+    version: {
+      items: [
+        {
+          id: 'item',
+          stableKey: 'follow-up',
+          title: 'Follow-up response',
+          status: 'AWAITING_VERIFICATION',
+          completionMode: 'CLIENT_REPORT_CONSULTANT_VERIFY',
+          latestOutcomeId: evidenceId,
+          history: [],
+        },
+      ],
+    },
+  },
+});
+function noteWorkspace(actorId = 'consultant') {
+  return render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <PlanExecutionReview clientId="client" planId="plan" actorId={actorId} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+}
+test('recovers unsent wording after reload and blocks sending it against changed evidence', async () => {
+  vi.mocked(apiRequest).mockResolvedValue(notePlan('old-evidence'));
+  const first = noteWorkspace();
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Message to the client' }), {
+    target: { value: 'Please confirm the balance' },
+  });
+  await waitFor(() =>
+    expect(sessionStorage.getItem('astra:plan-review-notes:v1:consultant:client:plan')).toContain(
+      'Please confirm the balance',
+    ),
+  );
+  first.unmount();
+  vi.mocked(apiRequest).mockResolvedValue(notePlan('new-evidence'));
+  noteWorkspace();
+  expect(await screen.findByRole('textbox', { name: 'Message to the client' })).toHaveValue(
+    'Please confirm the balance',
+  );
+  expect(screen.getByRole('button', { name: 'Request correction' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'I reviewed the latest response' }));
+  expect(screen.getByRole('button', { name: 'Request correction' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Request correction' }));
+  await waitFor(() =>
+    expect(sessionStorage.getItem('astra:plan-review-notes:v1:consultant:client:plan')).toBeNull(),
+  );
+  const sent = vi.mocked(apiRequest).mock.calls.find(([, options]) => options?.method === 'POST');
+  expect(JSON.parse(sent![1]!.body as string)).toMatchObject({
+    expectedOutcomeId: 'new-evidence',
+    note: 'Please confirm the balance',
+  });
+});
+
+test('does not expose another consultant copy and retains orphan text for explicit discard', async () => {
+  sessionStorage.setItem(
+    'astra:plan-review-notes:v1:first:client:plan',
+    JSON.stringify({
+      format: 1,
+      notes: {
+        old: {
+          text: 'Private old response note',
+          title: 'Earlier step',
+          evidenceId: 'old',
+          updatedAt: Date.now(),
+        },
+      },
+    }),
+  );
+  vi.mocked(apiRequest).mockResolvedValue(notePlan('evidence'));
+  const other = noteWorkspace('second');
+  await screen.findByRole('textbox', { name: 'Message to the client' });
+  expect(screen.queryByRole('button', { name: /Unsent messages/ })).not.toBeInTheDocument();
+  other.unmount();
+  noteWorkspace('first');
+  fireEvent.click(await screen.findByRole('button', { name: 'Unsent messages (1)' }));
+  expect(screen.getByText('Private old response note')).toBeVisible();
+  expect(screen.getByText(/earlier or unavailable step/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Discard message for Earlier step' }));
+  await waitFor(() =>
+    expect(sessionStorage.getItem('astra:plan-review-notes:v1:first:client:plan')).toBeNull(),
+  );
+});
+
+test('expired review copies are not restored into a current response', async () => {
+  sessionStorage.setItem(
+    'astra:plan-review-notes:v1:consultant:client:plan',
+    JSON.stringify({
+      format: 1,
+      notes: {
+        item: {
+          text: 'Expired wording',
+          title: 'Follow-up response',
+          evidenceId: 'evidence',
+          updatedAt: Date.now() - 86400001,
+        },
+      },
+    }),
+  );
+  vi.mocked(apiRequest).mockResolvedValue(notePlan('evidence'));
+  noteWorkspace();
+  expect(await screen.findByRole('textbox', { name: 'Message to the client' })).toHaveValue('');
+  expect(sessionStorage.getItem('astra:plan-review-notes:v1:consultant:client:plan')).toBeNull();
+});
+
+test('storage denial leaves review usable and clearly reports recovery unavailability', async () => {
+  const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('Storage unavailable');
+  });
+  try {
+    vi.mocked(apiRequest).mockResolvedValue(notePlan('evidence'));
+    noteWorkspace();
+    expect(await screen.findByText(/could not keep a recovery copy/)).toBeVisible();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message to the client' }), {
+      target: { value: 'Still editable' },
+    });
+    expect(screen.getByRole('textbox', { name: 'Message to the client' })).toHaveValue(
+      'Still editable',
+    );
+  } finally {
+    read.mockRestore();
+  }
 });

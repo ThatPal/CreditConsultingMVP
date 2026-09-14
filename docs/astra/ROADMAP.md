@@ -230,3 +230,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 22: Approval-context concurrency](IMPLEMENTATION-22.md) guards the reviewed client publication, serializes competing approvals and provides explicit refresh/re-review. Formal published-Plan replacement and operational/browser qualification remain open.
+
+
+[Pass 23: Consultant message recovery](IMPLEMENTATION-23.md) adds isolated tab copies, orphan-message handling, changed-evidence review, cleanup and focused MFA returns. Server-backed drafts, published-Plan handoff and visual/operational qualification remain open.

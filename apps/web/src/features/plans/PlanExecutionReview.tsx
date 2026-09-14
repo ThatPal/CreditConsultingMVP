@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { reviewNotesKey, useReviewNotes } from './reviewNotes';
+import { Alert, Box, Button, Drawer, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useNavigationProtection } from '../../NavigationProtection';
@@ -7,13 +8,23 @@ import { apiRequest } from '../../auth/api';
 import type { ClientPlanResponse } from '../../pages/PlanPages';
 import { ResponseHistory } from './PlanResponse';
 
-export function PlanExecutionReview({ clientId, planId }: { clientId: string; planId?: string }) {
+export function PlanExecutionReview({
+  clientId,
+  planId,
+  actorId,
+}: {
+  clientId: string;
+  planId?: string;
+  actorId?: string;
+}) {
   const client = useQueryClient();
   const [search] = useSearchParams();
   const requestedStep = search.get('stepKey');
   const [selected, setSelected] = useState('');
   const [showAll, setShowAll] = useState(Boolean(requestedStep));
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [notesOpen, setNotesOpen] = useState(false);
+  const storageKey = actorId && planId ? reviewNotesKey(actorId, clientId, planId) : undefined;
+  const { notes, put, failed: storageFailed } = useReviewNotes(storageKey);
   const [localError, setLocalError] = useState('');
   const query = useQuery({
     queryKey: planId ? ['plan-execution', clientId, planId] : ['plan-execution', clientId],
@@ -38,9 +49,18 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
       : visibleItems[0];
   const canReview = Boolean(item && pending.some((row) => row.id === item.id));
   const needsHelp = item?.status === 'UNABLE';
-  const note = notes[item?.id ?? ''] ?? '';
-  const setNote = (value: string) =>
-    setNotes((current) => ({ ...current, [item?.id ?? '']: value }));
+  const savedNote = notes[item?.id ?? ''];
+  const note = savedNote?.text ?? '';
+  const staleNote = Boolean(savedNote && savedNote.evidenceId !== (item?.latestOutcomeId ?? null));
+  const setNote = (value: string) => {
+    if (item)
+      put(item.id, {
+        text: value,
+        title: item.title,
+        evidenceId: savedNote ? savedNote.evidenceId : (item.latestOutcomeId ?? null),
+        updatedAt: Date.now(),
+      });
+  };
   const review = useMutation({
     mutationFn: ({
       decision,
@@ -55,8 +75,8 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
         method: 'POST',
         body: JSON.stringify({ decision, expectedOutcomeId: evidenceId, note: note.trim() }),
       }),
-    onSuccess: async () => {
-      setNote('');
+    onSuccess: async (_result, variables) => {
+      put(variables.itemId, null);
       setLocalError('');
       await Promise.all(
         [
@@ -72,17 +92,71 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
     },
   });
   useNavigationProtection(
-    Object.values(notes).some((note) => Boolean(note.trim())),
+    Object.values(notes).some((note) => Boolean(note.text.trim())),
     review.isPending,
+  );
+  useEffect(() => {
+    if (!Object.keys(notes).length) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [notes]);
+  const noteRecovery = (
+    <>
+      {Object.keys(notes).length > 0 && (
+        <Button onClick={() => setNotesOpen(true)}>
+          Unsent messages ({Object.keys(notes).length})
+        </Button>
+      )}
+      {storageKey && (Object.keys(notes).length > 0 || storageFailed) && (
+        <Alert severity={storageFailed ? 'warning' : 'info'}>
+          {storageFailed
+            ? 'This browser could not keep a recovery copy. Keep this page open until you send or copy your messages.'
+            : 'Unsent messages are private and kept in this tab for up to 24 hours. Signing out clears them. They have not been sent to the client.'}
+        </Alert>
+      )}
+      <Drawer
+        anchor="right"
+        open={notesOpen}
+        onClose={() => setNotesOpen(false)}
+        slotProps={{ paper: { sx: { width: { xs: '100%', md: 520 }, p: 3 } } }}
+      >
+        <Stack spacing={2}>
+          <Typography variant="h2">Unsent review messages</Typography>
+          <Button onClick={() => setNotesOpen(false)}>Close messages</Button>
+          {Object.entries(notes).map(([id, saved]) => (
+            <Stack key={id} spacing={1}>
+              <Typography variant="h3">{saved.title}</Typography>
+              <Typography sx={{ whiteSpace: 'pre-wrap' }}>{saved.text}</Typography>
+              {!plan?.version.items.some((item) => item.id === id) && (
+                <Alert severity="info">
+                  This message belongs to an earlier or unavailable step. It has not been attached
+                  to another response.
+                </Alert>
+              )}
+              <Button disabled={review.isPending} onClick={() => put(id, null)}>
+                Discard message for {saved.title}
+              </Button>
+            </Stack>
+          ))}
+        </Stack>
+      </Drawer>
+    </>
   );
   if (query.isError)
     return (
       <Alert severity="error">
+        {noteRecovery}
         Plan responses could not be loaded.{' '}
         <Button onClick={() => void query.refetch()}>Retry</Button>
       </Alert>
     );
   if (query.isLoading) return <Typography role="status">Loading Plan responses...</Typography>;
+  if (!plan?.version?.items.length && Object.keys(notes).length)
+    return <Stack spacing={2}>{noteRecovery}</Stack>;
   if (!plan?.version?.items.length)
     return requestedStep ? (
       <Alert severity="info">
@@ -102,6 +176,7 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
       }}
     >
       <Stack spacing={2}>
+        {noteRecovery}
         {requestedStep && !item && (
           <Alert severity="info">
             The linked step is not in this view. Choose another step or inspect the saved version
@@ -201,13 +276,32 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
                   onChange={(e) => setNote(e.target.value)}
                   slotProps={{ htmlInput: { maxLength: 2000 } }}
                 />
+                {staleNote && (
+                  <Alert severity="warning">
+                    The client response changed since this message was written. Review the latest
+                    evidence before using it.
+                    <Button
+                      disabled={review.isPending}
+                      onClick={() => {
+                        if (item && savedNote)
+                          put(item.id, {
+                            ...savedNote,
+                            evidenceId: item.latestOutcomeId ?? null,
+                            updatedAt: Date.now(),
+                          });
+                      }}
+                    >
+                      I reviewed the latest response
+                    </Button>
+                  </Alert>
+                )}
                 {(localError || review.isError) && (
                   <Alert severity="error">
                     {localError || review.error?.message}
                     {review.error && 'status' in review.error && review.error.status === 403 && (
                       <Button
                         component={Link}
-                        to={`/mfa?mode=challenge&returnTo=${encodeURIComponent(`/crm/clients/${clientId}/plan`)}`}
+                        to={`/mfa?mode=challenge&returnTo=${encodeURIComponent(`/crm/clients/${clientId}/plan?${new URLSearchParams({ ...(planId ? { planId } : {}), ...(item?.stableKey ? { stepKey: item.stableKey } : {}) }).toString()}`)}`}
                       >
                         Verify identity and return
                       </Button>
@@ -217,7 +311,7 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
                 <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                   <Button
                     variant="contained"
-                    disabled={review.isPending || plan?.status !== 'ACTIVE'}
+                    disabled={review.isPending || staleNote || plan?.status !== 'ACTIVE'}
                     onClick={() => {
                       if (needsHelp && !note.trim()) {
                         setLocalError('Explain how the client can continue.');
@@ -234,7 +328,7 @@ export function PlanExecutionReview({ clientId, planId }: { clientId: string; pl
                   </Button>
                   {item.status === 'AWAITING_VERIFICATION' && (
                     <Button
-                      disabled={review.isPending || plan?.status !== 'ACTIVE'}
+                      disabled={review.isPending || staleNote || plan?.status !== 'ACTIVE'}
                       onClick={() => {
                         if (!note.trim()) {
                           setLocalError('Explain what the client should correct.');

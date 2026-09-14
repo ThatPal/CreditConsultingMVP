@@ -527,6 +527,7 @@ function PlanBuilder({
           key={`${editor.planId}:${search.get('stepKey') ?? ''}`}
           clientId={clientId}
           planId={editor.planId}
+          actorId={actorId}
         />
       )}
       {editor.planId && (
