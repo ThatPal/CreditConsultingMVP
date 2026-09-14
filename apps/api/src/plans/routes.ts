@@ -8,6 +8,7 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import {
   approvePlan,
+  cancelPrivatePlan,
   getPlanVersionHistory,
   getClientPlan,
   getResponseDraft,
@@ -83,6 +84,32 @@ export function createPlanRouter(
   recorder?: AuthorizationDenialRecorder,
 ) {
   const router = Router();
+  router.post(
+    '/consultant/clients/:clientId/plans/:planId/cancel',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.publish', 'clientId', undefined, recorder),
+    async (req, res, next) => {
+      try {
+        const body = z
+          .object({
+            expectedVersion: z.number().int().positive(),
+            reason: z.string().trim().min(1).max(2000),
+          })
+          .parse(req.body);
+        res.json(
+          await cancelPrivatePlan(prisma, {
+            ...body,
+            clientId: req.params.clientId as string,
+            planId: req.params.planId as string,
+            actorId: req.auth!.userId,
+            key: z.string().uuid().parse(req.get('Idempotency-Key')),
+          }),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.get(
     '/consultant/clients/:clientId/plans',
     requireRole('CONSULTANT'),
@@ -175,21 +202,19 @@ export function createPlanRouter(
     requireCapability(authorization, 'review.publish', 'clientId', undefined, recorder),
     async (req, res, next) => {
       try {
-        res
-          .status(201)
-          .json(
-            await createPlanDraft(
-              prisma,
-              req.params.clientId as string,
-              draftSchema.parse(req.body) as Parameters<typeof createPlanDraft>[2],
-              req.get('Idempotency-Key')
-                ? {
-                    key: z.string().uuid().parse(req.get('Idempotency-Key')),
-                    actorId: req.auth!.userId,
-                  }
-                : undefined,
-            ),
-          );
+        res.status(201).json(
+          await createPlanDraft(
+            prisma,
+            req.params.clientId as string,
+            draftSchema.parse(req.body) as Parameters<typeof createPlanDraft>[2],
+            req.get('Idempotency-Key')
+              ? {
+                  key: z.string().uuid().parse(req.get('Idempotency-Key')),
+                  actorId: req.auth!.userId,
+                }
+              : undefined,
+          ),
+        );
       } catch (error) {
         next(error);
       }

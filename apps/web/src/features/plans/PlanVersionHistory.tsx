@@ -9,7 +9,11 @@ type Version = NonNullable<BuilderResponse['plan']>['versions'][number] & {
   createdAt: string;
   approvedAt: string | null;
 };
-type History = { versions: Version[]; nextBefore: number | null };
+type History = {
+  versions: Version[];
+  nextBefore: number | null;
+  cancellation?: { at: string; reason: string } | null;
+};
 export function PlanVersionHistory({
   clientId,
   planId,
@@ -55,6 +59,12 @@ export function PlanVersionHistory({
             Inspect saved versions without replacing your working copy. Recorded progress belongs to
             each version. Historical snapshots are not current client instructions.
           </Alert>
+          {query.data?.pages[0]?.cancellation && (
+            <Alert severity="info">
+              Cancelled {new Date(query.data.pages[0].cancellation.at).toLocaleString()}:{' '}
+              {query.data.pages[0].cancellation.reason}
+            </Alert>
+          )}
           {query.isPending && <Typography role="status">Loading versions...</Typography>}
           {query.isError && (
             <Alert

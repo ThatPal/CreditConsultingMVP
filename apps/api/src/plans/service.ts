@@ -358,6 +358,124 @@ export async function createPlanDraft(
   }
 }
 
+export async function cancelPrivatePlan(
+  prisma: PrismaClient,
+  input: {
+    clientId: string;
+    planId: string;
+    actorId: string;
+    expectedVersion: number;
+    reason: string;
+    key: string;
+  },
+) {
+  const reason = input.reason.trim();
+  if (!reason || reason.length > 2000)
+    throw new AppError(
+      'INVALID_REASON',
+      400,
+      'Give a cancellation reason of up to 2,000 characters.',
+    );
+  try {
+    return (
+      await executeConsequentialCommand(prisma, {
+        idempotency: {
+          scope: `plan-cancel:${input.actorId}`,
+          subjectId: input.clientId,
+          operation: 'cancel-private-plan',
+          key: input.key,
+          requestHash: createHash('sha256')
+            .update(JSON.stringify([input.planId, input.expectedVersion, reason]))
+            .digest('hex'),
+        },
+        audit: {
+          action: 'plan.draft.cancelled',
+          entityType: 'Plan',
+          entityId: input.planId,
+          clientId: input.clientId,
+          actorId: input.actorId,
+          metadata: { reason },
+        },
+        outbox: {
+          eventType: 'plan.draft.cancelled',
+          eventKey: `plan-cancel:${input.clientId}:${input.actorId}:${input.key}`,
+          aggregateType: 'Plan',
+          aggregateId: input.planId,
+          payload: { clientId: input.clientId, domains: ['plan', 'work-queue'] },
+        },
+        mutate: async (tx) => {
+          await lockPlan(tx, input.planId);
+          const plan = await tx.plan.findFirst({
+            where: { id: input.planId, clientId: input.clientId },
+            include: {
+              versions: {
+                orderBy: { version: 'desc' },
+                include: { _count: { select: { creditCardRounds: true } } },
+              },
+            },
+          });
+          if (!plan?.versions[0]) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
+          assertPlanOpen(plan);
+          if (plan.versions[0].optimisticVersion !== input.expectedVersion)
+            throw new AppError(
+              'VERSION_CONFLICT',
+              409,
+              'This draft changed. Review the latest saved version before cancelling.',
+            );
+          if (
+            plan.status !== 'DRAFT' ||
+            plan.versions.some(
+              (version) =>
+                version.status !== 'DRAFT' ||
+                version.approvedAt ||
+                version.activatedAt ||
+                version.supersedesVersionId ||
+                version._count.creditCardRounds,
+            )
+          )
+            throw new AppError(
+              'PLAN_CANCELLATION_NOT_ALLOWED',
+              409,
+              'Only a never-published draft that is not used by a Round can be cancelled here.',
+            );
+          await tx.plan.update({ where: { id: plan.id }, data: { status: 'CANCELLED' } });
+          await tx.planVersion.updateMany({
+            where: { planId: plan.id },
+            data: { status: 'CANCELLED', optimisticVersion: { increment: 1 } },
+          });
+          const versionIds = plan.versions.map((version) => version.id);
+          const items = await tx.planItem.findMany({
+            where: { planVersionId: { in: versionIds } },
+            select: { id: true },
+          });
+          await tx.workItem.updateMany({
+            where: {
+              clientId: input.clientId,
+              domain: 'PLAN',
+              authority: 'ATTENTION_PROJECTION',
+              status: { notIn: ['COMPLETED', 'CANCELLED'] },
+              OR: [
+                { sourceType: 'PlanVersion', sourceId: { in: versionIds } },
+                { sourceType: 'PlanItem', sourceId: { in: items.map((item) => item.id) } },
+              ],
+            },
+            data: { status: 'CANCELLED', resolvedAt: new Date() },
+          });
+          return { planId: plan.id, status: 'CANCELLED' };
+        },
+      })
+    ).result;
+  } catch (error) {
+    if (error instanceof IdempotencyConflictError)
+      throw new AppError(
+        error.code,
+        409,
+        'Retry the original cancellation request. Its key cannot be used for different content.',
+      );
+    throw error;
+  }
+}
+
 function assertPlanOpen(plan: { status: string }) {
   if (['CANCELLED', 'SUPERSEDED'].includes(plan.status))
     throw new AppError(
@@ -455,7 +573,16 @@ export async function getPlanVersionHistory(
     take: 6,
     include: builderInclude,
   });
+  const cancellation = await prisma.auditEvent.findFirst({
+    where: { clientId, entityType: 'Plan', entityId: planId, action: 'plan.draft.cancelled' },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true, metadata: true },
+  });
+  const metadata = cancellation?.metadata as { reason?: string } | null;
   return {
+    cancellation: cancellation
+      ? { at: cancellation.createdAt, reason: metadata?.reason ?? '' }
+      : null,
     versions: versions.slice(0, 5),
     nextBefore: versions.length > 5 ? versions[4]!.version : null,
   };

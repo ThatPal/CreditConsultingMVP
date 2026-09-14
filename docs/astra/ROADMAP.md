@@ -221,3 +221,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 19: First-save replay protection](IMPLEMENTATION-19.md) adds consultant/client-scoped creation keys, atomic replay, tab recovery and confirmed-rejection handling. Next: source-grounded lifecycle commands and remaining operational/visual qualification. A1/A2/A5 remain in progress.
+
+
+[Pass 20: Grouped private-Plan lifecycle](IMPLEMENTATION-20.md) delivers cancellation controls, scoped replay-safe cancellation, retained history/reasons and related reminder closure together. API/web each built once at the batch boundary. Published-Plan replacement and A5 qualification remain open.

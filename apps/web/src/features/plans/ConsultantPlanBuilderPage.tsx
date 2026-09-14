@@ -1,3 +1,4 @@
+import { CancelPrivatePlan } from './CancelPrivatePlan';
 import { PlanLibrary } from './PlanLibrary';
 import { PlanPathEditor } from './PlanPathEditor';
 import { PlanVersionHistory } from './PlanVersionHistory';
@@ -515,6 +516,18 @@ function PlanBuilder({
           workingDraft={editor.draft}
         />
       )}
+      {editor.planId &&
+        query.data?.plan?.status === 'DRAFT' &&
+        query.data.plan.versions.every((version) => version.status === 'DRAFT') && (
+          <CancelPrivatePlan
+            key={`${editor.planId}:${editor.revision}`}
+            clientId={clientId}
+            planId={editor.planId}
+            title={draft.title}
+            revision={editor.revision}
+            disabled={busy || dirty || conflict}
+          />
+        )}
       <PlanPathEditor
         draft={editor.draft}
         disabled={busy || creationUnresolved}

@@ -78,3 +78,18 @@ test('Plan library and explicit selection enforce consultant client scope', asyn
       .expect(403);
   }
 });
+
+test('draft cancellation requires consultant client access and a valid request', async () => {
+  const path = '/consultant/clients/allowed/plans/plan/cancel';
+  await request(app).post(path).expect(401);
+  await request(app).post(path).set('x-role', 'CLIENT').expect(403);
+  await request(app)
+    .post(path.replace('allowed', 'denied'))
+    .set('x-role', 'CONSULTANT')
+    .expect(403);
+  await request(app)
+    .post(path)
+    .set('x-role', 'CONSULTANT')
+    .send({ expectedVersion: 1, reason: '' })
+    .expect(400);
+});

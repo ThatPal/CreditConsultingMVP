@@ -36,7 +36,11 @@ test('retains version inspection on pagination failure, retries and compares wit
       if (attempts === 1) throw new Error('offline');
       return { versions: [version(1)], nextBefore: null };
     }
-    return { versions: [version(2)], nextBefore: 2 };
+    return {
+      versions: [version(2)],
+      nextBefore: 2,
+      cancellation: { at: '2026-09-14T10:00:00Z', reason: 'Duplicate draft retained for history' },
+    };
   });
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -46,6 +50,7 @@ test('retains version inspection on pagination failure, retries and compares wit
   expect(apiRequest).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Version history' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Inspect version 2' }));
+  expect(screen.getByText(/Duplicate draft retained for history/)).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Compare with working copy' }));
   expect(screen.getByText('Unfinished title')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Load older versions' }));

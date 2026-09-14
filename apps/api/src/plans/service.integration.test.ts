@@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
 import {
   approvePlan,
+  cancelPrivatePlan,
+  getPlanVersionHistory,
   clientSafeVersion,
   createPlanDraft,
   getClientPlan,
@@ -73,11 +75,15 @@ describe('Plan authoring and approval', () => {
       where: { payload: { path: ['clientId'], equals: clientId } },
     });
     await prisma.auditEvent.deleteMany({
-      where: { clientId, action: { in: ['plan.approved', 'plan.draft.created'] } },
+      where: {
+        clientId,
+        action: { in: ['plan.approved', 'plan.draft.created', 'plan.draft.cancelled'] },
+      },
     });
     await prisma.idempotencyRecord.deleteMany({
-      where: { subjectId: clientId, operation: 'create' },
+      where: { subjectId: clientId, operation: { in: ['create', 'cancel-private-plan'] } },
     });
+    await prisma.workItem.deleteMany({ where: { clientId, domain: 'PLAN' } });
     await prisma.plan.deleteMany({ where: { clientId } });
     await prisma.client.delete({ where: { id: clientId } });
     await prisma.user.delete({ where: { id: actorId } });
@@ -275,5 +281,87 @@ describe('Plan authoring and approval', () => {
     expect(await prisma.plan.count({ where: { clientId } })).toBe(before);
     await createPlanDraft(prisma, clientId, draft, { key: randomUUID(), actorId });
     expect(await prisma.plan.count({ where: { clientId } })).toBe(before + 1);
+  });
+  test('cancels private drafts once, retains history and closes only their reminders', async () => {
+    const created = await createPlanDraft(prisma, clientId, draft);
+    const current = (await getClientPlan(prisma, clientId)).plan?.id;
+    const work = await prisma.workItem.create({
+      data: {
+        clientId,
+        title: 'Draft review',
+        domain: 'PLAN',
+        authority: 'ATTENTION_PROJECTION',
+        sourceType: 'PlanVersion',
+        sourceId: created.versionId,
+        reasonCode: 'PLAN_RECONCILIATION_REQUIRED',
+      },
+    });
+    const command = {
+      clientId,
+      planId: created.planId,
+      actorId,
+      expectedVersion: 1,
+      reason: 'Duplicate preparation draft',
+      key: randomUUID(),
+    };
+    await Promise.all([cancelPrivatePlan(prisma, command), cancelPrivatePlan(prisma, command)]);
+    const history = await getPlanVersionHistory(prisma, clientId, created.planId);
+    expect(history.cancellation?.reason).toBe(command.reason);
+    expect(history.versions[0]?.status).toBe('CANCELLED');
+    expect(history.versions[0]?.items).toHaveLength(draft.items.length);
+    expect((await prisma.workItem.findUniqueOrThrow({ where: { id: work.id } })).status).toBe(
+      'CANCELLED',
+    );
+    expect((await getClientPlan(prisma, clientId)).plan?.id).toBe(current);
+    expect(
+      await prisma.auditEvent.count({
+        where: { entityId: created.planId, action: 'plan.draft.cancelled' },
+      }),
+    ).toBe(1);
+    await expect(approvePlan(prisma, clientId, created.planId, actorId)).rejects.toMatchObject({
+      code: 'PLAN_IMMUTABLE',
+    });
+  });
+
+  test('rejects foreign, changed and previously published Plans', async () => {
+    const created = await createPlanDraft(prisma, clientId, draft);
+    const command = {
+      clientId,
+      planId: created.planId,
+      actorId,
+      expectedVersion: 1,
+      reason: 'No longer needed',
+      key: randomUUID(),
+    };
+    await expect(
+      cancelPrivatePlan(prisma, { ...command, clientId: randomUUID() }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await revisePlanDraft(prisma, created.planId, 1, { ...draft, title: 'Edited' });
+    await expect(cancelPrivatePlan(prisma, command)).rejects.toMatchObject({
+      code: 'VERSION_CONFLICT',
+    });
+    await approvePlan(prisma, clientId, created.planId, actorId, 2);
+    await expect(
+      cancelPrivatePlan(prisma, { ...command, key: randomUUID(), expectedVersion: 3 }),
+    ).rejects.toMatchObject({ code: 'PLAN_CANCELLATION_NOT_ALLOWED' });
+  });
+
+  test('serializes cancellation against a concurrent draft edit', async () => {
+    const created = await createPlanDraft(prisma, clientId, draft);
+    const results = await Promise.allSettled([
+      cancelPrivatePlan(prisma, {
+        clientId,
+        planId: created.planId,
+        actorId,
+        expectedVersion: 1,
+        reason: 'Race proof',
+        key: randomUUID(),
+      }),
+      revisePlanDraft(prisma, created.planId, 1, { ...draft, title: 'Concurrent edit' }),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const saved = (await getPlanBuilder(prisma, clientId, created.planId)).plan!;
+    expect(['CANCELLED', 'DRAFT']).toContain(saved.status);
+    expect(saved.versions[0]?.optimisticVersion).toBe(2);
   });
 });
