@@ -13,6 +13,7 @@ import {
   getClientPlan,
   getResponseDraft,
   saveResponseDraft,
+  discardResponseDraft,
   getPlanItemHistory,
   createPlanDraft,
   executePlanItem,
@@ -333,6 +334,29 @@ export function createPlanRouter(
       next(error);
     }
   });
+  router.delete(
+    '/client/plan/items/:itemId/draft',
+    requireRole('CLIENT'),
+    async (req, res, next) => {
+      try {
+        const expected = z
+          .object({ draftId: z.string().uuid(), revision: z.number().int().positive() })
+          .strict()
+          .parse(req.body);
+        res.json(
+          await discardResponseDraft(
+            prisma,
+            req.auth!.clientId!,
+            z.string().uuid().parse(req.params.itemId),
+            req.auth!.userId,
+            expected,
+          ),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.put('/client/plan/items/:itemId/draft', requireRole('CLIENT'), async (req, res, next) => {
     try {
       const input = z

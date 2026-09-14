@@ -188,3 +188,48 @@ test('earlier draft inspection retains old labels and does not replace the curre
   expect(current).toHaveValue('My unfinished response');
   expect(request.mock.calls.every(([, options]) => !options?.method)).toBe(true);
 });
+
+test('discard requires confirmation and removes only the selected saved draft', async () => {
+  let removed = false;
+  request.mockImplementation(async (_path, options) => {
+    if (options?.method === 'DELETE') {
+      removed = true;
+      return { discarded: true };
+    }
+    return {
+      ...saved,
+      draft: removed ? null : { ...saved.draft!, id: 'draft-id', itemId: 'step' },
+    };
+  });
+  setup();
+  fireEvent.click(await screen.findByRole('button', { name: 'Discard saved draft' }));
+  expect(request.mock.calls.some(([, options]) => options?.method === 'DELETE')).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Keep draft' }));
+  expect(await screen.findByRole('button', { name: 'Resume saved response' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Discard saved draft' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Discard this draft' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Resume saved response' })).not.toBeInTheDocument(),
+  );
+  await screen.findByRole('button', { name: 'Save completed step' });
+  const deletion = request.mock.calls.find(([, options]) => options?.method === 'DELETE')!;
+  expect(deletion[0]).toBe('/api/v1/client/plan/items/step/draft');
+  expect(JSON.parse(String(deletion[1]?.body))).toEqual({ draftId: 'draft-id', revision: 1 });
+});
+
+test('a discard conflict keeps the draft and allows refresh without retrying deletion', async () => {
+  request.mockImplementation(async (_path, options) => {
+    if (options?.method === 'DELETE') throw new Error('The saved response changed in another tab.');
+    return { ...saved, draft: { ...saved.draft!, id: 'draft-id', itemId: 'step' } };
+  });
+  setup();
+  fireEvent.click(await screen.findByRole('button', { name: 'Discard saved draft' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Discard this draft' }));
+  expect(await screen.findByText('The saved response changed in another tab.')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh saved response' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Discard this draft' })).not.toBeInTheDocument(),
+  );
+  expect(request.mock.calls.filter(([, options]) => options?.method === 'DELETE')).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Resume saved response' })).toBeVisible();
+});

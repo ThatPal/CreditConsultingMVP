@@ -1736,6 +1736,9 @@ export async function getResponseDraft(
     active,
     previousDraft: previous
       ? {
+          id: previous.id,
+          itemId: previous.itemId,
+          revision: previous.revision,
           version: previous.item.planVersion.version,
           title: previous.item.clientTitle,
           body: previous.item.clientBody,
@@ -1826,5 +1829,39 @@ export async function saveResponseDraft(
       update: { ...data, revision: { increment: 1 } },
     });
     return getResponseDraft(tx, clientId, itemId, actorId);
+  });
+}
+
+export async function discardResponseDraft(
+  prisma: PrismaClient,
+  clientId: string,
+  itemId: string,
+  actorId: string,
+  expected: { draftId: string; revision: number },
+) {
+  return prisma.$transaction(async (tx) => {
+    await lockItemPlan(tx, itemId, clientId);
+    const item = await tx.planItem.findFirst({
+      where: {
+        id: itemId,
+        owner: 'CLIENT',
+        planVersion: { plan: { clientId } },
+      },
+      select: { id: true },
+    });
+    if (!item) throw new AppError('NOT_FOUND', 404, 'Saved response was not found.');
+    const draft = await tx.planResponseDraft.findUnique({
+      where: { itemId_actorId: { itemId, actorId } },
+    });
+    if (!draft) return { discarded: true };
+    // Identity also protects against a deleted draft being recreated at revision 1.
+    if (draft.id !== expected.draftId || draft.revision !== expected.revision)
+      throw new AppError(
+        'PLAN_DRAFT_CONFLICT',
+        409,
+        'The saved response changed in another tab. Refresh and review it before discarding.',
+      );
+    await tx.planResponseDraft.delete({ where: { id: draft.id } });
+    return { discarded: true };
   });
 }

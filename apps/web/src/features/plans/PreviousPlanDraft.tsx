@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { Alert, Button, Drawer, Stack, TextField, Typography } from '@mui/material';
+import { DiscardPlanDraft } from './DiscardPlanDraft';
 import { EvidenceFile } from './PlanAttachments';
 import type { DraftResult } from './SavedPlanResponse';
 
-export function PreviousPlanDraft({ draft }: { draft: NonNullable<DraftResult['previousDraft']> }) {
+export function PreviousPlanDraft({
+  draft,
+  onRefresh,
+}: {
+  draft: NonNullable<DraftResult['previousDraft']>;
+  onRefresh: () => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -58,6 +65,12 @@ export function PreviousPlanDraft({ draft }: { draft: NonNullable<DraftResult['p
           {draft.files.map((file) => (
             <EvidenceFile key={file.documentId} file={file} />
           ))}
+          {draft.id && draft.itemId && draft.revision && (
+            <DiscardPlanDraft
+              draft={{ id: draft.id, itemId: draft.itemId, revision: draft.revision }}
+              onRefresh={onRefresh}
+            />
+          )}
           {Boolean(draft.unavailableFiles) && (
             <Alert severity="warning">Some earlier attachments are no longer available.</Alert>
           )}

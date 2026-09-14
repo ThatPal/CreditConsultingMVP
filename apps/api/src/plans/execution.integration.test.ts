@@ -6,6 +6,7 @@ import {
   getPlanItemHistory,
   getResponseDraft,
   saveResponseDraft,
+  discardResponseDraft,
 } from './service.js';
 import { preparePlanAttachments } from './attachments.js';
 import {
@@ -1026,6 +1027,13 @@ describe('consequential client Plan execution', () => {
         where: { planItemId: { in: [oldItem.id, current.id] } },
       }),
     ).toBe(0);
+    await discardResponseDraft(prisma, clientId, oldItem.id, clientUserId, {
+      draftId: recovered.previousDraft!.id,
+      revision: recovered.previousDraft!.revision,
+    });
+    const afterDiscard = await getResponseDraft(prisma, clientId, current.id, clientUserId);
+    expect(afterDiscard.previousDraft).toBeNull();
+    expect(afterDiscard.draft?.values).toEqual({ clientReport: 'Current answer' });
     const separate = await createPlanDraft(prisma, clientId, input);
     await approvePlan(prisma, clientId, separate.planId, consultantId);
     const unrelated = (await getPlanBuilder(prisma, clientId, separate.planId)).plan!.versions[0]!
@@ -1033,5 +1041,82 @@ describe('consequential client Plan execution', () => {
     expect(
       (await getResponseDraft(prisma, clientId, unrelated.id, clientUserId)).previousDraft,
     ).toBeNull();
+  });
+  test('discard protects newer and recreated drafts and remains scoped to their owner', async () => {
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'Discard protection',
+      purpose: 'PREPARATION',
+      items: [
+        {
+          stableKey: 'response',
+          type: 'ACTION',
+          owner: 'CLIENT',
+          completionMode: 'CLIENT_REPORT_CONSULTANT_VERIFY',
+          clientTitle: 'Prepare response',
+          sortOrder: 0,
+        },
+      ],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const item = (await getPlanBuilder(prisma, clientId, created.planId)).plan!.versions[0]!
+      .items[0]!;
+    const context = await getResponseDraft(prisma, clientId, item.id, clientUserId);
+    const input = {
+      expectedRevision: 0,
+      contextVersion: context.contextVersion,
+      values: { clientReport: 'Keep me' },
+      note: '',
+      help: false,
+      documentIds: [],
+    };
+    const first = (await saveResponseDraft(prisma, clientId, item.id, clientUserId, input)).draft!;
+    await expect(
+      discardResponseDraft(prisma, randomUUID(), item.id, clientUserId, {
+        draftId: first.id,
+        revision: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await discardResponseDraft(prisma, clientId, item.id, consultantId, {
+      draftId: first.id,
+      revision: 1,
+    });
+    expect((await getResponseDraft(prisma, clientId, item.id, clientUserId)).draft?.id).toBe(
+      first.id,
+    );
+    const updated = (
+      await saveResponseDraft(prisma, clientId, item.id, clientUserId, {
+        ...input,
+        expectedRevision: 1,
+      })
+    ).draft!;
+    await expect(
+      discardResponseDraft(prisma, clientId, item.id, clientUserId, {
+        draftId: first.id,
+        revision: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONFLICT' });
+    await discardResponseDraft(prisma, clientId, item.id, clientUserId, {
+      draftId: updated.id,
+      revision: updated.revision,
+    });
+    expect((await getResponseDraft(prisma, clientId, item.id, clientUserId)).draft).toBeNull();
+    expect(
+      await discardResponseDraft(prisma, clientId, item.id, clientUserId, {
+        draftId: updated.id,
+        revision: updated.revision,
+      }),
+    ).toEqual({ discarded: true });
+    const recreated = (await saveResponseDraft(prisma, clientId, item.id, clientUserId, input))
+      .draft!;
+    expect(recreated.revision).toBe(1);
+    await expect(
+      discardResponseDraft(prisma, clientId, item.id, clientUserId, {
+        draftId: first.id,
+        revision: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONFLICT' });
+    expect((await getResponseDraft(prisma, clientId, item.id, clientUserId)).draft?.id).toBe(
+      recreated.id,
+    );
   });
 });

@@ -245,3 +245,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 27: Earlier response draft access](IMPLEMENTATION-27.md) exposes the most recent earlier draft with original instructions/labels and authorized attachments, preserving independent current answers. Orphan/retention controls, unsaved transition recovery and broader qualification remain open.
+
+
+[Pass 28: Explicit private draft discard](IMPLEMENTATION-28.md) adds confirmation, draft identity/revision protection, deletion replay, earlier/current isolation and conflict refresh. Removed-step recovery and unsaved-edit transitions remain open.

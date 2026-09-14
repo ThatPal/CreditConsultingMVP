@@ -5,6 +5,7 @@ import { apiRequest } from '../../auth/api';
 import { PlanResponse, type ResponseItem } from './PlanResponse';
 import { EvidenceFile, type PlanFile } from './PlanAttachments';
 import { PreviousPlanDraft } from './PreviousPlanDraft';
+import { DiscardPlanDraft } from './DiscardPlanDraft';
 
 export type ResponseDraft = {
   values: Record<string, string>;
@@ -17,6 +18,9 @@ export type DraftResult = {
   active: boolean;
   previousDraft?:
     | (ResponseDraft & {
+        id?: string;
+        itemId?: string;
+        revision?: number;
         version: number;
         title: string;
         body: string | null;
@@ -27,6 +31,8 @@ export type DraftResult = {
     | null;
   draft:
     | (ResponseDraft & {
+        id?: string;
+        itemId?: string;
         revision: number;
         updatedAt: string;
         unavailableFiles: number;
@@ -61,8 +67,19 @@ export function SavedPlanResponse({
         Your saved response could not be loaded.
       </Alert>
     );
+  const refresh = async () => {
+    const result = await query.refetch();
+    if (result.isError) throw result.error;
+  };
   const saved = query.data.draft;
   const data = query.data;
+  const discardSaved =
+    saved?.id && saved.itemId ? (
+      <DiscardPlanDraft
+        draft={{ id: saved.id, itemId: saved.itemId, revision: saved.revision }}
+        onRefresh={refresh}
+      />
+    ) : null;
   const renderCurrent = () => {
     if (readOnly || !data.active)
       return (
@@ -74,6 +91,7 @@ export function SavedPlanResponse({
           {saved && (
             <>
               <Typography variant="subtitle2">Your saved response</Typography>
+              {discardSaved}
               {Object.entries(saved.values).map(([key, value], index) => (
                 <TextField
                   key={key}
@@ -122,6 +140,7 @@ export function SavedPlanResponse({
           <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
             <Button onClick={() => setChoice('resume')}>Resume saved response</Button>
             <Button onClick={() => setChoice('blank')}>Start a new response</Button>
+            {discardSaved}
           </Stack>
         </Alert>
       );
@@ -160,7 +179,7 @@ export function SavedPlanResponse({
   };
   return (
     <Stack spacing={2}>
-      {data.previousDraft && <PreviousPlanDraft draft={data.previousDraft} />}
+      {data.previousDraft && <PreviousPlanDraft draft={data.previousDraft} onRefresh={refresh} />}
       {renderCurrent()}
     </Stack>
   );
