@@ -20,6 +20,7 @@ type AuthState = {
   logout: () => Promise<void>;
 };
 const AuthContext = createContext<AuthState | null>(null);
+export const SessionEndedContext = createContext(false);
 
 export function AuthProvider({
   children,
@@ -90,7 +91,7 @@ export function AuthProvider({
         logout,
       }}
     >
-      {children}
+      <SessionEndedContext.Provider value={sessionLost}>{children}</SessionEndedContext.Provider>
     </AuthContext.Provider>
   );
 }

@@ -86,3 +86,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 33: Session expiry and return navigation](IMPLEMENTATION-33.md) adds explicit recovery copy, protects the sign-in return path and verifies real-provider recovery with controlled 401 responses. Full-browser dirty/busy expiry and broader production qualification remain open.
+
+
+[Pass 34: Expiry during pending Plan work](IMPLEMENTATION-34.md) fixes blocked sign-in navigation, late private draft cache restoration, and upload callbacks after unmount. Controlled integration coverage passes; an editable synthetic browser scenario and broader qualification remain open.

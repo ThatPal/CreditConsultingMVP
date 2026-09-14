@@ -1,7 +1,7 @@
 import CloudUploadRounded from '@mui/icons-material/CloudUploadRounded';
 import InsertDriveFileRounded from '@mui/icons-material/InsertDriveFileRounded';
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from '@mui/material';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiFileRequest } from '../../auth/api';
 
 export type UploadDocumentType = {
@@ -43,6 +43,14 @@ export function DocumentUploadDropzone({
   title?: string;
   disabled?: boolean;
 }) {
+  const activeUpload = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      activeUpload.current?.abort();
+      activeUpload.current = null;
+    },
+    [],
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -52,7 +60,7 @@ export function DocumentUploadDropzone({
   const guidance = `${documentType.allowedExtensions.join(', ')} up to ${formatSize(documentType.maximumSizeBytes)}`;
 
   async function submit(file?: File) {
-    if (!file || uploading || disabled) return;
+    if (!file || activeUpload.current || uploading || disabled) return;
     setError(null);
     setSuccess(null);
     const extension = extensionOf(file.name);
@@ -69,6 +77,8 @@ export function DocumentUploadDropzone({
       );
       return;
     }
+    const controller = new AbortController();
+    activeUpload.current = controller;
     try {
       setUploading(true);
       onBusyChange?.(true);
@@ -76,18 +86,26 @@ export function DocumentUploadDropzone({
         '/api/v1/documents',
         file,
         documentType.key,
+        undefined,
+        controller.signal,
       );
+      if (controller.signal.aborted) return;
       await onUploaded(result.document);
-      setSuccess(`${result.document.displayFileName} uploaded successfully.`);
+      if (!controller.signal.aborted)
+        setSuccess(`${result.document.displayFileName} uploaded successfully.`);
     } catch (uploadError) {
+      if (controller.signal.aborted) return;
       setError(
         uploadError instanceof Error
           ? uploadError.message
           : 'The file could not be uploaded. Please try again.',
       );
     } finally {
-      setUploading(false);
-      onBusyChange?.(false);
+      if (activeUpload.current === controller) activeUpload.current = null;
+      if (!controller.signal.aborted) {
+        setUploading(false);
+        onBusyChange?.(false);
+      }
     }
   }
 

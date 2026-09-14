@@ -1,5 +1,5 @@
 import { ResponseWritePause, usePendingNavigationWork } from '../../NavigationProtection';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../auth/api';
+import { subscribeToSessionLoss } from '../../auth/sessionLoss';
 import { PlanResponse, type ResponseItem } from './PlanResponse';
 import { EvidenceFile, type PlanFile } from './PlanAttachments';
 import { PreviousPlanDraft } from './PreviousPlanDraft';
@@ -60,6 +61,17 @@ export function SavedPlanResponse({
   readOnly?: boolean;
 }) {
   const client = useQueryClient();
+  const active = useRef(true);
+  useLayoutEffect(() => {
+    active.current = true;
+    const unsubscribe = subscribeToSessionLoss(() => {
+      active.current = false;
+    });
+    return () => {
+      active.current = false;
+      unsubscribe();
+    };
+  }, []);
   const [choice, setChoice] = useState<'resume' | 'blank' | null>(null);
   const [accepted, setAccepted] = useState<DraftResult | null>(null);
   const [generation, setGeneration] = useState(0);
@@ -213,15 +225,16 @@ export function SavedPlanResponse({
                   documentIds: draft.files.map((file) => file.documentId),
                 }),
               });
+              if (!active.current) return;
               setCheckNeeded(false);
               setChoice('resume');
               setAccepted(result);
               client.setQueryData(queryKey, result);
             } catch (error) {
-              setCheckNeeded(true);
+              if (active.current) setCheckNeeded(true);
               throw error;
             } finally {
-              setWriteBusy(false);
+              if (active.current) setWriteBusy(false);
             }
           }}
         />

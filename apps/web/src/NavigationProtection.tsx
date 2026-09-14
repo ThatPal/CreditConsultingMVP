@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useId,
+  useRef,
   useLayoutEffect,
   useState,
   type PropsWithChildren,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
 } from '@mui/material';
 import { useBlocker } from 'react-router-dom';
+import { SessionEndedContext } from './auth/AuthProvider';
 
 type PendingWork = { dirty: boolean; busy: boolean };
 const PendingStatus = createContext<PendingWork>({ dirty: false, busy: false });
@@ -28,6 +30,11 @@ const Registration = createContext<((id: string, work: PendingWork | null) => vo
 
 // One router blocker aggregates every mounted response, including multi-step Plans.
 export function NavigationProtection({ children }: PropsWithChildren) {
+  const sessionEnded = useContext(SessionEndedContext);
+  const endedRef = useRef(sessionEnded);
+  useLayoutEffect(() => {
+    endedRef.current = sessionEnded;
+  }, [sessionEnded]);
   const [work, setWork] = useState<Record<string, PendingWork>>({});
   const register = useCallback((id: string, value: PendingWork | null) => {
     setWork((current) => {
@@ -41,10 +48,17 @@ export function NavigationProtection({ children }: PropsWithChildren) {
   const busy = Object.values(work).some((entry) => entry.busy);
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
+      !endedRef.current &&
       (dirty || busy) &&
       (currentLocation.pathname !== nextLocation.pathname ||
         currentLocation.search !== nextLocation.search),
   );
+  useLayoutEffect(() => {
+    if (!sessionEnded || blocker.state !== 'blocked') return;
+    // Only the secure sign-in handoff may proceed; discard stale user navigation.
+    if (blocker.location.pathname === '/login') blocker.proceed();
+    else blocker.reset();
+  }, [sessionEnded, blocker]);
   const stay = () => {
     if (blocker.state === 'blocked') blocker.reset();
   };
@@ -52,7 +66,7 @@ export function NavigationProtection({ children }: PropsWithChildren) {
     <Registration.Provider value={register}>
       <PendingStatus.Provider value={{ dirty, busy }}>{children}</PendingStatus.Provider>
       <Dialog
-        open={blocker.state === 'blocked'}
+        open={!sessionEnded && blocker.state === 'blocked'}
         onClose={stay}
         aria-labelledby="leave-response-title"
         aria-describedby="leave-response-description"

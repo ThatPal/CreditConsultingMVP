@@ -56,9 +56,11 @@ export async function apiFileRequest<T>(
   file: File,
   documentType?: string,
   metadataHeaders?: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetch(`${webEnv.VITE_API_URL}${path}`, {
     method: 'POST',
+    ...(signal ? { signal } : {}),
     credentials: 'include',
     headers: {
       'Content-Type': file.type,
