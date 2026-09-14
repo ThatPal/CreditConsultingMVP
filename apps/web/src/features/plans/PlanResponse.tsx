@@ -160,11 +160,13 @@ export function PlanResponse({
   draft,
   onSaveDraft,
   draftRevision,
+  draftId,
   draftContextVersion,
 }: {
   item: ResponseItem;
   draft?: ResponseDraft | undefined;
   draftRevision?: number;
+  draftId?: string | null;
   draftContextVersion?: string;
   onSaveDraft?: (draft: ResponseDraft) => Promise<void>;
 }) {
@@ -247,6 +249,7 @@ export function PlanResponse({
           ...payload,
           idempotencyKey: attempt.current.key,
           draftRevision,
+          draftId,
           draftContextVersion,
         }),
       });

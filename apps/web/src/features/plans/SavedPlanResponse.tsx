@@ -189,6 +189,7 @@ export function SavedPlanResponse({
         <PlanResponse
           key={generation}
           draftRevision={data.draft?.revision ?? 0}
+          draftId={data.draft?.id ?? null}
           draftContextVersion={data.contextVersion}
           item={item}
           draft={choice === 'resume' && saved ? saved : undefined}
@@ -204,6 +205,7 @@ export function SavedPlanResponse({
                 method: 'PUT',
                 body: JSON.stringify({
                   expectedRevision: current.draft?.revision ?? 0,
+                  expectedDraftId: current.draft?.id ?? null,
                   contextVersion: current.contextVersion,
                   values: draft.values,
                   note: draft.note,

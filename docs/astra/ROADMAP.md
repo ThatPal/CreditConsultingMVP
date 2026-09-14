@@ -257,3 +257,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 31: Reviewed draft context and refresh guard](IMPLEMENTATION-31.md) binds edits to reviewed draft state, preserves text across cached changes and requires explicit reload. Rejected-lookup transport qualification, server draft identity and session-loss recovery remain open.
+
+
+[Pass 32: Transport recovery and server draft identity](IMPLEMENTATION-32.md) verifies real API-wrapper failure/retry behavior and protects updated-client saves/submissions from recreated draft identities. Session-loss, legacy-caller migration and browser qualification remain open.

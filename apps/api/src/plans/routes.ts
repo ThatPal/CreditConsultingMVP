@@ -372,6 +372,7 @@ export function createPlanRouter(
       const input = z
         .object({
           expectedRevision: z.number().int().min(0),
+          expectedDraftId: z.string().uuid().nullable().optional(),
           contextVersion: z.string().datetime(),
           values: z
             .record(z.string().max(100), z.string().max(10000))
@@ -445,6 +446,7 @@ export function createPlanRouter(
             action: z.enum(['COMPLETE', 'UNABLE']),
             documentIds: z.array(z.string().uuid()).max(5).optional(),
             draftRevision: z.number().int().min(0).optional(),
+            draftId: z.string().uuid().nullable().optional(),
             draftContextVersion: z.string().datetime().optional(),
             outcome: z.record(z.string(), z.unknown()).optional(),
             reason: z.string().min(1).max(1000).optional(),

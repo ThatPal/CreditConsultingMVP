@@ -1176,6 +1176,7 @@ export async function executePlanItem(
     reason?: string;
     documentIds?: string[];
     draftRevision?: number;
+    draftId?: string | null;
     draftContextVersion?: string;
   },
 ) {
@@ -1226,6 +1227,12 @@ export async function executePlanItem(
       const savedDraft = await tx.planResponseDraft.findUnique({
         where: { itemId_actorId: { itemId: item.id, actorId: input.actorId } },
       });
+      if (input.draftId !== undefined && (savedDraft?.id ?? null) !== input.draftId)
+        throw new AppError(
+          'PLAN_DRAFT_CONFLICT',
+          409,
+          'The saved response was replaced or discarded. Reload and review it before submitting.',
+        );
       if (
         (savedDraft || input.draftRevision !== undefined) &&
         (savedDraft?.revision ?? 0) !== input.draftRevision
@@ -1791,6 +1798,7 @@ export async function saveResponseDraft(
   actorId: string,
   input: {
     expectedRevision: number;
+    expectedDraftId?: string | null | undefined;
     contextVersion: string;
     values: Record<string, string>;
     note: string;
@@ -1810,6 +1818,12 @@ export async function saveResponseDraft(
     const existing = await tx.planResponseDraft.findUnique({
       where: { itemId_actorId: { itemId, actorId } },
     });
+    if (input.expectedDraftId !== undefined && (existing?.id ?? null) !== input.expectedDraftId)
+      throw new AppError(
+        'PLAN_DRAFT_CONFLICT',
+        409,
+        'The saved response was replaced or discarded. Reload and review it before saving.',
+      );
     if ((existing?.revision ?? 0) !== input.expectedRevision)
       throw new AppError(
         'PLAN_DRAFT_CONFLICT',

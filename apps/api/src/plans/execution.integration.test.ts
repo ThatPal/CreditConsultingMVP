@@ -1111,6 +1111,27 @@ describe('consequential client Plan execution', () => {
       .draft!;
     expect(recreated.revision).toBe(1);
     await expect(
+      saveResponseDraft(prisma, clientId, item.id, clientUserId, {
+        ...input,
+        expectedRevision: 1,
+        expectedDraftId: first.id,
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONFLICT' });
+    await expect(
+      executePlanItem(prisma, {
+        clientId,
+        itemId: item.id,
+        actorId: clientUserId,
+        action: 'COMPLETE',
+        idempotencyKey: randomUUID(),
+        draftRevision: 1,
+        draftId: first.id,
+        outcome: { clientReport: 'Do not replace newer work' },
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONFLICT' });
+    expect(await prisma.planItemOutcome.count({ where: { planItemId: item.id } })).toBe(0);
+
+    await expect(
       discardResponseDraft(prisma, clientId, item.id, clientUserId, {
         draftId: first.id,
         revision: 1,
