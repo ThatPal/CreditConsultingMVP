@@ -65,3 +65,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 26: Client response boundaries and paused draft inspection](IMPLEMENTATION-26.md) blocks direct hidden-step submissions, prevents paused draft overwrites, and exposes saved answers read-only during pauses. Runtime transition/recovery qualification and separate-Plan replacement remain open.
+
+
+[Pass 27: Earlier response draft access](IMPLEMENTATION-27.md) exposes the most recent earlier draft with original instructions/labels and authorized attachments, preserving independent current answers. Orphan/retention controls, unsaved transition recovery and broader qualification remain open.

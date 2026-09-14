@@ -156,3 +156,35 @@ test.each([false, true])(
     expect(request.mock.calls.every(([, options]) => !options?.method)).toBe(true);
   },
 );
+
+test('earlier draft inspection retains old labels and does not replace the current response', async () => {
+  request.mockResolvedValue({
+    ...saved,
+    previousDraft: {
+      values: { oldField: 'Earlier answer' },
+      note: 'Earlier note',
+      help: false,
+      files: [],
+      unavailableFiles: 0,
+      version: 1,
+      title: 'Earlier instructions',
+      body: 'Earlier context',
+      updatedAt: saved.draft!.updatedAt,
+      responseForm: {
+        fields: [{ key: 'oldField', label: 'Original question', type: 'string', required: true }],
+        error: null,
+      },
+    },
+  });
+  setup();
+  fireEvent.click(await screen.findByRole('button', { name: 'Resume saved response' }));
+  const current = screen.getByRole('textbox', { name: 'Optional note for your consultant' });
+  fireEvent.click(screen.getByRole('button', { name: 'View earlier draft' }));
+  const earlier = await screen.findByRole('textbox', { name: 'Original question' });
+  expect(earlier).toHaveValue('Earlier answer');
+  expect(earlier).toHaveAttribute('readonly');
+  expect(screen.getByText('Earlier instructions')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(current).toHaveValue('My unfinished response');
+  expect(request.mock.calls.every(([, options]) => !options?.method)).toBe(true);
+});

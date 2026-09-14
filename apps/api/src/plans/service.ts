@@ -1675,6 +1675,7 @@ async function responseDraftContext(
     throw new AppError('NOT_FOUND', 404, 'Client Plan step was not found.');
   return {
     item,
+    version: version!,
     active:
       plan?.status === 'ACTIVE' &&
       version?.status === 'ACTIVE' &&
@@ -1688,35 +1689,94 @@ export async function getResponseDraft(
   itemId: string,
   actorId: string,
 ) {
-  const { item, active } = await responseDraftContext(tx, clientId, itemId);
+  const { item, active, version } = await responseDraftContext(tx, clientId, itemId);
   const draft = await tx.planResponseDraft.findUnique({
     where: { itemId_actorId: { itemId, actorId } },
   });
-  const documents = draft
-    ? await tx.document.findMany({
-        where: {
-          id: { in: draft.documentIds },
-          clientId,
-          clientVisible: true,
-          status: 'AVAILABLE',
+  const previous = await tx.planResponseDraft.findFirst({
+    where: {
+      actorId,
+      item: {
+        stableKey: item.stableKey,
+        owner: 'CLIENT',
+        planVersion: {
+          planId: version.planId,
+          version: { lt: version.version },
+          status: { not: 'DRAFT' },
+          plan: { clientId },
         },
-      })
-    : [];
+      },
+    },
+    orderBy: [{ item: { planVersion: { version: 'desc' } } }, { updatedAt: 'desc' }],
+    include: {
+      item: {
+        select: {
+          clientTitle: true,
+          clientBody: true,
+          outcomeSchema: true,
+          completionMode: true,
+          planVersion: { select: { version: true } },
+        },
+      },
+    },
+  });
+  const documents =
+    draft || previous
+      ? await tx.document.findMany({
+          where: {
+            id: { in: [...(draft?.documentIds ?? []), ...(previous?.documentIds ?? [])] },
+            clientId,
+            clientVisible: true,
+            status: 'AVAILABLE',
+          },
+        })
+      : [];
   return {
     contextVersion: item.updatedAt.toISOString(),
     active,
+    previousDraft: previous
+      ? {
+          version: previous.item.planVersion.version,
+          title: previous.item.clientTitle,
+          body: previous.item.clientBody,
+          responseForm: clientResponseForm(
+            previous.item.outcomeSchema,
+            previous.item.completionMode,
+          ),
+          values: previous.values,
+          note: previous.note,
+          help: previous.help,
+          updatedAt: previous.updatedAt,
+          files: documents
+            .filter((file) => previous.documentIds.includes(file.id))
+            .map((file) => ({
+              documentId: file.id,
+              fileName: file.displayFileName,
+              sizeBytes: file.sizeBytes,
+              status: file.status,
+              available: true,
+            })),
+          unavailableFiles: previous.documentIds.filter(
+            (id) => !documents.some((file) => file.id === id),
+          ).length,
+        }
+      : null,
     draft: draft
       ? {
           ...draft,
           contextChanged: item.updatedAt > draft.updatedAt,
-          files: documents.map((file) => ({
-            documentId: file.id,
-            fileName: file.displayFileName,
-            sizeBytes: file.sizeBytes,
-            status: file.status,
-            available: true,
-          })),
-          unavailableFiles: draft.documentIds.length - documents.length,
+          files: documents
+            .filter((file) => draft.documentIds.includes(file.id))
+            .map((file) => ({
+              documentId: file.id,
+              fileName: file.displayFileName,
+              sizeBytes: file.sizeBytes,
+              status: file.status,
+              available: true,
+            })),
+          unavailableFiles: draft.documentIds.filter(
+            (id) => !documents.some((file) => file.id === id),
+          ).length,
         }
       : null,
   };

@@ -11,6 +11,7 @@ import { preparePlanAttachments } from './attachments.js';
 import {
   approvePlan,
   createPlanDraft,
+  revisePlanDraft,
   executePlanItem,
   getPlanBuilder,
   verifyPlanItem,
@@ -955,5 +956,82 @@ describe('consequential client Plan execution', () => {
     const retained = await getResponseDraft(prisma, clientId, item.id, clientUserId);
     expect(retained.draft?.values).toEqual(input.values);
     expect(retained.draft?.revision).toBe(saved.draft!.revision);
+  });
+  test('earlier draft recovery keeps original instructions and remains isolated from current answers', async () => {
+    const input: PlanDraftInput = {
+      title: 'Earlier draft access',
+      purpose: 'PREPARATION',
+      items: [
+        {
+          stableKey: 'response',
+          type: 'ACTION',
+          owner: 'CLIENT',
+          completionMode: 'CLIENT_REPORT_CONSULTANT_VERIFY',
+          clientTitle: 'Original instructions',
+          clientBody: 'Earlier preparation request',
+          sortOrder: 0,
+        },
+      ],
+    };
+    const created = await createPlanDraft(prisma, clientId, input);
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const version = (await getPlanBuilder(prisma, clientId, created.planId)).plan!.versions[0]!;
+    const oldItem = version.items[0]!;
+    const context = await getResponseDraft(prisma, clientId, oldItem.id, clientUserId);
+    await saveResponseDraft(prisma, clientId, oldItem.id, clientUserId, {
+      expectedRevision: 0,
+      contextVersion: context.contextVersion,
+      values: { clientReport: 'Earlier private answer' },
+      note: 'Earlier note',
+      help: false,
+      documentIds: [],
+    });
+    await revisePlanDraft(prisma, created.planId, version.optimisticVersion, {
+      ...input,
+      items: [
+        {
+          ...input.items[0]!,
+          clientTitle: 'Updated instructions',
+          clientBody: 'Different preparation request',
+        },
+      ],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const current = (await getPlanBuilder(prisma, clientId, created.planId)).plan!.versions[0]!
+      .items[0]!;
+    const recovered = await getResponseDraft(prisma, clientId, current.id, clientUserId);
+    expect(recovered.draft).toBeNull();
+    expect(recovered.previousDraft).toMatchObject({
+      version: 1,
+      title: 'Original instructions',
+      body: 'Earlier preparation request',
+      values: { clientReport: 'Earlier private answer' },
+    });
+    expect(
+      (await getResponseDraft(prisma, clientId, current.id, consultantId)).previousDraft,
+    ).toBeNull();
+    await saveResponseDraft(prisma, clientId, current.id, clientUserId, {
+      expectedRevision: 0,
+      contextVersion: recovered.contextVersion,
+      values: { clientReport: 'Current answer' },
+      note: '',
+      help: false,
+      documentIds: [],
+    });
+    const both = await getResponseDraft(prisma, clientId, current.id, clientUserId);
+    expect(both.draft?.values).toEqual({ clientReport: 'Current answer' });
+    expect(both.previousDraft?.values).toEqual({ clientReport: 'Earlier private answer' });
+    expect(
+      await prisma.planItemOutcome.count({
+        where: { planItemId: { in: [oldItem.id, current.id] } },
+      }),
+    ).toBe(0);
+    const separate = await createPlanDraft(prisma, clientId, input);
+    await approvePlan(prisma, clientId, separate.planId, consultantId);
+    const unrelated = (await getPlanBuilder(prisma, clientId, separate.planId)).plan!.versions[0]!
+      .items[0]!;
+    expect(
+      (await getResponseDraft(prisma, clientId, unrelated.id, clientUserId)).previousDraft,
+    ).toBeNull();
   });
 });
