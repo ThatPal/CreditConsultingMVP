@@ -1,3 +1,4 @@
+import { publishedVersionOrder } from './publication.js';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import { validatePlanGraph } from './validation.js';
@@ -299,6 +300,15 @@ export async function createPlanDraft(
   });
 }
 
+function assertPlanOpen(plan: { status: string }) {
+  if (['CANCELLED', 'SUPERSEDED'].includes(plan.status))
+    throw new AppError(
+      'PLAN_IMMUTABLE',
+      409,
+      'This Plan is closed. Its history remains available.',
+    );
+}
+
 export async function revisePlanDraft(
   prisma: PrismaClient,
   planId: string,
@@ -309,6 +319,7 @@ export async function revisePlanDraft(
   return prisma.$transaction(async (tx) => {
     await lockPlan(tx, planId);
     const plan = await tx.plan.findUniqueOrThrow({ where: { id: planId } });
+    assertPlanOpen(plan);
     await assertPlanSourceOwnership(tx, plan.clientId, input);
     const latest = await tx.planVersion.findFirst({
       where: { planId },
@@ -479,27 +490,31 @@ export async function getPlanBuilder(prisma: PrismaClient, clientId: string, pla
 
 // Select the published version directly. A newer draft must not hide the
 // client's existing Plan, and an arbitrary version window is not a visibility rule.
-async function publishedPlan(prisma: Prisma.TransactionClient, clientId: string) {
-  return prisma.plan.findFirst({
+async function publishedPlan(prisma: Prisma.TransactionClient, clientId: string, planId?: string) {
+  const version = await prisma.planVersion.findFirst({
     where: {
-      clientId,
-      status: { notIn: ['CANCELLED', 'SUPERSEDED'] },
-      versions: { some: { status: { in: ['ACTIVE', 'APPROVED', 'STALE', 'COMPLETED'] } } },
-    },
-    include: {
-      versions: {
-        where: { status: { in: ['ACTIVE', 'APPROVED', 'STALE', 'COMPLETED'] } },
-        include: builderInclude,
-        orderBy: { version: 'desc' },
-        take: 1,
+      status: { in: ['ACTIVE', 'APPROVED', 'STALE', 'COMPLETED'] },
+      plan: {
+        clientId,
+        ...(planId ? { id: planId } : {}),
+        status: { notIn: ['CANCELLED', 'SUPERSEDED'] },
       },
     },
-    orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+    include: { ...builderInclude, plan: true },
+    orderBy: publishedVersionOrder,
   });
+  if (!version) return null;
+  const { plan, ...publishedVersion } = version;
+  return { ...plan, versions: [publishedVersion] };
 }
 
-export async function getClientPlan(prisma: PrismaClient, clientId: string) {
-  const plan = await publishedPlan(prisma, clientId);
+export async function getClientPlan(prisma: PrismaClient, clientId: string, planId?: string) {
+  if (
+    planId &&
+    !(await prisma.plan.findFirst({ where: { id: planId, clientId }, select: { id: true } }))
+  )
+    throw new AppError('NOT_FOUND', 404, 'Plan was not found');
+  const plan = await publishedPlan(prisma, clientId, planId);
   const version = plan?.versions[0];
   return {
     plan:
@@ -582,6 +597,7 @@ export async function approvePlan(
       include: { versions: { include: builderInclude, orderBy: { version: 'desc' }, take: 1 } },
     });
     if (!plan || !plan.versions[0]) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
+    assertPlanOpen(plan);
     const version = plan.versions[0];
     if (expectedVersion !== undefined && version.optimisticVersion !== expectedVersion)
       throw new AppError(
@@ -799,6 +815,7 @@ export async function reconcilePlanSources(
     });
     const latest = plan?.versions[0];
     if (!plan || !latest) throw new AppError('NOT_FOUND', 404, 'Plan was not found');
+    assertPlanOpen(plan);
     if (latest.optimisticVersion !== input.expectedVersion)
       throw new AppError(
         'VERSION_CONFLICT',
@@ -876,7 +893,7 @@ export async function reconcilePlanSources(
       sourceId: replacement.id,
       reasonCode: 'PLAN_RECONCILIATION_REQUIRED',
       dedupeKey: `plan-reconciliation:${replacement.id}`,
-      deepLink: { route: `/crm/clients/${input.clientId}/plan` },
+      deepLink: { route: `/crm/clients/${input.clientId}/plan?planId=${plan.id}` },
       neededSince: new Date(),
     };
     const existingWork = await tx.workItem.findFirst({
@@ -1070,7 +1087,9 @@ export async function executePlanItem(
             sourceId: item.id,
             reasonCode: nextStatus,
             dedupeKey: `plan-item:${item.id}:${nextStatus}`,
-            deepLink: { route: `/crm/clients/${input.clientId}/plan` },
+            deepLink: {
+              route: `/crm/clients/${input.clientId}/plan?planId=${item.planVersion.planId}`,
+            },
             neededSince: new Date(),
           },
         });

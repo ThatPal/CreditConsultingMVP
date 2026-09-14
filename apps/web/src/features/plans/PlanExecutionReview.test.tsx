@@ -39,12 +39,13 @@ test('requires a client-visible correction message and binds review to the displ
     <ThemeProvider theme={theme}>
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter>
-          <PlanExecutionReview clientId="client" />
+          <PlanExecutionReview clientId="client" planId="selected-plan" />
         </MemoryRouter>
       </QueryClientProvider>
     </ThemeProvider>,
   );
   await screen.findByText('1 step needs verification');
+  expect(request).toHaveBeenCalledWith('/api/v1/consultant/clients/client/plan/execution?planId=selected-plan');
   fireEvent.click(screen.getByRole('button', { name: 'Request correction' }));
   await screen.findByText('Explain what the client should correct.');
   expect(request.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);

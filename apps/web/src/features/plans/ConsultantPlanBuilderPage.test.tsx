@@ -269,3 +269,25 @@ test('closed selected Plans expose history without authoring controls', async ()
   expect(screen.getByRole('button', { name: 'Version history' })).toBeVisible();
   expect(screen.queryByRole('button', { name: 'Save draft' })).not.toBeInTheDocument();
 });
+
+test('approval preview explains when a different Plan will become current without publishing on preview', async () => {
+  request.mockResolvedValue({
+    ...fixture(),
+    clientPublication: {
+      planId: 'other',
+      title: 'Existing client instructions',
+      version: 2,
+      status: 'ACTIVE',
+      staleAt: null,
+    },
+  });
+  setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  fireEvent.click(screen.getByRole('button', { name: 'Review & approve' }));
+  expect(
+    within(screen.getByRole('dialog')).getByText(
+      /replacing Existing client instructions in the current Plan view/,
+    ),
+  ).toBeVisible();
+  expect(request.mock.calls.some(([path]) => path.endsWith('/approve'))).toBe(false);
+});

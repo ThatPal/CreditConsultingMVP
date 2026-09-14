@@ -1,3 +1,4 @@
+import { publishedVersionOrder } from '../plans/publication.js';
 import { createHash } from 'node:crypto';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
@@ -18,19 +19,23 @@ export function seasonalPeriod(at = new Date()) {
 }
 
 async function authoritativeContext(prisma: PrismaClient | Prisma.TransactionClient, clientId: string) {
-  const [goal, profile, plan, cards, recentApplication, majorContext] = await Promise.all([
+  const [goal, profile, selectedPlanVersion, cards, recentApplication, majorContext] = await Promise.all([
     prisma.clientGoal.findFirst({ where: { clientId, status: 'ACTIVE', priority: 'PRIMARY' }, orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }] }),
     prisma.creditProfileState.findUnique({ where: { clientId } }),
-    prisma.plan.findFirst({
-      where: { clientId, status: { in: ['ACTIVE', 'APPROVED'] }, purpose: { in: ['PREPARATION', 'NURTURE'] } },
-      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-      include: { versions: { where: { status: { in: ['ACTIVE', 'APPROVED'] } }, orderBy: { version: 'desc' }, take: 1, include: { items: true } } },
+    prisma.planVersion.findFirst({
+      where: {
+        status: { in: ['ACTIVE', 'APPROVED'] },
+        plan: { clientId, status: { in: ['ACTIVE', 'APPROVED'] }, purpose: { in: ['PREPARATION', 'NURTURE'] } },
+      },
+      orderBy: publishedVersionOrder,
+      include: { items: true, plan: true },
     }),
     prisma.clientCard.aggregate({ where: { clientId }, _count: true, _max: { updatedAt: true } }),
     prisma.cycleApplication.findFirst({ where: { cycle: { clientId } }, orderBy: [{ submittedAt: 'desc' }, { id: 'asc' }] }),
     prisma.workItem.findFirst({ where: { clientId, domain: 'MAJOR_READINESS', status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] } }, orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }] }),
   ]);
-  const planVersion = plan?.versions[0] ?? null;
+  const planVersion = selectedPlanVersion;
+  const plan = selectedPlanVersion ? { ...selectedPlanVersion.plan, versions: [selectedPlanVersion] } : null;
   const context = {
     goalId: goal?.id ?? null,
     goalVersion: goal?.version ?? null,

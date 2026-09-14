@@ -35,3 +35,6 @@ Start **A1: recover the product contracts and establish a premium reference slic
 The roadmap retains the full planned scope. A closed pilot is a verification stage, not permission to drop the advanced features or declare another conceptual MVP complete.
 
 Latest implementation: [Pass 16: Multi-Plan discovery and safe resumption](IMPLEMENTATION-16.md).
+
+
+Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEMENTATION-17.md). Private edits no longer change the selected publication; selected-Plan response review and new work-item links stay scoped. Cancellation/replacement commands remain open; A1/A2/A5 remain in progress.

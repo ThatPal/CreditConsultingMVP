@@ -330,7 +330,9 @@ export function createPlanRouter(
     requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
     async (req, res, next) => {
       try {
-        res.json(await getClientPlan(prisma, req.params.clientId as string));
+        const planId =
+          req.query.planId === undefined ? undefined : z.string().uuid().parse(req.query.planId);
+        res.json(await getClientPlan(prisma, req.params.clientId as string, planId));
       } catch (error) {
         next(error);
       }

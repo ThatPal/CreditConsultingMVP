@@ -434,7 +434,11 @@ function PlanBuilder({
           )}
         </Alert>
       )}
-      <PlanExecutionReview clientId={clientId} />
+      <PlanExecutionReview
+        key={editor.planId ?? 'current'}
+        clientId={clientId}
+        {...(editor.planId ? { planId: editor.planId } : {})}
+      />
       {editor.planId && (
         <PlanVersionHistory
           key={`${editor.planId}:${editor.revision}`}
@@ -1074,6 +1078,14 @@ function PlanBuilder({
           <Typography variant="h2" sx={{ mb: 3 }}>
             {draft.title}
           </Typography>
+          {editor.status === 'DRAFT' && query.data?.clientPublication && (
+            <Alert severity="info" sx={{ mb: 3 }}>
+              {query.data.clientPublication.planId !== editor.planId
+                ? `Approving this version will make ${draft.title} the client's current Plan, replacing ${query.data.clientPublication.title} in the current Plan view. The earlier Plan and its recorded history remain saved.`
+                : `Approving this version will replace version ${query.data.clientPublication.version} in the client's current Plan view. Completed work remains in the version history.`}
+              {' Saving or previewing these edits does not change the client publication.'}
+            </Alert>
+          )}
           {previewOpen && <PlanLifecyclePreview draft={draft} clientId={clientId} />}
           {approve.isError && (
             <Alert severity="error" sx={{ mt: 3 }}>

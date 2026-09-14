@@ -6,16 +6,18 @@ import { apiRequest } from '../../auth/api';
 import type { ClientPlanResponse } from '../../pages/PlanPages';
 import { ResponseHistory } from './PlanResponse';
 
-export function PlanExecutionReview({ clientId }: { clientId: string }) {
+export function PlanExecutionReview({ clientId, planId }: { clientId: string; planId?: string }) {
   const client = useQueryClient();
   const [selected, setSelected] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [localError, setLocalError] = useState('');
   const query = useQuery({
-    queryKey: ['plan-execution', clientId],
+    queryKey: planId ? ['plan-execution', clientId, planId] : ['plan-execution', clientId],
     queryFn: () =>
-      apiRequest<ClientPlanResponse>(`/api/v1/consultant/clients/${clientId}/plan/execution`),
+      apiRequest<ClientPlanResponse>(
+        `/api/v1/consultant/clients/${clientId}/plan/execution${planId ? `?planId=${encodeURIComponent(planId)}` : ''}`,
+      ),
   });
   const plan = query.data?.plan;
   const pending =

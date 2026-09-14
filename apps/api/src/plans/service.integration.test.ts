@@ -158,4 +158,71 @@ describe('Plan authoring and approval', () => {
     expect(JSON.stringify(clientView)).not.toContain('Updated draft guidance');
     expect(JSON.stringify(clientView)).not.toContain('Never expose this rationale');
   });
+  test('private revisions and source updates cannot promote an older publication', async () => {
+    const older = await createPlanDraft(prisma, clientId, {
+      ...draft,
+      title: 'Old published plan',
+    });
+    await approvePlan(prisma, clientId, older.planId, actorId);
+    const newer = await createPlanDraft(prisma, clientId, {
+      ...draft,
+      title: 'Current published plan',
+    });
+    await approvePlan(prisma, clientId, newer.planId, actorId);
+    // Explicit timestamps avoid relying on test timing or random UUID tie breakers.
+    await prisma.planVersion.update({
+      where: { id: older.versionId },
+      data: { approvedAt: new Date('2030-01-01') },
+    });
+    await prisma.planVersion.update({
+      where: { id: newer.versionId },
+      data: { approvedAt: new Date('2030-02-01') },
+    });
+    const baseline = (await getPlanBuilder(prisma, clientId, older.planId)).plan!.versions[0]!;
+    await revisePlanDraft(prisma, older.planId, baseline.optimisticVersion, {
+      ...draft,
+      title: 'Private revision of older plan',
+    });
+    await prisma.plan.update({
+      where: { id: older.planId },
+      data: { updatedAt: new Date('2031-01-01') },
+    });
+    expect((await getClientPlan(prisma, clientId)).plan?.id).toBe(newer.planId);
+    expect((await getPlanBuilder(prisma, clientId, older.planId)).clientPublication?.planId).toBe(
+      newer.planId,
+    );
+    await prisma.planVersion.update({
+      where: { id: newer.versionId },
+      data: { status: 'STALE', staleAt: new Date() },
+    });
+    expect((await getClientPlan(prisma, clientId)).plan).toMatchObject({
+      id: newer.planId,
+      status: 'STALE',
+    });
+    expect((await getClientPlan(prisma, clientId, older.planId)).plan?.id).toBe(older.planId);
+    await expect(getClientPlan(prisma, randomUUID(), older.planId)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    const revision = (await getPlanBuilder(prisma, clientId, older.planId)).plan!.versions[0]!;
+    await approvePlan(prisma, clientId, older.planId, actorId, revision.optimisticVersion);
+    await prisma.planVersion.update({
+      where: { id: revision.id },
+      data: { approvedAt: new Date('2030-03-01') },
+    });
+    expect((await getClientPlan(prisma, clientId)).plan?.id).toBe(older.planId);
+  });
+
+  test('closed Plans reject draft edits and publication even with a leftover draft version', async () => {
+    for (const status of ['CANCELLED', 'SUPERSEDED'] as const) {
+      const closed = await createPlanDraft(prisma, clientId, draft);
+      await prisma.plan.update({ where: { id: closed.planId }, data: { status } });
+      await expect(revisePlanDraft(prisma, closed.planId, 1, draft)).rejects.toMatchObject({
+        code: 'PLAN_IMMUTABLE',
+      });
+      await expect(approvePlan(prisma, clientId, closed.planId, actorId, 1)).rejects.toMatchObject({
+        code: 'PLAN_IMMUTABLE',
+      });
+      expect((await getPlanBuilder(prisma, clientId, closed.planId)).plan?.status).toBe(status);
+    }
+  });
 });
