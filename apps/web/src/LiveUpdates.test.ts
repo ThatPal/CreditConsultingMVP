@@ -58,3 +58,10 @@ describe('targeted realtime invalidation', () => {
     ]);
   });
 });
+
+test('document changes refresh submitted evidence in both Plan views', () => {
+  expect(queryRootsForLiveDomains(['documents'])).toEqual(
+    expect.arrayContaining(['client-plan', 'plan-execution']),
+  );
+  expect(queryRootsForLiveDomains(['documents'])).not.toContain('payments');
+});

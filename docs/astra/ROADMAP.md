@@ -305,3 +305,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 50: Client follow-up clarity and correction roundtrip](IMPLEMENTATION-50.md) consolidates correction/help feedback above the response form and verifies real browser submission, correction, resubmission and verification. Forty tests passed, including database competing-approval coverage; separate-consultant browser contention remains open.
 
 [Pass 51: Attachment replacement and competing previews](IMPLEMENTATION-51.md) names excluded prior evidence, verifies real upload/replacement correction history, and checks stale approval recovery in two tabs. Twenty-seven web tests and both builds passed; distinct-consultant browser qualification remains open.
+
+[Pass 52: Evidence availability and distinct consultant access](IMPLEMENTATION-52.md) refreshes open evidence views after document changes, blocks verification of unavailable files, and verifies correction recovery plus distinct-consultant approval/access behavior. Thirty-four web tests passed; source reconciliation and broader operational qualification remain open.

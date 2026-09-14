@@ -53,6 +53,10 @@ export function PlanExecutionReview({
       : visibleItems[0];
   const canReview = Boolean(item && pending.some((row) => row.id === item.id));
   const needsHelp = item?.status === 'UNABLE';
+  const unavailableEvidence =
+    item?.history
+      ?.find((event) => event.id === item.latestOutcomeId)
+      ?.attachments?.filter((file) => !file.available || file.status === 'DELETED') ?? [];
   const savedNote = notes[item?.id ?? ''];
   const note = savedNote?.text ?? '';
   const staleNote = Boolean(savedNote && savedNote.evidenceId !== (item?.latestOutcomeId ?? null));
@@ -392,11 +396,35 @@ export function PlanExecutionReview({
                     )}
                   </Alert>
                 )}
+                {!needsHelp && unavailableEvidence.length > 0 && (
+                  <Alert severity="warning">
+                    This response has evidence that is no longer available for verification:
+                    <Box component="ul" sx={{ my: 1, pl: 2.5 }}>
+                      {unavailableEvidence.map((file) => (
+                        <Typography
+                          component="li"
+                          variant="body2"
+                          key={file.documentId}
+                          sx={{ overflowWrap: 'anywhere' }}
+                        >
+                          {file.fileName}
+                        </Typography>
+                      ))}
+                    </Box>
+                    Request a correction and ask the client to attach an available file. The
+                    original submission stays in history.
+                  </Alert>
+                )}
                 <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                   <Button
                     variant="contained"
                     disabled={
-                      review.isPending || query.isFetching || needsRecheck || staleNote || paused
+                      review.isPending ||
+                      query.isFetching ||
+                      needsRecheck ||
+                      staleNote ||
+                      paused ||
+                      (!needsHelp && unavailableEvidence.length > 0)
                     }
                     onClick={() => {
                       if (needsHelp && !note.trim()) {

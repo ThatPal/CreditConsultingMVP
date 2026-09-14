@@ -43,6 +43,8 @@ const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
     'review-documents',
     'client-documents',
     'document-picker',
+    'client-plan',
+    'plan-execution',
     'plan-response-draft',
     'plan-draft-library',
   ],

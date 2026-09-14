@@ -546,3 +546,64 @@ test.each(['completed', 'unavailable'])(
     ).toHaveLength(1);
   },
 );
+
+test.each([
+  { available: false, status: 'DELETED', blocked: true },
+  { available: true, status: 'SUPERSEDED', blocked: false },
+])(
+  'verification respects submitted file availability ($status)',
+  async ({ available, status, blocked }) => {
+    const data = notePlan('evidence');
+    vi.mocked(apiRequest).mockResolvedValue({
+      plan: {
+        ...data.plan,
+        version: {
+          items: [
+            {
+              ...data.plan.version.items[0],
+              history: [
+                {
+                  id: 'evidence',
+                  kind: 'COMPLETE',
+                  data: {},
+                  createdAt: '2026-09-14',
+                  attachments: [
+                    {
+                      documentId: 'file',
+                      fileName: 'Submitted proof.pdf',
+                      sizeBytes: 100,
+                      available,
+                      status,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    noteWorkspace();
+    const verify = await screen.findByRole('button', { name: 'Verify completion' });
+    if (blocked) {
+      expect(verify).toBeDisabled();
+      expect(screen.getByText(/no longer available for verification/)).toBeVisible();
+    } else expect(verify).toBeEnabled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message to the client' }), {
+      target: { value: 'Please attach available proof.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Request correction' }));
+    await waitFor(() =>
+      expect(
+        vi.mocked(apiRequest).mock.calls.some(([, options]) => options?.method === 'POST'),
+      ).toBe(true),
+    );
+    const call = vi
+      .mocked(apiRequest)
+      .mock.calls.find(([, options]) => options?.method === 'POST')!;
+    expect(JSON.parse(String(call[1]?.body))).toMatchObject({
+      decision: 'RETURN',
+      expectedOutcomeId: 'evidence',
+    });
+  },
+);
