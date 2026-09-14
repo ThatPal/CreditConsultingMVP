@@ -179,3 +179,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 8
 
 [Client response autosave](IMPLEMENTATION-08.md) saves private edits after a short pause, preserves typing during a pending save, and pauses retries after failure. Saved responses survive reload and can be submitted normally. Next: protect unsaved in-app navigation, consultant authoring recovery, response-aware preview, path/multi-Plan lifecycle and independent-session verification. A1/A2/A5 remain in progress; the full production roadmap is unchanged.
+
+## Latest checkpoint: pass 9
+
+[Plan response navigation protection](IMPLEMENTATION-09.md) guards router navigation while response edits, uploads or writes are pending. Clients can stay, wait for saving, or explicitly leave without unsaved changes when no write is active. Next: consultant authoring recovery, offline/upload recovery, response-aware preview and path/multi-Plan lifecycle. A1/A2/A5 remain in progress.

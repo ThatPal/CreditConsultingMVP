@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigationProtection } from '../../NavigationProtection';
 import { apiRequest } from '../../auth/api';
 import type { ResponseDraft } from './SavedPlanResponse';
 import { EvidenceFile, PlanAttachments, type PlanFile } from './PlanAttachments';
@@ -262,6 +263,7 @@ export function PlanResponse({
       );
     },
   });
+  useNavigationProtection(dirty && !mutation.isSuccess, saving || uploading || mutation.isPending);
   useEffect(() => {
     if (
       !onSaveDraft ||
