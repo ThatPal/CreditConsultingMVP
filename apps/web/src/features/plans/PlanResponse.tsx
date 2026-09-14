@@ -159,6 +159,7 @@ export function PlanResponse({
   item,
   draft,
   onSaveDraft,
+  pauseMessage,
   draftRevision,
   draftId,
   draftContextVersion,
@@ -169,6 +170,7 @@ export function PlanResponse({
   draftId?: string | null;
   draftContextVersion?: string;
   onSaveDraft?: (draft: ResponseDraft) => Promise<void>;
+  pauseMessage?: string;
 }) {
   const client = useQueryClient();
   const writesPaused = useContext(ResponseWritePause);
@@ -474,7 +476,8 @@ export function PlanResponse({
           </Button>
           <Typography variant="caption" role="status">
             {writesPaused
-              ? 'A Plan update is waiting. Copy any unsaved text before loading it.'
+              ? (pauseMessage ??
+                'A Plan update is waiting. Copy any unsaved text before loading it.')
               : saving
                 ? 'Saving changes privately...'
                 : saveError

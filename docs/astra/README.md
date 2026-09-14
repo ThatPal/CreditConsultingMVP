@@ -114,3 +114,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 43: Owner-targeted private draft notifications](IMPLEMENTATION-43.md) records save/discard hints transactionally and routes them only to the owning client account. Separate-session browser recovery and recipient tests passed; ordering, staff/multi-node evidence and coordinated rollout remain open.
 
 [Pass 44: Draft acknowledgment ordering](IMPLEMENTATION-44.md) prevents delayed save responses and obsolete reads from hiding newer draft state. Four controlled races and a real committed-write browser scenario passed; broader delivery and workflow qualification remain open.
+
+[Pass 45: Accepted-save confirmation recovery](IMPLEMENTATION-45.md) distinguishes a successful save from a failed follow-up check, preserves local work and retries without repeating the save. Controlled network/server failures and a real accepted-save browser scenario passed.

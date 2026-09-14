@@ -78,6 +78,8 @@ export function SavedPlanResponse({
   const [confirmReload, setConfirmReload] = useState(false);
   const [writeBusy, setWriteBusy] = useState(false);
   const [checkNeeded, setCheckNeeded] = useState(false);
+  const [confirmingSave, setConfirmingSave] = useState(false);
+  const [saveAcknowledged, setSaveAcknowledged] = useState(false);
   const pending = usePendingNavigationWork();
   const inheritedPause = useContext(ResponseWritePause);
 
@@ -103,7 +105,14 @@ export function SavedPlanResponse({
       value?.draft?.revision ?? 0,
     ]);
   const changed = Boolean(accepted && query.data && identity(accepted) !== identity(query.data));
-  const blocked = inheritedPause || changed || query.isError;
+  const blocked = inheritedPause || changed || query.isError || confirmingSave;
+  const pauseMessage = inheritedPause
+    ? 'A Plan update is waiting. Copy any unsaved text before loading it.'
+    : changed
+      ? 'A different saved response is available. Review it before saving or submitting.'
+      : query.isError
+        ? 'Saving and submission are paused. Retry the saved-response check; your local answers remain here.'
+        : 'Your save was accepted. Checking the latest saved response before you continue...';
   const busy = pending.busy || writeBusy;
   if (query.isLoading && !accepted)
     return <Typography role="status">Checking for a saved response...</Typography>;
@@ -204,6 +213,7 @@ export function SavedPlanResponse({
           draftId={data.draft?.id ?? null}
           draftContextVersion={data.contextVersion}
           item={item}
+          pauseMessage={pauseMessage}
           draft={choice === 'resume' && saved ? saved : undefined}
           onSaveDraft={async (draft) => {
             if (blocked)
@@ -212,6 +222,7 @@ export function SavedPlanResponse({
               );
             const current = data;
             setWriteBusy(true);
+            setSaveAcknowledged(false);
             try {
               const result = await apiRequest<DraftResult>(path, {
                 method: 'PUT',
@@ -235,11 +246,15 @@ export function SavedPlanResponse({
                 observed &&
                 identity(observed) !== identity(current) &&
                 identity(observed) !== identity(result);
+              setSaveAcknowledged(true);
               setCheckNeeded(false);
               setChoice('resume');
               setAccepted(result);
               client.setQueryData(queryKey, changedWhileSaving ? observed : result);
-              void client.invalidateQueries({ queryKey, exact: true });
+              setConfirmingSave(true);
+              void client.invalidateQueries({ queryKey, exact: true }).finally(() => {
+                if (active.current) setConfirmingSave(false);
+              });
             } catch (error) {
               if (active.current) setCheckNeeded(true);
               throw error;
@@ -281,7 +296,9 @@ export function SavedPlanResponse({
               </Button>
             }
           >
-            The saved response could not be refreshed. Your local answers remain here.
+            {saveAcknowledged
+              ? 'Your last save was accepted, but the latest saved response could not be checked. Retry this check before continuing; it will not repeat that save.'
+              : 'The saved response could not be refreshed. Your local answers remain here.'}
           </Alert>
         )}
         <Dialog
