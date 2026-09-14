@@ -59,3 +59,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 24: Source pauses and response recovery](IMPLEMENTATION-24.md) enforces source-review pauses on client/consultant writes and adds explicit response refresh and tab-storage retry. Grouped API/web builds passed. Published-Plan handoff and visual/operational qualification remain open.
+
+
+[Pass 25: Approved revision follow-up handoff](IMPLEMENTATION-25.md) carries pending response reminders into approved revisions, preserves assignment and timing, scopes decision resolution, and refreshes response/Journey views. Separate-Plan replacement policy and broader qualification remain open.

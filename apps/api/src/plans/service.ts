@@ -905,6 +905,41 @@ export async function approvePlan(
       data: { status: 'COMPLETED', completedAt: new Date(), resolvedAt: new Date() },
     });
     const activationItems = await tx.planItem.findMany({ where: { planVersionId: version.id } });
+    // Keep the same attention record (assignment, age and due date) when an
+    // approved revision carries an unresolved response to a new item ID.
+    if (version.supersedesVersionId) {
+      const previousItems = await tx.planItem.findMany({
+        where: { planVersion: { planId, version: { lt: version.version } } },
+        select: { id: true, stableKey: true },
+      });
+      for (const item of activationItems.filter((entry) =>
+        ['UNABLE', 'AWAITING_VERIFICATION'].includes(entry.status),
+      )) {
+        await tx.workItem.updateMany({
+          where: {
+            clientId,
+            domain: 'PLAN',
+            authority: 'ATTENTION_PROJECTION',
+            sourceType: 'PlanItem',
+            sourceId: {
+              in: previousItems
+                .filter((old) => old.stableKey === item.stableKey)
+                .map((old) => old.id),
+            },
+            reasonCode: item.status,
+            status: { notIn: ['COMPLETED', 'CANCELLED'] },
+          },
+          data: {
+            sourceId: item.id,
+            dedupeKey: `plan-item:${item.id}:${item.status}`,
+            deepLink: {
+              route: `/crm/clients/${clientId}/plan?planId=${planId}&stepKey=${encodeURIComponent(item.stableKey)}`,
+            },
+            version: { increment: 1 },
+          },
+        });
+      }
+    }
     const completed = new Set(
       activationItems.filter((item) => item.status === 'COMPLETED').map((item) => item.id),
     );
@@ -1460,7 +1495,14 @@ export async function verifyPlanItem(
     });
     if (!reopen) await unlockCompletedDependencies(tx, item.planVersionId);
     await tx.workItem.updateMany({
-      where: { sourceType: 'PlanItem', sourceId: item.id, status: { not: 'COMPLETED' } },
+      where: {
+        clientId,
+        domain: 'PLAN',
+        authority: 'ATTENTION_PROJECTION',
+        sourceType: 'PlanItem',
+        sourceId: item.id,
+        status: { notIn: ['COMPLETED', 'CANCELLED'] },
+      },
       data: { status: 'COMPLETED', completedAt: new Date(), resolvedAt: new Date() },
     });
     await tx.auditEvent.create({

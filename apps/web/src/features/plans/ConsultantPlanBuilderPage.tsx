@@ -236,6 +236,8 @@ function PlanBuilder({
     await queryClient.invalidateQueries({ queryKey: ['client-plan'] });
     await queryClient.invalidateQueries({ queryKey: ['portal-home'] });
     await queryClient.invalidateQueries({ queryKey: ['work-queue'] });
+    await queryClient.invalidateQueries({ queryKey: ['plan-execution', clientId] });
+    await queryClient.invalidateQueries({ queryKey: ['portal-journey'] });
     await queryClient.invalidateQueries({ queryKey: ['shell-client-context', clientId] });
   };
   const save = useMutation({
@@ -1195,7 +1197,7 @@ function PlanBuilder({
             <Alert severity="info" sx={{ mb: 3 }}>
               {previewPublication.planId !== editor.planId
                 ? `Approving this version will make ${draft.title} the client's current Plan, replacing ${previewPublication.title} in the current Plan view. The earlier Plan and its recorded history remain saved.`
-                : `Approving this version will replace version ${previewPublication.version} in the client's current Plan view. Completed work remains in the version history.`}
+                : `Approving this version will replace version ${previewPublication.version} in the client's current Plan view. Completed work remains in the version history. Pending responses and their assigned follow-up work carry into the approved revision.`}
               {' Saving or previewing these edits does not change the client publication.'}
             </Alert>
           )}

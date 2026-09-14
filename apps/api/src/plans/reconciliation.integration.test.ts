@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
 import {
   approvePlan,
+  verifyPlanItem,
   getPlanVersionHistory,
   createPlanDraft,
   executePlanItem,
@@ -358,4 +359,100 @@ describe('Astra Plan revision and source review', () => {
     expect(context.plan!.versions[0]!.version).toBe(2);
     expect(context.clientPublication).toMatchObject({ planId: created.planId, version: 1 });
   });
+  test.each(['COMPLETE', 'UNABLE'] as const)(
+    'approval carries %s attention through revisions and review resolves only live Plan reminders',
+    async (action) => {
+      const input: PlanDraftInput = {
+        ...(await payload()),
+        title: 'Response handoff',
+        dependencies: [],
+        items: [
+          {
+            stableKey: 'pending-response',
+            type: 'ACTION',
+            owner: 'CLIENT',
+            completionMode: 'CLIENT_REPORT_CONSULTANT_VERIFY',
+            clientTitle: 'Report preparation',
+            sortOrder: 0,
+          },
+        ],
+      };
+      const created = await createPlanDraft(prisma, clientId, input);
+      await approvePlan(prisma, clientId, created.planId, consultantId);
+      const originalVersion = (await getPlanVersionHistory(prisma, clientId, created.planId))
+        .versions[0]!;
+      const oldItem = originalVersion.items[0]!;
+      const submitted = await executePlanItem(prisma, {
+        clientId,
+        itemId: oldItem.id,
+        actorId: clientUserId,
+        idempotencyKey: randomUUID(),
+        action,
+        reason: action === 'UNABLE' ? 'Need help preparing the response' : undefined,
+        outcome: { clientReport: 'Prepared' },
+      });
+      const reminder = await prisma.workItem.findFirstOrThrow({
+        where: { clientId, sourceId: oldItem.id },
+      });
+      const dueAt = new Date('2026-10-01T12:00:00Z');
+      await prisma.workItem.update({
+        where: { id: reminder.id },
+        data: { assigneeId: consultantId, dueAt },
+      });
+      const cancelled = await prisma.workItem.create({
+        data: {
+          clientId,
+          title: 'Previously cancelled',
+          domain: 'PLAN',
+          authority: 'ATTENTION_PROJECTION',
+          sourceType: 'PlanItem',
+          sourceId: oldItem.id,
+          reasonCode: 'AWAITING_VERIFICATION',
+          status: 'CANCELLED',
+        },
+      });
+      for (let revision = 0; revision < 2; revision++) {
+        const latest = (await getPlanVersionHistory(prisma, clientId, created.planId)).versions[0]!;
+        await revisePlanDraft(prisma, created.planId, latest.optimisticVersion, input);
+        // A private save must not move the live queue before approval.
+        const before = await prisma.workItem.findUniqueOrThrow({ where: { id: reminder.id } });
+        expect(before.sourceId).toBe(latest.items[0]!.id);
+        await approvePlan(prisma, clientId, created.planId, consultantId);
+      }
+      const current = (await getPlanVersionHistory(prisma, clientId, created.planId)).versions[0]!;
+      const migrated = await prisma.workItem.findUniqueOrThrow({ where: { id: reminder.id } });
+      expect(migrated).toMatchObject({
+        sourceId: current.items[0]!.id,
+        assigneeId: consultantId,
+        dueAt,
+        neededSince: reminder.neededSince,
+        status: 'OPEN',
+        version: 2,
+      });
+      const unrelated = await prisma.workItem.create({
+        data: {
+          clientId,
+          title: 'Independent work',
+          domain: 'OTHER',
+          sourceType: 'PlanItem',
+          sourceId: current.items[0]!.id,
+        },
+      });
+      await verifyPlanItem(prisma, clientId, current.items[0]!.id, consultantId, {
+        decision: action === 'UNABLE' ? 'RESUME' : 'VERIFY',
+        expectedOutcomeId: submitted.outcomeId,
+        note: 'Reviewed the carried response; you can continue.',
+      });
+      expect((await prisma.workItem.findUniqueOrThrow({ where: { id: reminder.id } })).status).toBe(
+        'COMPLETED',
+      );
+      expect(
+        (await prisma.workItem.findUniqueOrThrow({ where: { id: cancelled.id } })).status,
+      ).toBe('CANCELLED');
+      expect(
+        (await prisma.workItem.findUniqueOrThrow({ where: { id: unrelated.id } })).status,
+      ).toBe('OPEN');
+      expect(await prisma.planItemOutcome.count({ where: { planItemId: oldItem.id } })).toBe(1);
+    },
+  );
 });
