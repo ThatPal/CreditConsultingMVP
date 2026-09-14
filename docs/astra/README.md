@@ -89,3 +89,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 34: Expiry during pending Plan work](IMPLEMENTATION-34.md) fixes blocked sign-in navigation, late private draft cache restoration, and upload callbacks after unmount. Controlled integration coverage passes; an editable synthetic browser scenario and broader qualification remain open.
+
+
+[Pass 35: Real-browser expiry and upload authentication](IMPLEMENTATION-35.md) verifies editing/upload sign-out recovery against the real API, fixes anonymous upload 403 versus 401, and compacts the mobile action bar with keyboard focus transfer. Cross-tab/accepted-write behavior and broader production qualification remain open.

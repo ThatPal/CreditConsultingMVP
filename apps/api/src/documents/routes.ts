@@ -189,7 +189,8 @@ export function createDocumentRouter(
       let storageKey: string | null = null;
       let cleanupStorage: ReturnType<DocumentStorageRegistry['forNewUpload']> | null = null;
       try {
-        if (!req.auth?.clientId || req.auth.role !== 'CLIENT')
+        if (!req.auth) throw new AppError('AUTH_REQUIRED', 401, 'Authentication is required');
+        if (!req.auth.clientId || req.auth.role !== 'CLIENT')
           throw new AppError('FORBIDDEN', 403, 'Client document upload is required');
         const clientId = req.auth.clientId;
         if (

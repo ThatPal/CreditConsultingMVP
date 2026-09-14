@@ -220,6 +220,9 @@ export function ClientPlanPage() {
             <Box
               key={item.id}
               id={`plan-item-${item.id}`}
+              tabIndex={-1}
+              role="group"
+              aria-label={item.title}
               sx={{ borderBottom: 1, borderColor: 'divider', scrollMarginTop: 100, py: 1 }}
             >
               <CardContent>
@@ -291,24 +294,27 @@ export function ClientPlanPage() {
           <StickyActionBar label="Current Plan action">
             {currentFocus.deepLink ? (
               <Button component={Link} to={currentFocus.deepLink} variant="contained">
-                Start {currentFocus.title}
+                Go to current step
               </Button>
             ) : (
               <Button
                 variant="contained"
-                onClick={() =>
-                  document.getElementById(`plan-item-${currentFocus.id}`)?.scrollIntoView({
+                aria-label={`Go to step: ${currentFocus.title}`}
+                onClick={() => {
+                  const target = document.getElementById(`plan-item-${currentFocus.id}`);
+                  target?.focus({ preventScroll: true });
+                  target?.scrollIntoView({
                     behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
                       ? 'auto'
                       : 'smooth',
-                  })
-                }
+                  });
+                }}
               >
-                Start {currentFocus.title}
+                Go to current step
               </Button>
             )}
             <Button component={Link} to="/app/support?new=1&category=PLAN" variant="outlined">
-              Ask for help with this Plan
+              Ask for help
             </Button>
           </StickyActionBar>
         )}
