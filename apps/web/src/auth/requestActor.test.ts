@@ -47,3 +47,16 @@ test('authentication and public intake remain available after session loss', asy
   for (const [, init] of fetcher.mock.calls)
     expect(new Headers(init?.headers).has('X-Credit-Actor')).toBe(false);
 });
+
+test('legacy protected routes carry the actor and stop after loss', async () => {
+  bindRequestActor('legacy-account');
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}'));
+  for (const path of ['/api/services', '/api/goals?view=active', '/api/application-cycles']) {
+    await apiRequest(path);
+  }
+  for (const [, init] of fetcher.mock.calls)
+    expect(new Headers(init?.headers).get('X-Credit-Actor')).toBe('legacy-account');
+  endRequestSession();
+  await expect(apiRequest('/api/goals', { method: 'POST' })).rejects.toThrow('Sign in again');
+  expect(fetcher).toHaveBeenCalledTimes(3);
+});

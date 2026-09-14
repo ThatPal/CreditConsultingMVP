@@ -101,3 +101,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 38: Request account expectation](IMPLEMENTATION-38.md) rejects updated-client requests from stale account tabs before protected v1 operations, covers JSON/files/downloads, and propagates successful MFA verification. Real-browser wrong-account upload rejection passed; legacy/direct callers and broader qualification remain open.
+
+
+[Pass 39: Legacy request coverage and MFA handoff](IMPLEMENTATION-39.md) extends the account check beyond v1 and verifies a real synthetic Admin authenticator challenge, cross-tab cleanup and exact staff return path. Enrollment/recovery, event-stream revocation and broader production qualification remain open.

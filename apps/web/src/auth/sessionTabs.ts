@@ -39,3 +39,12 @@ export function connectSessionTabs(onEnd: () => void) {
     },
   };
 }
+
+export function announceSessionChange() {
+  const connection = connectSessionTabs(() => undefined);
+  try {
+    connection.publish();
+  } finally {
+    connection.close();
+  }
+}

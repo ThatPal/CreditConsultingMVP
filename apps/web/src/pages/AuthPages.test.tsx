@@ -205,6 +205,7 @@ describe('client authentication pages', () => {
   });
 
   test('staff saved routes compose through challenge MFA before recovery', async () => {
+    const notify = vi.spyOn(Storage.prototype, 'setItem');
     vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
       response({ twoFactorRedirect: true }),
     );
@@ -220,6 +221,7 @@ describe('client authentication pages', () => {
         '/mfa?mode=challenge&returnTo=%2Fadmin%2Fservices%3Factive%3Dtrue%23catalog',
       ),
     );
+    expect(notify).toHaveBeenCalledWith('astra:session-ended:v1', expect.stringMatching(/^[0-9a-f-]{36}$/i));
   });
 
   test('successful staff MFA restores the validated saved route', async () => {

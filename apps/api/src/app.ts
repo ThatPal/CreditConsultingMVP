@@ -145,7 +145,7 @@ export function createApp(
     );
     if (!betterAuth) app.use('/api/auth', createAuthRouter(auth, env));
     app.use('/api/me', createMeRouter(auth, prisma));
-    app.use('/api/v1', requireExpectedActor);
+    app.use('/api', requireExpectedActor);
     if (goals) {
       app.use('/api/goals', createGoalRouter(goals));
       app.use('/api/v1/client/goals', createGoalRouter(goals));

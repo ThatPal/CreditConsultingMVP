@@ -24,6 +24,7 @@ import {
 } from 'react-router-dom';
 import { apiRequest, homeFor, type CurrentUser } from '../auth/api';
 import { useAuth } from '../auth/AuthProvider';
+import { announceSessionChange } from '../auth/sessionTabs';
 import { safeReturnPath } from '../auth/safeReturnPath';
 import { designTokens } from '../theme';
 
@@ -105,6 +106,7 @@ export function LoginPage() {
       });
       const returnTo = safeReturnPath((location.state as { from?: unknown } | null)?.from, '/crm');
       if (signIn.twoFactorRedirect) {
+        announceSessionChange();
         navigate(`/mfa?mode=challenge&returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
         return;
       }
