@@ -59,7 +59,7 @@ export function NavigationProtection({ children }: PropsWithChildren) {
             {busy
               ? 'A save, upload or submission is still running. Please wait before leaving, or stay on this page.'
               : dirty
-                ? 'Your latest changes are not saved yet. Autosave will continue while this is open. If saving failed, stay on this page and use Save draft to retry. Leaving now keeps only your last successful save.'
+                ? 'Your latest changes are not saved yet. If automatic saving is available, it will continue while this is open. If saving failed, stay on this page and use Save draft to retry. Leaving now keeps only your last successful save.'
                 : 'You can now continue to the page you selected.'}
           </DialogContentText>
         </DialogContent>

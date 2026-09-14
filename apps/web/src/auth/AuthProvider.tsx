@@ -1,3 +1,4 @@
+import { clearPlanTabRecovery } from './tabRecovery';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
@@ -40,6 +41,7 @@ export function AuthProvider({
     () =>
       subscribeToSessionLoss(() => {
         if (!userRef.current) return;
+        clearPlanTabRecovery();
         setSessionLost(true);
         queryClient.setQueryData(['current-user'], null);
         void queryClient.cancelQueries({
@@ -57,6 +59,7 @@ export function AuthProvider({
   };
   const logout = async () => {
     await apiRequest<void>('/api/auth/sign-out', { method: 'POST' });
+    clearPlanTabRecovery();
     setSessionLost(true);
     queryClient.setQueryData(['current-user'], null);
     queryClient.removeQueries({

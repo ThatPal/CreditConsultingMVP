@@ -7,6 +7,7 @@ import { apiRequest } from '../../auth/api';
 import { theme } from '../../theme';
 import { ConsultantPlanBuilderPage } from './ConsultantPlanBuilderPage';
 
+vi.mock('../../auth/AuthProvider', () => ({ useAuth: () => ({ user: { userId: 'consultant' } }) }));
 vi.mock('../../auth/api', () => ({ apiRequest: vi.fn() }));
 const request = vi.mocked(apiRequest);
 const fixture = (revision = 3, title = 'Prepare for your review') => ({
@@ -46,7 +47,7 @@ function setup() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  render(
+  const view = render(
     <ThemeProvider theme={theme}>
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={['/crm/clients/client/plan']}>
@@ -57,9 +58,10 @@ function setup() {
       </QueryClientProvider>
     </ThemeProvider>,
   );
-  return client;
+  return Object.assign(client, { unmount: view.unmount });
 }
 beforeEach(() => {
+  sessionStorage.clear();
   request.mockReset();
   request.mockResolvedValue(fixture());
 });
@@ -125,4 +127,52 @@ test('approval preview excludes private rationale and sends the reviewed revisio
   const call = request.mock.calls.find(([path]) => path.endsWith('/approve'))!;
   expect(JSON.parse(String(call[1]?.body))).toEqual({ expectedVersion: 3 });
   expect(call[1]?.headers).toBeUndefined();
+});
+
+test('restores unfinished edits after remount without advancing their original revision', async () => {
+  const view = setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Plan title' }), {
+    target: { value: 'Recovered work' },
+  });
+  view.unmount();
+  request.mockResolvedValue(fixture(4, 'Newer server work'));
+  setup();
+  fireEvent.click(await screen.findByRole('button', { name: 'Restore unfinished edits' }));
+  expect(screen.getByDisplayValue('Recovered work')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Review & approve' })).toBeDisabled();
+});
+
+test('can discard the tab copy and open the current server Plan', async () => {
+  const view = setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Plan title' }), {
+    target: { value: 'Discard me' },
+  });
+  view.unmount();
+  setup();
+  fireEvent.click(await screen.findByRole('button', { name: 'Discard tab copy' }));
+  expect(screen.getByDisplayValue('Prepare for your review')).toBeInTheDocument();
+  expect(sessionStorage.length).toBe(0);
+});
+
+test('ignores an expired recovery copy and shows the server version', async () => {
+  const view = setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Plan title' }), {
+    target: { value: 'Old edits' },
+  });
+  view.unmount();
+  const key = sessionStorage.key(0)!;
+  const stored = JSON.parse(sessionStorage.getItem(key)!);
+  sessionStorage.setItem(
+    key,
+    JSON.stringify({ ...stored, savedAt: Date.now() - 25 * 60 * 60 * 1000 }),
+  );
+  setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  expect(
+    screen.queryByRole('button', { name: 'Restore unfinished edits' }),
+  ).not.toBeInTheDocument();
 });

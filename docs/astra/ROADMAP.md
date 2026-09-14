@@ -183,3 +183,7 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 9
 
 [Plan response navigation protection](IMPLEMENTATION-09.md) guards router navigation while response edits, uploads or writes are pending. Clients can stay, wait for saving, or explicitly leave without unsaved changes when no write is active. Next: consultant authoring recovery, offline/upload recovery, response-aware preview and path/multi-Plan lifecycle. A1/A2/A5 remain in progress.
+
+## Latest checkpoint: pass 10
+
+[Consultant tab recovery](IMPLEMENTATION-10.md) retains unfinished authoring edits within the current browser tab, with explicit restore/discard and original revision conflict protection. Consultant navigation now participates in the shared guard. Cross-device/server authoring autosave, conflict comparison/merge, browser MFA verification and offline/upload qualification remain open, along with preview/lifecycle work. A1/A2/A5 remain in progress.

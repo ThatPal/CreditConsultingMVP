@@ -1,3 +1,6 @@
+import { useAuth } from '../../auth/AuthProvider';
+import { planRecoveryKey } from '../../auth/tabRecovery';
+import { useNavigationProtection } from '../../NavigationProtection';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -88,10 +91,45 @@ const message = (error: unknown) =>
 
 export function ConsultantPlanBuilderPage() {
   const { clientId = '' } = useParams();
-  return <PlanBuilder key={clientId} clientId={clientId} />;
+  const { user } = useAuth();
+  return user ? (
+    <PlanBuilder key={`${user.userId}:${clientId}`} clientId={clientId} actorId={user.userId} />
+  ) : null;
 }
 
-function PlanBuilder({ clientId }: { clientId: string }) {
+function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string }) {
+  const recoveryKey = planRecoveryKey(actorId, clientId);
+  const [recovery, setRecovery] = useState<Editor | null>(() => {
+    try {
+      const raw = sessionStorage.getItem(recoveryKey);
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      if (
+        saved.format !== 1 ||
+        typeof saved.savedAt !== 'number' ||
+        !Number.isFinite(saved.savedAt) ||
+        saved.savedAt > Date.now() ||
+        Date.now() - saved.savedAt > 24 * 60 * 60 * 1000
+      )
+        return null;
+      const value = saved.editor as Editor;
+      if (
+        typeof value.baseline !== 'string' ||
+        !Number.isInteger(value.revision) ||
+        !Number.isInteger(value.version) ||
+        typeof value.status !== 'string' ||
+        !(value.planId === null || typeof value.planId === 'string')
+      )
+        return null;
+      // Exercise the normal draft readers before offering data from browser storage.
+      draftPayload(value.draft);
+      editorIssues(value.draft);
+      return value;
+    } catch {
+      return null;
+    }
+  });
+  const [recoveryError, setRecoveryError] = useState(false);
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ['plan-builder', clientId],
@@ -116,6 +154,20 @@ function PlanBuilder({ clientId }: { clientId: string }) {
   }, [query.data]);
   const dirty = Boolean(editor && JSON.stringify(draftPayload(editor.draft)) !== editor.baseline);
   useEffect(() => {
+    if (recovery || !editor) return;
+    try {
+      if (dirty)
+        sessionStorage.setItem(
+          recoveryKey,
+          JSON.stringify({ format: 1, savedAt: Date.now(), editor }),
+        );
+      else sessionStorage.removeItem(recoveryKey);
+      setRecoveryError(false);
+    } catch {
+      setRecoveryError(true);
+    }
+  }, [editor, dirty, recovery, recoveryKey]);
+  useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
       if (dirty) {
         event.preventDefault();
@@ -129,10 +181,13 @@ function PlanBuilder({ clientId }: { clientId: string }) {
     editor &&
     query.data?.plan &&
     (editor.planId !== query.data.plan.id ||
-      editor.revision !== query.data.plan.versions[0]?.optimisticVersion),
+      editor.revision !== query.data.plan.versions[0]?.optimisticVersion ||
+      editor.version !== query.data.plan.versions[0]?.version ||
+      editor.status !== query.data.plan.versions[0]?.status),
   );
   const refresh = async () => {
     const result = await query.refetch();
+    if (result.isError) throw result.error;
     if (result.data) setEditor(hydrate(result.data));
     await queryClient.invalidateQueries({ queryKey: ['client-plan'] });
     await queryClient.invalidateQueries({ queryKey: ['portal-home'] });
@@ -198,6 +253,7 @@ function PlanBuilder({ clientId }: { clientId: string }) {
     },
   });
   const busy = save.isPending || approve.isPending || reconcile.isPending;
+  useNavigationProtection(dirty, busy);
   const edit = (change: (draft: PlanDraft) => PlanDraft) => {
     if (!busy) {
       setNotice('');
@@ -209,6 +265,38 @@ function PlanBuilder({ clientId }: { clientId: string }) {
   if (query.isError && !editor)
     return <RecoveryState error={query.error} onRetry={() => void query.refetch()} />;
   if (!editor) return null;
+  if (recovery)
+    return (
+      <Stack spacing={2}>
+        <PageHeader
+          title="Recover your unfinished Plan"
+          description="Unfinished edits from this browser tab are available. They have not been saved to the shared Plan or published to the client."
+        />
+        <Alert severity="info">
+          Restore your edits to review them against the current server version, or discard this
+          tab's copy and open the saved Plan.
+        </Alert>
+        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setEditor(recovery);
+              setRecovery(null);
+            }}
+          >
+            Restore unfinished edits
+          </Button>
+          <Button
+            onClick={() => {
+              setEditor(hydrate(query.data!));
+              setRecovery(null);
+            }}
+          >
+            Discard tab copy
+          </Button>
+        </Stack>
+      </Stack>
+    );
   const draft = editor.draft;
   const selected = draft.items.find((item) => item.stableKey === selectedKey) ?? draft.items[0];
   const protectedStep = selected ? hasProgress(selected) : false;
@@ -306,6 +394,13 @@ function PlanBuilder({ clientId }: { clientId: string }) {
           Client preview
         </Button>
       </Stack>
+      {dirty && (
+        <Alert severity={recoveryError ? 'warning' : 'info'} role="status">
+          {recoveryError
+            ? 'This browser could not keep a recovery copy. Keep this page open and use Save draft to protect your work.'
+            : 'Unfinished edits are kept in this browser tab for up to 24 hours. Use Save draft to keep them on the server. Signing out clears the tab copy.'}
+        </Alert>
+      )}
       {notice && (
         <Alert severity="success" role="status">
           {notice}
