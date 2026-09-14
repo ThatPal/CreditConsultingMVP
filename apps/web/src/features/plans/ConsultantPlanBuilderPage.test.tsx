@@ -43,14 +43,14 @@ const fixture = (revision = 3, title = 'Prepare for your review') => ({
   },
   context: {},
 });
-function setup() {
+function setup(entry = '/crm/clients/client/plan') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const view = render(
     <ThemeProvider theme={theme}>
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/crm/clients/client/plan']}>
+        <MemoryRouter initialEntries={[entry]}>
           <Routes>
             <Route path="/crm/clients/:clientId/plan" element={<ConsultantPlanBuilderPage />} />
           </Routes>
@@ -224,11 +224,48 @@ test('selected wording uses the newer revision only after explicit save', async 
   });
 });
 
-
 test('distinguishes the private working version from a paused client publication', async () => {
-  request.mockResolvedValue({ ...fixture(), clientPublication: { planId: 'plan', title: 'Published preparation', version: 1, status: 'STALE', staleAt: '2026-09-10T00:00:00Z' } });
+  request.mockResolvedValue({
+    ...fixture(),
+    clientPublication: {
+      planId: 'plan',
+      title: 'Published preparation',
+      version: 1,
+      status: 'STALE',
+      staleAt: '2026-09-10T00:00:00Z',
+    },
+  });
   setup();
   await screen.findByDisplayValue('Prepare for your review');
   expect(screen.getByText(/Client publication: Published preparation, version 1/)).toBeVisible();
   expect(screen.getByText(/Client actions are paused for source review/)).toBeVisible();
+});
+
+test('loads a selected Plan and stores its recovery copy separately from the default workspace', async () => {
+  const view = setup('/crm/clients/client/plan?planId=older');
+  await screen.findByDisplayValue('Prepare for your review');
+  expect(request).toHaveBeenCalledWith('/api/v1/consultant/clients/client/plan?planId=older');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Plan title' }), {
+    target: { value: 'Older private work' },
+  });
+  await waitFor(() =>
+    expect(sessionStorage.getItem('astra:plan-authoring:v1:consultant:client:older')).toContain(
+      'Older private work',
+    ),
+  );
+  expect(sessionStorage.getItem('astra:plan-authoring:v1:consultant:client')).toBeNull();
+  view.unmount();
+  setup();
+  await screen.findByDisplayValue('Prepare for your review');
+  expect(screen.queryByDisplayValue('Older private work')).not.toBeInTheDocument();
+});
+
+test('closed selected Plans expose history without authoring controls', async () => {
+  const closed = fixture();
+  closed.plan.status = 'CANCELLED';
+  request.mockResolvedValue(closed);
+  setup('/crm/clients/client/plan?planId=closed');
+  expect(await screen.findByText(/This Plan is closed/)).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Version history' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Save draft' })).not.toBeInTheDocument();
 });

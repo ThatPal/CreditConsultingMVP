@@ -16,6 +16,7 @@ import {
   createPlanDraft,
   executePlanItem,
   getPlanBuilder,
+  listClientPlans,
   getPlanSourcePreview,
   reconcilePlanSources,
   revisePlanDraft,
@@ -83,6 +84,20 @@ export function createPlanRouter(
 ) {
   const router = Router();
   router.get(
+    '/consultant/clients/:clientId/plans',
+    requireRole('CONSULTANT'),
+    requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
+    async (req, res, next) => {
+      try {
+        const before =
+          req.query.before === undefined ? undefined : z.string().uuid().parse(req.query.before);
+        res.json(await listClientPlans(prisma, req.params.clientId as string, before));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  router.get(
     '/consultant/clients/:clientId/plans/:planId/history',
     requireRole('CONSULTANT'),
     requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
@@ -141,7 +156,9 @@ export function createPlanRouter(
     requireCapability(authorization, 'review.read', 'clientId', undefined, recorder),
     async (req, res, next) => {
       try {
-        res.json(await getPlanBuilder(prisma, req.params.clientId as string));
+        const planId =
+          req.query.planId === undefined ? undefined : z.string().uuid().parse(req.query.planId);
+        res.json(await getPlanBuilder(prisma, req.params.clientId as string, planId));
       } catch (error) {
         next(error);
       }

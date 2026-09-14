@@ -33,3 +33,5 @@ Preserve the PostgreSQL/Prisma model and migration history, permissions and scop
 Start **A1: recover the product contracts and establish a premium reference slice**, followed immediately by **A2: consistent workflow truth and domain boundaries**. Build the Home → Credit Center → Plan experience against explicit data contracts and representative states. In parallel *as workstreams, not an instruction to spawn agents*, replace the report/AI/email fixture paths. Do not repaint every page before fixing the facts and workflow contracts beneath it.
 
 The roadmap retains the full planned scope. A closed pilot is a verification stage, not permission to drop the advanced features or declare another conceptual MVP complete.
+
+Latest implementation: [Pass 16: Multi-Plan discovery and safe resumption](IMPLEMENTATION-16.md).

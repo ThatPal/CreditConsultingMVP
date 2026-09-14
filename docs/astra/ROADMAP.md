@@ -207,3 +207,8 @@ No branches are merged into Sol or non-AI. Any future reuse between versions mus
 ## Latest checkpoint: pass 15
 
 [Paths and version lifecycle batch](IMPLEMENTATION-15.md) adds path authoring, visibility/progress safeguards at save and approval, paginated version inspection/comparison, explicit client-publication context and a separately loaded consultant workbench. Continue in related batches. Multi-Plan selection/lifecycle, full graph conflict resolution, operational proof and consultant browser qualification remain open alongside the full roadmap. A1/A2/A5 remain in progress.
+
+
+## Pass 16: Plan discovery and resumption
+
+[Multi-Plan discovery](IMPLEMENTATION-16.md) adds scoped paginated browsing, direct selection, guarded switching, Plan-specific recovery, closed-Plan history and selected-Plan MFA return links. Cancellation/replacement policy and client multi-Plan navigation remain open. A1/A2/A5 are still in progress.

@@ -1,3 +1,4 @@
+import { PlanLibrary } from './PlanLibrary';
 import { PlanPathEditor } from './PlanPathEditor';
 import { PlanVersionHistory } from './PlanVersionHistory';
 import { PlanLifecyclePreview } from './PlanLifecyclePreview';
@@ -33,7 +34,7 @@ import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded';
 import AddRounded from '@mui/icons-material/AddRounded';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../auth/api';
 import { PageHeader } from '../../components/common/PageHeader';
 import { PlanExecutionReview } from './PlanExecutionReview';
@@ -97,13 +98,31 @@ const message = (error: unknown) =>
 export function ConsultantPlanBuilderPage() {
   const { clientId = '' } = useParams();
   const { user } = useAuth();
+  const [search] = useSearchParams();
+  const planId = search.get('planId') || undefined;
   return user ? (
-    <PlanBuilder key={`${user.userId}:${clientId}`} clientId={clientId} actorId={user.userId} />
+    <Stack spacing={2}>
+      <PlanLibrary clientId={clientId} selectedId={planId} />
+      <PlanBuilder
+        key={`${user.userId}:${clientId}:${planId ?? 'latest'}`}
+        clientId={clientId}
+        actorId={user.userId}
+        selectedPlanId={planId}
+      />
+    </Stack>
   ) : null;
 }
 
-function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string }) {
-  const recoveryKey = planRecoveryKey(actorId, clientId);
+function PlanBuilder({
+  clientId,
+  actorId,
+  selectedPlanId,
+}: {
+  clientId: string;
+  actorId: string;
+  selectedPlanId?: string | undefined;
+}) {
+  const recoveryKey = planRecoveryKey(actorId, clientId, selectedPlanId);
   const [recovery, setRecovery] = useState<Editor | null>(() => {
     try {
       const raw = sessionStorage.getItem(recoveryKey);
@@ -137,8 +156,13 @@ function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string 
   const [recoveryError, setRecoveryError] = useState(false);
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: ['plan-builder', clientId],
-    queryFn: () => apiRequest<BuilderResponse>(`/api/v1/consultant/clients/${clientId}/plan`),
+    queryKey: selectedPlanId
+      ? ['plan-builder', clientId, selectedPlanId]
+      : ['plan-builder', clientId],
+    queryFn: () =>
+      apiRequest<BuilderResponse>(
+        `/api/v1/consultant/clients/${clientId}/plan${selectedPlanId ? `?planId=${encodeURIComponent(selectedPlanId)}` : ''}`,
+      ),
     enabled: Boolean(clientId),
   });
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -194,6 +218,7 @@ function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string 
     const result = await query.refetch();
     if (result.isError) throw result.error;
     if (result.data) setEditor(hydrate(result.data));
+    await queryClient.invalidateQueries({ queryKey: ['plan-library', clientId] });
     await queryClient.invalidateQueries({ queryKey: ['client-plan'] });
     await queryClient.invalidateQueries({ queryKey: ['portal-home'] });
     await queryClient.invalidateQueries({ queryKey: ['work-queue'] });
@@ -359,6 +384,19 @@ function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string 
         })),
     }));
   };
+  if (query.data?.plan && ['CANCELLED', 'SUPERSEDED'].includes(query.data.plan.status))
+    return (
+      <Stack spacing={2}>
+        <Alert severity="info">
+          This Plan is closed. Its saved versions are available for reference.
+        </Alert>
+        <PlanVersionHistory
+          clientId={clientId}
+          planId={query.data.plan.id}
+          workingDraft={editor.draft}
+        />
+      </Stack>
+    );
   const canApprove = !dirty && !conflict && editor.status === 'DRAFT' && !issues.length && !busy;
   return (
     <Stack spacing={3}>
@@ -1049,7 +1087,7 @@ function PlanBuilder({ clientId, actorId }: { clientId: string; actorId: string 
                   </Typography>
                   <Button
                     component={Link}
-                    to={`/mfa?mode=challenge&returnTo=${encodeURIComponent(`/crm/clients/${clientId}/plan`)}`}
+                    to={`/mfa?mode=challenge&returnTo=${encodeURIComponent(`/crm/clients/${clientId}/plan${selectedPlanId ? `?planId=${encodeURIComponent(selectedPlanId)}` : ''}`)}`}
                   >
                     Verify identity
                   </Button>

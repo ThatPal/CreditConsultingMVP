@@ -64,3 +64,17 @@ test('version history enforces consultant and client scope before reading versio
     .set('x-role', 'CONSULTANT')
     .expect(403);
 });
+
+test('Plan library and explicit selection enforce consultant client scope', async () => {
+  for (const path of [
+    '/consultant/clients/allowed/plans',
+    '/consultant/clients/allowed/plan?planId=00000000-0000-4000-8000-000000000000',
+  ]) {
+    await request(app).get(path).expect(401);
+    await request(app).get(path).set('x-role', 'CLIENT').expect(403);
+    await request(app)
+      .get(path.replace('allowed', 'denied'))
+      .set('x-role', 'CONSULTANT')
+      .expect(403);
+  }
+});
