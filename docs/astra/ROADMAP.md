@@ -233,3 +233,6 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 
 
 [Pass 23: Consultant message recovery](IMPLEMENTATION-23.md) adds isolated tab copies, orphan-message handling, changed-evidence review, cleanup and focused MFA returns. Server-backed drafts, published-Plan handoff and visual/operational qualification remain open.
+
+
+[Pass 24: Source pauses and response recovery](IMPLEMENTATION-24.md) enforces source-review pauses on client/consultant writes and adds explicit response refresh and tab-storage retry. Grouped API/web builds passed. Published-Plan handoff and visual/operational qualification remain open.

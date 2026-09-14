@@ -397,3 +397,65 @@ test('storage denial leaves review usable and clearly reports recovery unavailab
     read.mockRestore();
   }
 });
+
+test('a source pause disables decisions even if the Plan still reports ACTIVE', async () => {
+  const paused = notePlan('evidence');
+  vi.mocked(apiRequest).mockResolvedValue({
+    plan: { ...paused.plan, version: { ...paused.plan.version, staleAt: '2026-09-14T00:00:00Z' } },
+  });
+  noteWorkspace();
+  expect(await screen.findByRole('button', { name: 'Verify completion' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Request correction' })).toBeDisabled();
+  expect(screen.getByText(/This published Plan is paused/)).toBeVisible();
+});
+
+test('refreshing after a review conflict preserves wording and requires reviewing new evidence', async () => {
+  let changed = false;
+  vi.mocked(apiRequest).mockImplementation(async (_path, options) => {
+    if (options?.method === 'POST') {
+      changed = true;
+      throw Object.assign(new Error('Evidence changed'), {
+        code: 'PLAN_EVIDENCE_CHANGED',
+        status: 409,
+      });
+    }
+    return notePlan(changed ? 'new-evidence' : 'old-evidence');
+  });
+  noteWorkspace();
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Message to the client' }), {
+    target: { value: 'Keep this correction wording' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Request correction' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh response and history' }));
+  await screen.findByRole('button', { name: 'I reviewed the latest response' });
+  expect(screen.getByRole('textbox', { name: 'Message to the client' })).toHaveValue(
+    'Keep this correction wording',
+  );
+  expect(screen.getByRole('button', { name: 'Request correction' })).toBeDisabled();
+  expect(
+    vi.mocked(apiRequest).mock.calls.filter(([, options]) => options?.method === 'POST'),
+  ).toHaveLength(1);
+});
+
+test('tab recovery can be retried after temporary storage denial without losing typed text', async () => {
+  const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('Denied');
+  });
+  vi.mocked(apiRequest).mockResolvedValue(notePlan('evidence'));
+  try {
+    noteWorkspace();
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Message to the client' }), {
+      target: { value: 'Recover this text' },
+    });
+    read.mockRestore();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry tab recovery' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Retry tab recovery' })).not.toBeInTheDocument(),
+    );
+    expect(sessionStorage.getItem('astra:plan-review-notes:v1:consultant:client:plan')).toContain(
+      'Recover this text',
+    );
+  } finally {
+    read.mockRestore();
+  }
+});

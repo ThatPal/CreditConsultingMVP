@@ -61,5 +61,16 @@ export function useReviewNotes(key?: string) {
       else delete next[id];
       return { scope: key, notes: next, failed: current.failed };
     });
-  return { notes, put, failed: state.scope === key && state.failed };
+  const retry = () => {
+    if (!key || state.scope !== key) return;
+    try {
+      if (Object.keys(state.notes).length) {
+        sessionStorage.setItem(key, JSON.stringify({ format: 1, notes: state.notes }));
+        setState((current) => ({ ...current, failed: false }));
+      } else setState({ scope: key, ...read(key) });
+    } catch {
+      setState((current) => ({ ...current, failed: true }));
+    }
+  };
+  return { notes, put, retry, failed: state.scope === key && state.failed };
 }

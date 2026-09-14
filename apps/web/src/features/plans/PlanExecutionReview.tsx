@@ -24,7 +24,7 @@ export function PlanExecutionReview({
   const [showAll, setShowAll] = useState(Boolean(requestedStep));
   const [notesOpen, setNotesOpen] = useState(false);
   const storageKey = actorId && planId ? reviewNotesKey(actorId, clientId, planId) : undefined;
-  const { notes, put, failed: storageFailed } = useReviewNotes(storageKey);
+  const { notes, put, retry: retryStorage, failed: storageFailed } = useReviewNotes(storageKey);
   const [localError, setLocalError] = useState('');
   const query = useQuery({
     queryKey: planId ? ['plan-execution', clientId, planId] : ['plan-execution', clientId],
@@ -34,6 +34,7 @@ export function PlanExecutionReview({
       ),
   });
   const plan = query.data?.plan;
+  const paused = plan?.status !== 'ACTIVE' || Boolean(plan?.version.staleAt);
   const pending =
     plan?.version?.items.filter(
       (item) =>
@@ -116,6 +117,7 @@ export function PlanExecutionReview({
           {storageFailed
             ? 'This browser could not keep a recovery copy. Keep this page open until you send or copy your messages.'
             : 'Unsent messages are private and kept in this tab for up to 24 hours. Signing out clears them. They have not been sent to the client.'}
+          {storageFailed && <Button onClick={retryStorage}>Retry tab recovery</Button>}
         </Alert>
       )}
       <Drawer
@@ -220,7 +222,7 @@ export function PlanExecutionReview({
             No steps need your attention. Open All steps to review previous responses and decisions.
           </Alert>
         )}
-        {plan?.status !== 'ACTIVE' && (
+        {paused && (
           <Alert severity="warning">
             This published Plan is paused. Review its sources and approve the replacement before
             verifying work.
@@ -298,6 +300,20 @@ export function PlanExecutionReview({
                 {(localError || review.isError) && (
                   <Alert severity="error">
                     {localError || review.error?.message}
+                    {review.isError && (
+                      <Button
+                        disabled={review.isPending || query.isFetching}
+                        onClick={async () => {
+                          const result = await query.refetch();
+                          if (!result.isError) {
+                            review.reset();
+                            setLocalError('');
+                          }
+                        }}
+                      >
+                        Refresh response and history
+                      </Button>
+                    )}
                     {review.error && 'status' in review.error && review.error.status === 403 && (
                       <Button
                         component={Link}
@@ -311,7 +327,7 @@ export function PlanExecutionReview({
                 <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                   <Button
                     variant="contained"
-                    disabled={review.isPending || staleNote || plan?.status !== 'ACTIVE'}
+                    disabled={review.isPending || query.isFetching || staleNote || paused}
                     onClick={() => {
                       if (needsHelp && !note.trim()) {
                         setLocalError('Explain how the client can continue.');
@@ -328,7 +344,7 @@ export function PlanExecutionReview({
                   </Button>
                   {item.status === 'AWAITING_VERIFICATION' && (
                     <Button
-                      disabled={review.isPending || staleNote || plan?.status !== 'ACTIVE'}
+                      disabled={review.isPending || query.isFetching || staleNote || paused}
                       onClick={() => {
                         if (!note.trim()) {
                           setLocalError('Explain what the client should correct.');

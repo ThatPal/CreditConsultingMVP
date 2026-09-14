@@ -1175,6 +1175,12 @@ export async function executePlanItem(
           409,
           'This Plan is no longer available for new outcomes',
         );
+      if (item.planVersion.staleAt)
+        throw new AppError(
+          'PLAN_SOURCE_REVIEW_REQUIRED',
+          409,
+          'This Plan is paused for source review. New outcomes can be submitted after the updated Plan is approved.',
+        );
       const savedDraft = await tx.planResponseDraft.findUnique({
         where: { itemId_actorId: { itemId: item.id, actorId: input.actorId } },
       });
@@ -1369,6 +1375,12 @@ export async function verifyPlanItem(
       include: { planVersion: true },
     });
     if (!item) throw new AppError('NOT_FOUND', 404, 'Plan item was not found');
+    if (item.planVersion.staleAt)
+      throw new AppError(
+        'PLAN_SOURCE_REVIEW_REQUIRED',
+        409,
+        'This Plan is paused for source review. Approve its updated sources before reviewing outcomes.',
+      );
     const evidence = await itemHistory(
       tx,
       item.planVersion.planId,

@@ -778,4 +778,68 @@ describe('consequential client Plan execution', () => {
       }),
     ).toBe(1);
   });
+  test('a source-review marker blocks new client and consultant writes even while status is ACTIVE', async () => {
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'Paused source proof',
+      purpose: 'PREPARATION',
+      items: [
+        {
+          stableKey: 'ack',
+          type: 'GUIDANCE',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          clientTitle: 'Read guidance',
+          sortOrder: 0,
+        },
+        {
+          stableKey: 'report',
+          type: 'ACTION',
+          owner: 'CLIENT',
+          completionMode: 'CLIENT_REPORT_CONSULTANT_VERIFY',
+          clientTitle: 'Report preparation',
+          sortOrder: 1,
+        },
+      ],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    const steps = (await getPlanBuilder(prisma, clientId, created.planId)).plan!.versions[0]!.items;
+    const ack = steps.find((item) => item.stableKey === 'ack')!;
+    const report = steps.find((item) => item.stableKey === 'report')!;
+    const ackRequest = {
+      clientId,
+      itemId: ack.id,
+      actorId: clientUserId,
+      idempotencyKey: randomUUID(),
+      action: 'COMPLETE' as const,
+    };
+    await executePlanItem(prisma, ackRequest);
+    await executePlanItem(prisma, {
+      clientId,
+      itemId: report.id,
+      actorId: clientUserId,
+      idempotencyKey: randomUUID(),
+      action: 'COMPLETE',
+      outcome: { clientReport: 'Prepared' },
+    });
+    await prisma.planVersion.update({
+      where: { id: created.versionId },
+      data: { staleAt: new Date(), staleReason: 'Updated source pending' },
+    });
+    const count = await prisma.planItemOutcome.count({
+      where: { planItemId: { in: [ack.id, report.id] } },
+    });
+    await expect(
+      executePlanItem(prisma, { ...ackRequest, idempotencyKey: randomUUID() }),
+    ).rejects.toMatchObject({ code: 'PLAN_SOURCE_REVIEW_REQUIRED' });
+    await expect(verifyPlanItem(prisma, clientId, report.id, consultantId)).rejects.toMatchObject({
+      code: 'PLAN_SOURCE_REVIEW_REQUIRED',
+    });
+    expect(await executePlanItem(prisma, ackRequest)).toMatchObject({ replayed: true });
+    expect(
+      await prisma.planItemOutcome.count({ where: { planItemId: { in: [ack.id, report.id] } } }),
+    ).toBe(count);
+    expect((await prisma.planItem.findUniqueOrThrow({ where: { id: report.id } })).status).toBe(
+      'AWAITING_VERIFICATION',
+    );
+  });
 });
