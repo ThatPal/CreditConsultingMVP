@@ -1,9 +1,14 @@
+import { useNavigationProtection } from '../NavigationProtection';
 import FlagRounded from '@mui/icons-material/FlagRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import HourglassTopRounded from '@mui/icons-material/HourglassTopRounded';
 import RateReviewRounded from '@mui/icons-material/RateReviewRounded';
 import {
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Box,
   Button,
   Checkbox,
@@ -101,25 +106,58 @@ export function GoalsPage() {
   const reviewComplete = review?.status === 'COMPLETE';
   const reviewInProgress = Boolean(review && !reviewComplete);
   const profileCurrent = reviewComplete && Boolean(profileQuery.data?.profile.freshness.isCurrent);
+  const [reviewedGoal, setReviewedGoal] = useState<Goal | null | undefined>(undefined);
+  const [baseline, setBaseline] = useState('');
+  const [confirmReload, setConfirmReload] = useState(false);
+  const [continueCycle, setContinueCycle] = useState(false);
+  const formValue = JSON.stringify({
+    target,
+    scope,
+    cardTypePreference,
+    offerPreferences,
+    feePreference,
+    preferenceNote,
+  });
+  const dirty = reviewedGoal !== undefined && formValue !== baseline;
+  const changed =
+    reviewedGoal !== undefined &&
+    (reviewedGoal?.id !== primary?.id || reviewedGoal?.version !== primary?.version);
+  const loadGoal = (goal: Goal | null) => {
+    const fields = {
+      target: goal?.targetAmount ?? 50000,
+      scope: goal?.scope ?? ('PERSONAL' as Goal['scope']),
+      cardTypePreference:
+        goal?.cardTypePreference ?? ('NO_PREFERENCE' as Goal['cardTypePreference']),
+      offerPreferences: goal?.offerPreferences ?? [],
+      feePreference: goal?.feePreference ?? ('NO_ANNUAL_FEE_ONLY' as Goal['feePreference']),
+      preferenceNote: goal?.preferenceNote ?? '',
+    };
+    setTarget(fields.target);
+    setScope(fields.scope);
+    setCardTypePreference(fields.cardTypePreference);
+    setOfferPreferences(fields.offerPreferences);
+    setFeePreference(fields.feePreference);
+    setPreferenceNote(fields.preferenceNote);
+    setBaseline(JSON.stringify(fields));
+    setReviewedGoal(goal);
+  };
   useEffect(() => {
-    if (primary) {
-      setTarget(primary.targetAmount ?? 50000);
-      setScope(primary.scope);
-      setCardTypePreference(primary.cardTypePreference);
-      setOfferPreferences(primary.offerPreferences);
-      setFeePreference(primary.feePreference);
-      setPreferenceNote(primary.preferenceNote ?? '');
-    }
-  }, [primary]);
-  const refresh = () => qc.invalidateQueries({ queryKey: ['goals'] });
+    if (query.data && reviewedGoal === undefined) loadGoal(primary ?? null);
+  }, [query.data, primary, reviewedGoal]);
+  const refresh = async () => {
+    const result = await query.refetch();
+    if (result.isError) throw result.error;
+    const activeGoals = result.data?.goals.filter((goal) => goal.status === 'ACTIVE') ?? [];
+    return activeGoals.find((goal) => goal.priority === 'PRIMARY') ?? activeGoals[0] ?? null;
+  };
   const savePrimary = useMutation({
     mutationFn: () =>
-      primary
-        ? apiRequest(`/api/v1/client/goals/${primary.id}`, {
+      reviewedGoal
+        ? apiRequest(`/api/v1/client/goals/${reviewedGoal.id}`, {
             method: 'PATCH',
             headers: { 'Idempotency-Key': crypto.randomUUID() },
             body: JSON.stringify({
-              version: primary.version,
+              version: reviewedGoal.version,
               scope,
               targetAmount: target,
               allowAnnualFee: feePreference !== 'NO_ANNUAL_FEE_ONLY',
@@ -127,7 +165,6 @@ export function GoalsPage() {
               offerPreferences,
               feePreference,
               preferenceNote: preferenceNote || null,
-              priority: 'PRIMARY',
             }),
           })
         : apiRequest('/api/v1/client/goals', {
@@ -146,20 +183,38 @@ export function GoalsPage() {
             }),
           }),
     onSuccess: async () => {
-      await refresh();
+      loadGoal(await refresh());
       if (cycleId) {
         await apiRequest(`/api/v1/client/application-cycles/${cycleId}/confirm-goal`, {
           method: 'POST',
         });
         await qc.invalidateQueries({ queryKey: ['application-cycles'] });
-        navigate('/app/application-rounds');
+        setContinueCycle(true);
         return;
       }
       setMessage('Primary goal updated.');
     },
   });
+  useNavigationProtection(dirty, savePrimary.isPending);
+  useEffect(() => {
+    if (continueCycle && !savePrimary.isPending && !dirty) navigate('/app/application-rounds');
+  }, [continueCycle, savePrimary.isPending, dirty, navigate]);
+  useEffect(() => {
+    if (!dirty && !savePrimary.isPending) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty, savePrimary.isPending]);
   if (query.isLoading) return <LoadingSkeleton />;
-  if (query.isError) return <Alert severity="error">Unable to load goals.</Alert>;
+  if (query.isError && reviewedGoal === undefined)
+    return (
+      <Alert severity="error">
+        Unable to load goals. <Button onClick={() => void query.refetch()}>Retry goals</Button>
+      </Alert>
+    );
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -167,6 +222,56 @@ export function GoalsPage() {
         title="Goals"
         description="Set your primary target, then select any additional outcomes that matter to you."
       />
+      {query.isError && (
+        <Alert severity="error">
+          Goals could not be refreshed. Your edits are still here.{' '}
+          <Button disabled={query.isFetching} onClick={() => void query.refetch()}>
+            Retry goals
+          </Button>
+        </Alert>
+      )}
+      {changed && (
+        <Alert severity="warning">
+          The saved goal changed while this editor was open. Your edits are still here. Review the
+          latest saved values before saving again.
+          <Button
+            disabled={savePrimary.isPending || query.isFetching || query.isError}
+            onClick={() => setConfirmReload(true)}
+          >
+            Review saved goal
+          </Button>
+        </Alert>
+      )}
+      {dirty && (
+        <Alert severity="info">
+          You have unsaved goal changes. Save them before leaving this page.
+        </Alert>
+      )}
+      <Dialog
+        open={confirmReload}
+        onClose={() => setConfirmReload(false)}
+        aria-labelledby="goal-reload-title"
+      >
+        <DialogTitle id="goal-reload-title">Load the latest saved goal?</DialogTitle>
+        <DialogContent>
+          Your current edits will be replaced by the latest saved values. Keep editing if you need
+          to copy your wording first.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmReload(false)}>Keep my edits</Button>
+          <Button
+            disabled={query.isFetching || query.isError || savePrimary.isPending}
+            onClick={() => {
+              loadGoal(primary ?? null);
+              setConfirmReload(false);
+              savePrimary.reset();
+              setMessage('Latest saved goal loaded.');
+            }}
+          >
+            Load saved goal
+          </Button>
+        </DialogActions>
+      </Dialog>
       {message && (
         <Alert severity="success" onClose={() => setMessage('')}>
           {message}
@@ -234,106 +339,132 @@ export function GoalsPage() {
               method="Current amount divided by the saved target amount. This is not an approval probability or projected score change."
             />
           )}
-          <Slider
-            min={5000}
-            max={250000}
-            step={5000}
-            value={Math.min(target, 250000)}
-            onChange={(_, v) => setTarget(v as number)}
-            aria-label="Primary goal target"
-          />
-          <TextField
-            label="Exact target"
-            type="number"
-            value={target}
-            onChange={(e) => setTarget(Number(e.target.value))}
-            slotProps={{
-              input: { startAdornment: <InputAdornment position="start">$</InputAdornment> },
-              htmlInput: { min: 5000, max: 250000, step: 5000 },
-            }}
-          />
-          <ToggleButtonGroup
-            exclusive
-            fullWidth
-            value={scope}
-            onChange={(_, v: Goal['scope'] | null) => v && setScope(v)}
+          <Box
+            component="fieldset"
+            disabled={savePrimary.isPending}
+            sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}
           >
-            <ToggleButton value="PERSONAL">Personal</ToggleButton>
-            <ToggleButton value="BUSINESS">Business</ToggleButton>
-            <ToggleButton value="BOTH">Both</ToggleButton>
-          </ToggleButtonGroup>
-          <TextField
-            select
-            label="Card type preference"
-            value={cardTypePreference}
-            onChange={(event) =>
-              setCardTypePreference(event.target.value as Goal['cardTypePreference'])
-            }
-          >
-            <MenuItem value="UNSECURED_PREFERRED">Unsecured preferred</MenuItem>
-            <MenuItem value="OPEN_TO_SECURED">Open to secured</MenuItem>
-            <MenuItem value="SECURED_DESIRED">Secured specifically desired</MenuItem>
-            <MenuItem value="NO_PREFERENCE">No preference</MenuItem>
-          </TextField>
-          <Box>
-            <Typography sx={{ fontWeight: 850 }}>Offer preferences</Typography>
-            {(
-              [
-                ['ZERO_APR', '0% APR'],
-                ['BALANCE_TRANSFER', 'Balance transfer'],
-                ['REWARDS_POINTS', 'Rewards / points'],
-              ] as const
-            ).map(([value, label]) => (
-              <FormControlLabel
-                key={value}
-                control={
-                  <Checkbox
-                    checked={offerPreferences.includes(value)}
-                    onChange={() =>
-                      setOfferPreferences((current) =>
-                        current.includes(value)
-                          ? current.filter((item) => item !== value)
-                          : [...current, value],
-                      )
-                    }
-                  />
-                }
-                label={label}
+            <Stack spacing={2}>
+              <Slider
+                disabled={savePrimary.isPending}
+                min={5000}
+                max={250000}
+                step={5000}
+                value={Math.min(target, 250000)}
+                onChange={(_, v) => setTarget(v as number)}
+                aria-label="Primary goal target"
               />
-            ))}
+              <TextField
+                disabled={savePrimary.isPending}
+                label="Exact target"
+                error={!Number.isInteger(target) || target < 5000 || target > 250000}
+                helperText="Enter a whole-dollar amount from $5,000 to $250,000."
+                type="number"
+                value={target}
+                onChange={(e) => setTarget(Number(e.target.value))}
+                slotProps={{
+                  input: { startAdornment: <InputAdornment position="start">$</InputAdornment> },
+                  htmlInput: { min: 5000, max: 250000, step: 5000 },
+                }}
+              />
+              <ToggleButtonGroup
+                disabled={savePrimary.isPending}
+                exclusive
+                fullWidth
+                value={scope}
+                onChange={(_, v: Goal['scope'] | null) => v && setScope(v)}
+              >
+                <ToggleButton value="PERSONAL">Personal</ToggleButton>
+                <ToggleButton value="BUSINESS">Business</ToggleButton>
+                <ToggleButton value="BOTH">Both</ToggleButton>
+              </ToggleButtonGroup>
+              <TextField
+                disabled={savePrimary.isPending}
+                select
+                label="Card type preference"
+                value={cardTypePreference}
+                onChange={(event) =>
+                  setCardTypePreference(event.target.value as Goal['cardTypePreference'])
+                }
+              >
+                <MenuItem value="UNSECURED_PREFERRED">Unsecured preferred</MenuItem>
+                <MenuItem value="OPEN_TO_SECURED">Open to secured</MenuItem>
+                <MenuItem value="SECURED_DESIRED">Secured specifically desired</MenuItem>
+                <MenuItem value="NO_PREFERENCE">No preference</MenuItem>
+              </TextField>
+              <Box>
+                <Typography sx={{ fontWeight: 850 }}>Offer preferences</Typography>
+                {(
+                  [
+                    ['ZERO_APR', '0% APR'],
+                    ['BALANCE_TRANSFER', 'Balance transfer'],
+                    ['REWARDS_POINTS', 'Rewards / points'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <FormControlLabel
+                    key={value}
+                    control={
+                      <Checkbox
+                        disabled={savePrimary.isPending}
+                        checked={offerPreferences.includes(value)}
+                        onChange={() =>
+                          setOfferPreferences((current) =>
+                            current.includes(value)
+                              ? current.filter((item) => item !== value)
+                              : [...current, value],
+                          )
+                        }
+                      />
+                    }
+                    label={label}
+                  />
+                ))}
+              </Box>
+              <TextField
+                disabled={savePrimary.isPending}
+                select
+                label="Fee preference"
+                value={feePreference}
+                onChange={(event) => setFeePreference(event.target.value as Goal['feePreference'])}
+              >
+                <MenuItem value="NO_ANNUAL_FEE_ONLY">No annual fee only</MenuItem>
+                <MenuItem value="PROMOTIONAL_NO_FEE_ACCEPTABLE">
+                  Promotional / first-year no fee acceptable
+                </MenuItem>
+                <MenuItem value="PREFER_NO_FEE_OPEN">Prefer no fee, but open</MenuItem>
+                <MenuItem value="FEE_ACCEPTABLE">Annual fee acceptable</MenuItem>
+              </TextField>
+              <TextField
+                disabled={savePrimary.isPending}
+                label="Additional card preference (optional)"
+                multiline
+                minRows={2}
+                value={preferenceNote}
+                slotProps={{ htmlInput: { maxLength: 500 } }}
+                onChange={(event) => setPreferenceNote(event.target.value)}
+              />
+              <Button
+                variant="contained"
+                onClick={() => savePrimary.mutate()}
+                disabled={
+                  savePrimary.isPending ||
+                  query.isFetching ||
+                  query.isError ||
+                  changed ||
+                  reviewedGoal === undefined ||
+                  !Number.isInteger(target) ||
+                  target < 5000 ||
+                  target > 250000
+                }
+              >
+                {savePrimary.isPending
+                  ? 'Saving…'
+                  : cycleId
+                    ? 'Confirm goal for this cycle'
+                    : 'Save primary goal'}
+              </Button>
+            </Stack>
           </Box>
-          <TextField
-            select
-            label="Fee preference"
-            value={feePreference}
-            onChange={(event) => setFeePreference(event.target.value as Goal['feePreference'])}
-          >
-            <MenuItem value="NO_ANNUAL_FEE_ONLY">No annual fee only</MenuItem>
-            <MenuItem value="PROMOTIONAL_NO_FEE_ACCEPTABLE">
-              Promotional / first-year no fee acceptable
-            </MenuItem>
-            <MenuItem value="PREFER_NO_FEE_OPEN">Prefer no fee, but open</MenuItem>
-            <MenuItem value="FEE_ACCEPTABLE">Annual fee acceptable</MenuItem>
-          </TextField>
-          <TextField
-            label="Additional card preference (optional)"
-            multiline
-            minRows={2}
-            value={preferenceNote}
-            slotProps={{ htmlInput: { maxLength: 500 } }}
-            onChange={(event) => setPreferenceNote(event.target.value)}
-          />
-          <Button
-            variant="contained"
-            onClick={() => savePrimary.mutate()}
-            disabled={savePrimary.isPending || target <= 0}
-          >
-            {savePrimary.isPending
-              ? 'Saving…'
-              : cycleId
-                ? 'Confirm goal for this cycle'
-                : 'Save primary goal'}
-          </Button>
           {primary && (
             <Alert severity="info">
               Changing this goal may require your consultant to review downstream Plan or Strategy

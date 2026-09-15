@@ -311,3 +311,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 53: Source reconciliation recovery and comparison usability](IMPLEMENTATION-53.md) distinguishes accepted source updates from failed reads, gates further changes until recovery, and improves the comparison drawer. Thirty tests and real reconciliation/republication browser checks passed with retained completion dates.
 
 [Pass 54: Reviewed source snapshots](IMPLEMENTATION-54.md) keeps an open comparison fixed until the consultant explicitly loads changed sources, preserves reasoning, and binds updates to reviewed references. Real browser reconciliation and republishing passed; Goals continuity and Review publication content are the next originating-workflow priorities.
+
+[Pass 55: Goals editor continuity and valid saves](IMPLEMENTATION-55.md) preserves unsaved edits across refreshes, requires explicit loading of changed goals, guards navigation and fixes the rejected update payload. Thirteen tests, both builds and an isolated real browser save passed; accepted-save and cycle-confirmation recovery remain next.

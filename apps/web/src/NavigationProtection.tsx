@@ -72,14 +72,14 @@ export function NavigationProtection({ children }: PropsWithChildren) {
         aria-describedby="leave-response-description"
       >
         <DialogTitle id="leave-response-title">
-          {dirty || busy ? 'Your response is still in progress' : 'Your changes are saved'}
+          {dirty || busy ? 'Your changes are still in progress' : 'Your changes are saved'}
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="leave-response-description" role="status">
             {busy
               ? 'A save, upload or submission is still running. Please wait before leaving, or stay on this page.'
               : dirty
-                ? 'Your latest changes are not saved yet. If automatic saving is available, it will continue while this is open. If saving failed, stay on this page and use Save draft to retry. Leaving now keeps only your last successful save.'
+                ? 'Your latest changes are not saved yet. Stay on this page to finish saving or resolve any errors. Leaving now discards changes that have not been saved.'
                 : 'You can now continue to the page you selected.'}
           </DialogContentText>
         </DialogContent>
