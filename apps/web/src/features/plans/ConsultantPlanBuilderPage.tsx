@@ -8,7 +8,7 @@ import { PlanDraftComparison } from './PlanDraftComparison';
 import { useAuth } from '../../auth/AuthProvider';
 import { planRecoveryKey } from '../../auth/tabRecovery';
 import { useNavigationProtection } from '../../NavigationProtection';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -176,6 +176,8 @@ function PlanBuilder({
   const [editor, setEditor] = useState<Editor | null>(null);
   const [selectedKey, setSelectedKey] = useState('');
   const [sourceOpen, setSourceOpen] = useState(false);
+  const sourceTitleId = useId();
+  const [sourceRecovery, setSourceRecovery] = useState<'idle' | 'unknown' | 'accepted'>('idle');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewPublication, setPreviewPublication] =
     useState<BuilderResponse['clientPublication']>(undefined);
@@ -347,15 +349,35 @@ function PlanBuilder({
           reason: reason.trim(),
         }),
       }),
+    onError: () => setSourceRecovery('unknown'),
     onSuccess: async () => {
       setSourceOpen(false);
       setReason('');
-      await refresh();
-      setNotice('Sources updated in the draft. Review and approve it before the client continues.');
+      setSourceRecovery('accepted');
+      setNotice('Source update accepted. Review the updated draft before approving it.');
+      try {
+        await refresh();
+        setSourceRecovery('idle');
+      } catch {
+        // The draft update succeeded; only its follow-up read failed.
+      }
     },
   });
   const busy = save.isPending || approve.isPending || reconcile.isPending;
-  const publicationUnresolved = approvalRecovery !== 'idle';
+  const publicationUnresolved = approvalRecovery !== 'idle' || sourceRecovery !== 'idle';
+  const recoverSources = async () => {
+    try {
+      await refresh();
+      setSourceRecovery('idle');
+      setSourceOpen(false);
+      reconcile.reset();
+      setNotice(
+        'Plan reloaded. Open Compare sources to review the current references before updating them again.',
+      );
+    } catch {
+      // Keep the accepted/unknown state and reason until recovery succeeds.
+    }
+  };
   const recoverPublication = async () => {
     try {
       await refresh();
@@ -619,7 +641,7 @@ function PlanBuilder({
             : 'Unfinished edits are kept in this browser tab for up to 24 hours. Use Save draft to keep them on the server. Signing out clears the tab copy.'}
         </Alert>
       )}
-      {publicationUnresolved && !previewOpen && (
+      {approvalRecovery !== 'idle' && !previewOpen && (
         <Alert severity="warning">
           {approvalRecovery === 'accepted'
             ? 'Approval was accepted, but the latest publication still needs to be checked.'
@@ -627,6 +649,17 @@ function PlanBuilder({
           {' Reloading reads the current state; it does not submit another approval.'}
           <Button disabled={busy || query.isFetching} onClick={() => void recoverPublication()}>
             Refresh publication context
+          </Button>
+        </Alert>
+      )}
+      {sourceRecovery !== 'idle' && !sourceOpen && (
+        <Alert severity="warning">
+          {sourceRecovery === 'accepted'
+            ? 'The source update was accepted, but the updated Plan still needs to be loaded.'
+            : 'The source update could not be confirmed. Reload the Plan before making further changes.'}
+          {' Reloading does not repeat the source update.'}
+          <Button disabled={busy || query.isFetching} onClick={() => void recoverSources()}>
+            Reload Plan after source update
           </Button>
         </Alert>
       )}
@@ -1125,11 +1158,34 @@ function PlanBuilder({
         anchor="right"
         open={sourceOpen}
         onClose={() => !busy && setSourceOpen(false)}
-        slotProps={{ paper: { sx: { width: { xs: '100%', sm: 620 }, p: 3 } } }}
+        slotProps={{
+          paper: {
+            role: 'dialog',
+            'aria-modal': true,
+            'aria-labelledby': sourceTitleId,
+            sx: { width: { xs: '100%', sm: 620 } },
+          },
+        }}
       >
-        <Stack spacing={3}>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h2">Compare sources</Typography>
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            flexShrink: 0,
+            bgcolor: 'background.paper',
+            p: 3,
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Stack
+            direction="row"
+            sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}
+          >
+            <Typography id={sourceTitleId} variant="h2">
+              Compare sources
+            </Typography>
             <IconButton
               aria-label="Close source comparison"
               onClick={() => setSourceOpen(false)}
@@ -1138,6 +1194,8 @@ function PlanBuilder({
               <CloseRounded />
             </IconButton>
           </Stack>
+        </Box>
+        <Stack spacing={3} sx={{ p: 3 }}>
           <Typography color="text.secondary">
             Compare the Plan's saved references with the client's latest published review and
             primary goal.
@@ -1187,6 +1245,9 @@ function PlanBuilder({
                   </Alert>
                   <TextField
                     label="Reason for source review"
+                    disabled={busy || sourceRecovery !== 'idle'}
+                    helperText={`${reason.length}/1000 characters · Recorded with this source update.`}
+                    slotProps={{ htmlInput: { maxLength: 1000 } }}
                     multiline
                     minRows={3}
                     value={reason}
@@ -1210,7 +1271,18 @@ function PlanBuilder({
           {reconcile.isError && (
             <Alert severity="error">
               {message(reconcile.error)}
-              <Button onClick={() => void sources.refetch()}>Refresh comparison</Button>
+              <Typography sx={{ mt: 1 }}>
+                Reload the Plan to check whether the source update was recorded. Your reason is
+                retained; reloading does not send another update.
+              </Typography>
+              <Button disabled={busy || query.isFetching} onClick={() => void recoverSources()}>
+                Reload Plan after source update
+              </Button>
+              {query.isError && (
+                <Typography role="alert">
+                  The Plan could not be loaded. Retry the reload.
+                </Typography>
+              )}
             </Alert>
           )}
         </Stack>

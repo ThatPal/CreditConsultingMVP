@@ -503,3 +503,70 @@ test.each(['accepted', 'unknown'])(
     expect(request.mock.calls.filter(([path]) => path.endsWith('/approve'))).toHaveLength(1);
   },
 );
+
+test.each(['accepted', 'unknown'])(
+  'source update recovers without repeating the mutation (%s)',
+  async (outcome) => {
+    let attempted = false;
+    let failRead = true;
+    request.mockImplementation(async (path) => {
+      if (path.includes('/plan/execution')) return { plan: null };
+      if (path.endsWith('/sources'))
+        return {
+          fingerprint: 'a'.repeat(64),
+          changed: true,
+          expectedVersion: 3,
+          hasPublishedPlan: true,
+          changes: [
+            {
+              field: 'profile',
+              label: 'Credit profile',
+              before: 'Version 1',
+              after: 'Version 2',
+              changed: true,
+            },
+          ],
+          keptSteps: [{ title: 'Completed preparation', status: 'COMPLETED' }],
+        };
+      if (path.endsWith('/reconcile')) {
+        attempted = true;
+        if (outcome === 'unknown') throw new Error('Connection interrupted');
+        return {};
+      }
+      if (path === '/api/v1/consultant/clients/client/plan' && attempted && failRead)
+        throw new Error('Read unavailable');
+      return fixture(attempted ? 4 : 3);
+    });
+    setup();
+    await screen.findByDisplayValue('Prepare for your review');
+    fireEvent.click(screen.getByRole('button', { name: 'Compare sources' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Compare sources' });
+    expect(await within(dialog).findByText('Completed preparation · completed')).toBeVisible();
+    const reason = screen.getByRole('textbox', { name: 'Reason for source review' });
+    expect(reason).toHaveAttribute('maxlength', '1000');
+    fireEvent.change(reason, { target: { value: 'Use the newly published source.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Update draft sources' }));
+    if (outcome === 'unknown') {
+      await screen.findByText('Connection interrupted');
+      expect(screen.getByRole('button', { name: 'Update draft sources' })).toBeDisabled();
+      expect(reason).toHaveValue('Use the newly published source.');
+      fireEvent.click(screen.getByRole('button', { name: 'Reload Plan after source update' }));
+      await screen.findByText('The Plan could not be loaded. Retry the reload.');
+      fireEvent.click(screen.getByRole('button', { name: 'Close source comparison' }));
+    } else await screen.findByText(/The source update was accepted, but/);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Review & approve' })).toBeDisabled();
+    failRead = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Plan after source update' }));
+    await screen.findByText(/Plan reloaded. Open Compare sources/);
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeEnabled();
+    expect(request.mock.calls.filter(([path]) => path.endsWith('/reconcile'))).toHaveLength(1);
+    const call = request.mock.calls.find(([path]) => path.endsWith('/reconcile'))!;
+    expect(JSON.parse(String(call[1]?.body))).toEqual({
+      expectedVersion: 3,
+      expectedSourceFingerprint: 'a'.repeat(64),
+      reason: 'Use the newly published source.',
+    });
+  },
+);

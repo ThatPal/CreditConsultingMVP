@@ -307,3 +307,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 51: Attachment replacement and competing previews](IMPLEMENTATION-51.md) names excluded prior evidence, verifies real upload/replacement correction history, and checks stale approval recovery in two tabs. Twenty-seven web tests and both builds passed; distinct-consultant browser qualification remains open.
 
 [Pass 52: Evidence availability and distinct consultant access](IMPLEMENTATION-52.md) refreshes open evidence views after document changes, blocks verification of unavailable files, and verifies correction recovery plus distinct-consultant approval/access behavior. Thirty-four web tests passed; source reconciliation and broader operational qualification remain open.
+
+[Pass 53: Source reconciliation recovery and comparison usability](IMPLEMENTATION-53.md) distinguishes accepted source updates from failed reads, gates further changes until recovery, and improves the comparison drawer. Thirty tests and real reconciliation/republication browser checks passed with retained completion dates.
