@@ -177,6 +177,7 @@ function PlanBuilder({
   const [selectedKey, setSelectedKey] = useState('');
   const [sourceOpen, setSourceOpen] = useState(false);
   const sourceTitleId = useId();
+  const [sourceSnapshot, setSourceSnapshot] = useState<SourcePreview | null>(null);
   const [sourceRecovery, setSourceRecovery] = useState<'idle' | 'unknown' | 'accepted'>('idle');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewPublication, setPreviewPublication] =
@@ -339,13 +340,23 @@ function PlanBuilder({
     enabled: sourceOpen && Boolean(editor?.planId),
     staleTime: 0,
   });
+  useEffect(() => {
+    if (sourceOpen && !sourceSnapshot && sources.data && !sources.isFetching && !sources.isError)
+      setSourceSnapshot(sources.data);
+  }, [sourceOpen, sourceSnapshot, sources.data, sources.isFetching, sources.isError]);
+  const sourceComparisonChanged = Boolean(
+    sourceSnapshot &&
+    sources.data &&
+    (sourceSnapshot.fingerprint !== sources.data.fingerprint ||
+      sourceSnapshot.expectedVersion !== sources.data.expectedVersion),
+  );
   const reconcile = useMutation({
     mutationFn: () =>
       apiRequest(`/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/reconcile`, {
         method: 'POST',
         body: JSON.stringify({
-          expectedVersion: sources.data!.expectedVersion,
-          expectedSourceFingerprint: sources.data!.fingerprint,
+          expectedVersion: sourceSnapshot!.expectedVersion,
+          expectedSourceFingerprint: sourceSnapshot!.fingerprint,
           reason: reason.trim(),
         }),
       }),
@@ -625,6 +636,7 @@ function PlanBuilder({
           disabled={!editor.planId || dirty || conflict || busy || publicationUnresolved}
           onClick={() => {
             reconcile.reset();
+            setSourceSnapshot(null);
             setSourceOpen(true);
           }}
         >
@@ -1204,9 +1216,24 @@ function PlanBuilder({
           {sources.isError && (
             <RecoveryState error={sources.error} onRetry={() => void sources.refetch()} />
           )}
-          {sources.data && !sources.isFetching && !sources.isError && (
+          {sourceComparisonChanged && (
+            <Alert severity="warning">
+              Sources or the saved Plan changed while this comparison was open. The comparison below
+              is the one you started reviewing. Load the latest comparison and check your reason
+              before updating the draft.
+              <Button
+                disabled={
+                  busy || sources.isFetching || sources.isError || sourceRecovery !== 'idle'
+                }
+                onClick={() => setSourceSnapshot(sources.data!)}
+              >
+                Load latest comparison
+              </Button>
+            </Alert>
+          )}
+          {sourceSnapshot && (
             <>
-              {sources.data.changes.map((change) => (
+              {sourceSnapshot.changes.map((change) => (
                 <Box key={change.field} sx={{ py: 2, borderBottom: 1, borderColor: 'divider' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
                     <Typography sx={{ fontWeight: 650 }}>{change.label}</Typography>
@@ -1226,8 +1253,8 @@ function PlanBuilder({
                 </Box>
               ))}
               <Typography variant="h3">Progress retained</Typography>
-              {sources.data.keptSteps.length ? (
-                sources.data.keptSteps.map((step, i) => (
+              {sourceSnapshot.keptSteps.length ? (
+                sourceSnapshot.keptSteps.map((step, i) => (
                   <Typography variant="body2" key={i}>
                     {step.title} · {step.status.replaceAll('_', ' ').toLowerCase()}
                   </Typography>
@@ -1235,11 +1262,11 @@ function PlanBuilder({
               ) : (
                 <Typography variant="body2">No recorded step progress to carry forward.</Typography>
               )}
-              {sources.data.changed ? (
+              {sourceSnapshot.changed ? (
                 <>
                   <Alert severity="info">
                     Your saved instructions stay in the draft.
-                    {sources.data.hasPublishedPlan
+                    {sourceSnapshot.hasPublishedPlan
                       ? ' The published Plan will pause for source review until you approve the updated draft.'
                       : ' Review the draft after updating its sources.'}
                   </Alert>
@@ -1255,7 +1282,16 @@ function PlanBuilder({
                   />
                   <Button
                     variant="contained"
-                    disabled={!reason.trim() || busy || publicationUnresolved || dirty || conflict}
+                    disabled={
+                      !reason.trim() ||
+                      busy ||
+                      publicationUnresolved ||
+                      dirty ||
+                      conflict ||
+                      sources.isFetching ||
+                      sources.isError ||
+                      sourceComparisonChanged
+                    }
                     onClick={() => reconcile.mutate()}
                   >
                     Update draft sources

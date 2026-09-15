@@ -570,3 +570,62 @@ test.each(['accepted', 'unknown'])(
     });
   },
 );
+
+test.each(['fingerprint', 'revision'])(
+  'keeps the reviewed source snapshot until explicitly replaced (%s)',
+  async (changed) => {
+    const original = {
+      fingerprint: 'a'.repeat(64),
+      expectedVersion: 3,
+      changed: true,
+      hasPublishedPlan: true,
+      changes: [
+        {
+          field: 'goal',
+          label: 'Primary goal',
+          before: 'Original goal',
+          after: 'First reviewed goal',
+          changed: true,
+        },
+      ],
+      keptSteps: [],
+    };
+    const latest = {
+      ...original,
+      fingerprint: changed === 'fingerprint' ? 'b'.repeat(64) : original.fingerprint,
+      expectedVersion: changed === 'revision' ? 4 : 3,
+      changes: [{ ...original.changes[0]!, after: 'Newly changed goal' }],
+    };
+    request.mockImplementation(async (path) => (path.endsWith('/sources') ? original : fixture()));
+    const cache = setup();
+    await screen.findByDisplayValue('Prepare for your review');
+    fireEvent.click(screen.getByRole('button', { name: 'Compare sources' }));
+    await screen.findByText('Latest: First reviewed goal');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Reason for source review' }), {
+      target: { value: 'Keep my reasoning while I compare.' },
+    });
+    await act(async () => {
+      cache.setQueryData(['plan-sources', 'client', 'plan'], latest);
+    });
+    await screen.findByRole('button', { name: 'Load latest comparison' });
+    expect(screen.getByText('Latest: First reviewed goal')).toBeVisible();
+    expect(screen.queryByText('Latest: Newly changed goal')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update draft sources' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Reason for source review' })).toHaveValue(
+      'Keep my reasoning while I compare.',
+    );
+    expect(request.mock.calls.some(([path]) => path.endsWith('/reconcile'))).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Load latest comparison' }));
+    expect(screen.getByText('Latest: Newly changed goal')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Update draft sources' }));
+    await waitFor(() =>
+      expect(request.mock.calls.some(([path]) => path.endsWith('/reconcile'))).toBe(true),
+    );
+    const sent = request.mock.calls.find(([path]) => path.endsWith('/reconcile'))!;
+    expect(JSON.parse(String(sent[1]?.body))).toMatchObject({
+      expectedSourceFingerprint: latest.fingerprint,
+      expectedVersion: latest.expectedVersion,
+      reason: 'Keep my reasoning while I compare.',
+    });
+  },
+);
