@@ -1,3 +1,8 @@
+import {
+  ReviewAnalysisEditor,
+  ReviewReadingPreview,
+  type AnalysisApproval,
+} from './ReviewAnalysisEditor';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import AccountBalanceWalletRounded from '@mui/icons-material/AccountBalanceWalletRounded';
 import AddRounded from '@mui/icons-material/AddRounded';
@@ -4944,9 +4949,7 @@ export function ConsultantReviewWorkspacePage() {
   const [overrideField, setOverrideField] = useState('aggregateUtilization');
   const [overrideValue, setOverrideValue] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
-  const [analysis, setAnalysis] = useState('');
-  const [outcome, setOutcome] = useState('PREPARE_FIRST');
-  const [explanation, setExplanation] = useState('');
+  const [analysisDirty, setAnalysisDirty] = useState(false);
   const workspace = useQuery({
     queryKey: ['persisted-review-workspace', clientId, reviewId],
     queryFn: () =>
@@ -4966,14 +4969,6 @@ export function ConsultantReviewWorkspacePage() {
     enabled: Boolean(workspace.data?.draft),
     retry: false,
   });
-  useEffect(() => {
-    if (workspace.data?.draft?.analysis?.clientSummary)
-      setAnalysis(workspace.data.draft.analysis.clientSummary);
-    if (workspace.data?.draft?.recommendation) {
-      setOutcome(workspace.data.draft.recommendation.outcome);
-      setExplanation(workspace.data.draft.recommendation.clientExplanation);
-    }
-  }, [workspace.data?.draft?.id]);
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({
@@ -5036,22 +5031,11 @@ export function ConsultantReviewWorkspacePage() {
     onSuccess: refresh,
   });
   const saveAnalysis = useMutation({
-    mutationFn: () =>
-      apiRequest(`/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/analysis`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          expectedVersion: workspace.data!.draft!.version,
-          analysis: { clientSummary: analysis },
-          recommendation: {
-            outcome,
-            clientExplanation: explanation,
-            reasons: [analysis],
-            approved: true,
-          },
-          approveAnalysis: true,
-          approveRecommendation: true,
-        }),
-      }),
+    mutationFn: (input: AnalysisApproval) =>
+      apiRequest<{ draft: NonNullable<PersistedWorkspace['draft']> }>(
+        `/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/analysis`,
+        { method: 'PUT', body: JSON.stringify(input) },
+      ),
     onSuccess: refresh,
   });
   const publish = useMutation({
@@ -5064,7 +5048,11 @@ export function ConsultantReviewWorkspacePage() {
     onSuccess: refresh,
   });
   if (workspace.isLoading) return <LoadingSkeleton />;
-  if (workspace.isError)
+  if (
+    workspace.isError &&
+    (!workspace.data ||
+      (workspace.error instanceof ApiRequestError && [401, 403].includes(workspace.error.status)))
+  )
     return <Alert severity="error">{reviewWorkspaceErrorMessage(workspace.error)}</Alert>;
   const data = workspace.data!;
   const draft = data.draft;
@@ -5076,7 +5064,7 @@ export function ConsultantReviewWorkspacePage() {
       <PageHeader
         eyebrow="Governed Credit Review"
         title="Credit Review workspace"
-        description="Verify immutable source facts, resolve exceptions, approve client-safe analysis, then publish one frozen version."
+        description="Verify the source report, review findings and approve your recommendation before publishing the client’s Review."
       />
       {data.stale && (
         <Alert severity="warning">
@@ -5213,7 +5201,7 @@ export function ConsultantReviewWorkspacePage() {
               )}
             </Stack>
           )}
-          {section === 'ANALYSIS' && (
+          <Box hidden={section !== 'ANALYSIS'}>
             <Stack spacing={2}>
               <SectionCard>
                 <Typography variant="h3">Finding decisions</Typography>
@@ -5255,59 +5243,64 @@ export function ConsultantReviewWorkspacePage() {
               </SectionCard>
               {draft && (
                 <SectionCard variant="elevated">
-                  <Typography variant="h3">
-                    Consultant-approved analysis and recommendation
-                  </Typography>
-                  <Stack spacing={2} sx={{ mt: 2 }}>
-                    <TextField
-                      label="Client-safe analysis"
-                      multiline
-                      minRows={4}
-                      value={analysis}
-                      onChange={(e) => setAnalysis(e.target.value)}
-                    />
-                    <TextField
-                      label="Recommendation outcome"
-                      value={outcome}
-                      onChange={(e) => setOutcome(e.target.value)}
-                      helperText="PROCEED, PROCEED_SELECTIVELY, PREPARE_FIRST, WAIT_NURTURE, or MAJOR_APPLICATION_PRIORITY"
-                    />
-                    <TextField
-                      label="Client-safe explanation"
-                      multiline
-                      minRows={3}
-                      value={explanation}
-                      onChange={(e) => setExplanation(e.target.value)}
-                    />
-                    <Button
-                      onClick={() => saveAnalysis.mutate()}
-                      disabled={!analysis.trim() || !explanation.trim() || saveAnalysis.isPending}
-                    >
-                      Approve analysis and recommendation
-                    </Button>
-                  </Stack>
+                  <ReviewAnalysisEditor
+                    draft={draft}
+                    unavailable={workspace.isError || data.stale}
+                    pending={
+                      saveAnalysis.isPending ||
+                      override.isPending ||
+                      decideFinding.isPending ||
+                      resolveException.isPending ||
+                      publish.isPending
+                    }
+                    onDirty={setAnalysisDirty}
+                    onApprove={async (input) => (await saveAnalysis.mutateAsync(input)).draft}
+                  />
                 </SectionCard>
               )}
             </Stack>
-          )}
+          </Box>
           {section === 'PUBLISH' && (
             <SectionCard variant="elevated">
-              <Typography variant="h3">Immutable publication readiness</Typography>
+              <Typography variant="h3">Review before publishing</Typography>
               <Stack spacing={1.5} sx={{ mt: 2 }}>
                 {readiness.data?.ready ? (
                   <Alert severity="success">
-                    All publication checks pass. Phase 9 Plan remains staged and is not part of this
-                    Review.
+                    The saved Review passes publication checks. Review the client wording below
+                    before publishing.
                   </Alert>
                 ) : (
                   <Alert severity="warning">
                     Resolve: {(readiness.data?.blockers ?? ['DRAFT_NOT_READY']).join(', ')}
                   </Alert>
                 )}
+                {analysisDirty && (
+                  <Alert severity="warning">
+                    Return to Analysis and approve or discard your wording changes before
+                    publishing.
+                  </Alert>
+                )}
+                {draft && (
+                  <ReviewReadingPreview
+                    summary={draft.analysis?.clientSummary ?? ''}
+                    outcome={draft.recommendation?.outcome ?? ''}
+                    explanation={draft.recommendation?.clientExplanation ?? ''}
+                    reasons={draft.recommendation?.reasons ?? []}
+                  />
+                )}
                 <Button
                   variant="contained"
                   startIcon={<CheckRounded />}
-                  disabled={!readiness.data?.ready || publish.isPending}
+                  disabled={
+                    !readiness.data?.ready ||
+                    publish.isPending ||
+                    analysisDirty ||
+                    saveAnalysis.isPending ||
+                    workspace.isError ||
+                    data.stale ||
+                    readiness.isFetching ||
+                    readiness.isError
+                  }
                   onClick={() => publish.mutate()}
                 >
                   {publish.isPending ? 'Publishing…' : 'Publish frozen Credit Review'}

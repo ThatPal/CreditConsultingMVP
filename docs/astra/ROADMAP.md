@@ -319,3 +319,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 57: Reload recovery and real cycle handoff](IMPLEMENTATION-57.md) restores pending goal commands within the authenticated tab, clears them on session loss and fixes router-guard timing. Real reload and cycle-confirmation recovery passed without duplicate audits. Binding the cycle snapshot to the reviewed goal revision is the next backend priority.
 
 [Pass 58: Revision-bound cycle confirmation](IMPLEMENTATION-58.md) captures the reviewed goal revision atomically, preserves confirmed history, deduplicates concurrent confirmations and prevents rounds from using provisional snapshots. Twenty-eight tests and real browser replay checks passed. Existing historical snapshots were not backfilled.
+
+[Pass 59: Review wording, continuity and reading preview](IMPLEMENTATION-59.md) separates analysis/reasons/explanation, replaces raw outcome codes, protects reviewed wording and previews saved client text before publication. Six tests, both builds and a controlled authenticated browser scenario passed; real publication and consultant-entered decision reasons remain next.
