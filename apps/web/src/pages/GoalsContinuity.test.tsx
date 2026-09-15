@@ -1,4 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { signalSessionLoss } from '../auth/sessionLoss';
+import { clearPlanTabRecovery } from '../auth/tabRecovery';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider, Link } from 'react-router-dom';
 import { beforeEach, expect, test, vi } from 'vitest';
@@ -22,6 +24,7 @@ const goal = (version = 1) => ({
   status: 'ACTIVE',
 });
 beforeEach(() => {
+  sessionStorage.clear();
   vi.mocked(apiRequest)
     .mockReset()
     .mockImplementation(async (path) =>
@@ -230,4 +233,65 @@ test('retries cycle confirmation separately from the accepted goal write', async
   expect(
     vi.mocked(apiRequest).mock.calls.filter(([, options]) => options?.method === 'PATCH'),
   ).toHaveLength(1);
+});
+
+vi.mock('../auth/AuthProvider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../auth/AuthProvider')>()),
+  useAuth: () => ({ user: { userId: 'goal-test-user', clientId: 'goal-test-client' } }),
+}));
+
+test('restores a lost response after remount and requires explicit replay', async () => {
+  let attempts = 0;
+  const base = vi.mocked(apiRequest).getMockImplementation()!;
+  vi.mocked(apiRequest).mockImplementation(async (path, options) => {
+    if (options?.method === 'PATCH') {
+      if (++attempts === 1) throw new Error('Lost');
+      return {};
+    }
+    return base(path, options);
+  });
+  setup();
+  await screen.findByDisplayValue('Saved wording');
+  fireEvent.click(screen.getByRole('button', { name: 'Save primary goal' }));
+  await screen.findByRole('button', { name: 'Retry same save' });
+  const original = vi
+    .mocked(apiRequest)
+    .mock.calls.find(([, options]) => options?.method === 'PATCH');
+  cleanup();
+  setup();
+  await screen.findByText(/An unfinished goal save was recovered/);
+  expect(attempts).toBe(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry same save' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Retry same save' })).not.toBeInTheDocument(),
+  );
+  expect(
+    vi.mocked(apiRequest).mock.calls.filter(([, options]) => options?.method === 'PATCH')[1],
+  ).toEqual(original);
+  await waitFor(() => expect(sessionStorage.length).toBe(0));
+});
+
+test('does not restore cleared recovery when a save finishes after session loss', async () => {
+  let finish!: (value: unknown) => void;
+  const base = vi.mocked(apiRequest).getMockImplementation()!;
+  vi.mocked(apiRequest).mockImplementation((path, options) =>
+    options?.method === 'PATCH'
+      ? new Promise((resolve) => {
+          finish = resolve;
+        })
+      : base(path, options),
+  );
+  setup();
+  await screen.findByDisplayValue('Saved wording');
+  fireEvent.click(screen.getByRole('button', { name: 'Save primary goal' }));
+  await waitFor(() => expect(sessionStorage.length).toBe(1));
+  act(() => {
+    signalSessionLoss();
+    clearPlanTabRecovery();
+  });
+  await act(async () => {
+    finish({});
+  });
+  await screen.findByText('Primary goal updated.');
+  expect(sessionStorage.length).toBe(0);
 });

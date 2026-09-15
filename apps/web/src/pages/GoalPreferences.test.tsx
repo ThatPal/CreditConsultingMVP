@@ -89,3 +89,8 @@ test('PORTAL-03 renders one rich canonical current Goal editor without secondary
   expect(screen.getByLabelText(/fee preference/i)).toBeInTheDocument();
   expect(screen.queryByText(/Additional goals/i)).not.toBeInTheDocument();
 });
+
+vi.mock('../auth/AuthProvider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../auth/AuthProvider')>()),
+  useAuth: () => ({ user: { userId: 'goal-test-user', clientId: 'goal-test-client' } }),
+}));

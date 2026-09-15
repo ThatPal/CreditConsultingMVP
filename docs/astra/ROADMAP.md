@@ -315,3 +315,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 55: Goals editor continuity and valid saves](IMPLEMENTATION-55.md) preserves unsaved edits across refreshes, requires explicit loading of changed goals, guards navigation and fixes the rejected update payload. Thirteen tests, both builds and an isolated real browser save passed; accepted-save and cycle-confirmation recovery remain next.
 
 [Pass 56: Goal-save recovery and cycle handoff](IMPLEMENTATION-56.md) separates accepted writes from failed follow-up reads, replays lost responses with the original command identity, and retries cycle confirmation without resaving. Thirteen tests, both builds and real browser lost-response recovery passed. Durable recovery and real cycle qualification remain open.
+
+[Pass 57: Reload recovery and real cycle handoff](IMPLEMENTATION-57.md) restores pending goal commands within the authenticated tab, clears them on session loss and fixes router-guard timing. Real reload and cycle-confirmation recovery passed without duplicate audits. Binding the cycle snapshot to the reviewed goal revision is the next backend priority.

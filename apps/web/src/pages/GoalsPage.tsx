@@ -1,4 +1,12 @@
-import { useNavigationProtection } from '../NavigationProtection';
+import { subscribeToSessionLoss } from '../auth/sessionLoss';
+import { useAuth } from '../auth/AuthProvider';
+import {
+  goalRecoveryKey,
+  readGoalRecovery,
+  writeGoalRecovery,
+  type GoalCommand,
+} from './goalRecovery';
+import { useNavigationProtection, usePendingNavigationWork } from '../NavigationProtection';
 import FlagRounded from '@mui/icons-material/FlagRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import HourglassTopRounded from '@mui/icons-material/HourglassTopRounded';
@@ -66,6 +74,40 @@ type Goal = {
   status: 'ACTIVE' | 'ACHIEVED' | 'PAUSED';
 };
 export function GoalsPage() {
+  const { user } = useAuth();
+  const [params] = useSearchParams();
+  if (!user?.clientId) return null;
+  const key = goalRecoveryKey(user.userId, user.clientId, params.get('cycle'));
+  return <GoalsEditor key={key} recoveryKey={key} />;
+}
+function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
+  const activeSession = useRef(true);
+  useEffect(() => {
+    activeSession.current = true;
+    const unsubscribe = subscribeToSessionLoss(() => {
+      activeSession.current = false;
+    });
+    return () => {
+      activeSession.current = false;
+      unsubscribe();
+    };
+  }, []);
+  const [restored] = useState(() => readGoalRecovery(recoveryKey));
+  const restoredBody = restored
+    ? (JSON.parse(restored.command.body) as { targetAmount?: number; preferenceNote?: string })
+    : null;
+  const [storageFailed, setStorageFailed] = useState(false);
+  const persist = (phase: 'unknown' | 'accepted' | null, request?: GoalCommand | null) => {
+    if (!activeSession.current) return;
+    setStorageFailed(
+      !writeGoalRecovery(
+        recoveryKey,
+        phase && request
+          ? { phase, command: request, savedAt: restored?.savedAt ?? Date.now() }
+          : null,
+      ),
+    );
+  };
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -109,9 +151,13 @@ export function GoalsPage() {
   const [reviewedGoal, setReviewedGoal] = useState<Goal | null | undefined>(undefined);
   const [baseline, setBaseline] = useState('');
   const [confirmReload, setConfirmReload] = useState(false);
-  const [recovery, setRecovery] = useState<'idle' | 'unknown' | 'refresh' | 'cycle'>('idle');
+  const [recovery, setRecovery] = useState<'idle' | 'unknown' | 'refresh' | 'cycle'>(
+    restored ? (restored.phase === 'accepted' ? 'refresh' : 'unknown') : 'idle',
+  );
   const [recoveryError, setRecoveryError] = useState('');
-  const command = useRef<{ path: string; method: string; body: string; key: string } | null>(null);
+  const command = useRef<GoalCommand | null>(
+    restored?.phase === 'unknown' ? restored.command : null,
+  );
   const [continueCycle, setContinueCycle] = useState(false);
   const formValue = JSON.stringify({
     target,
@@ -168,6 +214,7 @@ export function GoalsPage() {
         setContinueCycle(true);
       }
       setRecovery('idle');
+      persist(null);
     } catch (error) {
       setRecoveryError(
         error instanceof Error ? error.message : 'Unable to finish checking this goal.',
@@ -201,6 +248,7 @@ export function GoalsPage() {
         };
       }
       const request = command.current;
+      persist('unknown', request);
       return apiRequest(request.path, {
         method: request.method,
         body: request.body,
@@ -208,6 +256,7 @@ export function GoalsPage() {
       });
     },
     onSuccess: async () => {
+      persist('accepted', command.current);
       command.current = null;
       setMessage('Primary goal updated.');
       setRecovery('refresh');
@@ -219,6 +268,7 @@ export function GoalsPage() {
       const status = (error as Error & { status?: number }).status;
       if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
         command.current = null;
+        persist(null);
         setRecovery('idle');
         void query.refetch();
       } else {
@@ -229,9 +279,20 @@ export function GoalsPage() {
   const busy = savePrimary.isPending || recoverSave.isPending;
   const locked = busy || recovery !== 'idle';
   useNavigationProtection(dirty || recovery === 'unknown', busy);
+  const pendingNavigation = usePendingNavigationWork();
   useEffect(() => {
-    if (continueCycle && !busy && !dirty) navigate('/app/application-rounds');
-  }, [continueCycle, busy, dirty, navigate]);
+    if (!continueCycle || busy || dirty || pendingNavigation.busy || pendingNavigation.dirty)
+      return;
+    // The parent router blocker updates in a passive effect. Navigate only after
+    // that effect has observed the settled navigation registration.
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) navigate('/app/application-rounds');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [continueCycle, busy, dirty, pendingNavigation.busy, pendingNavigation.dirty, navigate]);
   useEffect(() => {
     if (!dirty && !busy && recovery !== 'unknown') return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -255,6 +316,26 @@ export function GoalsPage() {
         title="Goals"
         description="Set your primary credit target and the card preferences your consultant should consider."
       />
+      {storageFailed && (
+        <Alert severity="warning">
+          Recovery could not be stored in this tab. Keep this page open until the save and its
+          checks finish.
+        </Alert>
+      )}
+      {restored && recovery !== 'idle' && (
+        <Alert severity="info">
+          An unfinished goal save was recovered from this tab. No request has been sent
+          automatically.
+          {typeof restoredBody?.targetAmount === 'number' && (
+            <Typography>Submitted target: ${restoredBody.targetAmount.toLocaleString()}</Typography>
+          )}
+          {typeof restoredBody?.preferenceNote === 'string' && (
+            <Typography sx={{ overflowWrap: 'anywhere' }}>
+              Submitted note: {restoredBody.preferenceNote}
+            </Typography>
+          )}
+        </Alert>
+      )}
       {recovery !== 'idle' && (
         <Alert severity="warning">
           {recovery === 'unknown'
