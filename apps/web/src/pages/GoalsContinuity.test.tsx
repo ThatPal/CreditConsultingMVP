@@ -32,7 +32,7 @@ beforeEach(() => {
           : { profile: { freshness: { isCurrent: false } } },
     );
 });
-function setup() {
+function setup(path = '/goals') {
   const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createMemoryRouter(
     [
@@ -46,7 +46,7 @@ function setup() {
         ),
       },
     ],
-    { initialEntries: ['/goals'] },
+    { initialEntries: [path] },
   );
   render(
     <QueryClientProvider client={cache}>
@@ -150,4 +150,84 @@ test('rejects targets outside the API range and fractional dollars before sendin
   expect(vi.mocked(apiRequest).mock.calls.some(([, options]) => options?.method === 'PATCH')).toBe(
     false,
   );
+});
+
+test('checks an accepted save after a failed read without sending another update', async () => {
+  let saved = false;
+  let offline = true;
+  const base = vi.mocked(apiRequest).getMockImplementation()!;
+  vi.mocked(apiRequest).mockImplementation(async (path, options) => {
+    if (options?.method === 'PATCH') {
+      saved = true;
+      return {};
+    }
+    if (path === '/api/v1/client/goals' && saved) {
+      if (offline) throw new Error('Read unavailable');
+      return { goals: [goal(2)] };
+    }
+    return base(path, options);
+  });
+  setup();
+  await screen.findByDisplayValue('Saved wording');
+  fireEvent.click(screen.getByRole('button', { name: 'Save primary goal' }));
+  const retry = await screen.findByRole('button', { name: 'Check saved goal' });
+  await waitFor(() => expect(retry).toBeEnabled());
+  expect(screen.getByText('Primary goal updated.')).toBeVisible();
+  expect(
+    screen.getByRole('textbox', { name: 'Additional card preference (optional)' }),
+  ).toBeDisabled();
+  offline = false;
+  fireEvent.click(retry);
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Check saved goal' })).not.toBeInTheDocument(),
+  );
+  expect(
+    vi.mocked(apiRequest).mock.calls.filter(([, options]) => options?.method === 'PATCH'),
+  ).toHaveLength(1);
+});
+
+test('replays an unconfirmed save with the original body and idempotency key', async () => {
+  let attempts = 0;
+  const base = vi.mocked(apiRequest).getMockImplementation()!;
+  vi.mocked(apiRequest).mockImplementation(async (path, options) => {
+    if (options?.method === 'PATCH') {
+      if (++attempts === 1) throw new Error('Response lost');
+      return {};
+    }
+    return base(path, options);
+  });
+  setup();
+  await screen.findByDisplayValue('Saved wording');
+  fireEvent.click(screen.getByRole('button', { name: 'Save primary goal' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry same save' }));
+  await screen.findByText('Primary goal updated.');
+  const writes = vi
+    .mocked(apiRequest)
+    .mock.calls.filter(([, options]) => options?.method === 'PATCH');
+  expect(writes).toHaveLength(2);
+  expect(writes[1]).toEqual(writes[0]);
+});
+
+test('retries cycle confirmation separately from the accepted goal write', async () => {
+  let confirmations = 0;
+  const base = vi.mocked(apiRequest).getMockImplementation()!;
+  vi.mocked(apiRequest).mockImplementation(async (path, options) => {
+    if (path.endsWith('/confirm-goal')) {
+      if (++confirmations === 1) throw new Error('Cycle unavailable');
+      return {};
+    }
+    return base(path, options);
+  });
+  const { router } = setup('/goals?cycle=test-cycle');
+  await screen.findByDisplayValue('Saved wording');
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm goal for this cycle' }));
+  const retry = await screen.findByRole('button', { name: 'Retry cycle confirmation' });
+  await waitFor(() => expect(retry).toBeEnabled());
+  expect(router.state.location.pathname).toBe('/goals');
+  fireEvent.click(retry);
+  await waitFor(() => expect(router.state.location.pathname).toBe('/app/application-rounds'));
+  expect(confirmations).toBe(2);
+  expect(
+    vi.mocked(apiRequest).mock.calls.filter(([, options]) => options?.method === 'PATCH'),
+  ).toHaveLength(1);
 });

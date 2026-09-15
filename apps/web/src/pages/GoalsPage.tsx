@@ -24,7 +24,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
@@ -109,6 +109,9 @@ export function GoalsPage() {
   const [reviewedGoal, setReviewedGoal] = useState<Goal | null | undefined>(undefined);
   const [baseline, setBaseline] = useState('');
   const [confirmReload, setConfirmReload] = useState(false);
+  const [recovery, setRecovery] = useState<'idle' | 'unknown' | 'refresh' | 'cycle'>('idle');
+  const [recoveryError, setRecoveryError] = useState('');
+  const command = useRef<{ path: string; method: string; body: string; key: string } | null>(null);
   const [continueCycle, setContinueCycle] = useState(false);
   const formValue = JSON.stringify({
     target,
@@ -150,64 +153,94 @@ export function GoalsPage() {
     const activeGoals = result.data?.goals.filter((goal) => goal.status === 'ACTIVE') ?? [];
     return activeGoals.find((goal) => goal.priority === 'PRIMARY') ?? activeGoals[0] ?? null;
   };
-  const savePrimary = useMutation({
-    mutationFn: () =>
-      reviewedGoal
-        ? apiRequest(`/api/v1/client/goals/${reviewedGoal.id}`, {
-            method: 'PATCH',
-            headers: { 'Idempotency-Key': crypto.randomUUID() },
-            body: JSON.stringify({
-              version: reviewedGoal.version,
-              scope,
-              targetAmount: target,
-              allowAnnualFee: feePreference !== 'NO_ANNUAL_FEE_ONLY',
-              cardTypePreference,
-              offerPreferences,
-              feePreference,
-              preferenceNote: preferenceNote || null,
-            }),
-          })
-        : apiRequest('/api/v1/client/goals', {
-            method: 'POST',
-            headers: { 'Idempotency-Key': crypto.randomUUID() },
-            body: JSON.stringify({
-              goalType: 'TOTAL_AVAILABLE_CREDIT',
-              scope,
-              targetAmount: target,
-              allowAnnualFee: feePreference !== 'NO_ANNUAL_FEE_ONLY',
-              cardTypePreference,
-              offerPreferences,
-              feePreference,
-              preferenceNote: preferenceNote || null,
-              priority: 'PRIMARY',
-            }),
-          }),
-    onSuccess: async () => {
-      loadGoal(await refresh());
+  const finishSave = async () => {
+    setRecoveryError('');
+    try {
+      const latest = await refresh();
+      loadGoal(latest);
       if (cycleId) {
+        setRecovery('cycle');
+        if (!latest) throw new Error('An active primary goal is required to continue this cycle.');
         await apiRequest(`/api/v1/client/application-cycles/${cycleId}/confirm-goal`, {
           method: 'POST',
         });
         await qc.invalidateQueries({ queryKey: ['application-cycles'] });
         setContinueCycle(true);
-        return;
       }
+      setRecovery('idle');
+    } catch (error) {
+      setRecoveryError(
+        error instanceof Error ? error.message : 'Unable to finish checking this goal.',
+      );
+    }
+  };
+  const recoverSave = useMutation({ mutationFn: finishSave });
+  const savePrimary = useMutation({
+    onMutate: () => {
+      setMessage('');
+      setRecoveryError('');
+    },
+    mutationFn: () => {
+      if (!command.current) {
+        command.current = {
+          path: reviewedGoal ? `/api/v1/client/goals/${reviewedGoal.id}` : '/api/v1/client/goals',
+          method: reviewedGoal ? 'PATCH' : 'POST',
+          key: crypto.randomUUID(),
+          body: JSON.stringify({
+            ...(reviewedGoal
+              ? { version: reviewedGoal.version }
+              : { goalType: 'TOTAL_AVAILABLE_CREDIT', priority: 'PRIMARY' }),
+            scope,
+            targetAmount: target,
+            allowAnnualFee: feePreference !== 'NO_ANNUAL_FEE_ONLY',
+            cardTypePreference,
+            offerPreferences,
+            feePreference,
+            preferenceNote: preferenceNote || null,
+          }),
+        };
+      }
+      const request = command.current;
+      return apiRequest(request.path, {
+        method: request.method,
+        body: request.body,
+        headers: { 'Idempotency-Key': request.key },
+      });
+    },
+    onSuccess: async () => {
+      command.current = null;
       setMessage('Primary goal updated.');
+      setRecovery('refresh');
+      await finishSave();
+    },
+    onError: (error) => {
+      // A rejected request can be corrected. An unavailable response must replay
+      // the exact command so a committed write cannot become a second write.
+      const status = (error as Error & { status?: number }).status;
+      if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+        command.current = null;
+        setRecovery('idle');
+        void query.refetch();
+      } else {
+        setRecovery('unknown');
+      }
     },
   });
-  useNavigationProtection(dirty, savePrimary.isPending);
+  const busy = savePrimary.isPending || recoverSave.isPending;
+  const locked = busy || recovery !== 'idle';
+  useNavigationProtection(dirty || recovery === 'unknown', busy);
   useEffect(() => {
-    if (continueCycle && !savePrimary.isPending && !dirty) navigate('/app/application-rounds');
-  }, [continueCycle, savePrimary.isPending, dirty, navigate]);
+    if (continueCycle && !busy && !dirty) navigate('/app/application-rounds');
+  }, [continueCycle, busy, dirty, navigate]);
   useEffect(() => {
-    if (!dirty && !savePrimary.isPending) return;
+    if (!dirty && !busy && recovery !== 'unknown') return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty, savePrimary.isPending]);
+  }, [dirty, busy, recovery]);
   if (query.isLoading) return <LoadingSkeleton />;
   if (query.isError && reviewedGoal === undefined)
     return (
@@ -220,8 +253,28 @@ export function GoalsPage() {
       <PageHeader
         eyebrow="Strategy"
         title="Goals"
-        description="Set your primary target, then select any additional outcomes that matter to you."
+        description="Set your primary credit target and the card preferences your consultant should consider."
       />
+      {recovery !== 'idle' && (
+        <Alert severity="warning">
+          {recovery === 'unknown'
+            ? 'The save response was not received. Retry the same save to check its outcome without creating another change.'
+            : recovery === 'cycle'
+              ? 'Your goal was saved. Application-cycle confirmation is not finished.'
+              : 'Your goal was saved. The latest saved values could not yet be checked.'}
+          {recoveryError && <Typography>{recoveryError}</Typography>}
+          <Button
+            disabled={busy}
+            onClick={() => (recovery === 'unknown' ? savePrimary.mutate() : recoverSave.mutate())}
+          >
+            {recovery === 'unknown'
+              ? 'Retry same save'
+              : recovery === 'cycle'
+                ? 'Retry cycle confirmation'
+                : 'Check saved goal'}
+          </Button>
+        </Alert>
+      )}
       {query.isError && (
         <Alert severity="error">
           Goals could not be refreshed. Your edits are still here.{' '}
@@ -235,14 +288,14 @@ export function GoalsPage() {
           The saved goal changed while this editor was open. Your edits are still here. Review the
           latest saved values before saving again.
           <Button
-            disabled={savePrimary.isPending || query.isFetching || query.isError}
+            disabled={locked || query.isFetching || query.isError}
             onClick={() => setConfirmReload(true)}
           >
             Review saved goal
           </Button>
         </Alert>
       )}
-      {dirty && (
+      {dirty && recovery === 'idle' && (
         <Alert severity="info">
           You have unsaved goal changes. Save them before leaving this page.
         </Alert>
@@ -260,7 +313,7 @@ export function GoalsPage() {
         <DialogActions>
           <Button onClick={() => setConfirmReload(false)}>Keep my edits</Button>
           <Button
-            disabled={query.isFetching || query.isError || savePrimary.isPending}
+            disabled={query.isFetching || query.isError || locked}
             onClick={() => {
               loadGoal(primary ?? null);
               setConfirmReload(false);
@@ -339,14 +392,10 @@ export function GoalsPage() {
               method="Current amount divided by the saved target amount. This is not an approval probability or projected score change."
             />
           )}
-          <Box
-            component="fieldset"
-            disabled={savePrimary.isPending}
-            sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}
-          >
+          <Box component="fieldset" disabled={locked} sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
             <Stack spacing={2}>
               <Slider
-                disabled={savePrimary.isPending}
+                disabled={locked}
                 min={5000}
                 max={250000}
                 step={5000}
@@ -355,7 +404,7 @@ export function GoalsPage() {
                 aria-label="Primary goal target"
               />
               <TextField
-                disabled={savePrimary.isPending}
+                disabled={locked}
                 label="Exact target"
                 error={!Number.isInteger(target) || target < 5000 || target > 250000}
                 helperText="Enter a whole-dollar amount from $5,000 to $250,000."
@@ -368,7 +417,7 @@ export function GoalsPage() {
                 }}
               />
               <ToggleButtonGroup
-                disabled={savePrimary.isPending}
+                disabled={locked}
                 exclusive
                 fullWidth
                 value={scope}
@@ -379,7 +428,7 @@ export function GoalsPage() {
                 <ToggleButton value="BOTH">Both</ToggleButton>
               </ToggleButtonGroup>
               <TextField
-                disabled={savePrimary.isPending}
+                disabled={locked}
                 select
                 label="Card type preference"
                 value={cardTypePreference}
@@ -405,7 +454,7 @@ export function GoalsPage() {
                     key={value}
                     control={
                       <Checkbox
-                        disabled={savePrimary.isPending}
+                        disabled={locked}
                         checked={offerPreferences.includes(value)}
                         onChange={() =>
                           setOfferPreferences((current) =>
@@ -421,7 +470,7 @@ export function GoalsPage() {
                 ))}
               </Box>
               <TextField
-                disabled={savePrimary.isPending}
+                disabled={locked}
                 select
                 label="Fee preference"
                 value={feePreference}
@@ -435,7 +484,7 @@ export function GoalsPage() {
                 <MenuItem value="FEE_ACCEPTABLE">Annual fee acceptable</MenuItem>
               </TextField>
               <TextField
-                disabled={savePrimary.isPending}
+                disabled={locked}
                 label="Additional card preference (optional)"
                 multiline
                 minRows={2}
@@ -447,7 +496,7 @@ export function GoalsPage() {
                 variant="contained"
                 onClick={() => savePrimary.mutate()}
                 disabled={
-                  savePrimary.isPending ||
+                  locked ||
                   query.isFetching ||
                   query.isError ||
                   changed ||

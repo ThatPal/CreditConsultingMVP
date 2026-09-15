@@ -313,3 +313,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 54: Reviewed source snapshots](IMPLEMENTATION-54.md) keeps an open comparison fixed until the consultant explicitly loads changed sources, preserves reasoning, and binds updates to reviewed references. Real browser reconciliation and republishing passed; Goals continuity and Review publication content are the next originating-workflow priorities.
 
 [Pass 55: Goals editor continuity and valid saves](IMPLEMENTATION-55.md) preserves unsaved edits across refreshes, requires explicit loading of changed goals, guards navigation and fixes the rejected update payload. Thirteen tests, both builds and an isolated real browser save passed; accepted-save and cycle-confirmation recovery remain next.
+
+[Pass 56: Goal-save recovery and cycle handoff](IMPLEMENTATION-56.md) separates accepted writes from failed follow-up reads, replays lost responses with the original command identity, and retries cycle confirmation without resaving. Thirteen tests, both builds and real browser lost-response recovery passed. Durable recovery and real cycle qualification remain open.
