@@ -196,12 +196,13 @@ export async function createRound(prisma: PrismaClient, input: { clientId: strin
     outbox: { eventType: 'credit-card-round.changed', eventKey: `credit-card-round:${input.cycleId}`, aggregateType: 'CreditCardRound', aggregateId: (value) => value.roundId, payload: (value) => ({ clientId: input.clientId, cycleId: input.cycleId, roundId: value.roundId }) },
     mutate: async (tx) => {
       await assertNoCreditActivityRestriction(tx, input.clientId, 'CYCLE');
+      await tx.$queryRaw`SELECT id FROM "ApplicationCycle" WHERE id = ${input.cycleId}::uuid AND "clientId" = ${input.clientId}::uuid FOR UPDATE`;
       const existing = await tx.creditCardRound.findUnique({ where: { cycleId_clientId: { cycleId: input.cycleId, clientId: input.clientId } } });
       if (existing) return { roundId: existing.id, entitlementId: existing.serviceEntitlementId };
       const source = await authoritativeContext(tx, input.clientId);
       assertCurrentProfile(source);
-      const cycle = await tx.applicationCycle.findFirst({ where: { id: input.cycleId, clientId: input.clientId, status: 'ACTIVE' }, include: { goalSnapshot: true } });
-      if (!cycle?.goalSnapshot) throw new AppError('CYCLE_NOT_READY', 409, 'Confirm the current seasonal cycle goal before starting a round');
+      const cycle = await tx.applicationCycle.findFirst({ where: { id: input.cycleId, clientId: input.clientId, status: 'ACTIVE' }, include: { goalSnapshot: true, steps: true } });
+      if (!cycle?.goalSnapshot || (!cycle.goalConfirmedAt && !cycle.steps.some(step => step.stage === 'STARTED' && step.status === 'COMPLETE'))) throw new AppError('CYCLE_NOT_READY', 409, 'Confirm the current seasonal cycle goal before starting a round');
       if (cycle.goalSnapshot.sourceGoalId !== source.goal!.id || cycle.goalSnapshot.sourceGoalVersion !== source.goal!.version)
         throw new AppError('CYCLE_GOAL_STALE', 409, 'The current goal changed after this cycle was confirmed');
       const entitlements = await tx.serviceEntitlement.findMany({ where: { clientId: input.clientId, serviceType: 'CREDIT_CARD_ROUND', status: 'ACTIVE', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }] });

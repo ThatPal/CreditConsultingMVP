@@ -1060,7 +1060,7 @@ describe('Support, notification, and application-cycle characterization', () => 
   test('creates one active cycle and advances only the owning client goal step', async () => {
     const owner = await createClient('cycle-owner');
     const stranger = await createClient('cycle-stranger');
-    await prisma.clientGoal.create({
+    const goal = await prisma.clientGoal.create({
       data: {
         clientId: owner.client.id,
         goalType: 'TOTAL_AVAILABLE_CREDIT',
@@ -1081,10 +1081,12 @@ describe('Support, notification, and application-cycle characterization', () => 
       .expect(409);
     await request(app)
       .post(`/api/v1/client/application-cycles/${cycleId}/confirm-goal`)
+      .send({ goalId: goal.id, goalVersion: goal.version })
       .set('x-test-principal', stranger.header)
       .expect(404);
     await request(app)
       .post(`/api/v1/client/application-cycles/${cycleId}/confirm-goal`)
+      .send({ goalId: goal.id, goalVersion: goal.version })
       .set('x-test-principal', owner.header)
       .expect(200);
     const cycle = await prisma.applicationCycle.findUniqueOrThrow({

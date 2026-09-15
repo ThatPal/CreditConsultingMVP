@@ -27,12 +27,14 @@ beforeEach(() => {
   sessionStorage.clear();
   vi.mocked(apiRequest)
     .mockReset()
-    .mockImplementation(async (path) =>
-      path === '/api/v1/client/goals'
-        ? { goals: [goal()] }
-        : path.includes('reviews')
-          ? { review: null }
-          : { profile: { freshness: { isCurrent: false } } },
+    .mockImplementation(async (path, options) =>
+      options?.method === 'PATCH'
+        ? { goal: goal(2) }
+        : path === '/api/v1/client/goals'
+          ? { goals: [goal()] }
+          : path.includes('reviews')
+            ? { review: null }
+            : { profile: { freshness: { isCurrent: false } } },
     );
 });
 function setup(path = '/goals') {
@@ -294,4 +296,26 @@ test('does not restore cleared recovery when a save finishes after session loss'
   });
   await screen.findByText('Primary goal updated.');
   expect(sessionStorage.length).toBe(0);
+});
+
+test('confirms the saved request revision rather than a later read and offers conflict review', async () => {
+  const base = vi.mocked(apiRequest).getMockImplementation()!;
+  vi.mocked(apiRequest).mockImplementation(async (path, options) => {
+    if (options?.method === 'PATCH') return { goal: goal(8) };
+    if (path.endsWith('/confirm-goal'))
+      throw Object.assign(new Error('Goal changed'), { code: 'CYCLE_GOAL_STALE' });
+    return base(path, options);
+  });
+  setup('/goals?cycle=test-cycle');
+  await screen.findByDisplayValue('Saved wording');
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm goal for this cycle' }));
+  const review = await screen.findByRole('button', { name: 'Review current goal' });
+  await waitFor(() => expect(review).toBeEnabled());
+  const confirmation = vi
+    .mocked(apiRequest)
+    .mock.calls.find(([path]) => path.endsWith('/confirm-goal'))!;
+  expect(JSON.parse(String(confirmation[1]?.body))).toEqual({ goalId: 'goal', goalVersion: 2 });
+  expect(screen.getByRole('button', { name: 'Retry cycle confirmation' })).toBeDisabled();
+  fireEvent.click(review);
+  expect(screen.getByRole('button', { name: 'Confirm goal for this cycle' })).toBeEnabled();
 });

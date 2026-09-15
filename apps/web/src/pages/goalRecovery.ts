@@ -1,5 +1,10 @@
 export type GoalCommand = { path: string; method: string; body: string; key: string };
-export type GoalRecovery = { phase: 'unknown' | 'accepted'; command: GoalCommand; savedAt: number };
+export type GoalRecovery = {
+  phase: 'unknown' | 'accepted';
+  command: GoalCommand;
+  savedAt: number;
+  goal?: { id: string; version: number };
+};
 export const goalRecoveryPrefix = 'astra:goal-save:v1:';
 export const goalRecoveryKey = (actor: string, client: string, cycle: string | null) =>
   `${goalRecoveryPrefix}${encodeURIComponent(actor)}:${encodeURIComponent(client)}:${encodeURIComponent(cycle ?? '')}`;

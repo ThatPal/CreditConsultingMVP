@@ -286,6 +286,51 @@ describe('Phase 11 seasonal cycle, paid round, and major application contract', 
   });
 
   test('11.2 rolls back entitlement on failure, retries exactly once, and keeps payment separate from readiness', async () => {
+    const confirmed = await prisma.applicationCycle.findUniqueOrThrow({ where: { id: cycleId } });
+    await prisma.applicationCycle.update({
+      where: { id: cycleId },
+      data: { goalConfirmedAt: null },
+    });
+    try {
+      await expect(
+        createRound(prisma, {
+          clientId,
+          actorId: userId,
+          cycleId,
+          idempotencyKey: `${marker}-unconfirmed-round`,
+        }),
+      ).rejects.toMatchObject({ code: 'CYCLE_NOT_READY' });
+      expect(await prisma.creditCardRound.count({ where: { clientId } })).toBe(0);
+      const legacyStep = await prisma.applicationCycleStep.create({
+        data: {
+          cycleId,
+          stage: 'STARTED',
+          title: 'Confirmed legacy goal',
+          status: 'COMPLETE',
+          sortOrder: 0,
+          completedAt: new Date(),
+        },
+      });
+      try {
+        await expect(
+          createRound(prisma, {
+            clientId,
+            actorId: userId,
+            cycleId,
+            idempotencyKey: `${marker}-legacy-confirmed-round`,
+            failAfterEntitlement: true,
+          }),
+        ).rejects.toThrow('PHASE11_FAILURE_INJECTION');
+      } finally {
+        await prisma.applicationCycleStep.delete({ where: { id: legacyStep.id } });
+      }
+    } finally {
+      await prisma.applicationCycle.update({
+        where: { id: cycleId },
+        data: { goalConfirmedAt: confirmed.goalConfirmedAt },
+      });
+    }
+
     await expect(
       createRound(prisma, {
         clientId,

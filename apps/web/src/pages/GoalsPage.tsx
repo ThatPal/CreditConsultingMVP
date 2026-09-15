@@ -96,6 +96,8 @@ function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
   const restoredBody = restored
     ? (JSON.parse(restored.command.body) as { targetAmount?: number; preferenceNote?: string })
     : null;
+  const confirmedGoal = useRef<{ id: string; version: number } | undefined>(restored?.goal);
+  const [cycleConflict, setCycleConflict] = useState(false);
   const [storageFailed, setStorageFailed] = useState(false);
   const persist = (phase: 'unknown' | 'accepted' | null, request?: GoalCommand | null) => {
     if (!activeSession.current) return;
@@ -103,7 +105,12 @@ function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
       !writeGoalRecovery(
         recoveryKey,
         phase && request
-          ? { phase, command: request, savedAt: restored?.savedAt ?? Date.now() }
+          ? {
+              phase,
+              command: request,
+              savedAt: restored?.savedAt ?? Date.now(),
+              ...(confirmedGoal.current ? { goal: confirmedGoal.current } : {}),
+            }
           : null,
       ),
     );
@@ -206,9 +213,14 @@ function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
       loadGoal(latest);
       if (cycleId) {
         setRecovery('cycle');
-        if (!latest) throw new Error('An active primary goal is required to continue this cycle.');
+        if (!confirmedGoal.current)
+          throw new Error('Review and save this goal again to confirm its version for the cycle.');
         await apiRequest(`/api/v1/client/application-cycles/${cycleId}/confirm-goal`, {
           method: 'POST',
+          body: JSON.stringify({
+            goalId: confirmedGoal.current.id,
+            goalVersion: confirmedGoal.current.version,
+          }),
         });
         await qc.invalidateQueries({ queryKey: ['application-cycles'] });
         setContinueCycle(true);
@@ -216,6 +228,12 @@ function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
       setRecovery('idle');
       persist(null);
     } catch (error) {
+      setCycleConflict(
+        ['CYCLE_GOAL_STALE', 'CYCLE_GOAL_ALREADY_CONFIRMED'].includes(
+          (error as { code?: string }).code ?? '',
+        ) ||
+          (!confirmedGoal.current && Boolean(cycleId)),
+      );
       setRecoveryError(
         error instanceof Error ? error.message : 'Unable to finish checking this goal.',
       );
@@ -226,6 +244,7 @@ function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
     onMutate: () => {
       setMessage('');
       setRecoveryError('');
+      setCycleConflict(false);
     },
     mutationFn: () => {
       if (!command.current) {
@@ -249,13 +268,22 @@ function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
       }
       const request = command.current;
       persist('unknown', request);
-      return apiRequest(request.path, {
+      return apiRequest<{ goal: Goal }>(request.path, {
         method: request.method,
         body: request.body,
         headers: { 'Idempotency-Key': request.key },
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      const accepted = command.current;
+      confirmedGoal.current =
+        result.goal && accepted
+          ? {
+              id: result.goal.id,
+              version:
+                accepted.method === 'PATCH' ? Number(JSON.parse(accepted.body).version) + 1 : 1,
+            }
+          : undefined;
       persist('accepted', command.current);
       command.current = null;
       setMessage('Primary goal updated.');
@@ -336,6 +364,25 @@ function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
           )}
         </Alert>
       )}
+      {cycleConflict && (
+        <Alert severity="warning">
+          The saved goal and this cycle need review before you continue.
+          <Button
+            disabled={busy}
+            onClick={() => {
+              setCycleConflict(false);
+              setRecovery('idle');
+              persist(null);
+              setRecoveryError('');
+            }}
+          >
+            Review current goal
+          </Button>
+          <Button component={Link} to="/app/application-rounds">
+            View application cycle
+          </Button>
+        </Alert>
+      )}
       {recovery !== 'idle' && (
         <Alert severity="warning">
           {recovery === 'unknown'
@@ -345,7 +392,7 @@ function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
               : 'Your goal was saved. The latest saved values could not yet be checked.'}
           {recoveryError && <Typography>{recoveryError}</Typography>}
           <Button
-            disabled={busy}
+            disabled={busy || cycleConflict}
             onClick={() => (recovery === 'unknown' ? savePrimary.mutate() : recoverSave.mutate())}
           >
             {recovery === 'unknown'

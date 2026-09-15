@@ -140,3 +140,5 @@ Latest: [Pass 17: Publication identity and Plan-specific follow-through](IMPLEME
 [Pass 56: Goal-save recovery and cycle handoff](IMPLEMENTATION-56.md) separates accepted writes from failed follow-up reads, replays lost responses with the original command identity, and retries cycle confirmation without resaving. Thirteen tests, both builds and real browser lost-response recovery passed. Durable recovery and real cycle qualification remain open.
 
 [Pass 57: Reload recovery and real cycle handoff](IMPLEMENTATION-57.md) restores pending goal commands within the authenticated tab, clears them on session loss and fixes router-guard timing. Real reload and cycle-confirmation recovery passed without duplicate audits. Binding the cycle snapshot to the reviewed goal revision is the next backend priority.
+
+[Pass 58: Revision-bound cycle confirmation](IMPLEMENTATION-58.md) captures the reviewed goal revision atomically, preserves confirmed history, deduplicates concurrent confirmations and prevents rounds from using provisional snapshots. Twenty-eight tests and real browser replay checks passed. Existing historical snapshots were not backfilled.

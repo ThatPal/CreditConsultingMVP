@@ -1,3 +1,4 @@
+import { confirmCycleGoal } from './confirmCycleGoal.js';
 import { createLiveSessionGuard } from '../auth/liveSessionGuard.js';
 import type { AuthPrincipal } from '../auth/types.js';
 import { resolvePlanWorkLinks } from '../plans/workLinks.js';
@@ -253,7 +254,10 @@ async function getSupportNotificationRecipients(
 export function createOperationsRouter(
   prisma: PrismaClient,
   auth: AuthService,
-  options: { heartbeatIntervalMs?: number; resolveStreamPrincipal?: (request: import('express').Request) => Promise<AuthPrincipal | null> } = {},
+  options: {
+    heartbeatIntervalMs?: number;
+    resolveStreamPrincipal?: (request: import('express').Request) => Promise<AuthPrincipal | null>;
+  } = {},
   authorization: AuthorizationService = createPrismaAuthorizationService(prisma),
   denialRecorder: AuthorizationDenialRecorder = createPrismaAuthorizationDenialRecorder(prisma),
   aiRuntime?: DurableAIRuntime,
@@ -404,15 +408,25 @@ export function createOperationsRouter(
       if (expired) res.write('event: session-ended\ndata: {}\n\n');
       res.end();
     };
-    const session = options.resolveStreamPrincipal ? createLiveSessionGuard(req.auth!, () => options.resolveStreamPrincipal!(req), () => end(true), () => end(false)) : null;
+    const session = options.resolveStreamPrincipal
+      ? createLiveSessionGuard(
+          req.auth!,
+          () => options.resolveStreamPrincipal!(req),
+          () => end(true),
+          () => end(false),
+        )
+      : null;
     const send = async (update: LiveUpdate) => {
       if (!matchesLiveAudience(req.auth!, update)) return;
       if (!active || res.writableEnded) return;
       if (session && !(await session.check())) return;
       const allowed = await realtimeAuthorization.canSubscribeToClient(req.auth!, update.clientId);
-      if (allowed && active && !res.writableEnded) res.write(`event: refresh\ndata: ${JSON.stringify(update)}\n\n`);
+      if (allowed && active && !res.writableEnded)
+        res.write(`event: refresh\ndata: ${JSON.stringify(update)}\n\n`);
     };
-    const unsubscribe = subscribeToLiveUpdates((update) => void send(update).catch(() => end(false)));
+    const unsubscribe = subscribeToLiveUpdates(
+      (update) => void send(update).catch(() => end(false)),
+    );
     const heartbeat = setInterval(async () => {
       if (session && !(await session.check())) return;
       if (active && !res.writableEnded) res.write(`: heartbeat ${new Date().toISOString()}\n\n`);
@@ -636,69 +650,24 @@ export function createOperationsRouter(
             404,
             'Active application cycle not found',
           );
-        const cycle = await prisma.applicationCycle.findFirst({
-          where: { id: cycleId, clientId, status: 'ACTIVE' },
-          include: { steps: { orderBy: { sortOrder: 'asc' } } },
-        });
-        if (!cycle)
+        const parsed = z
+          .object({ goalId: z.string().uuid(), goalVersion: z.number().int().positive() })
+          .strict()
+          .safeParse(req.body);
+        if (!parsed.success || !z.string().uuid().safeParse(cycleId).success)
           throw new AppError(
-            'APPLICATION_CYCLE_NOT_FOUND',
-            404,
-            'Active application cycle not found',
+            'VALIDATION_ERROR',
+            400,
+            'A reviewed goal ID and version are required',
           );
-        const goal = await prisma.clientGoal.findFirst({
-          where: { clientId, priority: 'PRIMARY', status: 'ACTIVE' },
+        const result = await confirmCycleGoal(prisma, {
+          clientId,
+          actorId: req.auth!.userId,
+          cycleId,
+          ...parsed.data,
         });
-        if (!goal)
-          throw new AppError(
-            'PRIMARY_GOAL_REQUIRED',
-            409,
-            'Confirm a primary goal before continuing',
-          );
-        const goalStep = cycle.steps.find((step) => step.stage === 'STARTED');
-        if (!goalStep)
-          throw new AppError('GOAL_STEP_NOT_FOUND', 409, 'Goal confirmation step is unavailable');
-        if (goalStep.status !== 'COMPLETE') {
-          const nextStep = cycle.steps.find((step) => step.stage === 'REVIEW_PURCHASE');
-          await prisma.$transaction(async (tx) => {
-            await tx.applicationCycleStep.update({
-              where: { id: goalStep.id },
-              data: {
-                status: 'COMPLETE',
-                completedAt: new Date(),
-                sourceType: 'ClientGoal',
-                sourceId: goal.id,
-              },
-            });
-            if (nextStep) {
-              await tx.applicationCycleStep.update({
-                where: { id: nextStep.id },
-                data: { status: 'AVAILABLE', startedAt: new Date() },
-              });
-            }
-            await tx.applicationCycle.update({
-              where: { id: cycle.id },
-              data: { currentStage: 'REVIEW_PURCHASE' },
-            });
-            await tx.auditEvent.create({
-              data: {
-                clientId,
-                actorId: req.auth!.userId,
-                action: 'APPLICATION_CYCLE_GOAL_CONFIRMED',
-                entityType: 'ApplicationCycle',
-                entityId: cycle.id,
-                metadata: {
-                  goalId: goal.id,
-                  goalType: goal.goalType,
-                  targetAmount: goal.targetAmount,
-                  allowAnnualFee: goal.allowAnnualFee,
-                },
-              },
-            });
-          });
-          publishLiveUpdate(clientId, 'application-cycles');
-        }
-        res.json({ confirmed: true, cycleId: cycle.id, goalId: goal.id });
+        if (result.changed) publishLiveUpdate(clientId, 'application-cycles');
+        res.json(result);
       } catch (error) {
         next(error);
       }
