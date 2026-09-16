@@ -1,6 +1,6 @@
 # Unified convergence execution
 
-The user-directed U0–U10 program replaces the incremental A1/A2/A5 continuation. U0 is in progress; U1 has not started. Existing implementation reports are historical evidence, not final product acceptance.
+The user-directed U0–U10 program replaces the incremental A1/A2/A5 continuation. U0 baseline reconciliation has passed; U1 is the active implementation wave. Existing implementation reports are historical evidence, not final product acceptance. See [U0 acceptance](U0_ACCEPTANCE.md) for evidence and limitations.
 
 Baseline: `codex/astra-production` at `44a905b2d5b804441864ec6faddc8e67552f2491`, synchronized with origin on 2026-09-15 (local time). Work remains in the independent Astra worktree. Other versions remain independent.
 
@@ -21,16 +21,16 @@ Downloaded source text remains private under ignored `docs/astra/sources/drive/u
 
 ## Acceptance status
 
-| Deliverable                                   | Status                                                                     |
-| --------------------------------------------- | -------------------------------------------------------------------------- |
-| Baseline health                               | Checked; failures diagnosed and tooling corrections verified               |
-| F01–F24 current status                        | Current-source matrix recorded; production qualification remains open      |
-| All routes/components against final inventory | Inventory and detailed classification in progress                          |
-| U1 truth map                                  | Initial source-level map captured                                          |
-| Visual baseline                               | Ten real browser captures, including published Profile and expanded Action |
-| U0 acceptance                                 | NOT PASSED                                                                 |
-| U1 implementation/acceptance                  | NOT STARTED                                                                |
+| Deliverable                                   | Status                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Baseline health                               | Checked; failures diagnosed and tooling corrections verified                                |
+| F01–F24 current status                        | Current-source matrix recorded; production qualification remains open                       |
+| All routes/components against final inventory | 120 routes and 47 shared modules explicitly classified; final product qualification pending |
+| U1 truth map                                  | Initial source-level map captured                                                           |
+| Visual baseline                               | Ten real browser captures, including published Profile and expanded Action                  |
+| U0 acceptance                                 | PASSED — baseline/inventory only                                                            |
+| U1 implementation/acceptance                  | STARTING / NOT PASSED                                                                       |
 
 No U1 completion report should exist until both gates actually pass. No broad U2 work is authorized by completion of an individual U1 feature.
 
-Latest checkpoint: baseline diagnostics and tooling-only corrections are complete for this batch; ten screenshot artifacts captured/reviewed. API 354 passing tests across broad + focused runs; web baseline 279/288, with four timeout cases passing diagnostic rerun and five test-isolation failures corrected; auth boundary rerun 10/10. Runtime 3/3, worker 17/17. Root lint passes after excluding ignored tooling and declaring script globals. Both databases match all 69 migration checksums. **Full route/component final-spec classification remains unfinished, so U0 is still NOT PASSED**.
+Latest checkpoint: baseline diagnostics and tooling-only corrections are complete for this batch; ten screenshot artifacts captured/reviewed. API 354 passing tests across broad + focused runs; web baseline 279/288, with four timeout cases passing diagnostic rerun and five test-isolation failures corrected; auth boundary rerun 10/10. Runtime 3/3, worker 17/17. Root lint passes after excluding ignored tooling and declaring script globals. Both databases match all 69 migration checksums. **Portal/staff/shared dispositions are now complete; U0 acceptance is recorded separately. All final UI and production qualification remains open.**

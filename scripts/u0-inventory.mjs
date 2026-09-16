@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { extractRoutes } from './u0-route-parser.mjs';
+import { routeDisposition, sharedDisposition } from './u0-dispositions.mjs';
 
 const root = process.cwd();
 if (
@@ -12,7 +13,6 @@ if (
   throw new Error('Run only in the Astra production worktree');
 }
 const out = 'docs/reconciliation';
-fs.mkdirSync(out, { recursive: true });
 const walkFiles = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const name = `${dir}/${entry.name}`;
@@ -26,108 +26,101 @@ const componentFile = (name) =>
   [...sources].find(([, text]) =>
     new RegExp(`export (?:function|const|class) ${name}\\b`).test(text),
   )?.[0] ?? null;
-const patterns = [
-  [/^ClientHomePage$/, 'CP-01', 'U1', 'RECOMPOSE'],
-  [/^ClientAppShell$/, 'CP-SHELL-01', 'U1', 'RECOMPOSE'],
-  [/^ClientJourneyPage$/, 'PORTAL-02 Journey', 'U1', 'REBUILD'],
-  [/^ClientPlanPage$/, 'CP-PL-01 / CP-AC-01 / CP-AC-02', 'U1', 'RECOMPOSE'],
-  [/^PublishedCreditCenterPage$/, 'CP-CC-01/03/06/09/10', 'U1', 'REBUILD'],
-  [
-    /Auth|Login|Register|Password|Email|Mfa|Security|Account/,
-    'Auth / account / security',
-    'U2',
-    'RESTYLE',
-  ],
-  [/Goals|GoalIntake/, 'Goals / onboarding', 'U4', 'REBUILD'],
-  [/ClientReview|ConsultantReview/, 'CP-CC / CRM-11 Review', 'U3', 'REBUILD'],
-  [/ConsultantClientCreditCenter/, 'CRM-06', 'U3', 'RECOMPOSE'],
-  [/ConsultantPlanBuilder/, 'CRM-12', 'U4', 'RECOMPOSE'],
-  [/Card|Catalog|Insight/, 'Cards / catalog / research', 'U5', 'REBUILD'],
-  [
-    /Strategy|Live|Calendar|Appointment|Schedule|SeasonalCycle|^RoundPage|MajorApplicationCheck/,
-    'Round / strategy / live / appointment',
-    'U6',
-    'REBUILD',
-  ],
-  [
-    /PostRound|RoundAnalysis|RoundFinalization|MajorReadiness/,
-    'Post-Round / Major Readiness',
-    'U7',
-    'REBUILD',
-  ],
-  [
-    /Services|ServiceDetail|Purchase|Checkout|Payment|PayPal|Stripe|Bofa/,
-    'Services / commerce / gateways',
-    'U7',
-    'RECOMPOSE',
-  ],
-  [/AdminUser|AdminAccess/, 'ADMIN-02/03/04', 'U2', 'RECOMPOSE'],
-  [/Admin|SystemHealth/, 'Admin operational surfaces', 'U8', 'RECOMPOSE'],
-  [/ConsultantDashboard|WorkQueue|ClientsPage|Client360/, 'CRM-01/02/03/04', 'U8', 'RECOMPOSE'],
-  [/Support|Documents|Notifications/, 'Support / Documents / Notifications', 'U8', 'RECOMPOSE'],
-  [/Readiness/, 'Legacy readiness → owning Review/Plan/Round', 'U4', 'RETIRE'],
-  [/Navigate/, 'Compatibility redirect; validate destination before retirement', 'U9', 'KEEP'],
-  [/FoundationPage/, 'Contextual not-found state', 'U1', 'RESTYLE'],
-  [/DesignSystem|ShellEvidence/, 'Development-only evidence', 'U1', 'RESTYLE'],
-];
-const source = sources.get('apps/web/src/App.tsx');
-const routes = extractRoutes(source).map((route) => {
-  const component = route.component;
-  const file = componentFile(component);
+const moduleEvidence = (file) => {
   const text = sources.get(file) ?? '';
-  const match =
-    route.route === '/'
-      ? [null, 'Public acquisition root (currently intake redirect)', 'U9', 'REBUILD']
-      : patterns.find(([pattern]) => pattern.test(component));
   return {
-    ...route,
-    file,
-    targetFamily: match?.[1] ?? 'Pending final family review',
-    wave: match?.[2] ?? 'U8',
-    proposedClassification: match?.[3] ?? 'RECOMPOSE',
-    classificationReview: 'PROVISIONAL — requires per-surface final-spec validation',
     apiReferencesInModule: [
       ...new Set([...text.matchAll(/['"`]((?:\/api\/)[^'"`\n]+)/g)].map((m) => m[1])),
     ],
+    queryRootsInModule: [
+      ...new Set([...text.matchAll(/queryKey:\s*\[\s*['"]([^'"]+)/g)].map((m) => m[1])),
+    ],
     majorChildrenInModule: [...new Set([...text.matchAll(/<([A-Z][\w]*)/g)].map((m) => m[1]))],
-    desktop: [
-      'ClientHomePage',
-      'ClientPlanPage',
-      'PublishedCreditCenterPage',
-      'ClientAppShell',
-    ].includes(component)
-      ? 'U0 captured representative state; not accepted'
-      : 'Not requalified in U0',
-    mobile: [
-      'ClientHomePage',
-      'ClientPlanPage',
-      'PublishedCreditCenterPage',
-      'ClientAppShell',
-    ].includes(component)
-      ? '390px representative capture; not accepted'
-      : 'Not requalified in U0',
+  };
+};
+const routes = extractRoutes(sources.get('apps/web/src/App.tsx')).map((route) => {
+  const file = componentFile(route.component);
+  if (!file && route.component !== 'Navigate')
+    throw new Error(`Unresolved screen file: ${route.component}`);
+  const captured = [
+    'ClientHomePage',
+    'ClientPlanPage',
+    'PublishedCreditCenterPage',
+    'ClientAppShell',
+  ].includes(route.component);
+  return {
+    ...route,
+    file,
+    ...routeDisposition(route),
+    ...moduleEvidence(file),
+    classificationReview:
+      'Disposition reviewed against final owner/spec; product acceptance pending',
+    desktop: captured
+      ? 'U0 representative browser capture; not accepted'
+      : 'Source review only; final browser qualification pending',
+    mobile: captured
+      ? '390px U0 representative capture; not accepted'
+      : 'Source review only; final narrow qualification pending',
   };
 });
-fs.writeFileSync(path.join(out, 'route-inventory.json'), JSON.stringify(routes, null, 2) + '\n');
 const shared = files
-  .filter((f) => /\/(components|layouts|features)\//.test(f))
+  .filter((file) => /\/(components|layouts|features)\//.test(file))
   .map((file) => ({
     file,
     exports: [...sources.get(file).matchAll(/export (?:function|const|class) (\w+)/g)].map(
       (m) => m[1],
     ),
-    status: 'Awaiting final component-by-component classification',
+    ...sharedDisposition(file),
+    ...moduleEvidence(file),
+    classificationReview:
+      'Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception',
+    desktop: 'Existing source/pass evidence; final composition qualification pending',
+    mobile: 'Existing source/pass evidence; final touch/focus/scroll qualification pending',
   }));
+const allowed = new Set(['KEEP', 'RESTYLE', 'RECOMPOSE', 'REBUILD', 'RETIRE']);
+for (const item of [...routes, ...shared]) {
+  if (
+    !allowed.has(item.classification) ||
+    !item.reason ||
+    !item.targetFamily ||
+    !/^U\d+$/.test(item.wave)
+  ) {
+    throw new Error('Invalid reconciliation disposition');
+  }
+}
+fs.writeFileSync(path.join(out, 'route-inventory.json'), JSON.stringify(routes, null, 2) + '\n');
 fs.writeFileSync(
   path.join(out, 'shared-component-inventory.json'),
   JSON.stringify(shared, null, 2) + '\n',
 );
 const esc = (value) => String(value ?? '').replaceAll('|', '/');
+const table = (items, keys) =>
+  items.map((item) => '| ' + keys.map((key) => esc(item[key])).join(' | ') + ' |').join('\n');
 fs.writeFileSync(
   path.join(out, 'UI_SCREEN_COMPONENT_MAP.md'),
-  '> Staff screen ownership, embedded destinations, missing surfaces and alias dispositions are reviewed separately in [STAFF_SURFACE_RECONCILIATION.md](STAFF_SURFACE_RECONCILIATION.md). That curated review takes precedence over the broad provisional family labels below and is never overwritten by this generator. Route details now include index identity, props, authorization wrappers and redirect destinations.\n\n' +
-    `# Screen/component reconciliation — inventory checkpoint\n\nBaseline: 44a905b. Generated from the current TypeScript route tree, not the old audit CSV. ${routes.length} route declarations; ${shared.length} shared/feature/layout modules.\n\n**U0 mapping acceptance is pending.** Classifications below are proposed migration treatments, not certified KEEP decisions. The U1 reference slice has source/browser evidence in U1_TRUTH_MAP and U1_VISUAL_BASELINE. All other rows require final exact-spec review before implementation. Module-level API/child extraction may include siblings exported by that module; it is discovery evidence, not a per-render dependency graph.\n\n[Route details](route-inventory.json) include implementation files, current API references, major child components, desktop/mobile evidence and review status. [Shared modules](shared-component-inventory.json) provide the full component review queue. Missing final surfaces and duplicate aliases must be resolved against the final coverage register before U0 passes.\n\n| Current route | Component | Final family | Proposed treatment | Wave |\n| --- | --- | --- | --- | --- |\n${routes.map((r) => `| ${esc(r.route)} | ${esc(r.component)} | ${esc(r.targetFamily)} | ${r.proposedClassification} | ${r.wave} |`).join('\n')}\n\n## Confirmed reference-slice gaps\n\n- Dedicated Action list/detail routes are absent; current response UI is embedded in Plan. Target CP-AC-01/02 is MISSING as a separate canonical navigation surface. Preserve response controls when introducing it.\n- Plan Overview/Decisions/Nurture views are absent; current Plan page lists one selected published Plan.\n- Final Credit Center DTO composition/currentness/Plan connection is absent. Existing Profile/Analysis/History routes are implementation material.\n- Final primary navigation lacks Credit Plan and still elevates legacy service destinations.\n- Public marketing remains absent at the root; root redirects to intake.\n\nDo not delete aliases or legacy screens until replacement behavior and deep-link compatibility are proved.\n`,
+  `# Screen/component reconciliation
+
+Baseline: 44a905b; inventory updated from the current route tree. ${routes.length} route declarations and ${shared.length} shared/feature/layout modules have explicit dispositions. Disposition is a migration decision, **not product acceptance**. No KEEP certification is made for existing product screens. RESTYLE on small controlled primitives does not certify every call site.
+
+Sources and detailed missing/embedded/alias decisions: [Portal review](PORTAL_SURFACE_RECONCILIATION.md), [staff review](STAFF_SURFACE_RECONCILIATION.md), [shared review](SHARED_COMPONENT_RECONCILIATION.md). Final Portal section K and latest QA amendments override older navigation and domain assumptions.
+
+[Route JSON](route-inventory.json) and [shared JSON](shared-component-inventory.json) include rationale, file, current API/query discovery, child components and separate desktop/mobile evidence status. Extraction is module-level and may include sibling exports; absence of a literal API URL does not mean no server dependency. Delegated hooks/helpers retain their owning module's authority. Redirect props and authorization wrappers are preserved. New unclassified components fail generation instead of receiving a heuristic default.
+
+## Routes
+
+| Current route | Component | Final owner | Treatment | Wave | Reason |
+| --- | --- | --- | --- | --- | --- |
+${table(routes, ['route', 'component', 'targetFamily', 'classification', 'wave', 'reason'])}
+
+## Shared/feature/layout modules
+
+| File | Final owner | Treatment | Wave | Reason |
+| --- | --- | --- | --- | --- |
+${table(shared, ['file', 'targetFamily', 'classification', 'wave', 'reason'])}
+
+Do not remove RETIRE destinations or legacy persistence until the owning wave proves migration and deep-link parity. U0 gate status is recorded in README; generating this file cannot automatically pass it.
+`,
 );
 process.stdout.write(
-  JSON.stringify({ routes: routes.length, sharedModules: shared.length }) + '\n',
+  JSON.stringify({ routes: routes.length, sharedModules: shared.length, unclassified: 0 }) + '\n',
 );

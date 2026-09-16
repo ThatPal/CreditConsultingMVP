@@ -1,0 +1,524 @@
+{
+  "LoginPage": {
+    "targetFamily": "Public/Auth sign-in",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Preserve authentication; reconcile final recovery and global states."
+  },
+  "StaffMfaPage": {
+    "targetFamily": "Public/Auth MFA",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Preserve secure step-up and recovery; final auth composition."
+  },
+  "RegisterPage": {
+    "targetFamily": "Public/Auth registration",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Identity creation remains separate from service authorization."
+  },
+  "GoalIntakePage": {
+    "targetFamily": "Public intake / WF-01",
+    "classification": "REBUILD",
+    "wave": "U9",
+    "reason": "Replace retired single-goal intake semantics and missing acquisition context."
+  },
+  "VerifyEmailPage": {
+    "targetFamily": "Public/Auth verification",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Preserve token safety and non-enumerating recovery."
+  },
+  "ForgotPasswordPage": {
+    "targetFamily": "Public/Auth recovery",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Preserve non-enumerating behavior; final states and copy."
+  },
+  "ResetPasswordPage": {
+    "targetFamily": "Public/Auth reset",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Preserve one-use token and session rules; final recovery."
+  },
+  "DesignSystemPage": {
+    "targetFamily": "Shared design-system evidence",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Development-only reference must represent the final foundation."
+  },
+  "ShellEvidencePage": {
+    "targetFamily": "Shared shell evidence",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Development-only role shell examples must use final navigation."
+  },
+  "ClientAppShell": {
+    "targetFamily": "CP-SHELL-01 / final section K",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Seven primary destinations; secondary actions and persistent Live return."
+  },
+  "ClientHomePage": {
+    "targetFamily": "CP-01",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "One server-owned current focus; omit nonexistent secondary regions."
+  },
+  "ClientJourneyPage": {
+    "targetFamily": "PORTAL-02 / NAV-09",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Replace universal cycle stages with canonical owner projections."
+  },
+  "ClientPlanPage": {
+    "targetFamily": "CP-PL-01 / CP-AC-01/02",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Account-global roadmap/actions/decisions/nurture; preserve response recovery."
+  },
+  "PublishedCreditCenterPage": {
+    "targetFamily": "CP-CC-01/03/04/06/09/10",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Published facts plus separate currentness and Plan composition."
+  },
+  "ClientReviewPage": {
+    "targetFamily": "CP-CC-05/08 / WF-04/05",
+    "classification": "REBUILD",
+    "wave": "U3",
+    "reason": "Eligibility and source update wizard; preserve submitted revisions."
+  },
+  "ReadinessPage": {
+    "targetFamily": "Legacy generic readiness",
+    "classification": "RETIRE",
+    "wave": "U4",
+    "reason": "Replace with owner-specific Review/Plan/Round context before removing links."
+  },
+  "CardsPage": {
+    "targetFamily": "CP-CC-07 / CP-CD-02",
+    "classification": "REBUILD",
+    "wave": "U5",
+    "reason": "One catalog/owned/wishlist/application-history workspace; canonical client card editor."
+  },
+  "ExploreCardsPage": {
+    "targetFamily": "CP-CC-07",
+    "classification": "REBUILD",
+    "wave": "U5",
+    "reason": "Browse view in unified Cards; wishlist is preference not recommendation."
+  },
+  "CardWishlistPage": {
+    "targetFamily": "CP-CC-07 Wishlist view",
+    "classification": "RECOMPOSE",
+    "wave": "U5",
+    "reason": "Preserve preference records; unify navigation and relationship context."
+  },
+  "CardDetailPage": {
+    "targetFamily": "CP-CD-01",
+    "classification": "REBUILD",
+    "wave": "U5",
+    "reason": "Current offers plus owned-card and historical Round relationships."
+  },
+  "SeasonalCyclePage": {
+    "targetFamily": "Round history/start contextual entry",
+    "classification": "REBUILD",
+    "wave": "U6",
+    "reason": "Lean seasonal container; no universal Review-to-Nurture engine."
+  },
+  "RoundPage": {
+    "targetFamily": "CP-RD-01",
+    "classification": "REBUILD",
+    "wave": "U6",
+    "reason": "Canonical lifecycle/current gates, separate prerequisite Review."
+  },
+  "MajorApplicationCheckPage": {
+    "targetFamily": "Round Major check / WF-07",
+    "classification": "RECOMPOSE",
+    "wave": "U6",
+    "reason": "Governed start gate; no duplicate Major case lifecycle."
+  },
+  "ClientStrategyPage": {
+    "targetFamily": "CP-RD-02",
+    "classification": "REBUILD",
+    "wave": "U6",
+    "reason": "Frozen approved strategy client projection; never direct ungoverned release."
+  },
+  "ScheduleRoundPage": {
+    "targetFamily": "CP-RD-03 / CP-SC-03",
+    "classification": "REBUILD",
+    "wave": "U6",
+    "reason": "Real availability and timezone; revalidate workflow and slot."
+  },
+  "LiveSessionPage": {
+    "targetFamily": "CP-RD-04",
+    "classification": "REBUILD",
+    "wave": "U6",
+    "reason": "Supervised release, disconnect recovery and deterministic next action."
+  },
+  "PostRoundPage": {
+    "targetFamily": "CP-RD-05",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Factual outcomes and corrections; persistent Round context."
+  },
+  "PostRoundFollowUpPage": {
+    "targetFamily": "CP-RD-06 / CP-AC",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Use global Plan actions; separate paid execution from recommendation."
+  },
+  "RoundAnalysisPage": {
+    "targetFamily": "CP-RD-07",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Immutable approved analysis versions; current and historical distinction."
+  },
+  "MajorReadinessPage": {
+    "targetFamily": "CP-MR-01 through CP-MR-06",
+    "classification": "REBUILD",
+    "wave": "U7",
+    "reason": "Case-scoped intake/recommendation/preparation/coordination/history and safe re-entry."
+  },
+  "GoalsPage": {
+    "targetFamily": "CP-CC-02 / DOM-08",
+    "classification": "REBUILD",
+    "wave": "U4",
+    "reason": "Multiple fixed-type persistent goals; preserve historical snapshots and recovery."
+  },
+  "ServicesPage": {
+    "targetFamily": "CP-SV-01",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Separate price/access/prerequisites and valid next action."
+  },
+  "ActiveServicesPage": {
+    "targetFamily": "CP-SV-02",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Credit ledger and entitlement are not eligibility."
+  },
+  "PurchaseHistoryPage": {
+    "targetFamily": "CP-SV-03",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Canonical payment/access history with truthful outcomes."
+  },
+  "CheckoutPage": {
+    "targetFamily": "CP-SV-04/05",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Existing success branch requires payment plus granted effects; final handoff/recovery."
+  },
+  "DocumentsPage": {
+    "targetFamily": "CP-DC-01",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Canonical private documents, visibility and retention-aware protected access."
+  },
+  "NotificationsPage": {
+    "targetFamily": "CP-NT-01",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Shell awareness drawer and exact owner links; never duplicate tasks."
+  },
+  "SupportPage": {
+    "targetFamily": "CP-SP-01/02/03",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Existing case query/detail and creation; contextual help does not mutate source."
+  },
+  "AccountPage": {
+    "targetFamily": "CP-PR-01",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Profile fields only; structured settings family with real privacy workflow."
+  },
+  "SecurityPage": {
+    "targetFamily": "CP-PR-02 / own-account security",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Retain existing real MFA/session controls; final authority and recovery qualification."
+  },
+  "FoundationPage": {
+    "targetFamily": "Global contextual not-found",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Purposeful error/not-found and safe owner return."
+  },
+  "ConsultantAppShell": {
+    "targetFamily": "CRM shell / NAV-03",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Professional density and extensible persistent client/Live context."
+  },
+  "ConsultantDashboardPage": {
+    "targetFamily": "CRM-01",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Operational overview distinct from Work Queue."
+  },
+  "WorkQueuePage": {
+    "targetFamily": "CRM-02",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Source-owned reason, urgency, owner and exact work deep link."
+  },
+  "ClientsPage": {
+    "targetFamily": "CRM-03",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Scoped searchable current-state collection with preserved return."
+  },
+  "Client360Page": {
+    "targetFamily": "CRM-04/05/08/09/10",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Existing embedded domains; persistent context and one current priority."
+  },
+  "ConsultantPlanBuilderPage": {
+    "targetFamily": "CRM-12",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve version/draft guards; final shared typed editor, retire PlanPath."
+  },
+  "ConsultantClientCardsPage": {
+    "targetFamily": "CRM-07",
+    "classification": "REBUILD",
+    "wave": "U5",
+    "reason": "Portfolio/source/current relationships and governed corrections."
+  },
+  "ConsultantStrategyPage": {
+    "targetFamily": "CRM-13 through CRM-17",
+    "classification": "REBUILD",
+    "wave": "U6",
+    "reason": "Context/research/compare/sequence/validation workbench."
+  },
+  "RoundFinalizationPage": {
+    "targetFamily": "CRM-20 finalization section",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Converge Post-Round sections; named unresolved blockers."
+  },
+  "ConsultantMajorReadinessPage": {
+    "targetFamily": "CRM-21",
+    "classification": "REBUILD",
+    "wave": "U7",
+    "reason": "Published/draft distinction and coordination effect preview."
+  },
+  "ConsultantClientCreditCenterPage": {
+    "targetFamily": "CRM-06",
+    "classification": "RECOMPOSE",
+    "wave": "U3",
+    "reason": "Read-only published context, author in Review workspace."
+  },
+  "ConsultantReviewWorkspacePage": {
+    "targetFamily": "CRM-11",
+    "classification": "REBUILD",
+    "wave": "U3",
+    "reason": "Source/exception/profile/analysis/recommendation/Plan/publish workbench."
+  },
+  "ConsultantReviewsPage": {
+    "targetFamily": "CRM-02 Review collection",
+    "classification": "RECOMPOSE",
+    "wave": "U3",
+    "reason": "Operational doorway; not the authoring workspace."
+  },
+  "InsightOperationsPage": {
+    "targetFamily": "ADMIN-13 / CRM authorized governance handoff",
+    "classification": "REBUILD",
+    "wave": "U5",
+    "reason": "Separate facts/interpretation; specific professional authority required."
+  },
+  "ConsultantSupportPage": {
+    "targetFamily": "CRM-22/23",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Existing selected-case workspace; preserve reply/internal audience and return."
+  },
+  "LiveSessionsPage": {
+    "targetFamily": "CRM-18",
+    "classification": "RECOMPOSE",
+    "wave": "U6",
+    "reason": "Unify duplicate entry URLs; persistent awareness."
+  },
+  "ConsultantCalendarPage": {
+    "targetFamily": "CRM-26",
+    "classification": "REBUILD",
+    "wave": "U6",
+    "reason": "Actual scheduling/timezone and external Busy privacy."
+  },
+  "AppointmentDetailPage": {
+    "targetFamily": "CRM-27",
+    "classification": "RECOMPOSE",
+    "wave": "U6",
+    "reason": "Canonical appointment vs sync; revalidate reschedule."
+  },
+  "StaffAccountPage": {
+    "targetFamily": "CRM-28 / Admin own account",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Own preferences/security only; not user-role governance."
+  },
+  "AdminAppShell": {
+    "targetFamily": "Admin shell / NAV-03A",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Dense platform navigation; no implicit professional approval."
+  },
+  "CatalogOperationsPage": {
+    "targetFamily": "ADMIN-11 / partial ADMIN-12",
+    "classification": "REBUILD",
+    "wave": "U5",
+    "reason": "Full issue queue and field-diff publication; remove canned approval reason."
+  },
+  "AdminLandingPage": {
+    "targetFamily": "ADMIN-01",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Exception-first operational overview and module links."
+  },
+  "AdminUsersPage": {
+    "targetFamily": "ADMIN-02",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Scoped paged identity collection."
+  },
+  "AdminUserDetailPage": {
+    "targetFamily": "ADMIN-03",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Capability/session impact preview for access changes."
+  },
+  "AdminAccessGrantsPage": {
+    "targetFamily": "ADMIN-04",
+    "classification": "RECOMPOSE",
+    "wave": "U2",
+    "reason": "Typed least privilege; repair client-selector mismatch F22."
+  },
+  "AdminEventListPage": {
+    "targetFamily": "ADMIN-23/24",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Audit and Security have different authority; preserve kind prop."
+  },
+  "AdminEventDetailPage": {
+    "targetFamily": "ADMIN-23/24 detail",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Immutable audit vs incident containment; preserve kind prop."
+  },
+  "AdminAIJobsPage": {
+    "targetFamily": "ADMIN-14",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Safe operational monitoring, not professional approval."
+  },
+  "AdminAIJobDetailPage": {
+    "targetFamily": "ADMIN-15",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Retry safety/provenance and separately authorized payload."
+  },
+  "AdminAIProcessesPage": {
+    "targetFamily": "ADMIN-16",
+    "classification": "REBUILD",
+    "wave": "U8",
+    "reason": "Typed versioned process/model configuration."
+  },
+  "AdminSourcesPage": {
+    "targetFamily": "ADMIN-17",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Approved source constraints/freshness/dependency effect."
+  },
+  "AdminWorkflowPage": {
+    "targetFamily": "ADMIN-18",
+    "classification": "REBUILD",
+    "wave": "U8",
+    "reason": "Typed effective-dated rules and active-work impact."
+  },
+  "AdminNotificationsPage": {
+    "targetFamily": "ADMIN-19",
+    "classification": "REBUILD",
+    "wave": "U8",
+    "reason": "Versioned templates with synthetic preview and variable validation."
+  },
+  "AdminIntegrationsPage": {
+    "targetFamily": "ADMIN-20",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Overview health; move consequential config to final detail."
+  },
+  "AdminScheduledJobsPage": {
+    "targetFamily": "ADMIN-22",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Real application jobs with safe run semantics/history."
+  },
+  "SystemHealthPage": {
+    "targetFamily": "Admin Global System Health",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Actual signals and expanded degradation impact."
+  },
+  "AdminRetentionPage": {
+    "targetFamily": "ADMIN-25",
+    "classification": "REBUILD",
+    "wave": "U8",
+    "reason": "Exact removed/preserved categories and holds."
+  },
+  "AdminReportsPage": {
+    "targetFamily": "ADMIN-26",
+    "classification": "REBUILD",
+    "wave": "U8",
+    "reason": "Semantic KPIs/charts/drill-down instead of generic record counts."
+  },
+  "AdminSettingsPage": {
+    "targetFamily": "ADMIN-27",
+    "classification": "REBUILD",
+    "wave": "U8",
+    "reason": "Typed settings and architected kill-switch effect previews."
+  },
+  "AdminServicesPage": {
+    "targetFamily": "ADMIN-05",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Versioned service products preserve historical terms."
+  },
+  "AdminServiceDetailPage": {
+    "targetFamily": "ADMIN-06",
+    "classification": "REBUILD",
+    "wave": "U7",
+    "reason": "Typed pricing/entitlement mapping and activation validation."
+  },
+  "AdminPaymentsPage": {
+    "targetFamily": "ADMIN-07",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Canonical status/exceptions and discoverable gateway overview."
+  },
+  "AdminPaymentDetailPage": {
+    "targetFamily": "ADMIN-08",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Refund/entitlement effect and uncertain-provider recovery."
+  },
+  "AdminPayPalPage": {
+    "targetFamily": "ADMIN-10",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Commerce-owned provider detail; retain old URL compatibility."
+  },
+  "AdminStripePage": {
+    "targetFamily": "ADMIN-10",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Commerce-owned provider detail; retain old URL compatibility."
+  },
+  "AdminBofaPage": {
+    "targetFamily": "ADMIN-10",
+    "classification": "RECOMPOSE",
+    "wave": "U7",
+    "reason": "Commerce-owned provider detail; retain old URL compatibility."
+  }
+}

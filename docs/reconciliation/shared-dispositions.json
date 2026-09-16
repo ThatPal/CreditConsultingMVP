@@ -1,0 +1,284 @@
+{
+  "SafeRecordView.tsx": {
+    "targetFamily": "Admin semantic record detail",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Humanized record rendering is fallback material, not final typed forms/reports."
+  },
+  "ChoiceCard.tsx": {
+    "targetFamily": "Shared selection control",
+    "classification": "RESTYLE",
+    "wave": "U1",
+    "reason": "Keep controlled choice semantics; align tokens/focus/touch treatment."
+  },
+  "CollectionSurface.tsx": {
+    "targetFamily": "Shared collection / comparison tray",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Title-keyed unguarded storage and unconditional arrow interception need replacement; role density and empty states."
+  },
+  "contentSystem.ts": {
+    "targetFamily": "Shared terminology / client-safe copy",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve bounded helpers; replace old domain terms with final owner vocabulary."
+  },
+  "DataNavigation.tsx": {
+    "targetFamily": "Shared search/filter/paging",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve controlled search and paging; final density, mobile filter and feedback treatment."
+  },
+  "DocumentPicker.tsx": {
+    "targetFamily": "Canonical private Document selection",
+    "classification": "RECOMPOSE",
+    "wave": "U3",
+    "reason": "Preserve scoped selection; shared protected evidence flow and source visibility."
+  },
+  "DocumentUploadDropzone.tsx": {
+    "targetFamily": "Canonical private Document upload",
+    "classification": "RECOMPOSE",
+    "wave": "U3",
+    "reason": "Preserve upload validation/recovery; final wizard and evidence composition."
+  },
+  "domainGlyphs.tsx": {
+    "targetFamily": "Shared icon language",
+    "classification": "RESTYLE",
+    "wave": "U1",
+    "reason": "Reuse vector icons; align final roles and labels rather than inventing bitmap assets."
+  },
+  "EaseOfUse.tsx": {
+    "targetFamily": "Shared workbench/commands/view state",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "SessionStorage view helper is not canonical saved views; two-pane layout insufficient for final workbench. Durable views owned U4."
+  },
+  "Feedback.tsx": {
+    "targetFamily": "Shared global states / confirmation",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Purposeful loading/empty/error/blocked states; preserve confirmation accessibility."
+  },
+  "FocusSurface.tsx": {
+    "targetFamily": "Light Focus surface",
+    "classification": "RESTYLE",
+    "wave": "U1",
+    "reason": "Reuse contrast overrides; one coherent work plane rather than scattered light cards."
+  },
+  "InteractionPatterns.tsx": {
+    "targetFamily": "Shared context/recovery/governed confirmation",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve impact/reason/current-to-proposed previews; align final overlay hierarchy."
+  },
+  "labels.ts": {
+    "targetFamily": "Shared status vocabulary",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Generic enum humanization cannot replace domain-specific client-safe wording."
+  },
+  "MetricCard.tsx": {
+    "targetFamily": "Shared financial metric",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Readable numbers and provenance; not a universal equal-priority card grid."
+  },
+  "PageHeader.tsx": {
+    "targetFamily": "Shared page/section hierarchy",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Task hierarchy and contextual actions must fit final screen compositions."
+  },
+  "ProductFoundation.tsx": {
+    "targetFamily": "Shared visual/domain composites",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Split task-specific metrics/timelines/states; LifecycleRail may render only source-owned stages; no approval prediction."
+  },
+  "PublishedCreditFacts.tsx": {
+    "targetFamily": "CP-CC-09 / published Profile",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Final typed facts/currentness/source dates, safe historical projection."
+  },
+  "RouteReadyBoundary.tsx": {
+    "targetFamily": "Shared route loading/error recovery",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve bounded telemetry and honest reload warning; align purposeful final states."
+  },
+  "SectionCard.tsx": {
+    "targetFamily": "Shared surface primitive",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Retain primitive where appropriate; stop universal padded rounded-card page composition."
+  },
+  "StatusChip.tsx": {
+    "targetFamily": "Shared status label",
+    "classification": "RESTYLE",
+    "wave": "U1",
+    "reason": "Retain text plus color; final tokens and accessible status treatment."
+  },
+  "statusVocabulary.ts": {
+    "targetFamily": "Shared semantic status presentation",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Review labels against frozen owners; never infer domain truth from a label map."
+  },
+  "StickyTabs.tsx": {
+    "targetFamily": "Shared section navigation",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve selected context; final mobile behavior and non-obscuring sticky offsets."
+  },
+  "CancelPrivatePlan.tsx": {
+    "targetFamily": "CRM-12 private draft cancellation",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Retain guarded cancellation/recovery; adapt canonical CreditPlan ownership."
+  },
+  "ConsultantPlanBuilderPage.tsx": {
+    "targetFamily": "CRM-12",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve autosave/source/version guards; typed final workbench, remove PlanPath authority."
+  },
+  "DiscardPlanDraft.tsx": {
+    "targetFamily": "CRM-12 draft discard",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Keep explicit discard/uncertain recovery; adapt final draft identity."
+  },
+  "editor.ts": {
+    "targetFamily": "CRM-12 draft serialization/validation",
+    "classification": "REBUILD",
+    "wave": "U4",
+    "reason": "Current payload includes paths/path membership; final ranks/groups/dependencies require migration."
+  },
+  "PlanAttachments.tsx": {
+    "targetFamily": "CP-AC-02 / CRM-12 evidence",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve protected scoped evidence; fit canonical Action detail and safe history."
+  },
+  "PlanConflictResolution.tsx": {
+    "targetFamily": "CRM-12 stale/conflict recovery",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve reviewed conflict choices and entered work; adapt final item schema."
+  },
+  "PlanDraftComparison.tsx": {
+    "targetFamily": "CRM-12 draft diff",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Retain local/saved/source comparison; replace legacy path diffs."
+  },
+  "PlanDraftLibrary.tsx": {
+    "targetFamily": "CRM-12 draft recovery",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve account scope and recovery; converge global plan draft ownership."
+  },
+  "PlanExecutionReview.tsx": {
+    "targetFamily": "CRM-12 verification",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve authorized verification and history; central query factories first in U1."
+  },
+  "PlanFollowUp.tsx": {
+    "targetFamily": "CRM-12 / CP-AC follow-up",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Shared Plan-owned follow-up; avoid service-owned duplicate Actions."
+  },
+  "PlanLibrary.tsx": {
+    "targetFamily": "CRM-12 Plan history/selection",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "One active account-global CreditPlan; version/history not competing active roots."
+  },
+  "PlanLifecyclePreview.tsx": {
+    "targetFamily": "CRM-12 client preview",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Keep client-safe preview; final Action/Guidance/Milestone and currentness semantics."
+  },
+  "PlanPathEditor.tsx": {
+    "targetFamily": "Obsolete PlanPath editor",
+    "classification": "RETIRE",
+    "wave": "U4",
+    "reason": "Replace paths with ranked/grouped items and explicit dependencies after migration/parity."
+  },
+  "PlanResponse.tsx": {
+    "targetFamily": "CP-AC-02 / DOM-27",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve typed response, revisions, history and submit-not-verify boundary; shared query keys."
+  },
+  "PlanResponsePreview.tsx": {
+    "targetFamily": "CRM-12 client response preview",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Reuse actual controls in non-mutating preview; preserve role-safe fields."
+  },
+  "PlanVersionHistory.tsx": {
+    "targetFamily": "CRM-12 / Plan historical read",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Retain immutable history and exact version links; final CreditPlan schema."
+  },
+  "PreviousPlanDraft.tsx": {
+    "targetFamily": "CRM-12 draft continuity",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve previous draft recovery; canonical plan/item identity."
+  },
+  "ResponseSchemaEditor.tsx": {
+    "targetFamily": "CRM-12 typed response authoring",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Keep type-specific controls; final bounded response modes, no raw schema UI."
+  },
+  "reviewNotes.ts": {
+    "targetFamily": "CRM-12 review notes",
+    "classification": "REBUILD",
+    "wave": "U4",
+    "reason": "Scoped expiring session notes are not durable governed notes/saved views; preserve privacy during migration."
+  },
+  "SavedPlanResponse.tsx": {
+    "targetFamily": "CP-AC-02 private response draft",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Keep actor/version-safe autosave and recovery; canonical key factory and detail composition."
+  },
+  "AdminAppShell.tsx": {
+    "targetFamily": "NAV-03A",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Final dense platform shell; Commerce owns providers."
+  },
+  "AppShell.tsx": {
+    "targetFamily": "Shared application frame",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Role-specific density, scroll and global controls; no universal screen composition."
+  },
+  "ClientAppShell.tsx": {
+    "targetFamily": "CP-SHELL-01 / NAV-02",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Final section K seven primary destinations and secondary context."
+  },
+  "ConsultantAppShell.tsx": {
+    "targetFamily": "NAV-03 / NAV-07",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Professional shell extensibility; persistent client and Live awareness."
+  },
+  "navigation.tsx": {
+    "targetFamily": "Final route ownership registry",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Final primary/secondary IA replaces old grouping; preserve deep links and authorization."
+  }
+}

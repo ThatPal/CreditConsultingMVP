@@ -11,14 +11,16 @@
     "redirectTo": "/goal-intake",
     "line": 261,
     "file": null,
-    "targetFamily": "Public acquisition root (currently intake redirect)",
+    "targetFamily": "Public acquisition",
+    "classification": "REBUILD",
     "wave": "U9",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Root currently redirects to intake; final public experience is missing.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/login",
@@ -29,10 +31,10 @@
     "redirectTo": null,
     "line": 262,
     "file": "apps/web/src/pages/AuthPages.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "Public/Auth sign-in",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Preserve authentication; reconcile final recovery and global states.",
     "apiReferencesInModule": [
       "/api/auth/sign-in/email",
       "/api/me",
@@ -45,6 +47,7 @@
       "/api/auth/request-password-reset",
       "/api/auth/reset-password"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Box",
       "Paper",
@@ -64,8 +67,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/mfa",
@@ -76,10 +80,10 @@
     "redirectTo": null,
     "line": 263,
     "file": "apps/web/src/pages/AuthPages.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "Public/Auth MFA",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Preserve secure step-up and recovery; final auth composition.",
     "apiReferencesInModule": [
       "/api/auth/sign-in/email",
       "/api/me",
@@ -92,6 +96,7 @@
       "/api/auth/request-password-reset",
       "/api/auth/reset-password"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Box",
       "Paper",
@@ -111,8 +116,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/register",
@@ -123,10 +129,10 @@
     "redirectTo": null,
     "line": 264,
     "file": "apps/web/src/pages/AuthPages.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "Public/Auth registration",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Identity creation remains separate from service authorization.",
     "apiReferencesInModule": [
       "/api/auth/sign-in/email",
       "/api/me",
@@ -139,6 +145,7 @@
       "/api/auth/request-password-reset",
       "/api/auth/reset-password"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Box",
       "Paper",
@@ -158,8 +165,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/goal-intake",
@@ -170,15 +178,16 @@
     "redirectTo": null,
     "line": 265,
     "file": "apps/web/src/pages/GoalIntakePage.tsx",
-    "targetFamily": "Goals / onboarding",
-    "wave": "U4",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "targetFamily": "Public intake / WF-01",
+    "classification": "REBUILD",
+    "wave": "U9",
+    "reason": "Replace retired single-goal intake semantics and missing acquisition context.",
     "apiReferencesInModule": [
       "/api/v1/goal-intakes/${saved}",
       "/api/v1/goal-intakes/${token}",
       "/api/v1/goal-intakes"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Box",
       "Container",
@@ -200,8 +209,9 @@
       "Button",
       "ArrowForwardRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/verify-email",
@@ -212,10 +222,10 @@
     "redirectTo": null,
     "line": 266,
     "file": "apps/web/src/pages/AuthPages.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "Public/Auth verification",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Preserve token safety and non-enumerating recovery.",
     "apiReferencesInModule": [
       "/api/auth/sign-in/email",
       "/api/me",
@@ -228,6 +238,7 @@
       "/api/auth/request-password-reset",
       "/api/auth/reset-password"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Box",
       "Paper",
@@ -247,8 +258,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/lead-wizard",
@@ -262,14 +274,16 @@
     "redirectTo": "/goal-intake",
     "line": 267,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
+    "targetFamily": "Compatibility alias to /goal-intake",
+    "classification": "RETIRE",
     "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retire old navigation ownership; retain authorized redirect compatibility until destination parity is proved. No deletion in U0.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/forgot-password",
@@ -280,10 +294,10 @@
     "redirectTo": null,
     "line": 268,
     "file": "apps/web/src/pages/AuthPages.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "Public/Auth recovery",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Preserve non-enumerating behavior; final states and copy.",
     "apiReferencesInModule": [
       "/api/auth/sign-in/email",
       "/api/me",
@@ -296,6 +310,7 @@
       "/api/auth/request-password-reset",
       "/api/auth/reset-password"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Box",
       "Paper",
@@ -315,8 +330,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/reset-password",
@@ -327,10 +343,10 @@
     "redirectTo": null,
     "line": 269,
     "file": "apps/web/src/pages/AuthPages.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "Public/Auth reset",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Preserve one-use token and session rules; final recovery.",
     "apiReferencesInModule": [
       "/api/auth/sign-in/email",
       "/api/me",
@@ -343,6 +359,7 @@
       "/api/auth/request-password-reset",
       "/api/auth/reset-password"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Box",
       "Paper",
@@ -362,8 +379,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/dev/design-system",
@@ -374,11 +392,12 @@
     "redirectTo": null,
     "line": 271,
     "file": "apps/web/src/pages/dev/DesignSystemPage.tsx",
-    "targetFamily": "Development-only evidence",
+    "targetFamily": "Shared design-system evidence",
+    "classification": "REBUILD",
     "wave": "U1",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Development-only reference must represent the final foundation.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Stack",
       "PageHeader",
@@ -422,8 +441,9 @@
       "ConfirmDialog",
       "Drawer"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/dev/shell/:role",
@@ -434,11 +454,12 @@
     "redirectTo": null,
     "line": 281,
     "file": "apps/web/src/pages/dev/ShellEvidencePage.tsx",
-    "targetFamily": "Development-only evidence",
+    "targetFamily": "Shared shell evidence",
+    "classification": "REBUILD",
     "wave": "U1",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Development-only role shell examples must use final navigation.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "AppShell",
       "Stack",
@@ -447,8 +468,9 @@
       "SectionCard",
       "Typography"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app",
@@ -466,18 +488,20 @@
     "redirectTo": null,
     "line": 292,
     "file": "apps/web/src/layouts/ClientAppShell.tsx",
-    "targetFamily": "CP-SHELL-01",
+    "targetFamily": "CP-SHELL-01 / final section K",
+    "classification": "RECOMPOSE",
     "wave": "U1",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Seven primary destinations; secondary actions and persistent Live return.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "AppShell",
       "RouteReadyBoundary",
       "Outlet"
     ],
-    "desktop": "U0 captured representative state; not accepted",
-    "mobile": "390px representative capture; not accepted"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "U0 representative browser capture; not accepted",
+    "mobile": "390px U0 representative capture; not accepted"
   },
   {
     "route": "/app",
@@ -496,12 +520,16 @@
     "line": 293,
     "file": "apps/web/src/pages/JourneyPages.tsx",
     "targetFamily": "CP-01",
+    "classification": "RECOMPOSE",
     "wave": "U1",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "One server-owned current focus; omit nonexistent secondary regions.",
     "apiReferencesInModule": [
       "/api/v1/client/home",
       "/api/v1/client/journey"
+    ],
+    "queryRootsInModule": [
+      "portal-home",
+      "portal-journey"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -521,8 +549,9 @@
       "LinearProgress",
       "JourneySummary"
     ],
-    "desktop": "U0 captured representative state; not accepted",
-    "mobile": "390px representative capture; not accepted"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "U0 representative browser capture; not accepted",
+    "mobile": "390px U0 representative capture; not accepted"
   },
   {
     "route": "/app/journey",
@@ -540,13 +569,17 @@
     "redirectTo": null,
     "line": 294,
     "file": "apps/web/src/pages/JourneyPages.tsx",
-    "targetFamily": "PORTAL-02 Journey",
+    "targetFamily": "PORTAL-02 / NAV-09",
+    "classification": "REBUILD",
     "wave": "U1",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Replace universal cycle stages with canonical owner projections.",
     "apiReferencesInModule": [
       "/api/v1/client/home",
       "/api/v1/client/journey"
+    ],
+    "queryRootsInModule": [
+      "portal-home",
+      "portal-journey"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -566,8 +599,9 @@
       "LinearProgress",
       "JourneySummary"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/plan",
@@ -585,12 +619,15 @@
     "redirectTo": null,
     "line": 295,
     "file": "apps/web/src/pages/PlanPages.tsx",
-    "targetFamily": "CP-PL-01 / CP-AC-01 / CP-AC-02",
+    "targetFamily": "CP-PL-01 / CP-AC-01/02",
+    "classification": "RECOMPOSE",
     "wave": "U1",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Account-global roadmap/actions/decisions/nurture; preserve response recovery.",
     "apiReferencesInModule": [
       "/api/v1/client/plan"
+    ],
+    "queryRootsInModule": [
+      "client-plan"
     ],
     "majorChildrenInModule": [
       "ClientPlanResponse",
@@ -619,8 +656,9 @@
       "ResponseHistory",
       "StickyActionBar"
     ],
-    "desktop": "U0 captured representative state; not accepted",
-    "mobile": "390px representative capture; not accepted"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "U0 representative browser capture; not accepted",
+    "mobile": "390px U0 representative capture; not accepted"
   },
   {
     "route": "/app/credit-center",
@@ -640,13 +678,17 @@
     "redirectTo": null,
     "line": 296,
     "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
-    "targetFamily": "CP-CC-01/03/06/09/10",
+    "targetFamily": "CP-CC-01",
+    "classification": "REBUILD",
     "wave": "U1",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Published facts plus separate currentness and Plan composition.",
     "apiReferencesInModule": [
       "/api/v1/client/credit-profile",
       "/api/v1/reviews/consultant/${clientId}/credit-center"
+    ],
+    "queryRootsInModule": [
+      "published-credit-center",
+      "consultant-published-credit-center"
     ],
     "majorChildrenInModule": [
       "CreditCenterResponse",
@@ -669,8 +711,9 @@
       "SectionCard",
       "EventTimeline"
     ],
-    "desktop": "U0 captured representative state; not accepted",
-    "mobile": "390px representative capture; not accepted"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "U0 representative browser capture; not accepted",
+    "mobile": "390px U0 representative capture; not accepted"
   },
   {
     "route": "/app/credit-center/profile",
@@ -690,13 +733,17 @@
     "redirectTo": null,
     "line": 297,
     "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
-    "targetFamily": "CP-CC-01/03/06/09/10",
+    "targetFamily": "CP-CC-09",
+    "classification": "REBUILD",
     "wave": "U1",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Published facts plus separate currentness and Plan composition.",
     "apiReferencesInModule": [
       "/api/v1/client/credit-profile",
       "/api/v1/reviews/consultant/${clientId}/credit-center"
+    ],
+    "queryRootsInModule": [
+      "published-credit-center",
+      "consultant-published-credit-center"
     ],
     "majorChildrenInModule": [
       "CreditCenterResponse",
@@ -719,8 +766,9 @@
       "SectionCard",
       "EventTimeline"
     ],
-    "desktop": "U0 captured representative state; not accepted",
-    "mobile": "390px representative capture; not accepted"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "U0 representative browser capture; not accepted",
+    "mobile": "390px U0 representative capture; not accepted"
   },
   {
     "route": "/app/credit-center/report",
@@ -740,13 +788,17 @@
     "redirectTo": null,
     "line": 301,
     "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
-    "targetFamily": "CP-CC-01/03/06/09/10",
+    "targetFamily": "CP-CC-06",
+    "classification": "REBUILD",
     "wave": "U1",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Published facts plus separate currentness and Plan composition.",
     "apiReferencesInModule": [
       "/api/v1/client/credit-profile",
       "/api/v1/reviews/consultant/${clientId}/credit-center"
+    ],
+    "queryRootsInModule": [
+      "published-credit-center",
+      "consultant-published-credit-center"
     ],
     "majorChildrenInModule": [
       "CreditCenterResponse",
@@ -769,8 +821,9 @@
       "SectionCard",
       "EventTimeline"
     ],
-    "desktop": "U0 captured representative state; not accepted",
-    "mobile": "390px representative capture; not accepted"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "U0 representative browser capture; not accepted",
+    "mobile": "390px U0 representative capture; not accepted"
   },
   {
     "route": "/app/credit-center/analysis",
@@ -790,13 +843,17 @@
     "redirectTo": null,
     "line": 305,
     "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
-    "targetFamily": "CP-CC-01/03/06/09/10",
+    "targetFamily": "CP-CC-10",
+    "classification": "REBUILD",
     "wave": "U1",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Published facts plus separate currentness and Plan composition.",
     "apiReferencesInModule": [
       "/api/v1/client/credit-profile",
       "/api/v1/reviews/consultant/${clientId}/credit-center"
+    ],
+    "queryRootsInModule": [
+      "published-credit-center",
+      "consultant-published-credit-center"
     ],
     "majorChildrenInModule": [
       "CreditCenterResponse",
@@ -819,8 +876,9 @@
       "SectionCard",
       "EventTimeline"
     ],
-    "desktop": "U0 captured representative state; not accepted",
-    "mobile": "390px representative capture; not accepted"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "U0 representative browser capture; not accepted",
+    "mobile": "390px U0 representative capture; not accepted"
   },
   {
     "route": "/app/credit-center/history",
@@ -840,13 +898,17 @@
     "redirectTo": null,
     "line": 309,
     "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
-    "targetFamily": "CP-CC-01/03/06/09/10",
+    "targetFamily": "CP-CC-03/04",
+    "classification": "REBUILD",
     "wave": "U1",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Published facts plus separate currentness and Plan composition.",
     "apiReferencesInModule": [
       "/api/v1/client/credit-profile",
       "/api/v1/reviews/consultant/${clientId}/credit-center"
+    ],
+    "queryRootsInModule": [
+      "published-credit-center",
+      "consultant-published-credit-center"
     ],
     "majorChildrenInModule": [
       "CreditCenterResponse",
@@ -869,8 +931,9 @@
       "SectionCard",
       "EventTimeline"
     ],
-    "desktop": "U0 captured representative state; not accepted",
-    "mobile": "390px representative capture; not accepted"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "U0 representative browser capture; not accepted",
+    "mobile": "390px U0 representative capture; not accepted"
   },
   {
     "route": "/app/credit-center/review",
@@ -888,10 +951,10 @@
     "redirectTo": null,
     "line": 313,
     "file": "apps/web/src/pages/ReviewPages.tsx",
-    "targetFamily": "CP-CC / CRM-11 Review",
+    "targetFamily": "CP-CC-05/08 / WF-04/05",
+    "classification": "REBUILD",
     "wave": "U3",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Eligibility and source update wizard; preserve submitted revisions.",
     "apiReferencesInModule": [
       "/api/v1/reviews/report-documents/${documentId}/content",
       "/api/v1/reviews/report-documents/client",
@@ -917,6 +980,20 @@
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/exceptions/${encodeURIComponent(exceptionKey)}/resolve",
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/analysis",
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/publish"
+    ],
+    "queryRootsInModule": [
+      "credit-report-content",
+      "client-documents",
+      "support-cases",
+      "review",
+      "credit-profile",
+      "review-eligibility",
+      "client-cards",
+      "consultant-reviews",
+      "review-workspace",
+      "consultant-options",
+      "persisted-review-workspace",
+      "persisted-review-readiness"
     ],
     "majorChildrenInModule": [
       "Review",
@@ -973,8 +1050,9 @@
       "ReviewAnalysisEditor",
       "ReviewReadingPreview"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/readiness",
@@ -992,10 +1070,10 @@
     "redirectTo": null,
     "line": 314,
     "file": "apps/web/src/pages/PlatformPages.tsx",
-    "targetFamily": "Legacy readiness → owning Review/Plan/Round",
+    "targetFamily": "Legacy generic readiness",
+    "classification": "RETIRE",
     "wave": "U4",
-    "proposedClassification": "RETIRE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Replace with owner-specific Review/Plan/Round context before removing links.",
     "apiReferencesInModule": [
       "/api/v1/consultant/dashboard",
       "/api/v1/consultant/work-queue?${params}",
@@ -1004,6 +1082,14 @@
       "/api/v1/client/credit-profile",
       "/api/v1/client/goals",
       "/api/v1/client/application-cycles"
+    ],
+    "queryRootsInModule": [
+      "consultant-dashboard",
+      "work-queue",
+      "credit-plan",
+      "credit-profile",
+      "goals",
+      "application-cycles"
     ],
     "majorChildrenInModule": [
       "Alert",
@@ -1035,8 +1121,9 @@
       "ChoiceCard",
       "AssignmentTurnedInRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/cards",
@@ -1054,12 +1141,15 @@
     "redirectTo": null,
     "line": 315,
     "file": "apps/web/src/pages/CardsPage.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "CP-CC-07 / CP-CD-02",
+    "classification": "REBUILD",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "One catalog/owned/wishlist/application-history workspace; canonical client card editor.",
     "apiReferencesInModule": [
       "/api/v1/client/cards"
+    ],
+    "queryRootsInModule": [
+      "client-cards"
     ],
     "majorChildrenInModule": [
       "Filter",
@@ -1085,8 +1175,9 @@
       "Chip",
       "AccountBalanceRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/cards/explore",
@@ -1104,10 +1195,10 @@
     "redirectTo": null,
     "line": 316,
     "file": "apps/web/src/pages/CardCatalogPages.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "CP-CC-07",
+    "classification": "REBUILD",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Browse view in unified Cards; wishlist is preference not recommendation.",
     "apiReferencesInModule": [
       "/api/v1/cards/catalog?${catalogQuery}",
       "/api/v1/client/cards/wishlist/${product.id}",
@@ -1120,6 +1211,15 @@
       "/api/v1/catalog/candidates/${candidate.id}/approve",
       "/api/v1/catalog/insights",
       "/api/v1/catalog/insights/${id}/approve"
+    ],
+    "queryRootsInModule": [
+      "card-catalog",
+      "card-wishlist",
+      "card-catalog-detail",
+      "card-offer-history",
+      "consultant-client-cards",
+      "card-catalog-candidates",
+      "card-insights"
     ],
     "majorChildrenInModule": [
       "Box",
@@ -1142,8 +1242,9 @@
       "CatalogCardArt",
       "BookmarkAddRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/cards/wishlist",
@@ -1161,10 +1262,10 @@
     "redirectTo": null,
     "line": 317,
     "file": "apps/web/src/pages/CardCatalogPages.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "CP-CC-07 Wishlist view",
+    "classification": "RECOMPOSE",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Preserve preference records; unify navigation and relationship context.",
     "apiReferencesInModule": [
       "/api/v1/cards/catalog?${catalogQuery}",
       "/api/v1/client/cards/wishlist/${product.id}",
@@ -1177,6 +1278,15 @@
       "/api/v1/catalog/candidates/${candidate.id}/approve",
       "/api/v1/catalog/insights",
       "/api/v1/catalog/insights/${id}/approve"
+    ],
+    "queryRootsInModule": [
+      "card-catalog",
+      "card-wishlist",
+      "card-catalog-detail",
+      "card-offer-history",
+      "consultant-client-cards",
+      "card-catalog-candidates",
+      "card-insights"
     ],
     "majorChildrenInModule": [
       "Box",
@@ -1199,8 +1309,9 @@
       "CatalogCardArt",
       "BookmarkAddRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/cards/:productId",
@@ -1218,10 +1329,10 @@
     "redirectTo": null,
     "line": 318,
     "file": "apps/web/src/pages/CardCatalogPages.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "CP-CD-01",
+    "classification": "REBUILD",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Current offers plus owned-card and historical Round relationships.",
     "apiReferencesInModule": [
       "/api/v1/cards/catalog?${catalogQuery}",
       "/api/v1/client/cards/wishlist/${product.id}",
@@ -1234,6 +1345,15 @@
       "/api/v1/catalog/candidates/${candidate.id}/approve",
       "/api/v1/catalog/insights",
       "/api/v1/catalog/insights/${id}/approve"
+    ],
+    "queryRootsInModule": [
+      "card-catalog",
+      "card-wishlist",
+      "card-catalog-detail",
+      "card-offer-history",
+      "consultant-client-cards",
+      "card-catalog-candidates",
+      "card-insights"
     ],
     "majorChildrenInModule": [
       "Box",
@@ -1256,8 +1376,9 @@
       "CatalogCardArt",
       "BookmarkAddRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/application-rounds",
@@ -1275,10 +1396,10 @@
     "redirectTo": null,
     "line": 319,
     "file": "apps/web/src/pages/Phase11Pages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "Round history/start contextual entry",
+    "classification": "REBUILD",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Lean seasonal container; no universal Review-to-Nurture engine.",
     "apiReferencesInModule": [
       "/api/v1/client/seasonal-cycle",
       "/api/v1/client/seasonal-cycle/start-or-resume",
@@ -1286,6 +1407,10 @@
       "/api/v1/client/seasonal-cycle/${cycleId}/rounds",
       "/api/v1/client/rounds/${roundId}",
       "/api/v1/client/rounds/${roundId}/major-check"
+    ],
+    "queryRootsInModule": [
+      "seasonal-cycle",
+      "round"
     ],
     "majorChildrenInModule": [
       "CycleView",
@@ -1313,8 +1438,9 @@
       "Radio",
       "TextField"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/rounds/:roundId",
@@ -1332,10 +1458,10 @@
     "redirectTo": null,
     "line": 320,
     "file": "apps/web/src/pages/Phase11Pages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CP-RD-01",
+    "classification": "REBUILD",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Canonical lifecycle/current gates, separate prerequisite Review.",
     "apiReferencesInModule": [
       "/api/v1/client/seasonal-cycle",
       "/api/v1/client/seasonal-cycle/start-or-resume",
@@ -1343,6 +1469,10 @@
       "/api/v1/client/seasonal-cycle/${cycleId}/rounds",
       "/api/v1/client/rounds/${roundId}",
       "/api/v1/client/rounds/${roundId}/major-check"
+    ],
+    "queryRootsInModule": [
+      "seasonal-cycle",
+      "round"
     ],
     "majorChildrenInModule": [
       "CycleView",
@@ -1370,8 +1500,9 @@
       "Radio",
       "TextField"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/rounds/:roundId/major-check",
@@ -1389,10 +1520,10 @@
     "redirectTo": null,
     "line": 321,
     "file": "apps/web/src/pages/Phase11Pages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "Round Major check / WF-07",
+    "classification": "RECOMPOSE",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Governed start gate; no duplicate Major case lifecycle.",
     "apiReferencesInModule": [
       "/api/v1/client/seasonal-cycle",
       "/api/v1/client/seasonal-cycle/start-or-resume",
@@ -1400,6 +1531,10 @@
       "/api/v1/client/seasonal-cycle/${cycleId}/rounds",
       "/api/v1/client/rounds/${roundId}",
       "/api/v1/client/rounds/${roundId}/major-check"
+    ],
+    "queryRootsInModule": [
+      "seasonal-cycle",
+      "round"
     ],
     "majorChildrenInModule": [
       "CycleView",
@@ -1427,8 +1562,9 @@
       "Radio",
       "TextField"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/rounds/:roundId/strategy",
@@ -1446,10 +1582,10 @@
     "redirectTo": null,
     "line": 322,
     "file": "apps/web/src/pages/StrategyPages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CP-RD-02",
+    "classification": "REBUILD",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Frozen approved strategy client projection; never direct ungoverned release.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/strategy",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/strategy",
@@ -1458,6 +1594,11 @@
       "/api/v1/consultant/clients/${clientId}/strategies/${strategy.data!.strategy!.id}/candidates/${item.productId}",
       "/api/v1/consultant/clients/${clientId}/strategies/${strategy.data!.strategy!.id}/sequence",
       "/api/v1/consultant/clients/${clientId}/strategies/${strategy.data!.strategy!.id}/approve"
+    ],
+    "queryRootsInModule": [
+      "client-strategy",
+      "strategy",
+      "strategy-catalog"
     ],
     "majorChildrenInModule": [
       "Role",
@@ -1487,8 +1628,9 @@
       "DialogContent",
       "DialogActions"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/rounds/:roundId/schedule",
@@ -1506,10 +1648,10 @@
     "redirectTo": null,
     "line": 323,
     "file": "apps/web/src/pages/LivePages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CP-RD-03 / CP-SC-03",
+    "classification": "REBUILD",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Real availability and timezone; revalidate workflow and slot.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/appointment-slots",
       "/api/v1/client/rounds/${roundId}/appointment",
@@ -1530,6 +1672,7 @@
       "/api/v1/consultant/sessions/${sessionId}/${path}",
       "/api/v1/consultant/live-sessions"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Appointment",
       "Stack",
@@ -1550,8 +1693,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/rounds/:roundId/live",
@@ -1569,10 +1713,10 @@
     "redirectTo": null,
     "line": 324,
     "file": "apps/web/src/pages/LivePages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CP-RD-04",
+    "classification": "REBUILD",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Supervised release, disconnect recovery and deterministic next action.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/appointment-slots",
       "/api/v1/client/rounds/${roundId}/appointment",
@@ -1593,6 +1737,7 @@
       "/api/v1/consultant/sessions/${sessionId}/${path}",
       "/api/v1/consultant/live-sessions"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Appointment",
       "Stack",
@@ -1613,8 +1758,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/rounds/:roundId/results",
@@ -1632,10 +1778,10 @@
     "redirectTo": null,
     "line": 325,
     "file": "apps/web/src/pages/PostRoundPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CP-RD-05",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Factual outcomes and corrections; persistent Round context.",
     "apiReferencesInModule": [
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/post-round",
       "/api/v1/client/rounds/${roundId}/post-round",
@@ -1647,6 +1793,12 @@
       "/api/v1/consultant/clients/${clientId}/analyses/${id}/approve",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalization",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalize"
+    ],
+    "queryRootsInModule": [
+      "post-round",
+      "post-round-follow-ups",
+      "round-analysis",
+      "round-finalization"
     ],
     "majorChildrenInModule": [
       "Summary",
@@ -1665,8 +1817,9 @@
       "MenuItem",
       "AnalysisView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/rounds/:roundId/follow-up",
@@ -1684,10 +1837,10 @@
     "redirectTo": null,
     "line": 326,
     "file": "apps/web/src/pages/PostRoundPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CP-RD-06 / CP-AC",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Use global Plan actions; separate paid execution from recommendation.",
     "apiReferencesInModule": [
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/post-round",
       "/api/v1/client/rounds/${roundId}/post-round",
@@ -1699,6 +1852,12 @@
       "/api/v1/consultant/clients/${clientId}/analyses/${id}/approve",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalization",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalize"
+    ],
+    "queryRootsInModule": [
+      "post-round",
+      "post-round-follow-ups",
+      "round-analysis",
+      "round-finalization"
     ],
     "majorChildrenInModule": [
       "Summary",
@@ -1717,8 +1876,9 @@
       "MenuItem",
       "AnalysisView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/rounds/:roundId/analysis",
@@ -1736,10 +1896,10 @@
     "redirectTo": null,
     "line": 327,
     "file": "apps/web/src/pages/PostRoundPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CP-RD-07",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Immutable approved analysis versions; current and historical distinction.",
     "apiReferencesInModule": [
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/post-round",
       "/api/v1/client/rounds/${roundId}/post-round",
@@ -1751,6 +1911,12 @@
       "/api/v1/consultant/clients/${clientId}/analyses/${id}/approve",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalization",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalize"
+    ],
+    "queryRootsInModule": [
+      "post-round",
+      "post-round-follow-ups",
+      "round-analysis",
+      "round-finalization"
     ],
     "majorChildrenInModule": [
       "Summary",
@@ -1769,8 +1935,9 @@
       "MenuItem",
       "AnalysisView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/major-readiness",
@@ -1788,15 +1955,19 @@
     "redirectTo": null,
     "line": 328,
     "file": "apps/web/src/pages/MajorReadinessPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CP-MR-01/06",
+    "classification": "REBUILD",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Case-scoped intake/recommendation/preparation/coordination/history and safe re-entry.",
     "apiReferencesInModule": [
       "/api/v1/major-readiness-v2/client/case",
       "/api/v1/major-readiness-v2/client/cases",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}${path}"
+    ],
+    "queryRootsInModule": [
+      "major-readiness",
+      "crm-major"
     ],
     "majorChildrenInModule": [
       "LoadingSkeleton",
@@ -1812,8 +1983,9 @@
       "Typography",
       "Chip"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/major-readiness/readiness",
@@ -1833,15 +2005,19 @@
     "redirectTo": null,
     "line": 329,
     "file": "apps/web/src/pages/MajorReadinessPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CP-MR-02",
+    "classification": "REBUILD",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Case-scoped intake/recommendation/preparation/coordination/history and safe re-entry.",
     "apiReferencesInModule": [
       "/api/v1/major-readiness-v2/client/case",
       "/api/v1/major-readiness-v2/client/cases",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}${path}"
+    ],
+    "queryRootsInModule": [
+      "major-readiness",
+      "crm-major"
     ],
     "majorChildrenInModule": [
       "LoadingSkeleton",
@@ -1857,8 +2033,9 @@
       "Typography",
       "Chip"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/major-readiness/preparation",
@@ -1878,15 +2055,19 @@
     "redirectTo": null,
     "line": 333,
     "file": "apps/web/src/pages/MajorReadinessPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CP-MR-03",
+    "classification": "REBUILD",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Case-scoped intake/recommendation/preparation/coordination/history and safe re-entry.",
     "apiReferencesInModule": [
       "/api/v1/major-readiness-v2/client/case",
       "/api/v1/major-readiness-v2/client/cases",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}${path}"
+    ],
+    "queryRootsInModule": [
+      "major-readiness",
+      "crm-major"
     ],
     "majorChildrenInModule": [
       "LoadingSkeleton",
@@ -1902,8 +2083,9 @@
       "Typography",
       "Chip"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/major-readiness/coordination",
@@ -1923,15 +2105,19 @@
     "redirectTo": null,
     "line": 337,
     "file": "apps/web/src/pages/MajorReadinessPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CP-MR-04",
+    "classification": "REBUILD",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Case-scoped intake/recommendation/preparation/coordination/history and safe re-entry.",
     "apiReferencesInModule": [
       "/api/v1/major-readiness-v2/client/case",
       "/api/v1/major-readiness-v2/client/cases",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}${path}"
+    ],
+    "queryRootsInModule": [
+      "major-readiness",
+      "crm-major"
     ],
     "majorChildrenInModule": [
       "LoadingSkeleton",
@@ -1947,8 +2133,9 @@
       "Typography",
       "Chip"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/major-readiness/timeline",
@@ -1968,15 +2155,19 @@
     "redirectTo": null,
     "line": 341,
     "file": "apps/web/src/pages/MajorReadinessPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CP-MR-05",
+    "classification": "REBUILD",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Case-scoped intake/recommendation/preparation/coordination/history and safe re-entry.",
     "apiReferencesInModule": [
       "/api/v1/major-readiness-v2/client/case",
       "/api/v1/major-readiness-v2/client/cases",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}${path}"
+    ],
+    "queryRootsInModule": [
+      "major-readiness",
+      "crm-major"
     ],
     "majorChildrenInModule": [
       "LoadingSkeleton",
@@ -1992,8 +2183,9 @@
       "Typography",
       "Chip"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/goals",
@@ -2011,16 +2203,22 @@
     "redirectTo": null,
     "line": 342,
     "file": "apps/web/src/pages/GoalsPage.tsx",
-    "targetFamily": "Goals / onboarding",
+    "targetFamily": "CP-CC-02 / DOM-08",
+    "classification": "REBUILD",
     "wave": "U4",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Multiple fixed-type persistent goals; preserve historical snapshots and recovery.",
     "apiReferencesInModule": [
       "/api/v1/client/goals",
       "/api/v1/reviews/client",
       "/api/v1/client/credit-profile",
       "/api/v1/client/application-cycles/${cycleId}/confirm-goal",
       "/api/v1/client/goals/${reviewedGoal.id}"
+    ],
+    "queryRootsInModule": [
+      "goals",
+      "review",
+      "credit-profile",
+      "application-cycles"
     ],
     "majorChildrenInModule": [
       "GoalsEditor",
@@ -2055,8 +2253,9 @@
       "HourglassTopRounded",
       "RateReviewRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/services",
@@ -2074,15 +2273,20 @@
     "redirectTo": null,
     "line": 343,
     "file": "apps/web/src/pages/ServicesPage.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "CP-SV-01",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Separate price/access/prerequisites and valid next action.",
     "apiReferencesInModule": [
       "/api/v1/client/checkouts",
       "/api/v1/client/services",
       "/api/v1/client/services/active?entitlementPage=${entitlementPage}&transactionPage=${transactionPage}&pageSize=20",
       "/api/v1/client/services/history?${params}"
+    ],
+    "queryRootsInModule": [
+      "available-services",
+      "active-services",
+      "purchase-history"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -2106,8 +2310,9 @@
       "Paper",
       "HistoryRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/services/active",
@@ -2125,15 +2330,20 @@
     "redirectTo": null,
     "line": 344,
     "file": "apps/web/src/pages/ServicesPage.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "CP-SV-02",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Credit ledger and entitlement are not eligibility.",
     "apiReferencesInModule": [
       "/api/v1/client/checkouts",
       "/api/v1/client/services",
       "/api/v1/client/services/active?entitlementPage=${entitlementPage}&transactionPage=${transactionPage}&pageSize=20",
       "/api/v1/client/services/history?${params}"
+    ],
+    "queryRootsInModule": [
+      "available-services",
+      "active-services",
+      "purchase-history"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -2157,8 +2367,9 @@
       "Paper",
       "HistoryRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/services/history",
@@ -2176,15 +2387,20 @@
     "redirectTo": null,
     "line": 345,
     "file": "apps/web/src/pages/ServicesPage.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "CP-SV-03",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Canonical payment/access history with truthful outcomes.",
     "apiReferencesInModule": [
       "/api/v1/client/checkouts",
       "/api/v1/client/services",
       "/api/v1/client/services/active?entitlementPage=${entitlementPage}&transactionPage=${transactionPage}&pageSize=20",
       "/api/v1/client/services/history?${params}"
+    ],
+    "queryRootsInModule": [
+      "available-services",
+      "active-services",
+      "purchase-history"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -2208,8 +2424,9 @@
       "Paper",
       "HistoryRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/checkout/:purchaseIntentId",
@@ -2227,13 +2444,16 @@
     "redirectTo": null,
     "line": 346,
     "file": "apps/web/src/pages/CheckoutPage.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "CP-SV-04/05",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Existing success branch requires payment plus granted effects; final handoff/recovery.",
     "apiReferencesInModule": [
       "/api/v1/client/checkouts/${purchaseIntentId}",
       "/api/v1/client/checkouts/${purchaseIntentId}/launch"
+    ],
+    "queryRootsInModule": [
+      "checkout"
     ],
     "majorChildrenInModule": [
       "Checkout",
@@ -2246,8 +2466,9 @@
       "Typography",
       "Button"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/documents",
@@ -2265,14 +2486,18 @@
     "redirectTo": null,
     "line": 347,
     "file": "apps/web/src/pages/DocumentsPage.tsx",
-    "targetFamily": "Support / Documents / Notifications",
+    "targetFamily": "CP-DC-01",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Canonical private documents, visibility and retention-aware protected access.",
     "apiReferencesInModule": [
       "/api/v1/documents?${params}",
       "/api/v1/documents/types",
       "/api/v1/documents/${selected.id}/content"
+    ],
+    "queryRootsInModule": [
+      "client-documents",
+      "client-document-types"
     ],
     "majorChildrenInModule": [
       "LoadingSkeleton",
@@ -2300,8 +2525,9 @@
       "DialogContent",
       "SecureReportViewer"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/notifications",
@@ -2319,14 +2545,17 @@
     "redirectTo": null,
     "line": 348,
     "file": "apps/web/src/pages/NotificationsPage.tsx",
-    "targetFamily": "Support / Documents / Notifications",
+    "targetFamily": "CP-NT-01",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Shell awareness drawer and exact owner links; never duplicate tasks.",
     "apiReferencesInModule": [
       "/api/v1/notifications?limit=20${filterQuery}${pageParam ? ",
       "/api/v1/notifications/read-all",
       "/api/v1/notifications/${id}/read"
+    ],
+    "queryRootsInModule": [
+      "notifications"
     ],
     "majorChildrenInModule": [
       "SecurityRounded",
@@ -2351,8 +2580,9 @@
       "Divider",
       "NotificationGroup"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/support",
@@ -2370,10 +2600,10 @@
     "redirectTo": null,
     "line": 349,
     "file": "apps/web/src/pages/SupportPage.tsx",
-    "targetFamily": "Support / Documents / Notifications",
+    "targetFamily": "CP-SP-01/02/03",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Existing case query/detail and creation; contextual help does not mutate source.",
     "apiReferencesInModule": [
       "/api/v1/client/support-categories",
       "/api/v1/documents/types",
@@ -2383,6 +2613,13 @@
       "/api/v1/client/support-cases/${selectedId}/messages",
       "/api/v1/client/support-cases/${selectedId}/status",
       "/api/v1/documents/${document.id}/content"
+    ],
+    "queryRootsInModule": [
+      "support-categories",
+      "client-document-types",
+      "support-cases",
+      "support-case",
+      "client-documents"
     ],
     "majorChildrenInModule": [
       "SupportCategory",
@@ -2417,8 +2654,9 @@
       "DialogActions",
       "ForumRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/account",
@@ -2436,13 +2674,14 @@
     "redirectTo": null,
     "line": 350,
     "file": "apps/web/src/pages/AccountPage.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "CP-PR-01",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Profile fields only; structured settings family with real privacy workflow.",
     "apiReferencesInModule": [
       "/api/me"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "HTMLFormElement",
       "Stack",
@@ -2455,8 +2694,9 @@
       "Button",
       "ClientContextSections"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/account/security",
@@ -2474,14 +2714,17 @@
     "redirectTo": null,
     "line": 351,
     "file": "apps/web/src/pages/SecurityPage.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "CP-PR-02 / own-account security",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retain existing real MFA/session controls; final authority and recovery qualification.",
     "apiReferencesInModule": [
       "/api/me/sessions",
       "/api/auth/revoke-other-sessions",
       "/api/me/sessions/${target.session.id}"
+    ],
+    "queryRootsInModule": [
+      "auth-sessions"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -2501,8 +2744,9 @@
       "DialogContent",
       "DialogActions"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/app/*",
@@ -2523,12 +2767,15 @@
     "redirectTo": null,
     "line": 352,
     "file": "apps/web/src/pages/ShellPages.tsx",
-    "targetFamily": "Contextual not-found state",
+    "targetFamily": "Global contextual not-found",
+    "classification": "RECOMPOSE",
     "wave": "U1",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Purposeful error/not-found and safe owner return.",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
+    ],
+    "queryRootsInModule": [
+      "admin-dashboard"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -2547,8 +2794,9 @@
       "FreshnessIndicator",
       "CollectionSurface"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm",
@@ -2566,18 +2814,20 @@
     "redirectTo": null,
     "line": 365,
     "file": "apps/web/src/layouts/ConsultantAppShell.tsx",
-    "targetFamily": "Pending final family review",
-    "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "targetFamily": "CRM shell / NAV-03",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Professional density and extensible persistent client/Live context.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "AppShell",
       "RouteReadyBoundary",
       "Outlet"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm",
@@ -2595,10 +2845,10 @@
     "redirectTo": null,
     "line": 366,
     "file": "apps/web/src/pages/PlatformPages.tsx",
-    "targetFamily": "CRM-01/02/03/04",
+    "targetFamily": "CRM-01",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Operational overview distinct from Work Queue.",
     "apiReferencesInModule": [
       "/api/v1/consultant/dashboard",
       "/api/v1/consultant/work-queue?${params}",
@@ -2607,6 +2857,14 @@
       "/api/v1/client/credit-profile",
       "/api/v1/client/goals",
       "/api/v1/client/application-cycles"
+    ],
+    "queryRootsInModule": [
+      "consultant-dashboard",
+      "work-queue",
+      "credit-plan",
+      "credit-profile",
+      "goals",
+      "application-cycles"
     ],
     "majorChildrenInModule": [
       "Alert",
@@ -2638,8 +2896,9 @@
       "ChoiceCard",
       "AssignmentTurnedInRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/work-queue",
@@ -2657,10 +2916,10 @@
     "redirectTo": null,
     "line": 367,
     "file": "apps/web/src/pages/PlatformPages.tsx",
-    "targetFamily": "CRM-01/02/03/04",
+    "targetFamily": "CRM-02",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Source-owned reason, urgency, owner and exact work deep link.",
     "apiReferencesInModule": [
       "/api/v1/consultant/dashboard",
       "/api/v1/consultant/work-queue?${params}",
@@ -2669,6 +2928,14 @@
       "/api/v1/client/credit-profile",
       "/api/v1/client/goals",
       "/api/v1/client/application-cycles"
+    ],
+    "queryRootsInModule": [
+      "consultant-dashboard",
+      "work-queue",
+      "credit-plan",
+      "credit-profile",
+      "goals",
+      "application-cycles"
     ],
     "majorChildrenInModule": [
       "Alert",
@@ -2700,8 +2967,9 @@
       "ChoiceCard",
       "AssignmentTurnedInRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients",
@@ -2719,10 +2987,10 @@
     "redirectTo": null,
     "line": 368,
     "file": "apps/web/src/pages/ClientContextPages.tsx",
-    "targetFamily": "CRM-01/02/03/04",
+    "targetFamily": "CRM-03",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Scoped searchable current-state collection with preserved return.",
     "apiReferencesInModule": [
       "/api/v1/consultant/client-context?${params}",
       "/api/v1/consultant/client-context/${clientId}",
@@ -2730,6 +2998,14 @@
       "/api/v1/consultant/clients/${clientId}/services",
       "/api/v1/consultant/client-context/${clientId}/support-summary",
       "/api/v1/consultant/client-context/${clientId}/timeline"
+    ],
+    "queryRootsInModule": [
+      "client-directory",
+      "client-360",
+      "consultant-client-journey",
+      "consultant-client-services",
+      "consultant-client-support-summary",
+      "consultant-client-timeline"
     ],
     "majorChildrenInModule": [
       "DirectoryResponse",
@@ -2761,8 +3037,9 @@
       "BusinessRounded",
       "AccountBalanceRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId",
@@ -2780,10 +3057,10 @@
     "redirectTo": null,
     "line": 369,
     "file": "apps/web/src/pages/ClientContextPages.tsx",
-    "targetFamily": "CRM-01/02/03/04",
+    "targetFamily": "CRM-04/05/08/09/10",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Existing embedded domains; persistent context and one current priority.",
     "apiReferencesInModule": [
       "/api/v1/consultant/client-context?${params}",
       "/api/v1/consultant/client-context/${clientId}",
@@ -2791,6 +3068,14 @@
       "/api/v1/consultant/clients/${clientId}/services",
       "/api/v1/consultant/client-context/${clientId}/support-summary",
       "/api/v1/consultant/client-context/${clientId}/timeline"
+    ],
+    "queryRootsInModule": [
+      "client-directory",
+      "client-360",
+      "consultant-client-journey",
+      "consultant-client-services",
+      "consultant-client-support-summary",
+      "consultant-client-timeline"
     ],
     "majorChildrenInModule": [
       "DirectoryResponse",
@@ -2822,8 +3107,9 @@
       "BusinessRounded",
       "AccountBalanceRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/plan",
@@ -2842,15 +3128,25 @@
     "line": 370,
     "file": "apps/web/src/features/plans/ConsultantPlanBuilderPage.tsx",
     "targetFamily": "CRM-12",
+    "classification": "RECOMPOSE",
     "wave": "U4",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Preserve version/draft guards; final shared typed editor, retire PlanPath.",
     "apiReferencesInModule": [
       "/api/v1/consultant/clients/${clientId}/plan${activePlanId === ",
       "/api/v1/consultant/clients/${clientId}/plans${editor.planId ? ",
       "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/approve",
       "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/sources",
       "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/reconcile"
+    ],
+    "queryRootsInModule": [
+      "plan-library",
+      "client-plan",
+      "portal-home",
+      "work-queue",
+      "plan-execution",
+      "portal-journey",
+      "shell-client-context",
+      "plan-sources"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -2893,8 +3189,9 @@
       "PlanDraftComparison",
       "PlanConflictResolution"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/cards",
@@ -2912,10 +3209,10 @@
     "redirectTo": null,
     "line": 378,
     "file": "apps/web/src/pages/CardCatalogPages.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "CRM-07",
+    "classification": "REBUILD",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Portfolio/source/current relationships and governed corrections.",
     "apiReferencesInModule": [
       "/api/v1/cards/catalog?${catalogQuery}",
       "/api/v1/client/cards/wishlist/${product.id}",
@@ -2928,6 +3225,15 @@
       "/api/v1/catalog/candidates/${candidate.id}/approve",
       "/api/v1/catalog/insights",
       "/api/v1/catalog/insights/${id}/approve"
+    ],
+    "queryRootsInModule": [
+      "card-catalog",
+      "card-wishlist",
+      "card-catalog-detail",
+      "card-offer-history",
+      "consultant-client-cards",
+      "card-catalog-candidates",
+      "card-insights"
     ],
     "majorChildrenInModule": [
       "Box",
@@ -2950,8 +3256,9 @@
       "CatalogCardArt",
       "BookmarkAddRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/rounds/:roundId/strategy",
@@ -2969,10 +3276,10 @@
     "redirectTo": null,
     "line": 379,
     "file": "apps/web/src/pages/StrategyPages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CRM-13 through CRM-17",
+    "classification": "REBUILD",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Context/research/compare/sequence/validation workbench.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/strategy",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/strategy",
@@ -2981,6 +3288,11 @@
       "/api/v1/consultant/clients/${clientId}/strategies/${strategy.data!.strategy!.id}/candidates/${item.productId}",
       "/api/v1/consultant/clients/${clientId}/strategies/${strategy.data!.strategy!.id}/sequence",
       "/api/v1/consultant/clients/${clientId}/strategies/${strategy.data!.strategy!.id}/approve"
+    ],
+    "queryRootsInModule": [
+      "client-strategy",
+      "strategy",
+      "strategy-catalog"
     ],
     "majorChildrenInModule": [
       "Role",
@@ -3010,8 +3322,9 @@
       "DialogContent",
       "DialogActions"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/rounds/:roundId/results",
@@ -3031,10 +3344,10 @@
     "redirectTo": null,
     "line": 383,
     "file": "apps/web/src/pages/PostRoundPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CRM-20",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Factual outcomes and corrections; persistent Round context.",
     "apiReferencesInModule": [
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/post-round",
       "/api/v1/client/rounds/${roundId}/post-round",
@@ -3046,6 +3359,12 @@
       "/api/v1/consultant/clients/${clientId}/analyses/${id}/approve",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalization",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalize"
+    ],
+    "queryRootsInModule": [
+      "post-round",
+      "post-round-follow-ups",
+      "round-analysis",
+      "round-finalization"
     ],
     "majorChildrenInModule": [
       "Summary",
@@ -3064,8 +3383,9 @@
       "MenuItem",
       "AnalysisView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/rounds/:roundId/analysis",
@@ -3085,10 +3405,10 @@
     "redirectTo": null,
     "line": 387,
     "file": "apps/web/src/pages/PostRoundPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CRM-20",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Immutable approved analysis versions; current and historical distinction.",
     "apiReferencesInModule": [
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/post-round",
       "/api/v1/client/rounds/${roundId}/post-round",
@@ -3100,6 +3420,12 @@
       "/api/v1/consultant/clients/${clientId}/analyses/${id}/approve",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalization",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalize"
+    ],
+    "queryRootsInModule": [
+      "post-round",
+      "post-round-follow-ups",
+      "round-analysis",
+      "round-finalization"
     ],
     "majorChildrenInModule": [
       "Summary",
@@ -3118,8 +3444,9 @@
       "MenuItem",
       "AnalysisView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/rounds/:roundId/finalize",
@@ -3137,10 +3464,10 @@
     "redirectTo": null,
     "line": 391,
     "file": "apps/web/src/pages/PostRoundPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CRM-20",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Converge Post-Round sections; named unresolved blockers.",
     "apiReferencesInModule": [
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/post-round",
       "/api/v1/client/rounds/${roundId}/post-round",
@@ -3152,6 +3479,12 @@
       "/api/v1/consultant/clients/${clientId}/analyses/${id}/approve",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalization",
       "/api/v1/consultant/clients/${clientId}/rounds/${roundId}/finalize"
+    ],
+    "queryRootsInModule": [
+      "post-round",
+      "post-round-follow-ups",
+      "round-analysis",
+      "round-finalization"
     ],
     "majorChildrenInModule": [
       "Summary",
@@ -3170,8 +3503,9 @@
       "MenuItem",
       "AnalysisView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/major-readiness/:caseId",
@@ -3189,15 +3523,19 @@
     "redirectTo": null,
     "line": 395,
     "file": "apps/web/src/pages/MajorReadinessPages.tsx",
-    "targetFamily": "Post-Round / Major Readiness",
+    "targetFamily": "CRM-21",
+    "classification": "REBUILD",
     "wave": "U7",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Published/draft distinction and coordination effect preview.",
     "apiReferencesInModule": [
       "/api/v1/major-readiness-v2/client/case",
       "/api/v1/major-readiness-v2/client/cases",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}",
       "/api/v1/major-readiness-v2/consultant/clients/${clientId}/cases/${caseId}${path}"
+    ],
+    "queryRootsInModule": [
+      "major-readiness",
+      "crm-major"
     ],
     "majorChildrenInModule": [
       "LoadingSkeleton",
@@ -3213,8 +3551,9 @@
       "Typography",
       "Chip"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/credit-center",
@@ -3233,12 +3572,16 @@
     "line": 399,
     "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
     "targetFamily": "CRM-06",
+    "classification": "RECOMPOSE",
     "wave": "U3",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Read-only published context, author in Review workspace.",
     "apiReferencesInModule": [
       "/api/v1/client/credit-profile",
       "/api/v1/reviews/consultant/${clientId}/credit-center"
+    ],
+    "queryRootsInModule": [
+      "published-credit-center",
+      "consultant-published-credit-center"
     ],
     "majorChildrenInModule": [
       "CreditCenterResponse",
@@ -3261,8 +3604,9 @@
       "SectionCard",
       "EventTimeline"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/reviews/:reviewId",
@@ -3280,10 +3624,10 @@
     "redirectTo": null,
     "line": 403,
     "file": "apps/web/src/pages/ReviewPages.tsx",
-    "targetFamily": "CP-CC / CRM-11 Review",
+    "targetFamily": "CRM-11",
+    "classification": "REBUILD",
     "wave": "U3",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Source/exception/profile/analysis/recommendation/Plan/publish workbench.",
     "apiReferencesInModule": [
       "/api/v1/reviews/report-documents/${documentId}/content",
       "/api/v1/reviews/report-documents/client",
@@ -3309,6 +3653,20 @@
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/exceptions/${encodeURIComponent(exceptionKey)}/resolve",
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/analysis",
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/publish"
+    ],
+    "queryRootsInModule": [
+      "credit-report-content",
+      "client-documents",
+      "support-cases",
+      "review",
+      "credit-profile",
+      "review-eligibility",
+      "client-cards",
+      "consultant-reviews",
+      "review-workspace",
+      "consultant-options",
+      "persisted-review-workspace",
+      "persisted-review-readiness"
     ],
     "majorChildrenInModule": [
       "Review",
@@ -3365,8 +3723,9 @@
       "ReviewAnalysisEditor",
       "ReviewReadingPreview"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/reviews",
@@ -3384,10 +3743,10 @@
     "redirectTo": null,
     "line": 407,
     "file": "apps/web/src/pages/ReviewPages.tsx",
-    "targetFamily": "CP-CC / CRM-11 Review",
+    "targetFamily": "CRM-02 Review collection",
+    "classification": "RECOMPOSE",
     "wave": "U3",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Operational doorway; not the authoring workspace.",
     "apiReferencesInModule": [
       "/api/v1/reviews/report-documents/${documentId}/content",
       "/api/v1/reviews/report-documents/client",
@@ -3413,6 +3772,20 @@
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/exceptions/${encodeURIComponent(exceptionKey)}/resolve",
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/analysis",
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/publish"
+    ],
+    "queryRootsInModule": [
+      "credit-report-content",
+      "client-documents",
+      "support-cases",
+      "review",
+      "credit-profile",
+      "review-eligibility",
+      "client-cards",
+      "consultant-reviews",
+      "review-workspace",
+      "consultant-options",
+      "persisted-review-workspace",
+      "persisted-review-readiness"
     ],
     "majorChildrenInModule": [
       "Review",
@@ -3469,8 +3842,9 @@
       "ReviewAnalysisEditor",
       "ReviewReadingPreview"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/card-catalog",
@@ -3490,10 +3864,10 @@
     "redirectTo": null,
     "line": 408,
     "file": "apps/web/src/pages/CardCatalogPages.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "CRM-24",
+    "classification": "REBUILD",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Browse view in unified Cards; wishlist is preference not recommendation.",
     "apiReferencesInModule": [
       "/api/v1/cards/catalog?${catalogQuery}",
       "/api/v1/client/cards/wishlist/${product.id}",
@@ -3506,6 +3880,15 @@
       "/api/v1/catalog/candidates/${candidate.id}/approve",
       "/api/v1/catalog/insights",
       "/api/v1/catalog/insights/${id}/approve"
+    ],
+    "queryRootsInModule": [
+      "card-catalog",
+      "card-wishlist",
+      "card-catalog-detail",
+      "card-offer-history",
+      "consultant-client-cards",
+      "card-catalog-candidates",
+      "card-insights"
     ],
     "majorChildrenInModule": [
       "Box",
@@ -3528,8 +3911,9 @@
       "CatalogCardArt",
       "BookmarkAddRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/card-insights",
@@ -3549,10 +3933,10 @@
     "redirectTo": null,
     "line": 409,
     "file": "apps/web/src/pages/CardCatalogPages.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "ADMIN-13 / CRM authorized governance handoff",
+    "classification": "REBUILD",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Separate facts/interpretation; specific professional authority required.",
     "apiReferencesInModule": [
       "/api/v1/cards/catalog?${catalogQuery}",
       "/api/v1/client/cards/wishlist/${product.id}",
@@ -3565,6 +3949,15 @@
       "/api/v1/catalog/candidates/${candidate.id}/approve",
       "/api/v1/catalog/insights",
       "/api/v1/catalog/insights/${id}/approve"
+    ],
+    "queryRootsInModule": [
+      "card-catalog",
+      "card-wishlist",
+      "card-catalog-detail",
+      "card-offer-history",
+      "consultant-client-cards",
+      "card-catalog-candidates",
+      "card-insights"
     ],
     "majorChildrenInModule": [
       "Box",
@@ -3587,8 +3980,9 @@
       "CatalogCardArt",
       "BookmarkAddRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/reviews/:clientId/:reviewId",
@@ -3606,10 +4000,10 @@
     "redirectTo": null,
     "line": 410,
     "file": "apps/web/src/pages/ReviewPages.tsx",
-    "targetFamily": "CP-CC / CRM-11 Review",
+    "targetFamily": "CRM-11",
+    "classification": "REBUILD",
     "wave": "U3",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Source/exception/profile/analysis/recommendation/Plan/publish workbench.",
     "apiReferencesInModule": [
       "/api/v1/reviews/report-documents/${documentId}/content",
       "/api/v1/reviews/report-documents/client",
@@ -3635,6 +4029,20 @@
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/exceptions/${encodeURIComponent(exceptionKey)}/resolve",
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/workspace/analysis",
       "/api/v1/reviews/consultant/${clientId}/${reviewId}/publish"
+    ],
+    "queryRootsInModule": [
+      "credit-report-content",
+      "client-documents",
+      "support-cases",
+      "review",
+      "credit-profile",
+      "review-eligibility",
+      "client-cards",
+      "consultant-reviews",
+      "review-workspace",
+      "consultant-options",
+      "persisted-review-workspace",
+      "persisted-review-readiness"
     ],
     "majorChildrenInModule": [
       "Review",
@@ -3691,8 +4099,9 @@
       "ReviewAnalysisEditor",
       "ReviewReadingPreview"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/readiness",
@@ -3712,10 +4121,10 @@
     "redirectTo": null,
     "line": 411,
     "file": "apps/web/src/pages/PlatformPages.tsx",
-    "targetFamily": "Legacy readiness → owning Review/Plan/Round",
+    "targetFamily": "Legacy generic readiness",
+    "classification": "RETIRE",
     "wave": "U4",
-    "proposedClassification": "RETIRE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Replace with owner-specific Review/Plan/Round context before removing links.",
     "apiReferencesInModule": [
       "/api/v1/consultant/dashboard",
       "/api/v1/consultant/work-queue?${params}",
@@ -3724,6 +4133,14 @@
       "/api/v1/client/credit-profile",
       "/api/v1/client/goals",
       "/api/v1/client/application-cycles"
+    ],
+    "queryRootsInModule": [
+      "consultant-dashboard",
+      "work-queue",
+      "credit-plan",
+      "credit-profile",
+      "goals",
+      "application-cycles"
     ],
     "majorChildrenInModule": [
       "Alert",
@@ -3755,8 +4172,9 @@
       "ChoiceCard",
       "AssignmentTurnedInRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/support",
@@ -3774,10 +4192,10 @@
     "redirectTo": null,
     "line": 412,
     "file": "apps/web/src/pages/ConsultantSupportPage.tsx",
-    "targetFamily": "Support / Documents / Notifications",
+    "targetFamily": "CRM-22/23",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Existing selected-case workspace; preserve reply/internal audience and return.",
     "apiReferencesInModule": [
       "/api/v1/consultant/support-cases?${params}",
       "/api/v1/consultant/support-cases/${linkedCaseId}",
@@ -3786,6 +4204,10 @@
       "/api/v1/consultant/support-cases/${selectedId}/ai-assistance",
       "/api/v1/consultant/support-cases/${selectedId}/assignment",
       "/api/v1/documents/${document.id}/content"
+    ],
+    "queryRootsInModule": [
+      "consultant-support-cases",
+      "consultant-support-case"
     ],
     "majorChildrenInModule": [
       "CaseStatus",
@@ -3815,8 +4237,9 @@
       "TextField",
       "SendRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/sessions",
@@ -3834,10 +4257,10 @@
     "redirectTo": null,
     "line": 413,
     "file": "apps/web/src/pages/LivePages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CRM-18",
+    "classification": "RECOMPOSE",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Unify duplicate entry URLs; persistent awareness.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/appointment-slots",
       "/api/v1/client/rounds/${roundId}/appointment",
@@ -3858,6 +4281,7 @@
       "/api/v1/consultant/sessions/${sessionId}/${path}",
       "/api/v1/consultant/live-sessions"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Appointment",
       "Stack",
@@ -3878,8 +4302,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/live-sessions",
@@ -3897,10 +4322,10 @@
     "redirectTo": null,
     "line": 414,
     "file": "apps/web/src/pages/LivePages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CRM-18",
+    "classification": "RECOMPOSE",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Unify duplicate entry URLs; persistent awareness.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/appointment-slots",
       "/api/v1/client/rounds/${roundId}/appointment",
@@ -3921,6 +4346,7 @@
       "/api/v1/consultant/sessions/${sessionId}/${path}",
       "/api/v1/consultant/live-sessions"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Appointment",
       "Stack",
@@ -3941,8 +4367,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/live-sessions/:sessionId",
@@ -3962,10 +4389,10 @@
     "redirectTo": null,
     "line": 415,
     "file": "apps/web/src/pages/LivePages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CRM-19",
+    "classification": "REBUILD",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Supervised release, disconnect recovery and deterministic next action.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/appointment-slots",
       "/api/v1/client/rounds/${roundId}/appointment",
@@ -3986,6 +4413,7 @@
       "/api/v1/consultant/sessions/${sessionId}/${path}",
       "/api/v1/consultant/live-sessions"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Appointment",
       "Stack",
@@ -4006,8 +4434,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/calendar",
@@ -4025,10 +4454,10 @@
     "redirectTo": null,
     "line": 416,
     "file": "apps/web/src/pages/LivePages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CRM-26",
+    "classification": "REBUILD",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Actual scheduling/timezone and external Busy privacy.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/appointment-slots",
       "/api/v1/client/rounds/${roundId}/appointment",
@@ -4049,6 +4478,7 @@
       "/api/v1/consultant/sessions/${sessionId}/${path}",
       "/api/v1/consultant/live-sessions"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Appointment",
       "Stack",
@@ -4069,8 +4499,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/clients/:clientId/appointments/:appointmentId",
@@ -4088,10 +4519,10 @@
     "redirectTo": null,
     "line": 417,
     "file": "apps/web/src/pages/LivePages.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
+    "targetFamily": "CRM-27",
+    "classification": "RECOMPOSE",
     "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Canonical appointment vs sync; revalidate reschedule.",
     "apiReferencesInModule": [
       "/api/v1/client/rounds/${roundId}/appointment-slots",
       "/api/v1/client/rounds/${roundId}/appointment",
@@ -4112,6 +4543,7 @@
       "/api/v1/consultant/sessions/${sessionId}/${path}",
       "/api/v1/consultant/live-sessions"
     ],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "Appointment",
       "Stack",
@@ -4132,8 +4564,9 @@
       "FormControlLabel",
       "Checkbox"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/account",
@@ -4151,12 +4584,15 @@
     "redirectTo": null,
     "line": 421,
     "file": "apps/web/src/pages/ShellPages.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "CRM-28 / Admin own account",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Own preferences/security only; not user-role governance.",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
+    ],
+    "queryRootsInModule": [
+      "admin-dashboard"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4175,8 +4611,9 @@
       "FreshnessIndicator",
       "CollectionSurface"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/account/security",
@@ -4194,14 +4631,17 @@
     "redirectTo": null,
     "line": 422,
     "file": "apps/web/src/pages/SecurityPage.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "CRM-28 Security",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retain existing real MFA/session controls; final authority and recovery qualification.",
     "apiReferencesInModule": [
       "/api/me/sessions",
       "/api/auth/revoke-other-sessions",
       "/api/me/sessions/${target.session.id}"
+    ],
+    "queryRootsInModule": [
+      "auth-sessions"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4221,8 +4661,9 @@
       "DialogContent",
       "DialogActions"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/crm/*",
@@ -4243,12 +4684,15 @@
     "redirectTo": null,
     "line": 423,
     "file": "apps/web/src/pages/ShellPages.tsx",
-    "targetFamily": "Contextual not-found state",
+    "targetFamily": "Global contextual not-found",
+    "classification": "RECOMPOSE",
     "wave": "U1",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Purposeful error/not-found and safe owner return.",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
+    ],
+    "queryRootsInModule": [
+      "admin-dashboard"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4267,8 +4711,9 @@
       "FreshnessIndicator",
       "CollectionSurface"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin",
@@ -4286,18 +4731,20 @@
     "redirectTo": null,
     "line": 436,
     "file": "apps/web/src/layouts/AdminAppShell.tsx",
-    "targetFamily": "Admin operational surfaces",
-    "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "targetFamily": "Admin shell / NAV-03A",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Dense platform navigation; no implicit professional approval.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [
       "AppShell",
       "RouteReadyBoundary",
       "Outlet"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/card-catalog",
@@ -4315,10 +4762,10 @@
     "redirectTo": null,
     "line": 437,
     "file": "apps/web/src/pages/CardCatalogPages.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "ADMIN-11 / partial ADMIN-12",
+    "classification": "REBUILD",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Full issue queue and field-diff publication; remove canned approval reason.",
     "apiReferencesInModule": [
       "/api/v1/cards/catalog?${catalogQuery}",
       "/api/v1/client/cards/wishlist/${product.id}",
@@ -4331,6 +4778,15 @@
       "/api/v1/catalog/candidates/${candidate.id}/approve",
       "/api/v1/catalog/insights",
       "/api/v1/catalog/insights/${id}/approve"
+    ],
+    "queryRootsInModule": [
+      "card-catalog",
+      "card-wishlist",
+      "card-catalog-detail",
+      "card-offer-history",
+      "consultant-client-cards",
+      "card-catalog-candidates",
+      "card-insights"
     ],
     "majorChildrenInModule": [
       "Box",
@@ -4353,8 +4809,9 @@
       "CatalogCardArt",
       "BookmarkAddRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/card-insights",
@@ -4372,10 +4829,10 @@
     "redirectTo": null,
     "line": 438,
     "file": "apps/web/src/pages/CardCatalogPages.tsx",
-    "targetFamily": "Cards / catalog / research",
+    "targetFamily": "ADMIN-13 / CRM authorized governance handoff",
+    "classification": "REBUILD",
     "wave": "U5",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Separate facts/interpretation; specific professional authority required.",
     "apiReferencesInModule": [
       "/api/v1/cards/catalog?${catalogQuery}",
       "/api/v1/client/cards/wishlist/${product.id}",
@@ -4388,6 +4845,15 @@
       "/api/v1/catalog/candidates/${candidate.id}/approve",
       "/api/v1/catalog/insights",
       "/api/v1/catalog/insights/${id}/approve"
+    ],
+    "queryRootsInModule": [
+      "card-catalog",
+      "card-wishlist",
+      "card-catalog-detail",
+      "card-offer-history",
+      "consultant-client-cards",
+      "card-catalog-candidates",
+      "card-insights"
     ],
     "majorChildrenInModule": [
       "Box",
@@ -4410,8 +4876,9 @@
       "CatalogCardArt",
       "BookmarkAddRounded"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin",
@@ -4429,12 +4896,15 @@
     "redirectTo": null,
     "line": 439,
     "file": "apps/web/src/pages/ShellPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-01",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Exception-first operational overview and module links.",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
+    ],
+    "queryRootsInModule": [
+      "admin-dashboard"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4453,8 +4923,9 @@
       "FreshnessIndicator",
       "CollectionSurface"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/users",
@@ -4472,10 +4943,10 @@
     "redirectTo": null,
     "line": 440,
     "file": "apps/web/src/pages/AdminIdentityPages.tsx",
-    "targetFamily": "ADMIN-02/03/04",
+    "targetFamily": "ADMIN-02",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Scoped paged identity collection.",
     "apiReferencesInModule": [
       "/api/v1/admin/users?page=${page}&pageSize=20&search=${encodeURIComponent(search)}${role ? ",
       "/api/v1/admin/users/${userId}",
@@ -4487,6 +4958,12 @@
       "/api/v1/admin/access-grants?page=${page}&pageSize=20",
       "/api/v1/admin/access-grants/${id}/revoke",
       "/api/v1/admin/access-grants"
+    ],
+    "queryRootsInModule": [
+      "admin-users",
+      "admin-user",
+      "admin-grant-options",
+      "admin-grants"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4506,8 +4983,9 @@
       "SectionCard",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/users/:userId",
@@ -4525,10 +5003,10 @@
     "redirectTo": null,
     "line": 441,
     "file": "apps/web/src/pages/AdminIdentityPages.tsx",
-    "targetFamily": "ADMIN-02/03/04",
+    "targetFamily": "ADMIN-03",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Capability/session impact preview for access changes.",
     "apiReferencesInModule": [
       "/api/v1/admin/users?page=${page}&pageSize=20&search=${encodeURIComponent(search)}${role ? ",
       "/api/v1/admin/users/${userId}",
@@ -4540,6 +5018,12 @@
       "/api/v1/admin/access-grants?page=${page}&pageSize=20",
       "/api/v1/admin/access-grants/${id}/revoke",
       "/api/v1/admin/access-grants"
+    ],
+    "queryRootsInModule": [
+      "admin-users",
+      "admin-user",
+      "admin-grant-options",
+      "admin-grants"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4559,8 +5043,9 @@
       "SectionCard",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/access-grants",
@@ -4578,10 +5063,10 @@
     "redirectTo": null,
     "line": 442,
     "file": "apps/web/src/pages/AdminIdentityPages.tsx",
-    "targetFamily": "ADMIN-02/03/04",
+    "targetFamily": "ADMIN-04",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Typed least privilege; repair client-selector mismatch F22.",
     "apiReferencesInModule": [
       "/api/v1/admin/users?page=${page}&pageSize=20&search=${encodeURIComponent(search)}${role ? ",
       "/api/v1/admin/users/${userId}",
@@ -4593,6 +5078,12 @@
       "/api/v1/admin/access-grants?page=${page}&pageSize=20",
       "/api/v1/admin/access-grants/${id}/revoke",
       "/api/v1/admin/access-grants"
+    ],
+    "queryRootsInModule": [
+      "admin-users",
+      "admin-user",
+      "admin-grant-options",
+      "admin-grants"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4612,8 +5103,9 @@
       "SectionCard",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/audit-events",
@@ -4633,13 +5125,17 @@
     "redirectTo": null,
     "line": 443,
     "file": "apps/web/src/pages/AdminAuditPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-23",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Audit and Security have different authority; preserve kind prop.",
     "apiReferencesInModule": [
       "/api/v1/admin/${endpoint}?limit=50&search=${encodeURIComponent(search)}${action ? ",
       "/api/v1/admin/${endpoint}/${eventId}"
+    ],
+    "queryRootsInModule": [
+      "admin-events",
+      "admin-event"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4658,8 +5154,9 @@
       "SectionCard",
       "SafeRecordView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/audit-events/:eventId",
@@ -4679,13 +5176,17 @@
     "redirectTo": null,
     "line": 444,
     "file": "apps/web/src/pages/AdminAuditPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-23",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Immutable audit vs incident containment; preserve kind prop.",
     "apiReferencesInModule": [
       "/api/v1/admin/${endpoint}?limit=50&search=${encodeURIComponent(search)}${action ? ",
       "/api/v1/admin/${endpoint}/${eventId}"
+    ],
+    "queryRootsInModule": [
+      "admin-events",
+      "admin-event"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4704,8 +5205,9 @@
       "SectionCard",
       "SafeRecordView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/security-events",
@@ -4725,13 +5227,17 @@
     "redirectTo": null,
     "line": 445,
     "file": "apps/web/src/pages/AdminAuditPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-24",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Audit and Security have different authority; preserve kind prop.",
     "apiReferencesInModule": [
       "/api/v1/admin/${endpoint}?limit=50&search=${encodeURIComponent(search)}${action ? ",
       "/api/v1/admin/${endpoint}/${eventId}"
+    ],
+    "queryRootsInModule": [
+      "admin-events",
+      "admin-event"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4750,8 +5256,9 @@
       "SectionCard",
       "SafeRecordView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/security-events/:eventId",
@@ -4771,13 +5278,17 @@
     "redirectTo": null,
     "line": 446,
     "file": "apps/web/src/pages/AdminAuditPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-24",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Immutable audit vs incident containment; preserve kind prop.",
     "apiReferencesInModule": [
       "/api/v1/admin/${endpoint}?limit=50&search=${encodeURIComponent(search)}${action ? ",
       "/api/v1/admin/${endpoint}/${eventId}"
+    ],
+    "queryRootsInModule": [
+      "admin-events",
+      "admin-event"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4796,8 +5307,9 @@
       "SectionCard",
       "SafeRecordView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/ai/jobs",
@@ -4815,16 +5327,21 @@
     "redirectTo": null,
     "line": 450,
     "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-14",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Safe operational monitoring, not professional approval.",
     "apiReferencesInModule": [
       "/api/v1/admin/ai/jobs/${id}/${action}",
       "/api/v1/admin/ai/jobs?limit=50${status ? ",
       "/api/v1/admin/ai/jobs/${jobId}",
       "/api/v1/admin/ai/processes",
       "/api/v1/admin/ai/processes/${encodeURIComponent(processKey)}/versions"
+    ],
+    "queryRootsInModule": [
+      "admin-ai-jobs",
+      "admin-ai-job",
+      "admin-ai-processes"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4844,8 +5361,9 @@
       "SafeRecordView",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/ai/jobs/:jobId",
@@ -4863,16 +5381,21 @@
     "redirectTo": null,
     "line": 451,
     "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-15",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retry safety/provenance and separately authorized payload.",
     "apiReferencesInModule": [
       "/api/v1/admin/ai/jobs/${id}/${action}",
       "/api/v1/admin/ai/jobs?limit=50${status ? ",
       "/api/v1/admin/ai/jobs/${jobId}",
       "/api/v1/admin/ai/processes",
       "/api/v1/admin/ai/processes/${encodeURIComponent(processKey)}/versions"
+    ],
+    "queryRootsInModule": [
+      "admin-ai-jobs",
+      "admin-ai-job",
+      "admin-ai-processes"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4892,8 +5415,9 @@
       "SafeRecordView",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/ai/processes",
@@ -4911,16 +5435,21 @@
     "redirectTo": null,
     "line": 452,
     "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-16",
+    "classification": "REBUILD",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Typed versioned process/model configuration.",
     "apiReferencesInModule": [
       "/api/v1/admin/ai/jobs/${id}/${action}",
       "/api/v1/admin/ai/jobs?limit=50${status ? ",
       "/api/v1/admin/ai/jobs/${jobId}",
       "/api/v1/admin/ai/processes",
       "/api/v1/admin/ai/processes/${encodeURIComponent(processKey)}/versions"
+    ],
+    "queryRootsInModule": [
+      "admin-ai-jobs",
+      "admin-ai-job",
+      "admin-ai-processes"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -4940,8 +5469,9 @@
       "SafeRecordView",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/sources",
@@ -4959,13 +5489,16 @@
     "redirectTo": null,
     "line": 453,
     "file": "apps/web/src/pages/AdminSourcesPage.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-17",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Approved source constraints/freshness/dependency effect.",
     "apiReferencesInModule": [
       "/api/v1/admin/sources",
       "/api/v1/admin/sources/${source.id}"
+    ],
+    "queryRootsInModule": [
+      "admin-sources"
     ],
     "majorChildrenInModule": [
       "Source",
@@ -4982,8 +5515,9 @@
       "Chip",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/workflow-rules",
@@ -5001,13 +5535,16 @@
     "redirectTo": null,
     "line": 454,
     "file": "apps/web/src/pages/AdminWorkflowPage.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-18",
+    "classification": "REBUILD",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Typed effective-dated rules and active-work impact.",
     "apiReferencesInModule": [
       "/api/v1/admin/workflow-rules",
       "/api/v1/admin/workflow-rules/${key}/versions"
+    ],
+    "queryRootsInModule": [
+      "workflow-rules"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5023,8 +5560,9 @@
       "Divider",
       "Chip"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/notification-operations",
@@ -5042,14 +5580,18 @@
     "redirectTo": null,
     "line": 455,
     "file": "apps/web/src/pages/AdminNotificationsPage.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-19",
+    "classification": "REBUILD",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Versioned templates with synthetic preview and variable validation.",
     "apiReferencesInModule": [
       "/api/v1/admin/notification-templates",
       "/api/v1/admin/notification-deliveries?limit=50${deliveryStatus ? ",
       "/api/v1/admin/notification-templates/${key}/versions"
+    ],
+    "queryRootsInModule": [
+      "admin-templates",
+      "admin-deliveries"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5065,8 +5607,9 @@
       "Divider",
       "Chip"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/integrations",
@@ -5084,13 +5627,16 @@
     "redirectTo": null,
     "line": 456,
     "file": "apps/web/src/pages/AdminIntegrationsPage.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-20",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Overview health; move consequential config to final detail.",
     "apiReferencesInModule": [
       "/api/v1/admin/integrations",
       "/api/v1/admin/integrations/${i.id}/enabled"
+    ],
+    "queryRootsInModule": [
+      "admin-integrations"
     ],
     "majorChildrenInModule": [
       "Integration",
@@ -5105,8 +5651,9 @@
       "Button",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/scheduled-jobs",
@@ -5124,13 +5671,16 @@
     "redirectTo": null,
     "line": 457,
     "file": "apps/web/src/pages/AdminScheduledJobsPage.tsx",
-    "targetFamily": "Round / strategy / live / appointment",
-    "wave": "U6",
-    "proposedClassification": "REBUILD",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "targetFamily": "ADMIN-22",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Real application jobs with safe run semantics/history.",
     "apiReferencesInModule": [
       "/api/v1/admin/scheduled-jobs",
       "/api/v1/admin/scheduled-jobs/${id}/run"
+    ],
+    "queryRootsInModule": [
+      "scheduled-jobs"
     ],
     "majorChildrenInModule": [
       "Definition",
@@ -5146,8 +5696,9 @@
       "Divider",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/system-health",
@@ -5165,12 +5716,15 @@
     "redirectTo": null,
     "line": 458,
     "file": "apps/web/src/pages/ShellPages.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "Admin Global System Health",
+    "classification": "RECOMPOSE",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Actual signals and expanded degradation impact.",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
+    ],
+    "queryRootsInModule": [
+      "admin-dashboard"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5189,8 +5743,9 @@
       "FreshnessIndicator",
       "CollectionSurface"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/retention",
@@ -5208,13 +5763,16 @@
     "redirectTo": null,
     "line": 459,
     "file": "apps/web/src/pages/AdminRetentionPage.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-25",
+    "classification": "REBUILD",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Exact removed/preserved categories and holds.",
     "apiReferencesInModule": [
       "/api/v1/admin/retention",
       "/api/v1/admin/retention/${id}/${mode}"
+    ],
+    "queryRootsInModule": [
+      "retention"
     ],
     "majorChildrenInModule": [
       "Policy",
@@ -5230,8 +5788,9 @@
       "Divider",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/reports",
@@ -5249,12 +5808,15 @@
     "redirectTo": null,
     "line": 460,
     "file": "apps/web/src/pages/AdminReportsPage.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-26",
+    "classification": "REBUILD",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Semantic KPIs/charts/drill-down instead of generic record counts.",
     "apiReferencesInModule": [
       "/api/v1/admin/reports/operations-summary?from=${from.toISOString()}&to=${to.toISOString()}"
+    ],
+    "queryRootsInModule": [
+      "operations-report"
     ],
     "majorChildrenInModule": [
       "Record",
@@ -5274,8 +5836,9 @@
       "SectionCard",
       "SafeRecordView"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/settings",
@@ -5293,13 +5856,16 @@
     "redirectTo": null,
     "line": 461,
     "file": "apps/web/src/pages/AdminSettingsPage.tsx",
-    "targetFamily": "Admin operational surfaces",
+    "targetFamily": "ADMIN-27",
+    "classification": "REBUILD",
     "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Typed settings and architected kill-switch effect previews.",
     "apiReferencesInModule": [
       "/api/v1/admin/settings",
       "/api/v1/admin/settings/${key}/versions"
+    ],
+    "queryRootsInModule": [
+      "settings"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5313,8 +5879,9 @@
       "Button",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/services",
@@ -5332,16 +5899,20 @@
     "redirectTo": null,
     "line": 462,
     "file": "apps/web/src/pages/AdminServicesPages.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "ADMIN-05",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Versioned service products preserve historical terms.",
     "apiReferencesInModule": [
       "/api/v1/admin/service-products?${params}",
       "/api/v1/admin/service-products",
       "/api/v1/admin/service-products/${serviceProductId}",
       "/api/v1/admin/service-products/${serviceProductId}/${operation}",
       "/api/v1/admin/service-products/${serviceProductId}/versions"
+    ],
+    "queryRootsInModule": [
+      "admin-products",
+      "admin-product"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5362,8 +5933,9 @@
       "Chip",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/services/:serviceProductId",
@@ -5381,16 +5953,20 @@
     "redirectTo": null,
     "line": 463,
     "file": "apps/web/src/pages/AdminServicesPages.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "ADMIN-06",
+    "classification": "REBUILD",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Typed pricing/entitlement mapping and activation validation.",
     "apiReferencesInModule": [
       "/api/v1/admin/service-products?${params}",
       "/api/v1/admin/service-products",
       "/api/v1/admin/service-products/${serviceProductId}",
       "/api/v1/admin/service-products/${serviceProductId}/${operation}",
       "/api/v1/admin/service-products/${serviceProductId}/versions"
+    ],
+    "queryRootsInModule": [
+      "admin-products",
+      "admin-product"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5411,8 +5987,9 @@
       "Chip",
       "GovernedActionDialog"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/payments",
@@ -5430,10 +6007,10 @@
     "redirectTo": null,
     "line": 464,
     "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "ADMIN-07",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Canonical status/exceptions and discoverable gateway overview.",
     "apiReferencesInModule": [
       "/api/v1/admin/payments?page=${page}&pageSize=20${provider ? ",
       "/api/v1/admin/refunds?pageSize=5",
@@ -5445,6 +6022,13 @@
       "/api/v1/admin/payment-gateways",
       "/api/v1/admin/payment-gateways/${canonicalProvider}/${action}",
       "/api/v1/admin/integrations/${provider}/test"
+    ],
+    "queryRootsInModule": [
+      "admin-payments",
+      "admin-refunds",
+      "admin-disputes",
+      "admin-payment",
+      "payment-gateways"
     ],
     "majorChildrenInModule": [
       "LinearProgress",
@@ -5465,8 +6049,9 @@
       "GovernedActionDialog",
       "AdminGatewayPage"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/payments/:paymentId",
@@ -5484,10 +6069,10 @@
     "redirectTo": null,
     "line": 465,
     "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "ADMIN-08",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Refund/entitlement effect and uncertain-provider recovery.",
     "apiReferencesInModule": [
       "/api/v1/admin/payments?page=${page}&pageSize=20${provider ? ",
       "/api/v1/admin/refunds?pageSize=5",
@@ -5499,6 +6084,13 @@
       "/api/v1/admin/payment-gateways",
       "/api/v1/admin/payment-gateways/${canonicalProvider}/${action}",
       "/api/v1/admin/integrations/${provider}/test"
+    ],
+    "queryRootsInModule": [
+      "admin-payments",
+      "admin-refunds",
+      "admin-disputes",
+      "admin-payment",
+      "payment-gateways"
     ],
     "majorChildrenInModule": [
       "LinearProgress",
@@ -5519,8 +6111,9 @@
       "GovernedActionDialog",
       "AdminGatewayPage"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/integrations/paypal",
@@ -5538,10 +6131,10 @@
     "redirectTo": null,
     "line": 466,
     "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "ADMIN-10",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Commerce-owned provider detail; retain old URL compatibility.",
     "apiReferencesInModule": [
       "/api/v1/admin/payments?page=${page}&pageSize=20${provider ? ",
       "/api/v1/admin/refunds?pageSize=5",
@@ -5553,6 +6146,13 @@
       "/api/v1/admin/payment-gateways",
       "/api/v1/admin/payment-gateways/${canonicalProvider}/${action}",
       "/api/v1/admin/integrations/${provider}/test"
+    ],
+    "queryRootsInModule": [
+      "admin-payments",
+      "admin-refunds",
+      "admin-disputes",
+      "admin-payment",
+      "payment-gateways"
     ],
     "majorChildrenInModule": [
       "LinearProgress",
@@ -5573,8 +6173,9 @@
       "GovernedActionDialog",
       "AdminGatewayPage"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/integrations/stripe",
@@ -5592,10 +6193,10 @@
     "redirectTo": null,
     "line": 467,
     "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "ADMIN-10",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Commerce-owned provider detail; retain old URL compatibility.",
     "apiReferencesInModule": [
       "/api/v1/admin/payments?page=${page}&pageSize=20${provider ? ",
       "/api/v1/admin/refunds?pageSize=5",
@@ -5607,6 +6208,13 @@
       "/api/v1/admin/payment-gateways",
       "/api/v1/admin/payment-gateways/${canonicalProvider}/${action}",
       "/api/v1/admin/integrations/${provider}/test"
+    ],
+    "queryRootsInModule": [
+      "admin-payments",
+      "admin-refunds",
+      "admin-disputes",
+      "admin-payment",
+      "payment-gateways"
     ],
     "majorChildrenInModule": [
       "LinearProgress",
@@ -5627,8 +6235,9 @@
       "GovernedActionDialog",
       "AdminGatewayPage"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/integrations/bofa",
@@ -5646,10 +6255,10 @@
     "redirectTo": null,
     "line": 468,
     "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
-    "targetFamily": "Services / commerce / gateways",
+    "targetFamily": "ADMIN-10",
+    "classification": "RECOMPOSE",
     "wave": "U7",
-    "proposedClassification": "RECOMPOSE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Commerce-owned provider detail; retain old URL compatibility.",
     "apiReferencesInModule": [
       "/api/v1/admin/payments?page=${page}&pageSize=20${provider ? ",
       "/api/v1/admin/refunds?pageSize=5",
@@ -5661,6 +6270,13 @@
       "/api/v1/admin/payment-gateways",
       "/api/v1/admin/payment-gateways/${canonicalProvider}/${action}",
       "/api/v1/admin/integrations/${provider}/test"
+    ],
+    "queryRootsInModule": [
+      "admin-payments",
+      "admin-refunds",
+      "admin-disputes",
+      "admin-payment",
+      "payment-gateways"
     ],
     "majorChildrenInModule": [
       "LinearProgress",
@@ -5681,8 +6297,9 @@
       "GovernedActionDialog",
       "AdminGatewayPage"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/account",
@@ -5700,12 +6317,15 @@
     "redirectTo": null,
     "line": 469,
     "file": "apps/web/src/pages/ShellPages.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "CRM-28 / Admin own account",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Own preferences/security only; not user-role governance.",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
+    ],
+    "queryRootsInModule": [
+      "admin-dashboard"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5724,8 +6344,9 @@
       "FreshnessIndicator",
       "CollectionSurface"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/account/security",
@@ -5743,14 +6364,17 @@
     "redirectTo": null,
     "line": 470,
     "file": "apps/web/src/pages/SecurityPage.tsx",
-    "targetFamily": "Auth / account / security",
+    "targetFamily": "CP-PR-02 / own-account security",
+    "classification": "RECOMPOSE",
     "wave": "U2",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retain existing real MFA/session controls; final authority and recovery qualification.",
     "apiReferencesInModule": [
       "/api/me/sessions",
       "/api/auth/revoke-other-sessions",
       "/api/me/sessions/${target.session.id}"
+    ],
+    "queryRootsInModule": [
+      "auth-sessions"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5770,8 +6394,9 @@
       "DialogContent",
       "DialogActions"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/admin/*",
@@ -5792,12 +6417,15 @@
     "redirectTo": null,
     "line": 471,
     "file": "apps/web/src/pages/ShellPages.tsx",
-    "targetFamily": "Contextual not-found state",
+    "targetFamily": "Global contextual not-found",
+    "classification": "RECOMPOSE",
     "wave": "U1",
-    "proposedClassification": "RESTYLE",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Purposeful error/not-found and safe owner return.",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
+    ],
+    "queryRootsInModule": [
+      "admin-dashboard"
     ],
     "majorChildrenInModule": [
       "Stack",
@@ -5816,8 +6444,9 @@
       "FreshnessIndicator",
       "CollectionSurface"
     ],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/client",
@@ -5831,14 +6460,16 @@
     "redirectTo": "/app",
     "line": 483,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
+    "targetFamily": "Compatibility alias to /app",
+    "classification": "RETIRE",
     "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retire old navigation ownership; retain authorized redirect compatibility until destination parity is proved. No deletion in U0.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/client/overview",
@@ -5852,14 +6483,16 @@
     "redirectTo": "/app",
     "line": 484,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
+    "targetFamily": "Compatibility alias to /app",
+    "classification": "RETIRE",
     "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retire old navigation ownership; retain authorized redirect compatibility until destination parity is proved. No deletion in U0.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/client/credit-profile",
@@ -5873,14 +6506,16 @@
     "redirectTo": "/app/credit-center",
     "line": 485,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
+    "targetFamily": "Compatibility alias to /app/credit-center",
+    "classification": "RETIRE",
     "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retire old navigation ownership; retain authorized redirect compatibility until destination parity is proved. No deletion in U0.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/client/account",
@@ -5894,14 +6529,16 @@
     "redirectTo": "/app/account",
     "line": 486,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
+    "targetFamily": "Compatibility alias to /app/account",
+    "classification": "RETIRE",
     "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retire old navigation ownership; retain authorized redirect compatibility until destination parity is proved. No deletion in U0.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/consultant",
@@ -5915,14 +6552,16 @@
     "redirectTo": "/crm",
     "line": 487,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
+    "targetFamily": "Compatibility alias to /crm",
+    "classification": "RETIRE",
     "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retire old navigation ownership; retain authorized redirect compatibility until destination parity is proved. No deletion in U0.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/consultant/dashboard",
@@ -5936,14 +6575,16 @@
     "redirectTo": "/crm",
     "line": 488,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
+    "targetFamily": "Compatibility alias to /crm",
+    "classification": "RETIRE",
     "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retire old navigation ownership; retain authorized redirect compatibility until destination parity is proved. No deletion in U0.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/consultant/account",
@@ -5957,14 +6598,16 @@
     "redirectTo": "/crm/account",
     "line": 489,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
+    "targetFamily": "Compatibility alias to /crm/account",
+    "classification": "RETIRE",
     "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "reason": "Retire old navigation ownership; retain authorized redirect compatibility until destination parity is proved. No deletion in U0.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   },
   {
     "route": "/*",
@@ -5978,13 +6621,15 @@
     "redirectTo": "/login",
     "line": 490,
     "file": null,
-    "targetFamily": "Compatibility redirect; validate destination before retirement",
-    "wave": "U9",
-    "proposedClassification": "KEEP",
-    "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
+    "targetFamily": "Global not-found / auth recovery",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Unknown path should explain recovery rather than silently masquerade as login.",
     "apiReferencesInModule": [],
+    "queryRootsInModule": [],
     "majorChildrenInModule": [],
-    "desktop": "Not requalified in U0",
-    "mobile": "Not requalified in U0"
+    "classificationReview": "Disposition reviewed against final owner/spec; product acceptance pending",
+    "desktop": "Source review only; final browser qualification pending",
+    "mobile": "Source review only; final narrow qualification pending"
   }
 ]

@@ -5,14 +5,43 @@
       "humanizeAdminLabel",
       "SafeRecordView"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Admin semantic record detail",
+    "classification": "RECOMPOSE",
+    "wave": "U8",
+    "reason": "Humanized record rendering is fallback material, not final typed forms/reports.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Box",
+      "Stack",
+      "Typography",
+      "Chip"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/ChoiceCard.tsx",
     "exports": [
       "ChoiceCard"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared selection control",
+    "classification": "RESTYLE",
+    "wave": "U1",
+    "reason": "Keep controlled choice semantics; align tokens/focus/touch treatment.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "ButtonBase",
+      "Stack",
+      "Box",
+      "Typography",
+      "CheckCircleRounded"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/CollectionSurface.tsx",
@@ -20,7 +49,23 @@
       "CollectionSurface",
       "CompareTray"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared collection / comparison tray",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Title-keyed unguarded storage and unconditional arrow interception need replacement; role density and empty states.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "HTMLDivElement",
+      "HTMLElement",
+      "Box",
+      "Stack",
+      "Typography",
+      "Button"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/contentSystem.ts",
@@ -35,7 +80,16 @@
       "validateGovernedActionContent",
       "isSpecificActionLabel"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared terminology / client-safe copy",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve bounded helpers; replace old domain terms with final owner vocabulary.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/DataNavigation.tsx",
@@ -43,21 +97,98 @@
       "DataNavigationToolbar",
       "DataPagination"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared search/filter/paging",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve controlled search and paging; final density, mobile filter and feedback treatment.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Paper",
+      "Stack",
+      "TextField",
+      "InputAdornment",
+      "SearchRounded",
+      "IconButton",
+      "ClearRounded",
+      "Chip",
+      "Button",
+      "Typography",
+      "CircularProgress",
+      "Box"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/DocumentPicker.tsx",
     "exports": [
       "DocumentPicker"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Canonical private Document selection",
+    "classification": "RECOMPOSE",
+    "wave": "U3",
+    "reason": "Preserve scoped selection; shared protected evidence flow and source visibility.",
+    "apiReferencesInModule": [
+      "/api/v1/documents?${params}"
+    ],
+    "queryRootsInModule": [
+      "document-picker"
+    ],
+    "majorChildrenInModule": [
+      "Stack",
+      "Button",
+      "SearchRounded",
+      "Typography",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "DataNavigationToolbar",
+      "FormControl",
+      "InputLabel",
+      "Select",
+      "MenuItem",
+      "List",
+      "ListItemButton",
+      "Checkbox",
+      "ListItemText",
+      "Chip",
+      "DataPagination",
+      "DialogActions"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/DocumentUploadDropzone.tsx",
     "exports": [
       "DocumentUploadDropzone"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Canonical private Document upload",
+    "classification": "RECOMPOSE",
+    "wave": "U3",
+    "reason": "Preserve upload validation/recovery; final wizard and evidence composition.",
+    "apiReferencesInModule": [
+      "/api/v1/documents"
+    ],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "AbortController",
+      "HTMLInputElement",
+      "Stack",
+      "Box",
+      "InsertDriveFileRounded",
+      "CloudUploadRounded",
+      "Typography",
+      "Button",
+      "LinearProgress",
+      "Alert"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/domainGlyphs.tsx",
@@ -65,7 +196,19 @@
       "domainGlyphs",
       "DomainGlyph"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared icon language",
+    "classification": "RESTYLE",
+    "wave": "U1",
+    "reason": "Reuse vector icons; align final roles and labels rather than inventing bitmap assets.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "ProductDomain",
+      "Glyph"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/EaseOfUse.tsx",
@@ -76,7 +219,29 @@
       "SafeBulkActionBar",
       "ShortcutHelp"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared workbench/commands/view state",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "SessionStorage view helper is not canonical saved views; two-pane layout insufficient for final workbench. Durable views owned U4.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "T",
+      "Box",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "TextField",
+      "List",
+      "ListItemButton",
+      "ListItemText",
+      "Typography",
+      "Stack",
+      "Button"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/Feedback.tsx",
@@ -86,7 +251,29 @@
       "LoadingSkeleton",
       "ConfirmDialog"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared global states / confirmation",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Purposeful loading/empty/error/blocked states; preserve confirmation accessibility.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "SectionCard",
+      "Stack",
+      "Box",
+      "Typography",
+      "Alert",
+      "Skeleton",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "DialogContentText",
+      "DialogActions",
+      "Button"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/FocusSurface.tsx",
@@ -94,7 +281,22 @@
       "focusSurfaceContentStyles",
       "FocusSurface"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Light Focus surface",
+    "classification": "RESTYLE",
+    "wave": "U1",
+    "reason": "Reuse contrast overrides; one coherent work plane rather than scattered light cards.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Theme",
+      "Box",
+      "Stack",
+      "Typography",
+      "Divider"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/InteractionPatterns.tsx",
@@ -103,7 +305,29 @@
       "RecoveryState",
       "GovernedActionDialog"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared context/recovery/governed confirmation",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve impact/reason/current-to-proposed previews; align final overlay hierarchy.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Stack",
+      "Breadcrumbs",
+      "MuiLink",
+      "Typography",
+      "Box",
+      "Alert",
+      "Button",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "TextField",
+      "DialogActions"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/labels.ts",
@@ -111,21 +335,58 @@
       "humanizeCode",
       "priorityLabel"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared status vocabulary",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Generic enum humanization cannot replace domain-specific client-safe wording.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/MetricCard.tsx",
     "exports": [
       "MetricCard"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared financial metric",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Readable numbers and provenance; not a universal equal-priority card grid.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "SectionCard",
+      "Stack",
+      "Typography",
+      "Box",
+      "Skeleton"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/PageHeader.tsx",
     "exports": [
       "PageHeader"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared page/section hierarchy",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Task hierarchy and contextual actions must fit final screen compositions.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Stack",
+      "Box",
+      "Typography"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/ProductFoundation.tsx",
@@ -153,14 +414,55 @@
       "DependencyMap",
       "MoneyFlow"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared visual/domain composites",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Split task-specific metrics/timelines/states; LifecycleRail may render only source-owned stages; no approval prediction.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "ProductRole",
+      "Theme",
+      "Box",
+      "Typography",
+      "Stack",
+      "ArchetypeCanvas",
+      "Chip",
+      "FreshnessIndicator",
+      "Alert",
+      "Accordion",
+      "AccordionSummary",
+      "AccordionDetails",
+      "FreshnessState",
+      "Button",
+      "HTMLElement",
+      "Drawer"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/PublishedCreditFacts.tsx",
     "exports": [
       "PublishedCreditFacts"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CP-CC-09 / published Profile",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Final typed facts/currentness/source dates, safe historical projection.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Box",
+      "Stack",
+      "Typography",
+      "Grid",
+      "Divider"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/RouteReadyBoundary.tsx",
@@ -168,56 +470,223 @@
       "routeReadyCopy",
       "RouteReadyBoundary"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared route loading/error recovery",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve bounded telemetry and honest reload warning; align purposeful final states.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Stack",
+      "Typography",
+      "LoadingSkeleton",
+      "Button",
+      "Alert",
+      "RouteRenderBoundary",
+      "Suspense",
+      "RouteLoading"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/SectionCard.tsx",
     "exports": [
       "SectionCard"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared surface primitive",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Retain primitive where appropriate; stop universal padded rounded-card page composition.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Theme",
+      "SectionCardVariant",
+      "Box"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/StatusChip.tsx",
     "exports": [
       "StatusChip"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared status label",
+    "classification": "RESTYLE",
+    "wave": "U1",
+    "reason": "Retain text plus color; final tokens and accessible status treatment.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Chip"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/statusVocabulary.ts",
     "exports": [
       "presentStatus"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared semantic status presentation",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Review labels against frozen owners; never infer domain truth from a label map.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/components/common/StickyTabs.tsx",
     "exports": [
       "StickyTabs"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared section navigation",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve selected context; final mobile behavior and non-obscuring sticky offsets.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Box"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/CancelPrivatePlan.tsx",
     "exports": [
       "CancelPrivatePlan"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 private draft cancellation",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Retain guarded cancellation/recovery; adapt canonical CreditPlan ownership.",
+    "apiReferencesInModule": [
+      "/api/v1/consultant/clients/${clientId}/plans/${planId}/cancel"
+    ],
+    "queryRootsInModule": [
+      "plan-builder"
+    ],
+    "majorChildrenInModule": [
+      "Button",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "Stack",
+      "Typography",
+      "Alert",
+      "TextField",
+      "DialogActions"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/ConsultantPlanBuilderPage.tsx",
     "exports": [
       "ConsultantPlanBuilderPage"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve autosave/source/version guards; typed final workbench, remove PlanPath authority.",
+    "apiReferencesInModule": [
+      "/api/v1/consultant/clients/${clientId}/plan${activePlanId === ",
+      "/api/v1/consultant/clients/${clientId}/plans${editor.planId ? ",
+      "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/approve",
+      "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/sources",
+      "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/reconcile"
+    ],
+    "queryRootsInModule": [
+      "plan-library",
+      "client-plan",
+      "portal-home",
+      "work-queue",
+      "plan-execution",
+      "portal-journey",
+      "shell-client-context",
+      "plan-sources"
+    ],
+    "majorChildrenInModule": [
+      "Stack",
+      "PlanLibrary",
+      "PlanBuilder",
+      "Editor",
+      "BuilderResponse",
+      "SourcePreview",
+      "Typography",
+      "RecoveryState",
+      "PageHeader",
+      "Alert",
+      "Button",
+      "PlanItem",
+      "PlanVersionHistory",
+      "PlanExecutionReview",
+      "CancelPrivatePlan",
+      "PlanPathEditor",
+      "Chip",
+      "Box",
+      "TextField",
+      "MenuItem",
+      "List",
+      "ListItemButton",
+      "AddRounded",
+      "IconButton",
+      "ArrowUpwardRounded",
+      "ArrowDownwardRounded",
+      "ResponseSchemaEditor",
+      "FormControlLabel",
+      "Checkbox",
+      "Divider",
+      "Drawer",
+      "CloseRounded",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "PlanLifecyclePreview",
+      "DialogActions",
+      "PlanDraftComparison",
+      "PlanConflictResolution"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/DiscardPlanDraft.tsx",
     "exports": [
       "DiscardPlanDraft"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 draft discard",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Keep explicit discard/uncertain recovery; adapt final draft identity.",
+    "apiReferencesInModule": [
+      "/api/v1/client/plan/items/${target.itemId}/draft"
+    ],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Button",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "Alert",
+      "DialogActions"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/editor.ts",
@@ -227,7 +696,18 @@
       "draftPayload",
       "editorIssues"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 draft serialization/validation",
+    "classification": "REBUILD",
+    "wave": "U4",
+    "reason": "Current payload includes paths/path membership; final ranks/groups/dependencies require migration.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "PlanItem"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanAttachments.tsx",
@@ -235,7 +715,33 @@
       "EvidenceFile",
       "PlanAttachments"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CP-AC-02 / CRM-12 evidence",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve protected scoped evidence; fit canonical Action detail and safe history.",
+    "apiReferencesInModule": [
+      "/api/v1/documents/${file.documentId}/content",
+      "/api/v1/documents/types"
+    ],
+    "queryRootsInModule": [
+      "client-document-types",
+      "document-picker",
+      "client-documents"
+    ],
+    "majorChildrenInModule": [
+      "Stack",
+      "Button",
+      "Typography",
+      "Alert",
+      "Record",
+      "DocumentPicker",
+      "TextField",
+      "MenuItem",
+      "DocumentUploadDropzone"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanConflictResolution.tsx",
@@ -244,7 +750,23 @@
       "resolvePlanText",
       "PlanConflictResolution"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 stale/conflict recovery",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve reviewed conflict choices and entered work; adapt final item schema.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Stack",
+      "Typography",
+      "Alert",
+      "FormControlLabel",
+      "Checkbox",
+      "Button"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanDraftComparison.tsx",
@@ -252,35 +774,138 @@
       "comparePlanDrafts",
       "PlanDraftComparison"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 draft diff",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Retain local/saved/source comparison; replace legacy path diffs.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Stack",
+      "Chip",
+      "Typography",
+      "Divider",
+      "Box"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanDraftLibrary.tsx",
     "exports": [
       "PlanDraftLibrary"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 draft recovery",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve account scope and recovery; converge global plan draft ownership.",
+    "apiReferencesInModule": [
+      "/api/v1/client/plan/drafts${pageParam ? "
+    ],
+    "queryRootsInModule": [
+      "plan-draft-library",
+      "plan-response-draft"
+    ],
+    "majorChildrenInModule": [
+      "NonNullable",
+      "DraftResult",
+      "Page",
+      "Button",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "Stack",
+      "Typography",
+      "Alert",
+      "PreviousPlanDraft",
+      "Divider",
+      "DialogActions"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanExecutionReview.tsx",
     "exports": [
       "PlanExecutionReview"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 verification",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve authorized verification and history; central query factories first in U1.",
+    "apiReferencesInModule": [
+      "/api/v1/consultant/clients/${clientId}/plan/execution${planId ? ",
+      "/api/v1/consultant/clients/${clientId}/plan/items/${itemId}/verify"
+    ],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "ClientPlanResponse",
+      "Alert",
+      "Button",
+      "Drawer",
+      "Box",
+      "Typography",
+      "Stack",
+      "TextField",
+      "MenuItem",
+      "ResponseHistory"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanFollowUp.tsx",
     "exports": [
       "PlanFollowUp"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 / CP-AC follow-up",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Shared Plan-owned follow-up; avoid service-owned duplicate Actions.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Alert",
+      "AlertTitle",
+      "Typography"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanLibrary.tsx",
     "exports": [
       "PlanLibrary"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 Plan history/selection",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "One active account-global CreditPlan; version/history not competing active roots.",
+    "apiReferencesInModule": [
+      "/api/v1/consultant/clients/${clientId}/plans${params.size ? "
+    ],
+    "queryRootsInModule": [
+      "plan-library"
+    ],
+    "majorChildrenInModule": [
+      "Library",
+      "Button",
+      "Drawer",
+      "Box",
+      "Stack",
+      "Typography",
+      "TextField",
+      "MenuItem",
+      "Alert",
+      "Chip"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanLifecyclePreview.tsx",
@@ -289,14 +914,50 @@
       "previewReadiness",
       "PlanLifecyclePreview"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 client preview",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Keep client-safe preview; final Action/Guidance/Milestone and currentness semantics.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Stack",
+      "Alert",
+      "FormControlLabel",
+      "Switch",
+      "Typography",
+      "Chip",
+      "PlanResponsePreviewProvider",
+      "Divider",
+      "Box",
+      "PlanResponsePreview"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanPathEditor.tsx",
     "exports": [
       "PlanPathEditor"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Obsolete PlanPath editor",
+    "classification": "RETIRE",
+    "wave": "U4",
+    "reason": "Replace paths with ranked/grouped items and explicit dependencies after migration/parity.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Box",
+      "Typography",
+      "Stack",
+      "TextField",
+      "MenuItem",
+      "Button"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanResponse.tsx",
@@ -304,7 +965,36 @@
       "ResponseHistory",
       "PlanResponse"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CP-AC-02 / DOM-27",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Preserve typed response, revisions, history and submit-not-verify boundary; shared query keys.",
+    "apiReferencesInModule": [
+      "/api/v1/consultant/clients/${clientId}/plan",
+      "/api/v1/client/plan",
+      "/api/v1/client/plan/items/${item.id}/outcomes"
+    ],
+    "queryRootsInModule": [
+      "plan-response-draft"
+    ],
+    "majorChildrenInModule": [
+      "Evidence",
+      "Box",
+      "Typography",
+      "Button",
+      "Alert",
+      "Stack",
+      "Divider",
+      "EvidenceFile",
+      "Record",
+      "PlanFile",
+      "TextField",
+      "MenuItem",
+      "PlanAttachments"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanResponsePreview.tsx",
@@ -312,28 +1002,117 @@
       "PlanResponsePreviewProvider",
       "PlanResponsePreview"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 client response preview",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Reuse actual controls in non-mutating preview; preserve role-safe fields.",
+    "apiReferencesInModule": [
+      "/api/v1/consultant/clients/${clientId}/plan/response-preview"
+    ],
+    "queryRootsInModule": [
+      "plan-response-preview"
+    ],
+    "majorChildrenInModule": [
+      "UseQueryResult",
+      "PreviewResult",
+      "PreviewContext",
+      "Typography",
+      "Alert",
+      "Button",
+      "Stack",
+      "TextField",
+      "MenuItem"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PlanVersionHistory.tsx",
     "exports": [
       "PlanVersionHistory"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 / Plan historical read",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Retain immutable history and exact version links; final CreditPlan schema.",
+    "apiReferencesInModule": [
+      "/api/v1/consultant/clients/${clientId}/plans/${planId}/history${pageParam ? "
+    ],
+    "queryRootsInModule": [
+      "plan-version-history"
+    ],
+    "majorChildrenInModule": [
+      "BuilderResponse",
+      "HTMLDivElement",
+      "HTMLButtonElement",
+      "Version",
+      "History",
+      "Button",
+      "Drawer",
+      "Box",
+      "Stack",
+      "Typography",
+      "Alert",
+      "Divider",
+      "PlanDraftComparison",
+      "PlanLifecyclePreview"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/PreviousPlanDraft.tsx",
     "exports": [
       "PreviousPlanDraft"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 draft continuity",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Preserve previous draft recovery; canonical plan/item identity.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "DraftResult",
+      "Alert",
+      "Button",
+      "Drawer",
+      "Stack",
+      "Typography",
+      "TextField",
+      "EvidenceFile",
+      "DiscardPlanDraft"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/ResponseSchemaEditor.tsx",
     "exports": [
       "ResponseSchemaEditor"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 typed response authoring",
+    "classification": "RECOMPOSE",
+    "wave": "U4",
+    "reason": "Keep type-specific controls; final bounded response modes, no raw schema UI.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "Field",
+      "Stack",
+      "Typography",
+      "Box",
+      "Button",
+      "TextField",
+      "MenuItem",
+      "FormControlLabel",
+      "Checkbox"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/reviewNotes.ts",
@@ -342,42 +1121,172 @@
       "reviewNotesKey",
       "useReviewNotes"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CRM-12 review notes",
+    "classification": "REBUILD",
+    "wave": "U4",
+    "reason": "Scoped expiring session notes are not durable governed notes/saved views; preserve privacy during migration.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/features/plans/SavedPlanResponse.tsx",
     "exports": [
       "SavedPlanResponse"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CP-AC-02 private response draft",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Keep actor/version-safe autosave and recovery; canonical key factory and detail composition.",
+    "apiReferencesInModule": [
+      "/api/v1/client/plan/items/${item.id}/draft"
+    ],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "DraftResult",
+      "Typography",
+      "Alert",
+      "Button",
+      "DiscardPlanDraft",
+      "Stack",
+      "TextField",
+      "EvidenceFile",
+      "PlanResponse",
+      "ResponseWritePause",
+      "Dialog",
+      "DialogTitle",
+      "DialogContent",
+      "DialogActions",
+      "PreviousPlanDraft"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/layouts/AdminAppShell.tsx",
     "exports": [
       "AdminAppShell"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "NAV-03A",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Final dense platform shell; Commerce owns providers.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "AppShell",
+      "RouteReadyBoundary",
+      "Outlet"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/layouts/AppShell.tsx",
     "exports": [
       "AppShell"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Shared application frame",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Role-specific density, scroll and global controls; no universal screen composition.",
+    "apiReferencesInModule": [
+      "/api/v1/notifications",
+      "/api/v1/notifications/read-all",
+      "/api/v1/notifications/${notification.id}/read",
+      "/api/v1/consultant/client-context?search=${encodeURIComponent(debouncedSearch)}&status=ACTIVE&page=1&pageSize=8",
+      "/api/v1/consultant/work-queue?priority=URGENT&page=1&pageSize=1",
+      "/api/v1/consultant/client-context/${contextualClientId}"
+    ],
+    "queryRootsInModule": [
+      "notifications",
+      "shell-client-search",
+      "shell-urgent-work",
+      "shell-client-context"
+    ],
+    "majorChildrenInModule": [
+      "Stack",
+      "Box",
+      "Typography",
+      "ListItemButton",
+      "ListItemIcon",
+      "Icon",
+      "ListItemText",
+      "Brand",
+      "List",
+      "Divider",
+      "HTMLElement",
+      "QueueSummary",
+      "ContextualClient",
+      "Sidebar",
+      "Drawer",
+      "AppBar",
+      "Toolbar",
+      "IconButton",
+      "MenuRounded",
+      "Autocomplete",
+      "TextField",
+      "Badge",
+      "BoltRounded",
+      "Button",
+      "Tooltip",
+      "NotificationsNoneRounded",
+      "Avatar",
+      "AccountCircleRounded",
+      "Chip",
+      "Menu",
+      "MenuItem",
+      "Popover",
+      "MuiLink"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/layouts/ClientAppShell.tsx",
     "exports": [
       "ClientAppShell"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "CP-SHELL-01 / NAV-02",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Final section K seven primary destinations and secondary context.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "AppShell",
+      "RouteReadyBoundary",
+      "Outlet"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/layouts/ConsultantAppShell.tsx",
     "exports": [
       "ConsultantAppShell"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "NAV-03 / NAV-07",
+    "classification": "RECOMPOSE",
+    "wave": "U1",
+    "reason": "Professional shell extensibility; persistent client and Live awareness.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [
+      "AppShell",
+      "RouteReadyBoundary",
+      "Outlet"
+    ],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   },
   {
     "file": "apps/web/src/layouts/navigation.tsx",
@@ -386,6 +1295,15 @@
       "activeNavigationId",
       "validateNavigationRegistry"
     ],
-    "status": "Awaiting final component-by-component classification"
+    "targetFamily": "Final route ownership registry",
+    "classification": "REBUILD",
+    "wave": "U1",
+    "reason": "Final primary/secondary IA replaces old grouping; preserve deep links and authorization.",
+    "apiReferencesInModule": [],
+    "queryRootsInModule": [],
+    "majorChildrenInModule": [],
+    "classificationReview": "Module disposition reviewed; exported helpers inherit this treatment unless rationale names an exception",
+    "desktop": "Existing source/pass evidence; final composition qualification pending",
+    "mobile": "Existing source/pass evidence; final touch/focus/scroll qualification pending"
   }
 ]
