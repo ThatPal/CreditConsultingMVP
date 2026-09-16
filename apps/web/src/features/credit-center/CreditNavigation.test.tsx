@@ -34,7 +34,7 @@ test.each(creditCenterAreas)(
     const trigger = screen.getByRole('button', { name: 'Credit Center section: ' + title });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(trigger);
-    const dialog = screen.getByRole('dialog', { name: /^Credit Center$/ });
+    const dialog = screen.getByRole('dialog', { name: 'Go to' });
     const links = within(dialog).getAllByRole('link');
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
       '/app/credit-center',
@@ -45,7 +45,7 @@ test.each(creditCenterAreas)(
       '/app/credit-center/history',
     ]);
     expect(links.find((a) => a.getAttribute('aria-current') === 'page')).toHaveTextContent(title);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Close area selector' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
   },

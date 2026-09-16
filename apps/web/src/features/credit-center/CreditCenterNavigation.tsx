@@ -1,7 +1,6 @@
 import { rememberCreditCenterHub } from './hubPosition';
 import { useState } from 'react';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
-import CloseRounded from '@mui/icons-material/CloseRounded';
 import CheckRounded from '@mui/icons-material/CheckRounded';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import CreditScoreRounded from '@mui/icons-material/CreditScoreRounded';
@@ -16,7 +15,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  IconButton,
+  DialogActions,
   Stack,
   Typography,
   useMediaQuery,
@@ -76,6 +75,9 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
   if (!wide)
     return (
       <>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+          SECTION
+        </Typography>
         <Button
           fullWidth
           aria-label={
@@ -94,7 +96,6 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
             borderRadius: 1,
             color: 'text.primary',
             bgcolor: 'background.paper',
-            fontSize: 15,
           }}
         >
           {creditCenterAreas.find((a) => a.id === area)!.title}
@@ -103,7 +104,6 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
           open={open}
           onClose={() => setOpen(false)}
           aria-labelledby="credit-center-area-title"
-          aria-describedby="credit-center-area-description"
           fullWidth
           maxWidth="sm"
           slotProps={{
@@ -121,26 +121,10 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
             },
           }}
         >
-          <DialogTitle id="credit-center-area-heading" sx={{ pr: 7, pb: 0.5 }}>
-            <span id="credit-center-area-title">Credit Center</span>
-            <IconButton
-              aria-label="Close area selector"
-              onClick={() => setOpen(false)}
-              sx={{ position: 'absolute', right: 12, top: 12 }}
-            >
-              <CloseRounded />
-            </IconButton>
-          </DialogTitle>
-          <Typography
-            id="credit-center-area-description"
-            color="text.secondary"
-            sx={{ px: 3, pb: 2 }}
-          >
-            Choose an area
-          </Typography>
+          <DialogTitle id="credit-center-area-title">Go to</DialogTitle>
           <DialogContent sx={{ p: 0 }}>
             <Box component="nav" aria-label="Credit Center areas">
-              {creditCenterAreas.map(({ id, title, detail }) => (
+              {creditCenterAreas.map(({ id, title, icon: Icon }) => (
                 <ButtonBase
                   key={id}
                   component={Link}
@@ -165,16 +149,8 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
                     },
                   }}
                 >
-                  <Box>
-                    <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {id === 'overview'
-                        ? 'Your credit picture at a glance.'
-                        : id === 'history'
-                          ? 'See how your credit picture has changed.'
-                          : detail}
-                    </Typography>
-                  </Box>
+                  <Icon fontSize="small" sx={{ color: 'text.secondary' }} />
+                  <Typography sx={{ flex: 1, fontWeight: 600 }}>{title}</Typography>
                   {id === area && (
                     <CheckRounded color="primary" fontSize="small" aria-label="Selected area" />
                   )}
@@ -182,6 +158,11 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
               ))}
             </Box>
           </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button fullWidth onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          </DialogActions>
         </Dialog>
       </>
     );

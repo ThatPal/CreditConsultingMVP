@@ -30,24 +30,17 @@ const show = (node: React.ReactNode, path = '/app/credit-center') =>
 test('one publication displays truthful context without a misleading Review dropdown', () => {
   show(<CreditCenterHeader area="overview" data={{ current, history: [current] }} />);
   expect(screen.getByRole('heading', { level: 1, name: 'Credit Center' })).toBeVisible();
-  expect(screen.getByLabelText(/Viewing Current/)).toHaveTextContent('9/9/2026');
+  expect(screen.getByLabelText(/Viewing Current/)).toHaveTextContent('Current Review');
   expect(screen.queryByRole('button', { name: /Viewing/ })).not.toBeInTheDocument();
-  expect(screen.getByText(/Based on report 9\/8\/2026/)).toHaveTextContent(
-    'Currentness unavailable',
-  );
+  expect(screen.queryByText(/Based on report/)).not.toBeInTheDocument();
 });
 
-test('prior publications remain unavailable as full contexts but retain History access', () => {
+test('prior Reviews do not produce disabled choices or a misleading dropdown', () => {
   show(<CreditCenterHeader area="analysis" data={{ current, history: [prior, current] }} />);
-  fireEvent.click(screen.getByRole('button', { name: /Viewing Current/ }));
-  expect(screen.getByRole('menuitem', { name: /8\/9\/2026/ })).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
-  expect(screen.getByRole('menuitem', { name: 'View full history' })).toHaveAttribute(
-    'href',
-    '/app/credit-center/history',
-  );
+  expect(screen.getByLabelText('Viewing Current Review')).toBeVisible();
+  expect(screen.queryByRole('button', { name: /Viewing/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+  expect(screen.queryByText('Previous reviews')).not.toBeInTheDocument();
 });
 
 test('older publications of the current Review are not separate Review choices', () => {
