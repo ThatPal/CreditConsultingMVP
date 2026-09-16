@@ -1,9 +1,11 @@
+import CloseRounded from '@mui/icons-material/CloseRounded';
 import AccountCircleRounded from '@mui/icons-material/AccountCircleRounded';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import MenuRounded from '@mui/icons-material/MenuRounded';
 import NotificationsNoneRounded from '@mui/icons-material/NotificationsNoneRounded';
 import BoltRounded from '@mui/icons-material/BoltRounded';
 import {
+  Alert,
   AppBar,
   Avatar,
   Autocomplete,
@@ -278,6 +280,8 @@ export function AppShell({
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('lg'));
   const [open, setOpen] = useState(false);
+  const notificationTrigger = useRef<HTMLButtonElement>(null);
+  const notificationHeading = useRef<HTMLHeadingElement>(null);
   const navigationTrigger = useRef<HTMLButtonElement>(null);
   const navigationPaper = useRef<HTMLDivElement>(null);
   const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
@@ -544,7 +548,11 @@ export function AppShell({
               )}
               <Tooltip title="Notifications">
                 <IconButton
+                  ref={notificationTrigger}
                   aria-label="Notifications"
+                  aria-haspopup="dialog"
+                  aria-expanded={Boolean(notificationAnchor)}
+                  aria-controls={notificationAnchor ? 'notification-panel' : undefined}
                   onClick={(event: MouseEvent<HTMLElement>) =>
                     setNotificationAnchor(event.currentTarget)
                   }
@@ -557,6 +565,7 @@ export function AppShell({
               <Tooltip title="Account">
                 <IconButton
                   aria-label="Account profile"
+                  aria-controls={accountAnchor ? 'account-menu' : undefined}
                   aria-haspopup="menu"
                   aria-expanded={Boolean(accountAnchor)}
                   onClick={(event) => setAccountAnchor(event.currentTarget)}
@@ -656,7 +665,7 @@ export function AppShell({
           anchorEl={accountAnchor}
           open={Boolean(accountAnchor)}
           onClose={closeAccountMenu}
-          slotProps={{ list: { 'aria-label': 'Account menu' } }}
+          slotProps={{ list: { id: 'account-menu', 'aria-label': 'Account menu' } }}
         >
           <MenuItem
             onClick={() => {
@@ -691,16 +700,42 @@ export function AppShell({
           onClose={() => setNotificationAnchor(null)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-          slotProps={{ paper: { sx: { width: 380, maxWidth: 'calc(100vw - 24px)', mt: 1 } } }}
+          slotProps={{
+            transition: {
+              onEntered: () => notificationHeading.current?.focus(),
+              onExited: () => notificationTrigger.current?.focus(),
+            },
+            paper: {
+              id: 'notification-panel',
+              role: 'dialog',
+              'aria-modal': true,
+              'aria-labelledby': 'notification-heading',
+              sx: { width: 380, maxWidth: 'calc(100vw - 24px)', mt: 1 },
+            },
+          }}
         >
           <Stack direction="row" sx={{ px: 2, py: 1.5, alignItems: 'center' }}>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="h4">Notifications</Typography>
+              <Typography
+                variant="h4"
+                component="h2"
+                id="notification-heading"
+                ref={notificationHeading}
+                tabIndex={-1}
+              >
+                Notifications
+              </Typography>
               <Typography variant="caption" color="text.secondary">
-                {unread ? `${unread} unread` : 'You’re all caught up'}
+                {notificationsQuery.isError
+                  ? 'Updates could not be confirmed'
+                  : notificationsQuery.isLoading
+                    ? 'Checking your updates'
+                    : unread
+                      ? `${unread} unread`
+                      : 'You’re all caught up'}
               </Typography>
             </Box>
-            {unread > 0 && (
+            {unread > 0 && !notificationsQuery.isError && (
               <Button size="small" onClick={() => markAllRead.mutate()}>
                 Mark all read
               </Button>
@@ -715,10 +750,30 @@ export function AppShell({
                 View all
               </Button>
             )}
+            <IconButton
+              aria-label="Close notifications"
+              onClick={() => setNotificationAnchor(null)}
+            >
+              <CloseRounded />
+            </IconButton>
           </Stack>
           <Divider />
           <Box sx={{ maxHeight: 440, overflowY: 'auto' }}>
-            {!notifications.length ? (
+            {notificationsQuery.isLoading ? (
+              <Box role="status" sx={{ p: 3 }}>
+                Loading your notifications…
+              </Box>
+            ) : notificationsQuery.isError ? (
+              <Alert severity="warning" sx={{ m: 2 }}>
+                Your notifications could not be loaded. Try again to check your updates.
+                <Button
+                  onClick={() => void notificationsQuery.refetch()}
+                  disabled={notificationsQuery.isFetching}
+                >
+                  Retry notifications
+                </Button>
+              </Alert>
+            ) : !notifications.length ? (
               <Box sx={{ px: 3, py: 5, textAlign: 'center' }}>
                 <NotificationsNoneRounded color="primary" sx={{ fontSize: 38 }} />
                 <Typography sx={{ mt: 1, fontWeight: 800 }}>No notifications yet</Typography>

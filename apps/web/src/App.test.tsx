@@ -202,7 +202,7 @@ describe('application shells', () => {
     expect(screen.queryByText('$62,000')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /start guided update/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /^open$/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading your Home overview');
   });
 
   test('mobile navigation opens and closes through accessible controls', () => {
@@ -353,6 +353,38 @@ describe('application shells', () => {
     expect(
       contrastRatio(designTokens.color.focusAccent, designTokens.color.focusLoaderTrack),
     ).toBeGreaterThanOrEqual(3);
+  });
+
+  test('reference gradient endpoints retain readable text and controls', () => {
+    for (const surface of ['#c9e7ce', '#f5f3e9', '#e4efe2']) {
+      for (const foreground of [
+        designTokens.color.focusText,
+        designTokens.color.focusTextMuted,
+        designTokens.color.focusLink,
+      ]) {
+        expect(contrastRatio(foreground, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastRatio(designTokens.color.focusLink, surface)).toBeGreaterThanOrEqual(3);
+    }
+    for (const surface of ['#b6f0cb', '#66d8bd', '#70cde8']) {
+      expect(contrastRatio(designTokens.accent.text, surface)).toBeGreaterThanOrEqual(4.5);
+    }
+    for (const surface of [
+      designTokens.color.canvas,
+      designTokens.color.surface,
+      designTokens.color.surfaceOverlay,
+      '#1c3d43',
+      '#173144',
+      '#27344d',
+      '#183a45',
+      '#142b3e',
+      '#292c4b',
+    ]) {
+      for (const foreground of [designTokens.color.textPrimary, designTokens.color.textSecondary]) {
+        expect(contrastRatio(foreground, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastRatio(designTokens.accent.main, surface)).toBeGreaterThanOrEqual(3);
+    }
   });
 
   test('exports canonical design tokens and reduced-motion behavior', () => {

@@ -84,3 +84,5 @@ Latest implementation: [U1 batch 23](BATCH-U1-23.md) shares explicit focus-owner
 Latest implementation: [U1 batch 24](BATCH-U1-24.md) preserves loading/error page context and verifies keyboard retry on Home/Center/Plan plus Center empty/history states. 24 tests and ten browser scenarios pass; five-package build and lint pass. Remaining acceptance gates stay open; U1 NOT PASSED.
 
 Latest implementation: [U1 batch 25](BATCH-U1-25.md) verifies completed/no-Profile reference states, repairs mobile navigation focus and semantics, and corrects Plan heading structure. Twelve browser scenarios pass, including six mobile focus-trap/return checks. U1 NOT PASSED; remaining contrast/recovery and contract gates stay open.
+
+Latest implementation: [U1 batch 26](BATCH-U1-26.md) separates notification failure/loading/empty states, adds accessible popup control/focus behavior, and verifies six menu/recovery browser scenarios plus selected contrast boundaries. 25 tests pass. T3 inspection identifies the remaining shared blocker/action envelope gap; U1 NOT PASSED.
