@@ -66,3 +66,35 @@ test.each(['CONSULTANT', 'SYSTEM'])(
     ).toMatchObject({ code: 'PLAN_CHECK', owner, action: '/app/plan' });
   },
 );
+
+test('focus selects a usable response before a misconfigured form and otherwise offers help', () => {
+  const broken = {
+    ...item,
+    id: 'broken / step',
+    responseForm: { error: 'private schema diagnostic' },
+  };
+  const summarize = (items: Array<typeof item & { responseForm?: { error: string | null } }>) =>
+    summarizePlan({ status: 'ACTIVE', version: { items } });
+  const mixed = summarize([broken, { ...item, id: 'usable' }]);
+  expect(mixed.nextClientItem?.id).toBe('usable');
+  const summary = summarize([broken]);
+  expect(summary.nextClientItem?.availability).toMatchObject({
+    canSubmitCompletion: false,
+    canRequestHelp: true,
+  });
+  expect(JSON.stringify(summary)).not.toContain('private schema diagnostic');
+  const focus = resolveCurrentFocus({
+    activeNurture: null,
+    activeCycle: null,
+    hasGoal: true,
+    plan: summary,
+  });
+  expect(focus).toMatchObject({
+    code: 'PLAN_FORM_HELP',
+    owner: 'CLIENT',
+    actionLabel: 'Ask for help with this step',
+  });
+  expect(new URL(focus.action, 'https://example.test').searchParams.get('item')).toBe(
+    'broken / step',
+  );
+});

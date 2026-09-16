@@ -15,6 +15,7 @@ type PlanRead = {
       owner: string;
       title: string;
       completionMode?: string;
+      responseForm?: { error: string | null };
     }>;
   };
 } | null;
@@ -25,16 +26,22 @@ export function summarizePlan(plan: PlanRead) {
   const completedActionCount = actions.filter((item) => item.status === 'COMPLETED').length;
   const stale = plan?.status === 'STALE' || Boolean(plan?.version.staleAt);
   const canRespond = plan?.status === 'ACTIVE' && !stale;
+  const disposition = (item: NonNullable<PlanRead>['version']['items'][number]) =>
+    clientItemAvailability({ status: plan!.status, staleAt: plan!.version.staleAt }, item);
   const safeItem = (item: NonNullable<PlanRead>['version']['items'][number] | undefined) =>
     item
-      ? { id: item.id, type: item.type, status: item.status, owner: item.owner, title: item.title }
+      ? {
+          id: item.id,
+          type: item.type,
+          status: item.status,
+          owner: item.owner,
+          title: item.title,
+          availability: disposition(item),
+        }
       : null;
   const nextClientItem = canRespond
-    ? items.find(
-        (item) =>
-          clientItemAvailability({ status: plan!.status, staleAt: plan!.version.staleAt }, item)
-            .canRespond,
-      )
+    ? (items.find((item) => disposition(item).canSubmitCompletion) ??
+      items.find((item) => disposition(item).canRequestHelp))
     : undefined;
   const verificationSteps = items.filter(
     (item) =>

@@ -27,6 +27,12 @@ export type Evidence = {
   attachments?: PlanFile[];
 };
 export type ResponseItem = {
+  availability?: {
+    canRespond: boolean;
+    canSubmitCompletion: boolean;
+    canRequestHelp: boolean;
+    reason: string | null;
+  };
   id: string;
   completionMode: string;
   type: string;
@@ -295,7 +301,11 @@ export function PlanResponse({
     saveError,
     saveDraft,
   ]);
+  const responseAllowed = item.availability?.canRespond !== false;
+  const completionAllowed = responseAllowed && item.availability?.canSubmitCompletion !== false;
+  const helpAllowed = responseAllowed && item.availability?.canRequestHelp !== false;
   const submit = () => {
+    if (help ? !helpAllowed : !completionAllowed) return;
     if (writesPaused || uploading || writePending.current || mutation.isPending) return;
     const issues: Record<string, string> = {};
     if (help) {
@@ -509,6 +519,7 @@ export function PlanResponse({
             saving ||
             uploading ||
             mutation.isPending ||
+            (help ? !helpAllowed : !completionAllowed) ||
             (!help && Boolean(formError))
           }
         >
@@ -523,7 +534,7 @@ export function PlanResponse({
                   : 'Save completed step'}
         </Button>
         <Button
-          disabled={writesPaused || mutation.isPending}
+          disabled={writesPaused || mutation.isPending || (!help && !helpAllowed)}
           onClick={() => {
             setHelp(!help);
             setErrors({});

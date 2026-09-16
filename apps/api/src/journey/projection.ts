@@ -182,6 +182,21 @@ export function resolveCurrentFocus(input: FocusInput) {
       actionLabel: 'View appointment',
       action: '/app/rounds/' + encodeURIComponent(appointment.roundId) + '/schedule',
     };
+  if (input.plan?.nextClientItem?.availability.reason === 'FORM_CONFIGURATION_REQUIRED')
+    return {
+      code: 'PLAN_FORM_HELP',
+      title: 'Your Plan response form needs attention',
+      detail:
+        'You cannot submit completion for this step yet. You can ask your consultant for help; your saved response remains available.',
+      owner: 'CLIENT',
+      actionLabel: 'Ask for help with this step',
+      action:
+        '/app/plan?' +
+        new URLSearchParams({
+          view: input.plan.nextClientItem.type === 'ACTION' ? 'actions' : 'guidance',
+          item: input.plan.nextClientItem.id,
+        }).toString(),
+    };
   if (input.plan?.nextClientItem)
     return {
       code: 'PLAN_ACTION',

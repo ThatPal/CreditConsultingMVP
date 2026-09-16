@@ -65,3 +65,40 @@ test('a missing response form blocks completion but still allows a specific help
     reason: 'I cannot find the report date.',
   });
 });
+
+test('server action flags block completion including direct form submission while preserving help', async () => {
+  setup({
+    ...item,
+    completionMode: 'ACKNOWLEDGEMENT',
+    responseForm: { fields: [], error: null },
+    availability: {
+      canRespond: true,
+      canSubmitCompletion: false,
+      canRequestHelp: true,
+      reason: 'FORM_CONFIGURATION_REQUIRED',
+    },
+  });
+  const complete = screen.getByRole('button', { name: 'Save completed step' });
+  expect(complete).toBeDisabled();
+  fireEvent.submit(complete.closest('form')!);
+  expect(request).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'I need help' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'What do you need help with?' }), {
+    target: { value: 'Please repair this form.' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Send help request' }));
+  await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+  expect(JSON.parse(String(request.mock.calls[0]![1]?.body)).action).toBe('UNABLE');
+});
+test('server denial of help disables its control', () => {
+  setup({
+    ...item,
+    availability: {
+      canRespond: true,
+      canSubmitCompletion: true,
+      canRequestHelp: false,
+      reason: null,
+    },
+  });
+  expect(screen.getByRole('button', { name: 'I need help' })).toBeDisabled();
+});

@@ -68,3 +68,5 @@ Latest implementation: [U1 batch 15](BATCH-U1-15.md) adds client-scoped open Liv
 Latest implementation: [U1 batch 16](BATCH-U1-16.md) adds scoped Major restrictions to shared focus, distinguishes restricted Live activity from paused sessions, and preserves exact-case navigation. 55 focused tests pass. Scheduling/action contracts and final acceptance remain open; U1 NOT PASSED.
 
 Latest implementation: [U1 batch 17](BATCH-U1-17.md) adds server-timed appointment focus within the existing pre-session window, preserves restriction/Live precedence, and repairs appointment timezone/session wording. 49 API tests and desktop/mobile checks pass. U1 NOT PASSED; remaining action contracts and final acceptance stay open.
+
+Latest implementation: [U1 batch 18](BATCH-U1-18.md) aligns shared next-step guidance with response-form availability and makes form submission respect server completion/help denials. 111 tests and desktop/mobile recovery checks pass. U1 NOT PASSED; final action contracts and acceptance remain open.
