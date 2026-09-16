@@ -1,0 +1,86 @@
+[
+  {
+    "state": "completed",
+    "surface": "home",
+    "width": 1440,
+    "passed": true,
+    "mobileFocusTrapAndReturn": false
+  },
+  {
+    "state": "completed",
+    "surface": "center",
+    "width": 1440,
+    "passed": true,
+    "mobileFocusTrapAndReturn": false
+  },
+  {
+    "state": "completed",
+    "surface": "plan",
+    "width": 1440,
+    "passed": true,
+    "mobileFocusTrapAndReturn": false
+  },
+  {
+    "state": "completed",
+    "surface": "home",
+    "width": 390,
+    "passed": true,
+    "mobileFocusTrapAndReturn": true
+  },
+  {
+    "state": "completed",
+    "surface": "center",
+    "width": 390,
+    "passed": true,
+    "mobileFocusTrapAndReturn": true
+  },
+  {
+    "state": "completed",
+    "surface": "plan",
+    "width": 390,
+    "passed": true,
+    "mobileFocusTrapAndReturn": true
+  },
+  {
+    "state": "no-profile",
+    "surface": "home",
+    "width": 1440,
+    "passed": true,
+    "mobileFocusTrapAndReturn": false
+  },
+  {
+    "state": "no-profile",
+    "surface": "center",
+    "width": 1440,
+    "passed": true,
+    "mobileFocusTrapAndReturn": false
+  },
+  {
+    "state": "no-profile",
+    "surface": "plan",
+    "width": 1440,
+    "passed": true,
+    "mobileFocusTrapAndReturn": false
+  },
+  {
+    "state": "no-profile",
+    "surface": "home",
+    "width": 390,
+    "passed": true,
+    "mobileFocusTrapAndReturn": true
+  },
+  {
+    "state": "no-profile",
+    "surface": "center",
+    "width": 390,
+    "passed": true,
+    "mobileFocusTrapAndReturn": true
+  },
+  {
+    "state": "no-profile",
+    "surface": "plan",
+    "width": 390,
+    "passed": true,
+    "mobileFocusTrapAndReturn": true
+  }
+]

@@ -287,7 +287,10 @@ test('removes the draft form after successful client completion while retaining 
     { target: { value: 'My questions' } },
   );
   fireEvent.click(screen.getByRole('button', { name: 'Save completed step' }));
-  await screen.findByRole('heading', { name: 'Your goal is ready for review' });
+  await screen.findByRole('heading', { level: 2, name: 'Your goal is ready for review' });
+  expect(screen.getByRole('heading', { level: 2, name: 'Plan steps · 1' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 3, name: 'Gather questions' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Save completed step' })).not.toBeInTheDocument();
   await waitFor(() =>
     expect(
       screen.queryByRole('textbox', { name: 'Optional note for your consultant' }),

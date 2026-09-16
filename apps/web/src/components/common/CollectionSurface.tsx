@@ -13,6 +13,7 @@ export type CollectionMode =
 
 export function CollectionSurface({
   title,
+  headingComponent = 'h3',
   mode,
   controls,
   children,
@@ -24,6 +25,7 @@ export function CollectionSurface({
   scrollKey,
 }: {
   title: string;
+  headingComponent?: 'h2' | 'h3' | 'h4';
   mode: CollectionMode;
   controls?: ReactNode;
   children: ReactNode;
@@ -125,7 +127,9 @@ export function CollectionSurface({
         }}
         spacing={1}
       >
-        <Typography variant="h3">{title}</Typography>
+        <Typography variant="h3" component={headingComponent}>
+          {title}
+        </Typography>
         {controls}
       </Stack>
       <Box

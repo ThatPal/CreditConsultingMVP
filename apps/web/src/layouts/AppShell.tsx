@@ -278,6 +278,8 @@ export function AppShell({
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('lg'));
   const [open, setOpen] = useState(false);
+  const navigationTrigger = useRef<HTMLButtonElement>(null);
+  const navigationPaper = useRef<HTMLDivElement>(null);
   const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
   const navigate = useNavigate();
@@ -410,7 +412,21 @@ export function AppShell({
             open={open}
             onClose={() => setOpen(false)}
             ModalProps={{ keepMounted: true }}
-            slotProps={{ paper: { sx: { bgcolor: 'transparent' } } }}
+            slotProps={{
+              transition: {
+                onEntered: () =>
+                  navigationPaper.current?.querySelector<HTMLElement>('a[href], button')?.focus(),
+                onExited: () => navigationTrigger.current?.focus(),
+              },
+              paper: {
+                ref: navigationPaper,
+                id: 'mobile-navigation',
+                role: 'dialog',
+                'aria-modal': true,
+                'aria-label': 'Workspace navigation',
+                sx: { bgcolor: 'transparent' },
+              },
+            }}
           >
             <Sidebar items={items} dense={dense} role={role} onNavigate={() => setOpen(false)} />
           </Drawer>
@@ -438,7 +454,11 @@ export function AppShell({
         >
           <Toolbar sx={{ minHeight: { xs: 68, sm: 76 } }}>
             <IconButton
+              ref={navigationTrigger}
               aria-label="Open navigation"
+              aria-expanded={open}
+              aria-controls="mobile-navigation"
+              aria-haspopup="dialog"
               onClick={() => setOpen(true)}
               sx={{ display: { lg: 'none' }, mr: 1 }}
             >

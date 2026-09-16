@@ -266,7 +266,7 @@ export function ClientPlanPage() {
             <Stack spacing={1.5} sx={{ flex: 1 }}>
               <Typography variant="overline">Current focus</Typography>
               <FocusOwner owner={data.workspace?.currentFocus.owner} />
-              <Typography variant="h3">
+              <Typography variant="h3" component="h2">
                 {data.workspace?.currentFocus.title ?? 'Your Plan status'}
               </Typography>
               <Typography color="text.secondary">
@@ -339,6 +339,7 @@ export function ClientPlanPage() {
             )}
             <CollectionSurface
               title={`Plan steps · ${visibleItems.length}`}
+              headingComponent="h2"
               mode="bounded"
               appearance="plain"
               {...(!search.get('item') && plan.version.version
@@ -366,7 +367,9 @@ export function ClientPlanPage() {
                           <Typography variant="overline" color="text.secondary">
                             {item.type.toLowerCase()}
                           </Typography>
-                          <Typography variant="h6">{item.title}</Typography>
+                          <Typography variant="h6" component="h3">
+                            {item.title}
+                          </Typography>
                         </Stack>
                         <StatusChip
                           {...(item.status === 'UNABLE'
