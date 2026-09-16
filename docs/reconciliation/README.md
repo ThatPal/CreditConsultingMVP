@@ -1,6 +1,6 @@
 # Unified convergence execution
 
-The user-directed U0–U10 program replaces the incremental A1/A2/A5 continuation. U0 baseline reconciliation has passed; U1 is the active implementation wave. Existing implementation reports are historical evidence, not final product acceptance. See [U0 acceptance](U0_ACCEPTANCE.md) for evidence and limitations.
+The user-directed U0–U10 program replaces the incremental A1/A2/A5 continuation. U0 and U1 acceptance have passed; U2 identity, authorization and platform boundaries is next. See [U1 completion](U1_COMPLETION_REPORT.md) and [U2 start](U2_START.md). Existing implementation reports are historical evidence, not final product acceptance. See [U0 acceptance](U0_ACCEPTANCE.md) for evidence and limitations.
 
 Baseline: `codex/astra-production` at `44a905b2d5b804441864ec6faddc8e67552f2491`, synchronized with origin on 2026-09-15 (local time). Work remains in the independent Astra worktree. Other versions remain independent.
 
@@ -88,3 +88,5 @@ Latest implementation: [U1 batch 25](BATCH-U1-25.md) verifies completed/no-Profi
 Latest implementation: [U1 batch 26](BATCH-U1-26.md) separates notification failure/loading/empty states, adds accessible popup control/focus behavior, and verifies six menu/recovery browser scenarios plus selected contrast boundaries. 25 tests pass. T3 inspection identifies the remaining shared blocker/action envelope gap; U1 NOT PASSED.
 
 Latest implementation: [U1 batch 27](BATCH-U1-27.md) adds shared typed Plan command/navigation affordances and scoped blockers with exact source basis. 55 tests pass; real API reads agree across Home/Center/Plan after isolated restart. Broader T3 domains and final U1 acceptance remain open.
+
+U1 closeout: implementation 84fc150 passed the reference acceptance ledger. Full web 374 tests, API 139 tests, final targeted checks, build/lint and final browser matrices pass. See U1_COMPLETION_REPORT.md for the source-adapter limits and exact U2 handoff.
