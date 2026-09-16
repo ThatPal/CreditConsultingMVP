@@ -1,10 +1,14 @@
 # Unified convergence execution
 
-The user-directed U0–U10 program replaces the incremental A1/A2/A5 continuation. U0 and U1 acceptance have passed; U2 identity, authorization and platform boundaries is next. See [U1 completion](U1_COMPLETION_REPORT.md) and [U2 start](U2_START.md). Existing implementation reports are historical evidence, not final product acceptance. See [U0 acceptance](U0_ACCEPTANCE.md) for evidence and limitations.
+**Current cycle: U1.5 Client Core Experience Finalization has passed engineering verification and is awaiting product review. It supersedes the older U2-next handoff and conflicting U1 navigation/composition. Stop after U1.5 for product review.** See [U1.5 closeout](U15_COMPLETION_REPORT.md), [worklist](U15_WORKLIST.md), and [visual evidence](../evidence/u15-review/README.md).
+
+The user-directed U0–U10 program replaces the incremental A1/A2/A5 continuation. U0 and U1 engineering acceptance passed. The user inserted U1.5 client-core finalization before U2; U2 is parked pending U1.5 product review. See [U1 completion](U1_COMPLETION_REPORT.md) and [U2 start](U2_START.md). Existing implementation reports are historical evidence, not final product acceptance. See [U0 acceptance](U0_ACCEPTANCE.md) for evidence and limitations.
 
 Baseline: `codex/astra-production` at `44a905b2d5b804441864ec6faddc8e67552f2491`, synchronized with origin on 2026-09-15 (local time). Work remains in the independent Astra worktree. Other versions remain independent.
 
 ## Governing sources
+
+- Current [U1.5 build package](https://docs.google.com/document/d/1UcTlPKHFNAyZXQkLDiHJ1h-4oOdAg6HSVYYX1kHPqC0/edit), [context architecture](https://docs.google.com/document/d/1Q6Gb3EkdQ8iOzxxjctT3TW4N6OYGVYdHXe6nZE-UTUY/edit), and [data dictionary](https://docs.google.com/document/d/1CZ_1wQDwzPIXhEU_zMbHuMwAhWhzHL8nUtky3b1a7wI/edit). Latest U1.5 amendments supersede conflicting older U1 presentation rules.
 
 - [U0–U1 build package](https://docs.google.com/document/d/1u7HJ-pTTvVHFFZP8Pj6ubmG1ZYA8Dj_ExlzIvPhW5eM/edit), read in full.
 - [Unified reconciliation plan](https://docs.google.com/document/d/1JkaRKuychcNcpQFNpJ2YmrJ7cQ0u1VvsJ5_I4gaQ7wE/edit), read in full.

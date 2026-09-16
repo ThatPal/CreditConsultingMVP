@@ -1,3 +1,19 @@
+import { FocusOwner } from '../components/common/FocusOwner';
+import { AnalysisFinding } from '../features/credit-center/AnalysisFinding';
+import { useCreditCenterHubRestore } from '../features/credit-center/hubPosition';
+import { CreditHistory } from '../features/credit-center/CreditHistory';
+import { adaptPublishedProfile, formatReportDate } from '../features/credit-center/data';
+import {
+  BureauScoreGallery,
+  CreditMetricStrip,
+  UtilizationCapacity,
+} from '../features/credit-center/CreditData';
+import { CreditProfile } from '../features/credit-center/CreditProfile';
+import { ReportAccounts } from '../features/credit-center/ReportAccounts';
+import {
+  CreditCenterNavigation,
+  CreditCenterDestinations,
+} from '../features/credit-center/CreditCenterNavigation';
 import { WorkspaceBlockers } from '../components/common/WorkspaceBlockers';
 import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import { CreditNextStep } from '../components/common/CreditNextStep';
@@ -9,7 +25,6 @@ import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
 import { Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
 import InsightsRounded from '@mui/icons-material/InsightsRounded';
 import { designTokens } from '../theme';
-import { useEffect, useRef } from 'react';
 import { Alert, Box, Button, Chip, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -18,7 +33,6 @@ import { PageHeader } from '../components/common/PageHeader';
 import { ReferenceQueryState } from '../components/common/ReferenceQueryState';
 import { DraftPublicationStatus } from '../components/common/ProductFoundation';
 import { PublishedCreditFacts } from '../components/common/PublishedCreditFacts';
-import { CollectionSurface } from '../components/common/CollectionSurface';
 import { creditWorkspaceKeys, type CreditWorkspaceRead } from '../queries/creditWorkspace';
 
 type PublishedReview = {
@@ -62,16 +76,25 @@ export function PublishedCreditCenterPage({
     queryFn: () => apiRequest<CreditCenterResponse>('/api/v1/client/credit-profile'),
     retry: false,
   });
-  if (query.isLoading) return <ReferenceQueryState title="Credit Center" loading />;
+  if (query.isLoading)
+    return (
+      <Stack spacing={2}>
+        <CreditCenterNavigation area={view} />
+        <ReferenceQueryState title="Credit Center" loading />
+      </Stack>
+    );
   if (query.isError)
     return (
-      <ReferenceQueryState
-        title="Credit Center"
-        error={query.error}
-        onRetry={() => void query.refetch()}
-      />
+      <Stack spacing={2}>
+        <CreditCenterNavigation area={view} />
+        <ReferenceQueryState
+          title="Credit Center"
+          error={query.error}
+          onRetry={() => void query.refetch()}
+        />
+      </Stack>
     );
-  return <CreditCenterContent data={query.data!} view={view} basePath="/app/credit-center" />;
+  return <CreditCenterContent data={query.data!} view={view} />;
 }
 
 export function ConsultantClientCreditCenterPage() {
@@ -91,52 +114,27 @@ export function ConsultantClientCreditCenterPage() {
         This published client Credit Center is unavailable or outside your scope.
       </Alert>
     );
-  return (
-    <CreditCenterContent
-      data={query.data!}
-      view="overview"
-      basePath={`/crm/clients/${clientId}/credit-center`}
-      consultant
-    />
-  );
+  return <CreditCenterContent data={query.data!} view="overview" consultant />;
 }
 
 function CreditCenterContent({
   data,
   view,
-  basePath,
   consultant = false,
 }: {
   data: CreditCenterResponse;
   view: 'overview' | 'profile' | 'report' | 'analysis' | 'history';
-  basePath: string;
   consultant?: boolean;
 }) {
-  const sections = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const container = sections.current;
-    const selected = container?.querySelector('[aria-current="page"]');
-    if (!container || !selected) return;
-    const viewport = container.getBoundingClientRect();
-    const item = selected.getBoundingClientRect();
-    if (item.right > viewport.right) container.scrollLeft += item.right - viewport.right;
-    else if (item.left < viewport.left) container.scrollLeft += item.left - viewport.left;
-  }, [view]);
+  useCreditCenterHubRestore(!consultant && view === 'overview');
   const current = data.current;
   const projection = current?.projection;
   const profile = projection?.profile ?? {};
+  const experience = adaptPublishedProfile(profile, current?.report?.reportDate ?? null);
   const publishedDate = current ? new Date(current.publishedAt).toLocaleDateString() : undefined;
-  const navigation = consultant
-    ? []
-    : ([
-        ['overview', 'Overview'],
-        ['profile', 'Profile'],
-        ['report', 'Report'],
-        ['analysis', 'Analysis'],
-        ['history', 'History'],
-      ] as const);
   return (
     <Stack spacing={3}>
+      {!consultant && <CreditCenterNavigation area={view} />}
       <PageHeader
         eyebrow={consultant ? 'CRM · Published Credit Center' : 'Credit Center'}
         title={
@@ -144,75 +142,36 @@ function CreditCenterContent({
             ? `${data.client.firstName} ${data.client.lastName}`
             : {
                 overview: 'Your credit, in context',
-                profile: 'Your Credit Profile',
-                report: 'Your source report',
-                analysis: 'Your credit analysis',
-                history: 'Your review history',
+                profile: 'Credit Profile',
+                report: 'Report Details',
+                analysis: 'Analysis',
+                history: 'Credit over time',
               }[view]
         }
-        description="Explore your published facts, understand your consultant’s findings, and follow your Plan."
+        description={
+          {
+            overview:
+              'Your credit picture, what it means, how it has changed, and what to do next.',
+            profile: 'Understand the facts and calculations in your reviewed credit picture.',
+            report:
+              'Browse the evidence behind your Credit Profile and access the original report.',
+            analysis: 'Read what your consultant identified, why it matters, and what comes next.',
+            history:
+              'Compare what was known at each publication without losing the source context.',
+          }[view]
+        }
       />
+      {current && (
+        <Typography variant="body2" color="text.secondary">
+          {current.report?.reportSource ?? 'Published Credit Review'} · Report{' '}
+          {current.report?.reportDate
+            ? formatReportDate(current.report.reportDate)
+            : 'date unavailable'}{' '}
+          · Published {publishedDate}
+        </Typography>
+      )}
       {current && <ProfileCurrentnessNotice profile={data.workspace?.profile} />}
       {!consultant && <WorkspaceBlockers blockers={data.workspace?.blockers} />}
-      {navigation.length > 0 && (
-        <Stack
-          direction="row"
-          useFlexGap
-          sx={{ flexWrap: 'wrap', gap: 1 }}
-          component="nav"
-          aria-label="Credit Center sections"
-        >
-          <Stack
-            ref={sections}
-            direction="row"
-            sx={{
-              overflowX: 'auto',
-              maxWidth: '100%',
-              flexShrink: 1,
-              p: 0.5,
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: '16px',
-              bgcolor: 'rgba(4,13,25,.42)',
-            }}
-          >
-            {navigation.map(([key, label]) => (
-              <Button
-                key={key}
-                component={Link}
-                to={key === 'overview' ? basePath : `${basePath}/${key}`}
-                variant="text"
-                aria-current={view === key ? 'page' : undefined}
-                sx={{
-                  borderRadius: '12px',
-                  flexShrink: 0,
-                  color: view === key ? '#092820' : 'text.secondary',
-                  background: view === key ? designTokens.gradient.brand : 'transparent',
-                  '&:hover': {
-                    background: view === key ? designTokens.gradient.brand : 'action.hover',
-                  },
-                }}
-              >
-                {label}
-              </Button>
-            ))}
-          </Stack>
-          <Button component={Link} to="/app/plan" variant="outlined">
-            Plan
-          </Button>
-          <Button
-            component={Link}
-            to={
-              current
-                ? `/app/support?new=1&category=CREDIT_REVIEW&subject=Question%20about%20my%20Credit%20Review&contextType=CREDIT_REVIEW&contextId=${encodeURIComponent(current.reviewId)}`
-                : '/app/support?new=1&category=CREDIT_REVIEW'
-            }
-            variant="text"
-          >
-            {current ? 'Ask about this review' : 'Ask about credit reviews'}
-          </Button>
-        </Stack>
-      )}
       {!current && (
         <Stack
           spacing={2}
@@ -251,7 +210,7 @@ function CreditCenterContent({
           )}
         </Stack>
       )}
-      {current && (view === 'overview' || consultant) && (
+      {current && consultant && (
         <>
           <Box
             sx={{
@@ -342,33 +301,134 @@ function CreditCenterContent({
           )}
         </>
       )}
+      {current && !consultant && view === 'overview' && (
+        <>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', lg: 'minmax(0,7fr) minmax(0,5fr)' },
+              gap: 2,
+            }}
+          >
+            <BureauScoreGallery scores={experience.scores} />
+            <UtilizationCapacity data={experience} />
+          </Box>
+          <CreditMetricStrip data={experience} />
+          <Box component="section">
+            <Typography variant="h2">What stands out</Typography>
+            <Typography color="text.secondary" sx={{ mt: 1 }}>
+              Published consultant observations
+            </Typography>
+            {projection?.findings?.length ? (
+              projection.findings.slice(0, 3).map((f) => (
+                <Box key={f.code} sx={{ py: 2, borderBottom: 1, borderColor: 'divider' }}>
+                  <Typography variant="h4" component="h3">
+                    {f.title}
+                  </Typography>
+                  <Typography sx={{ mt: 1 }}>{f.summary}</Typography>
+                  <Button
+                    component={Link}
+                    to={'/app/credit-center/analysis#finding-' + encodeURIComponent(f.code)}
+                  >
+                    Read this finding
+                  </Button>
+                </Box>
+              ))
+            ) : (
+              <Typography sx={{ mt: 2 }}>
+                No individual findings were included in this publication.
+              </Typography>
+            )}
+          </Box>
+          <Box
+            component="section"
+            aria-label="Published assessment"
+            sx={{ borderLeft: 3, borderColor: 'primary.main', pl: 3, py: 1 }}
+          >
+            <Typography variant="overline">Your consultant’s assessment</Typography>
+            <Typography variant="h2">Published assessment</Typography>
+            <Typography sx={{ mt: 2, maxWidth: 800 }}>
+              {projection?.analysisSummary || 'No published summary was supplied.'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Published {publishedDate}
+            </Typography>
+            <Box>
+              <Button component={Link} to="/app/credit-center/analysis">
+                Read full Analysis
+              </Button>
+            </Box>
+          </Box>
+          {data.workspace && <CreditNextStep workspace={data.workspace} />}
+          <Button component={Link} to="/app/credit-center/plan" sx={{ alignSelf: 'flex-start' }}>
+            View Plan in Credit Center
+          </Button>
+        </>
+      )}
       {!current && !consultant && data.workspace && view === 'overview' && (
         <CreditNextStep workspace={data.workspace} />
       )}
-      {current && view === 'profile' && (
-        <PublishedCreditFacts
-          profile={profile}
-          reportDate={current.report?.reportDate ?? null}
-          publishedAt={current.publishedAt}
-        />
+      {current && view === 'profile' && <CreditProfile data={experience} />}
+      {current && view === 'report' && (
+        <Stack spacing={4}>
+          <Typography color="text.secondary">
+            Browse the evidence behind your Credit Profile. The original report remains the source
+            record.
+          </Typography>
+          <BureauScoreGallery scores={experience.scores} />
+          <ReportAccounts accounts={experience.accounts} />
+          <Box id="inquiries">
+            <Typography variant="h3" component="h2">
+              Inquiries & negative information
+            </Typography>
+            <Typography color="text.secondary">
+              Individual entries, bureau details and payment-history records were not included in
+              this published digest. They remain available in the original report where supplied.
+            </Typography>
+          </Box>
+          <CreditSourceReport report={current.report} />
+          <Box>
+            <Button component={Link} to="/app/credit-center/profile">
+              Understand your Credit Profile
+            </Button>
+            <Button component={Link} to="/app/credit-center/analysis">
+              Read your consultant’s Analysis
+            </Button>
+          </Box>
+        </Stack>
       )}
-      {current && view === 'report' && <CreditSourceReport report={current.report} />}
       {current && view === 'analysis' && (
-        <Stack spacing={2}>
+        <Stack
+          spacing={3}
+          sx={{
+            p: { xs: 2.5, md: 5 },
+            borderRadius: 2,
+            bgcolor: '#f2f4ef',
+            color: '#1a302b',
+            '& .MuiTypography-root': { color: 'inherit' },
+            '& .MuiButton-root': { color: '#185c4a' },
+            '& .MuiButton-root:focus-visible': { outlineColor: '#185c4a !important' },
+            '& .MuiButton-outlined': { borderColor: '#64756d' },
+            '& .MuiChip-root': { color: '#1a302b', bgcolor: '#dee7df' },
+          }}
+        >
           <Box
             component="section"
             aria-label="Published recommendation"
             sx={{
-              p: { xs: 3, md: 4 },
-              borderRadius: '24px',
-              background: designTokens.gradient.focus,
-              border: 1,
+              p: 0,
+              borderRadius: 0,
+              background: 'transparent',
+              border: 0,
               borderColor: 'divider',
             }}
           >
-            <InsightsRounded sx={{ color: 'primary.main', mb: 2 }} />
+            <InsightsRounded sx={{ color: '#185c4a', mb: 2 }} />
             <Typography variant="h2" gutterBottom>
               Consultant recommendation
+            </Typography>
+            <Typography sx={{ mb: 2 }}>
+              {projection?.analysisSummary || 'No consultant summary was included.'}
             </Typography>
             <Typography>
               {projection?.recommendation?.explanation || 'No published explanation was supplied.'}
@@ -380,7 +440,7 @@ function CreditCenterContent({
                   pl: 3,
                   my: 2,
                   '& li': { pl: 1, mb: 1, lineHeight: 1.7 },
-                  '& li::marker': { color: 'primary.main' },
+                  '& li::marker': { color: '#185c4a' },
                 }}
               >
                 {projection.recommendation.reasons.map((reason, index) => (
@@ -391,53 +451,91 @@ function CreditCenterContent({
               </Box>
             )}
             <DraftPublicationStatus state="published" owner="Your consultant" />
-            <Button component={Link} to="/app/plan" variant="contained">
+            <Button component={Link} to="/app/credit-center/plan" variant="outlined">
               Open Credit Plan
             </Button>
           </Box>
-          <CollectionSurface
-            title={`Published consultant findings · ${projection?.findings?.length ?? 0}`}
-            appearance="plain"
-            mode="bounded"
-          >
+          <Box component="section" aria-label="Published consultant findings">
+            <Typography variant="h3" component="h2">
+              Published consultant findings · {projection?.findings?.length ?? 0}
+            </Typography>
             {!projection?.findings?.length && (
               <Typography color="text.secondary" sx={{ py: 2 }}>
                 No individual findings were included in this publication.
               </Typography>
             )}
             {projection?.findings?.map((finding) => (
-              <Box
-                key={finding.code}
-                sx={{
-                  py: 3,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                  display: 'grid',
-                  gridTemplateColumns: '40px minmax(0,1fr)',
-                  gap: 2,
-                }}
-              >
-                <ArticleOutlined aria-hidden="true" sx={{ color: 'primary.main', mt: 0.5 }} />
-                <Box>
-                  <Stack
-                    direction="row"
-                    sx={{ justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
-                  >
-                    <Typography variant="h3">{finding.title}</Typography>
-                    <Chip
-                      size="small"
-                      label={finding.severity.replaceAll('_', ' ').toLowerCase()}
-                    />
-                  </Stack>
-                  <Typography sx={{ mt: 1 }}>{finding.summary}</Typography>
-                </Box>
-              </Box>
+              <AnalysisFinding key={finding.code} finding={finding} />
             ))}
-          </CollectionSurface>
+          </Box>
         </Stack>
       )}
+      {current && !consultant && view === 'analysis' && data.workspace && (
+        <Box component="section" sx={{ borderTop: 1, borderColor: 'divider', pt: 3 }}>
+          <Typography variant="h3" component="h2">
+            What happens next
+          </Typography>
+          <FocusOwner owner={data.workspace.currentFocus.owner} />
+          <Typography sx={{ mt: 2 }}>{data.workspace.currentFocus.title}</Typography>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            {data.workspace.currentFocus.detail}
+          </Typography>
+          <Button component={Link} to={data.workspace.currentFocus.action}>
+            {data.workspace.currentFocus.actionLabel}
+          </Button>
+        </Box>
+      )}
+      {!consultant && view === 'overview' && (
+        <>
+          <CreditCenterDestinations />
+          <Box component="section" sx={{ borderTop: 1, borderColor: 'divider', pt: 3 }}>
+            <Typography variant="h3" component="h2">
+              From evidence to your next step
+            </Typography>
+            <Stack direction="row" sx={{ flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+              {[
+                ['report', 'Report facts'],
+                ['profile', 'Credit Profile'],
+                ['analysis', 'Analysis'],
+                ['plan', 'Plan'],
+              ].map(([area, label], index) => (
+                <Box key={area}>
+                  <Button component={Link} to={'/app/credit-center/' + area}>
+                    {label}
+                  </Button>
+                  {index < 3 && <span aria-hidden="true">→</span>}
+                </Box>
+              ))}
+            </Stack>
+            <Typography color="text.secondary">
+              Explore the evidence, understand your consultant’s interpretation, and continue your
+              published work.
+            </Typography>
+            <Button component={Link} to="/app/journey">
+              View goal & Journey
+            </Button>
+          </Box>
+        </>
+      )}
       {current && view === 'history' && (
-        <CreditReviewHistory history={data.history} latestId={current.id} />
+        <Stack spacing={4}>
+          <CreditHistory snapshots={data.history} />
+          <CreditReviewHistory history={data.history} latestId={current.id} />
+        </Stack>
+      )}{' '}
+      {!consultant && (
+        <Button
+          component={Link}
+          sx={{ alignSelf: 'flex-start' }}
+          to={
+            current
+              ? '/app/support?new=1&category=CREDIT_REVIEW&subject=Question%20about%20my%20Credit%20Review&contextType=CREDIT_REVIEW&contextId=' +
+                encodeURIComponent(current.reviewId)
+              : '/app/support?new=1&category=CREDIT_REVIEW'
+          }
+        >
+          {current ? 'Ask about this review' : 'Ask about credit reviews'}
+        </Button>
       )}
     </Stack>
   );
@@ -469,6 +567,7 @@ export function CreditReviewHistory({
         {history.map((item) => (
           <Accordion
             key={item.id}
+            id={'snapshot-' + item.id}
             slotProps={{ transition: { mountOnEnter: true, unmountOnExit: true } }}
             disableGutters
             elevation={0}
@@ -526,12 +625,21 @@ export function CreditReviewHistory({
                     : 'Report source not supplied'}
                   . This saved publication is read-only.
                 </Typography>
-                <PublishedCreditFacts
-                  embedded
-                  profile={item.projection.profile ?? {}}
-                  reportDate={item.report?.reportDate ?? null}
-                  publishedAt={item.publishedAt}
+                <BureauScoreGallery
+                  scores={
+                    adaptPublishedProfile(
+                      item.projection.profile ?? {},
+                      item.report?.reportDate ?? null,
+                    ).scores
+                  }
                 />
+                <CreditMetricStrip
+                  data={adaptPublishedProfile(
+                    item.projection.profile ?? {},
+                    item.report?.reportDate ?? null,
+                  )}
+                />
+                <CreditSourceReport report={item.report} />
               </Stack>
             </AccordionDetails>
           </Accordion>

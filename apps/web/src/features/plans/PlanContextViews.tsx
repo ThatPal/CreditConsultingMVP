@@ -1,9 +1,6 @@
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
-import SpaRounded from '@mui/icons-material/SpaRounded';
 import { Box, Button, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { PlanRoadmap } from './PlanRoadmap';
-import type { ClientPlanItem } from '../../pages/PlanPages';
 export type PlanDecisionRead = {
   id: string;
   title: string;
@@ -13,38 +10,6 @@ export type PlanDecisionRead = {
   href: string;
   sourceLabel: string;
 };
-export function PlanViews({ view }: { view: string }) {
-  return (
-    <Stack
-      component="nav"
-      aria-label="Credit Plan views"
-      direction="row"
-      sx={{ gap: 1, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider' }}
-    >
-      {[
-        ['overview', 'Overview'],
-        ['actions', 'Actions'],
-        ['guidance', 'Guidance'],
-        ['decisions', 'Decisions'],
-        ['nurture', 'Nurture'],
-      ].map(([key, label]) => (
-        <Button
-          key={key}
-          component={Link}
-          to={key === 'overview' ? '/app/plan' : '/app/plan?view=' + key}
-          aria-current={view === key ? 'page' : undefined}
-          sx={{
-            borderRadius: 0,
-            borderBottom: 2,
-            borderColor: view === key ? 'primary.main' : 'transparent',
-          }}
-        >
-          {label}
-        </Button>
-      ))}
-    </Stack>
-  );
-}
 export function PlanDecisions({ decisions }: { decisions: PlanDecisionRead[] }) {
   return (
     <Stack component="section" aria-label="Published decisions" spacing={3}>
@@ -87,28 +52,6 @@ export function PlanDecisions({ decisions }: { decisions: PlanDecisionRead[] }) 
         <Typography variant="caption" color="text.secondary">
           Showing up to 20 published Review recommendations and 20 coordination decisions. Source
           pages retain their own history.
-        </Typography>
-      )}
-    </Stack>
-  );
-}
-export function PlanNurture({ active, items }: { active: boolean; items: ClientPlanItem[] }) {
-  return (
-    <Stack component="section" aria-label="Nurture guidance" spacing={3}>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <SpaRounded color="primary" />
-        <Typography variant="h2">Your longer-term guidance</Typography>
-      </Stack>
-      <Typography color="text.secondary">
-        Nurture is the ongoing work and timing your consultant has published to support your
-        longer-term credit goals.
-      </Typography>
-      {active ? (
-        <PlanRoadmap items={items} />
-      ) : (
-        <Typography>
-          No Nurture Plan is currently published. Continue with your current Plan; your consultant
-          will publish longer-term guidance when it is appropriate.
         </Typography>
       )}
     </Stack>

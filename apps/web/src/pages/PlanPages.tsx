@@ -1,9 +1,7 @@
-import {
-  PlanViews,
-  PlanDecisions,
-  PlanNurture,
-  type PlanDecisionRead,
-} from '../features/plans/PlanContextViews';
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import { Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import { CreditCenterNavigation } from '../features/credit-center/CreditCenterNavigation';
+import { PlanDecisions, type PlanDecisionRead } from '../features/plans/PlanContextViews';
 import { WorkspaceBlockers } from '../components/common/WorkspaceBlockers';
 import { FocusOwner } from '../components/common/FocusOwner';
 import { planReadIdentity } from '../features/plans/planReadIdentity';
@@ -108,31 +106,36 @@ export function ClientPlanPage() {
   const data = holding && snapshot ? snapshot : query.data;
   const updateWaiting =
     holding && Boolean(snapshot) && planReadIdentity(query.data) !== planReadIdentity(snapshot);
-  if (query.isLoading && !data) return <ReferenceQueryState title="Your Credit Plan" loading />;
+  if (query.isLoading && !data)
+    return (
+      <Stack spacing={2}>
+        <CreditCenterNavigation area="plan" />
+        <ReferenceQueryState title="Your Credit Plan" loading />
+      </Stack>
+    );
   if (query.isError && !holding)
     return (
-      <ReferenceQueryState
-        title="Your Credit Plan"
-        error={query.error}
-        onRetry={() => void query.refetch()}
-      />
+      <Stack spacing={2}>
+        <CreditCenterNavigation area="plan" />
+        <ReferenceQueryState
+          title="Your Credit Plan"
+          error={query.error}
+          onRetry={() => void query.refetch()}
+        />
+      </Stack>
     );
   if (!data?.plan)
     return (
       <Stack spacing={2}>
+        <CreditCenterNavigation area="plan" />
         <PageHeader
           eyebrow="Plan"
           title="Your next steps"
           description="An approved Plan will appear here when it is ready."
         />
-        <PlanViews view={view} />
-        {view === 'decisions' ? (
-          <PlanDecisions decisions={data?.decisions ?? []} />
-        ) : view === 'nurture' ? (
-          <PlanNurture active={false} items={[]} />
-        ) : (
-          <Alert severity="info">No approved Plan is available yet.</Alert>
-        )}
+        <Alert severity="info">
+          No approved Plan is available yet. Your consultant will publish your next steps here.
+        </Alert>
         {data?.workspace && <CreditNextStep workspace={data.workspace} />}
         <PlanDraftLibrary />
       </Stack>
@@ -143,9 +146,20 @@ export function ClientPlanPage() {
   const canAct = summary?.canRespond === true;
 
   const allItems = plan.version.items.filter((item) => item.status !== 'CANCELLED');
-  const visibleItems = allItems.filter((item) =>
-    view === 'actions' ? item.type === 'ACTION' : item.type !== 'ACTION',
-  );
+  const complete = (item: ClientPlanItem) =>
+    ['COMPLETED', 'WAIVED', 'SUPERSEDED'].includes(item.status);
+  const activeItems = allItems.filter((item) => !complete(item));
+  const completedItems = allItems.filter(complete);
+  const selectedId = search.get('item');
+  // Old taxonomy bookmarks still reveal their work; the primary experience is one roadmap.
+  const visibleItems = selectedId
+    ? allItems.filter((item) => item.id === selectedId)
+    : ['actions', 'guidance'].includes(view)
+      ? allItems.filter((item) =>
+          view === 'actions' ? item.type === 'ACTION' : item.type !== 'ACTION',
+        )
+      : [];
+
   return (
     <ResponseWritePause.Provider value={updateWaiting || query.isError}>
       <Stack spacing={3}>
@@ -222,13 +236,18 @@ export function ClientPlanPage() {
             </Button>
           </DialogActions>
         </Dialog>
+        <CreditCenterNavigation area="plan" />
         <PageHeader
-          eyebrow="Your plan"
+          eyebrow="Credit Center · Plan"
           title={plan.title}
           description="Your consultant’s guidance, your next actions, and the work you’ve completed."
           actions={<PlanDraftLibrary />}
         />
-        <PlanViews view={view} />
+        {plan.purpose === 'NURTURE' && (
+          <Typography variant="overline" color="primary">
+            Maintain & Prepare
+          </Typography>
+        )}
         <ProfileCurrentnessNotice profile={data.workspace?.profile} />
         <WorkspaceBlockers blockers={data.workspace?.blockers} />
         {plan.version.staleAt && (
@@ -296,7 +315,7 @@ export function ClientPlanPage() {
                 owner="Your consultant"
               />
             </Stack>
-            {view === 'overview' && summary?.progressPercent != null && (
+            {summary?.progressPercent != null && (
               <ActionProgressDisplay percent={summary.progressPercent} />
             )}
           </Stack>
@@ -309,14 +328,24 @@ export function ClientPlanPage() {
             userMustAct={false}
           />
         )}
-        {view === 'decisions' ? (
-          <PlanDecisions decisions={data.decisions ?? []} />
-        ) : view === 'nurture' ? (
-          <PlanNurture active={plan.purpose === 'NURTURE'} items={allItems} />
-        ) : view === 'overview' ? (
-          <PlanRoadmap items={allItems} />
-        ) : (
+        <PlanRoadmap items={activeItems} />
+        {!!completedItems.length && (
+          <Accordion
+            defaultExpanded={Boolean(selectedId && completedItems.some((i) => i.id === selectedId))}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreRounded />}>
+              <Typography>Completed & history · {completedItems.length}</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <PlanRoadmap items={completedItems} />
+            </AccordionDetails>
+          </Accordion>
+        )}
+        {visibleItems.length > 0 || selectedId ? (
           <>
+            <Button component={Link} to="/app/credit-center/plan" sx={{ alignSelf: 'flex-start' }}>
+              Return to roadmap
+            </Button>
             <PlanStepTarget key={view} itemId={search.get('item')} />
             {search.get('item') && !visibleItems.some((item) => item.id === search.get('item')) && (
               <Alert severity="info">
@@ -434,7 +463,56 @@ export function ClientPlanPage() {
               ))}
             </CollectionSurface>
           </>
-        )}
+        ) : null}
+        <Box component="section" sx={{ borderTop: 1, borderColor: 'divider', pt: 3 }}>
+          <Typography variant="h3" component="h2">
+            Why this is in your Plan
+          </Typography>
+          <Typography color="text.secondary">
+            Explore your published assessment and the goal you are working toward.
+          </Typography>
+          <Button component={Link} to="/app/credit-center/analysis">
+            Read your Analysis
+          </Button>
+          <Button component={Link} to="/app/journey">
+            View goal & Journey
+          </Button>
+          {!!data.decisions?.length && (
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreRounded />}>
+                <Typography>Published decision context</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography color="text.secondary">
+                  These publications provide context. A relationship to a particular step has not
+                  been supplied.
+                </Typography>
+                <PlanDecisions decisions={data.decisions} />
+              </AccordionDetails>
+            </Accordion>
+          )}
+        </Box>
+        <Box component="section">
+          <Typography variant="h3" component="h2">
+            What happens next
+          </Typography>
+          <Typography color="text.secondary">
+            {data.workspace?.currentFocus.detail ??
+              'Your consultant will confirm the next step as your Plan progresses.'}
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Upcoming steps are conditional. Their prerequisites determine when they become
+            available.
+          </Typography>
+          {activeItems
+            .filter((item) => item.status === 'LOCKED')
+            .slice(0, 3)
+            .map((item) => (
+              <Typography key={item.id} sx={{ mt: 1 }}>
+                Up next · {item.title}
+              </Typography>
+            ))}
+        </Box>
       </Stack>
     </ResponseWritePause.Provider>
   );

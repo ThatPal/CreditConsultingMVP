@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { CreditReviewHistory } from './PublishedCreditCenterPages';
@@ -17,17 +18,21 @@ const latest = {
   projection: { analysisSummary: 'Later assessment', profile: { experianScore: 720 } },
 };
 test('latest publication comes from its identity, and expanded facts stay with their own snapshot', async () => {
-  render(<CreditReviewHistory history={[earlier, latest]} latestId="new" />);
+  render(
+    <MemoryRouter>
+      <CreditReviewHistory history={[earlier, latest]} latestId="new" />
+    </MemoryRouter>,
+  );
   expect(screen.queryByText('Earlier assessment')).not.toBeInTheDocument();
   const old = screen.getByRole('button', { name: /Earlier published Credit Review/ });
   fireEvent.click(old);
   expect(await screen.findByText('Earlier assessment')).toBeVisible();
-  expect(screen.getByRole('img', { name: /Experian score 610/ })).toBeVisible();
-  expect(screen.queryByRole('img', { name: /Experian score 720/ })).not.toBeInTheDocument();
+  expect(screen.getByText('610')).toBeVisible();
+  expect(screen.queryByText('720')).not.toBeInTheDocument();
   const next = screen.getByRole('button', { name: /Latest published Credit Review/ });
   fireEvent.click(next);
   expect(await screen.findByText('Later assessment')).toBeVisible();
-  expect(screen.getByRole('img', { name: /Experian score 720/ })).toBeVisible();
+  expect(screen.getByText('720')).toBeVisible();
   expect(within(old).queryByText('Current')).not.toBeInTheDocument();
 });
 test('empty history has an explicit state', () => {

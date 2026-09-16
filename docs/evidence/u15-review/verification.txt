@@ -1,0 +1,19 @@
+U1.5 — 2026-09-16 — isolated Astra
+
+Full web regression: 396 passed, 77 files, 817.18s.
+Final focused: 28 passed, 4 files, 60.29s (overlaps full suite; two additional Analysis tests).
+API baseline: 139 passed, 15 files; API/domain unchanged.
+All five packages build; root lint, final changed-file lint, TypeScript, formatting and diff checks pass.
+Actual browser: 7 routes x 2 widths passed.
+Reference projection matrix: 60 scenarios passed.
+Rich component references: 6 compositions x 2 widths plus account detail/search/model selection passed.
+Mobile hub: Profile and Plan scroll restored; direct History back passed.
+U1 timed/failed-read recovery scripts passed.
+
+Commands:
+node apps/web/node_modules/vitest/vitest.mjs run --root apps/web --maxWorkers=1 --testTimeout=15000
+pnpm build
+node node_modules/eslint/bin/eslint.js .
+node node_modules/typescript/bin/tsc -b apps/web --pretty false
+
+See the completion report for earlier failed runs and corrections, source limitations and future owners.

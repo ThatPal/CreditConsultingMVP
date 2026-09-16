@@ -452,6 +452,7 @@ test('roadmap and execution views share canonical items without turning guidance
             nextClientItem: null,
           },
           plan: {
+            purpose: 'NURTURE',
             id: 'plan',
             title: 'Coordinated views',
             status: 'ACTIVE',
@@ -491,23 +492,30 @@ test('roadmap and execution views share canonical items without turning guidance
       </QueryClientProvider>
     </ThemeProvider>,
   );
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: vi.fn(),
+  });
   await screen.findByRole('heading', { name: 'Your roadmap' });
   expect(screen.getByRole('link', { name: 'Open step: Report progress' })).toHaveAttribute(
     'href',
-    '/app/plan?view=actions&item=action',
+    '/app/credit-center/plan?item=action',
   );
   expect(screen.getByRole('link', { name: 'Open step: Read this guidance' })).toHaveAttribute(
     'href',
-    '/app/plan?view=guidance&item=guide',
+    '/app/credit-center/plan?item=guide',
   );
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('link', { name: 'Actions' }));
+  expect(screen.getByText('Maintain & Prepare')).toBeInTheDocument();
+  expect(screen.queryByRole('navigation', { name: 'Credit Plan views' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('link', { name: 'Open step: Report progress' }));
   await screen.findByRole('textbox', { name: 'Optional note for your consultant' });
-  expect(screen.queryByText('Read this guidance')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('link', { name: 'Guidance' }));
-  await screen.findByText('Read this guidance');
-  expect(screen.getByText('Consultant checkpoint')).toBeInTheDocument();
-  expect(screen.queryByText('Report progress')).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Open step: Read this guidance' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('link', { name: 'Open step: Read this guidance' }));
+  expect(await screen.findByRole('group', { name: 'Read this guidance' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'Open step: Consultant checkpoint' }),
+  ).toBeInTheDocument();
 });
 
 test.each([
@@ -607,5 +615,5 @@ test('Plan without a publication retains the shared next step', async () => {
     'href',
     '/app/major-readiness/coordination?caseId=case',
   );
-  expect(screen.getByText('No approved Plan is available yet.')).toBeInTheDocument();
+  expect(screen.getByText(/No approved Plan is available yet/)).toBeInTheDocument();
 });

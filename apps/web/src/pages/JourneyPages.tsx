@@ -1,3 +1,4 @@
+import { HomeExperience } from '../features/credit-center/HomeExperience';
 import { WorkspaceBlockers } from '../components/common/WorkspaceBlockers';
 import type { CreditWorkspaceRead } from '../queries/creditWorkspace';
 import { LoadingSkeleton } from '../components/common/Feedback';
@@ -469,31 +470,7 @@ export function ClientHomePage() {
           </Stack>
         </Alert>
       )}
-      {query.data && <JourneySummary data={query.data} showHistory={false} />}
-      {query.data && (
-        <SectionCard>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            sx={{ alignItems: { sm: 'center' } }}
-          >
-            <Stack sx={{ flex: 1 }}>
-              <Typography variant="h3">Journey timeline</Typography>
-              <Typography color="text.secondary">
-                Review your active cycle, completed cycles, and preparation history.
-              </Typography>
-            </Stack>
-            <Button
-              component={Link}
-              to="/app/journey"
-              variant="outlined"
-              endIcon={<HistoryRounded />}
-            >
-              Review your journey timeline
-            </Button>
-          </Stack>
-        </SectionCard>
-      )}
+      {query.data && <HomeExperience data={query.data} />}
     </Stack>
   );
 }

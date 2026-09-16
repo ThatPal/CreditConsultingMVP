@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { expect, test } from 'vitest';
-import { PlanDecisions, PlanNurture } from './PlanContextViews';
+import { PlanDecisions } from './PlanContextViews';
 test('published decisions retain their source and historical qualification', () => {
   render(
     <MemoryRouter>
@@ -27,8 +27,10 @@ test('published decisions retain their source and historical qualification', () 
   );
   expect(screen.getByText('Published instruction')).toBeInTheDocument();
 });
-test('no Nurture Plan does not create fake work', () => {
-  render(<PlanNurture active={false} items={[]} />);
-  expect(screen.getByText(/No Nurture Plan is currently published/)).toBeInTheDocument();
+test('no published decision context does not invent a recommendation', () => {
+  render(<PlanDecisions decisions={[]} />);
+  expect(
+    screen.getByText(/No published recommendations or coordination decisions/),
+  ).toBeInTheDocument();
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
 });

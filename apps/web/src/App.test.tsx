@@ -76,15 +76,10 @@ describe('application shells', () => {
       within(navigation).queryByRole('link', { name: 'Application Rounds' }),
     ).not.toBeInTheDocument();
     fireEvent.click(within(navigation).getByRole('button', { name: 'More' }));
-    expect(
-      within(navigation).getByRole('link', { name: 'Application Rounds' }),
-    ).toBeInTheDocument();
+    expect(within(navigation).getByRole('link', { name: 'Documents' })).toBeInTheDocument();
     expect(within(navigation).getByText('More')).toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Security' })).not.toBeInTheDocument();
-    expect(within(navigation).getByRole('link', { name: 'Credit Plan' })).toHaveAttribute(
-      'href',
-      '/app/plan',
-    );
+    expect(within(navigation).queryByRole('link', { name: 'Credit Plan' })).not.toBeInTheDocument();
     expect(within(navigation).queryByText('Reviews')).not.toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Home' })).toHaveAttribute(
       'aria-current',
@@ -121,17 +116,17 @@ describe('application shells', () => {
       navigationFor(client, 'client')
         .filter((item) => item.section === 'primary')
         .map((item) => item.label),
-    ).toEqual(['Home', 'Journey', 'Credit Center', 'Credit Plan', 'Cards', 'Services', 'Support']);
-    expect(activeNavigationId(navigationFor(client, 'client'), '/app/plan')).toBe('portal-plan');
+    ).toEqual(['Home', 'Journey', 'Credit Center', 'Cards', 'Services', 'Support']);
+    expect(activeNavigationId(navigationFor(client, 'client'), '/app/plan')).toBe('portal-credit');
     expect(activeNavigationId(navigationFor(client, 'client'), '/app/plan/responses')).toBe(
-      'portal-plan',
+      'portal-credit',
     );
     expect(activeNavigationId(navigationFor(client, 'client'), '/app/cards/example')).toBe(
       'portal-cards',
     );
     expect(
       activeNavigationId(navigationFor(client, 'client'), '/app/rounds/example/strategy'),
-    ).toBe('portal-rounds');
+    ).toBe('portal-services');
     expect(activeNavigationId(navigationFor(admin, 'admin'), '/admin/integrations/stripe')).toBe(
       'admin-payments',
     );

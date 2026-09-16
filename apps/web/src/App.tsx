@@ -293,6 +293,7 @@ export function App() {
           <Route index element={<ClientHomePage />} />
           <Route path="journey" element={<ClientJourneyPage />} />
           <Route path="plan" element={<ClientPlanPage />} />
+          <Route path="credit-center/plan" element={<ClientPlanPage />} />
           <Route path="credit-center" element={<PublishedCreditCenterPage view="overview" />} />
           <Route
             path="credit-center/profile"

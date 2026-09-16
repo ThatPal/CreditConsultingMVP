@@ -130,7 +130,7 @@ describe('Sprint 8.4 published Credit Center', () => {
     expect(screen.getByRole('img', { name: /credit utilization 24 percent/i })).toBeInTheDocument();
     expect(screen.getByText('Equifax')).toBeInTheDocument();
     expect(screen.getByText('TransUnion')).toBeInTheDocument();
-    expect(screen.getAllByText('Not reported').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Not available in this report').length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText(/approval probability|score improvement/i)).not.toBeInTheDocument();
   });
 });

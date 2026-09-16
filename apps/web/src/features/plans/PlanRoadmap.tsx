@@ -9,9 +9,8 @@ import type { ClientPlanItem } from '../../pages/PlanPages';
 import { StatusChip } from '../../components/common/StatusChip';
 import { presentStatus } from '../../components/common/statusVocabulary';
 export const planStepUrl = (item: Pick<ClientPlanItem, 'id' | 'type'>) =>
-  '/app/plan?' +
+  '/app/credit-center/plan?' +
   new URLSearchParams({
-    view: item.type === 'ACTION' ? 'actions' : 'guidance',
     item: item.id,
   }).toString();
 export function PlanRoadmap({ items }: { items: ClientPlanItem[] }) {

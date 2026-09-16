@@ -55,7 +55,7 @@ function setup() {
   const router = createMemoryRouter(
     [
       {
-        path: '/app/plan',
+        path: '/app/*',
         element: (
           <NavigationProtection>
             <ClientPlanPage />
@@ -151,7 +151,7 @@ test('changing Plan views preserves unsaved responses until explicit departure',
   const input = await screen.findByRole('textbox', { name: 'Optional note for your consultant' });
   fireEvent.change(input, { target: { value: 'Keep my work while browsing' } });
   await screen.findByText('Save unavailable', {}, { timeout: 3000 });
-  fireEvent.click(await screen.findByRole('link', { name: 'Overview' }));
+  fireEvent.click(await screen.findByRole('link', { name: 'Return to roadmap' }));
   await screen.findByRole('dialog');
   expect(input).toHaveValue('Keep my work while browsing');
   fireEvent.click(screen.getByRole('button', { name: 'Stay on this page' }));
