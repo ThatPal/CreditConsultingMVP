@@ -49,3 +49,5 @@ U1-06: per-item client response disposition is shared by published Plan reads, n
 U1-14: the reference surfaces now share Profile currentness reason copy over the existing workspace DTO. EXPIRED, BASIS_UNCONFIRMED and REASSESSMENT_REQUIRED remain distinct. Browser presentation never recalculates expiry or Plan authority. This closes a presentation mismatch, not the remaining server contract gaps.
 
 U1-16: Shared focus now reads client-scoped Major restrictions and active case identity; exact-case destinations preserve selection across Major sections. Restricted Live activity is distinct from persisted paused status. Persisted restriction isolation/clearing and cross-surface composition tests pass. Scheduling priority, complete lifecycle-specific focus and final available-action contracts remain open.
+
+U1-19: Plan hero now follows workspace.currentFocus exclusively; summary.nextClientItem no longer competes with Live/Major/appointment navigation. Unpublished Plan shows the same next-step component as Center. Per-item response authority and draft recovery remain separate and unchanged.

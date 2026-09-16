@@ -163,7 +163,8 @@ test('separates expired currentness from the immutable published summary', async
     ),
   );
   renderPage();
-  expect(await screen.findByText(/Its assessment has expired/)).toBeInTheDocument();
+  expect(await screen.findByText('Your published assessment has expired')).toBeInTheDocument();
+  expect(screen.getByText('Original approved analysis')).toBeInTheDocument();
   expect(screen.getByText('Actions remaining: 2 · 1 completed')).toBeInTheDocument();
   expect(screen.getByText('Your consultant is checking your update')).toBeInTheDocument();
 });

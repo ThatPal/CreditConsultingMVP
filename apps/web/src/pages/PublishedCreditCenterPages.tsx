@@ -1,12 +1,11 @@
+import { CreditNextStep } from '../components/common/CreditNextStep';
 import { ProfileCurrentnessNotice } from '../components/common/ProfileCurrentnessNotice';
 import { CreditSourceReport } from '../components/common/CreditSourceReport';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
 import { Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
-import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import InsightsRounded from '@mui/icons-material/InsightsRounded';
-import NearMeRounded from '@mui/icons-material/NearMeRounded';
 import { designTokens } from '../theme';
 import { useEffect, useRef } from 'react';
 import { Alert, Box, Button, Chip, Stack, Typography } from '@mui/material';
@@ -430,48 +429,6 @@ function CreditCenterContent({
       {current && view === 'history' && (
         <CreditReviewHistory history={data.history} latestId={current.id} />
       )}
-    </Stack>
-  );
-}
-
-function CreditNextStep({ workspace }: { workspace: CreditWorkspaceRead }) {
-  return (
-    <Stack
-      component="section"
-      aria-label="Your next step"
-      spacing={2}
-      sx={{
-        p: { xs: 3, md: 4 },
-        borderRadius: '24px',
-        border: 1,
-        borderColor: 'divider',
-        background: designTokens.gradient.focus,
-        justifyContent: 'space-between',
-      }}
-    >
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <NearMeRounded sx={{ color: 'primary.main' }} />
-        <Typography variant="overline">Your next step</Typography>
-      </Stack>
-      <Box>
-        <Typography variant="h3">{workspace.currentFocus.title}</Typography>
-        <Typography color="text.secondary" sx={{ mt: 1.5 }}>
-          {workspace.currentFocus.detail}
-        </Typography>
-      </Box>
-      <Typography variant="body2">
-        Actions remaining: {workspace.plan.openActionCount} · {workspace.plan.completedActionCount}{' '}
-        completed
-      </Typography>
-      <Button
-        component={Link}
-        to={workspace.currentFocus.action}
-        endIcon={<ArrowForwardRounded />}
-        variant="contained"
-        sx={{ alignSelf: 'flex-start' }}
-      >
-        {workspace.currentFocus.actionLabel}
-      </Button>
     </Stack>
   );
 }

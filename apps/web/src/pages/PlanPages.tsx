@@ -1,7 +1,8 @@
+import { CreditNextStep } from '../components/common/CreditNextStep';
 import { ProfileCurrentnessNotice } from '../components/common/ProfileCurrentnessNotice';
 import { ActionProgressDisplay } from '../components/common/ActionProgressDisplay';
 import { designTokens } from '../theme';
-import { PlanRoadmap, planStepUrl } from '../features/plans/PlanRoadmap';
+import { PlanRoadmap } from '../features/plans/PlanRoadmap';
 import { PlanFollowUp } from '../features/plans/PlanFollowUp';
 import {
   creditWorkspaceKeys,
@@ -105,6 +106,7 @@ export function ClientPlanPage() {
           description="An approved Plan will appear here when it is ready."
         />
         <Alert severity="info">No approved Plan is available yet.</Alert>
+        {data?.workspace && <CreditNextStep workspace={data.workspace} />}
         <PlanDraftLibrary />
       </Stack>
     );
@@ -112,7 +114,7 @@ export function ClientPlanPage() {
   const summary = data.summary;
   // A missing projection is read-only, never reconstructed from browser items.
   const canAct = summary?.canRespond === true;
-  const currentFocus = plan.version.items.find((item) => item.id === summary?.nextClientItem?.id);
+
   const allItems = plan.version.items.filter((item) => item.status !== 'CANCELLED');
   const visibleItems = allItems.filter((item) =>
     view === 'actions' ? item.type === 'ACTION' : item.type !== 'ACTION',
@@ -238,11 +240,24 @@ export function ClientPlanPage() {
                 {data.workspace?.currentFocus.detail ??
                   'Your guidance and saved work are shown below.'}
               </Typography>
-              {data.workspace && !data.workspace.currentFocus.action.startsWith('/app/plan') && (
+              {data.workspace && (
                 <Button
                   component={Link}
                   to={data.workspace.currentFocus.action}
+                  variant="contained"
                   sx={{ alignSelf: 'flex-start' }}
+                  onClick={() => {
+                    const destination = new URL(
+                      data.workspace!.currentFocus.action,
+                      window.location.origin,
+                    );
+                    const id = destination.searchParams.get('item');
+                    if (destination.pathname === '/app/plan' && id && search.get('item') === id) {
+                      const target = document.getElementById('plan-item-' + id);
+                      target?.focus({ preventScroll: true });
+                      target?.scrollIntoView({ block: 'start' });
+                    }
+                  }}
                 >
                   {data.workspace.currentFocus.actionLabel}
                 </Button>
@@ -252,33 +267,6 @@ export function ClientPlanPage() {
                   ? `Actions remaining: ${summary.openActionCount} · ${summary.completedActionCount} of ${summary.totalActionCount} actions completed`
                   : 'Action counts unavailable'}
               </Typography>
-              {currentFocus && ['AVAILABLE', 'IN_PROGRESS'].includes(currentFocus.status) && (
-                <Stack
-                  direction="row"
-                  aria-label="Current Plan action"
-                  sx={{ gap: 1, flexWrap: 'wrap', mt: 1 }}
-                >
-                  <Button
-                    component={Link}
-                    to={planStepUrl(currentFocus)}
-                    variant="contained"
-                    aria-label={'Go to step: ' + currentFocus.title}
-                    onClick={() => {
-                      if (search.get('item') === currentFocus.id) {
-                        const target = document.getElementById('plan-item-' + currentFocus.id);
-                        target?.focus({ preventScroll: true });
-                        target?.scrollIntoView({ block: 'start' });
-                      }
-                    }}
-                  >
-                    Go to current step
-                  </Button>
-
-                  <Button component={Link} to="/app/support?new=1&category=PLAN" variant="outlined">
-                    Ask for help
-                  </Button>
-                </Stack>
-              )}
               <DraftPublicationStatus
                 state="published"
                 {...(plan.version.version ? { version: plan.version.version } : {})}

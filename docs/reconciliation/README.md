@@ -70,3 +70,5 @@ Latest implementation: [U1 batch 16](BATCH-U1-16.md) adds scoped Major restricti
 Latest implementation: [U1 batch 17](BATCH-U1-17.md) adds server-timed appointment focus within the existing pre-session window, preserves restriction/Live precedence, and repairs appointment timezone/session wording. 49 API tests and desktop/mobile checks pass. U1 NOT PASSED; remaining action contracts and final acceptance stay open.
 
 Latest implementation: [U1 batch 18](BATCH-U1-18.md) aligns shared next-step guidance with response-form availability and makes form submission respect server completion/help denials. 111 tests and desktop/mobile recovery checks pass. U1 NOT PASSED; final action contracts and acceptance remain open.
+
+Latest implementation: [U1 batch 19](BATCH-U1-19.md) removes competing Plan hero actions, preserves server action wording, and shows shared next-step guidance without a published Plan. 29 tests and desktop/mobile focus/recovery checks pass. U1 remains NOT PASSED.

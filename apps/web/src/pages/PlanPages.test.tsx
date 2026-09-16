@@ -1,6 +1,6 @@
 import { ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { apiRequest } from '../auth/api';
@@ -505,4 +505,104 @@ test('roadmap and execution views share canonical items without turning guidance
   await screen.findByText('Read this guidance');
   expect(screen.getByText('Consultant checkpoint')).toBeInTheDocument();
   expect(screen.queryByText('Report progress')).not.toBeInTheDocument();
+});
+
+test.each([
+  ['LIVE_RETURN', '/app/rounds/round/live', 'Return to session'],
+  [
+    'MAJOR_COORDINATION',
+    '/app/major-readiness/coordination?caseId=case',
+    'View coordination guidance',
+  ],
+  ['PLAN_FORM_HELP', '/app/plan?view=actions&item=step', 'Ask for help with this step'],
+])('Plan focus uses only the server-selected action for %s', async (code, action, actionLabel) => {
+  mockedApi.mockReset();
+  mockedApi.mockResolvedValue({
+    summary: {
+      status: 'ACTIVE',
+      canRespond: true,
+      openActionCount: 1,
+      completedActionCount: 0,
+      totalActionCount: 1,
+      progressPercent: 0,
+      guidanceCount: 0,
+      milestoneCount: 0,
+      nextClientItem: { id: 'step', title: 'Available step', status: 'AVAILABLE' },
+    },
+    workspace: {
+      currentFocus: {
+        code,
+        title: 'Server focus',
+        detail: 'Current guidance',
+        owner: 'CONSULTANT',
+        action,
+        actionLabel,
+      },
+    },
+    plan: {
+      id: 'plan',
+      title: 'Preparation',
+      status: 'ACTIVE',
+      version: {
+        staleAt: null,
+        items: [
+          {
+            id: 'step',
+            type: 'ACTION',
+            status: 'AVAILABLE',
+            completionMode: 'ACKNOWLEDGEMENT',
+            owner: 'CLIENT',
+            title: 'Available step',
+            body: null,
+            prerequisites: [],
+            deepLink: null,
+          },
+        ],
+      },
+    },
+  });
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <ClientPlanPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  const region = await screen.findByRole('region', { name: 'Current Plan focus' });
+  const links = within(region).getAllByRole('link');
+  expect(links).toHaveLength(1);
+  expect(links[0]).toHaveAttribute('href', action);
+  expect(links[0]).toHaveTextContent(actionLabel);
+});
+test('Plan without a publication retains the shared next step', async () => {
+  mockedApi.mockReset();
+  mockedApi.mockResolvedValue({
+    plan: null,
+    workspace: {
+      currentFocus: {
+        code: 'MAJOR_COORDINATION',
+        title: 'Review coordination',
+        detail: 'Your consultant owns the next step',
+        action: '/app/major-readiness/coordination?caseId=case',
+        actionLabel: 'View coordination guidance',
+      },
+      plan: { openActionCount: 0, completedActionCount: 0 },
+    },
+  });
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <ClientPlanPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  expect(await screen.findByRole('link', { name: 'View coordination guidance' })).toHaveAttribute(
+    'href',
+    '/app/major-readiness/coordination?caseId=case',
+  );
+  expect(screen.getByText('No approved Plan is available yet.')).toBeInTheDocument();
 });
