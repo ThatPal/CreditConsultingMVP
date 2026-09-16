@@ -26,6 +26,8 @@ export type WorkspaceBlocker = {
   owner: 'CONSULTANT' | 'SYSTEM' | null;
   message: string;
   source: Source;
+  title?: string;
+  href?: string;
 };
 
 // U1 compatibility adapter. U4 replaces PlanVersion/PlanItem sources.
@@ -111,6 +113,8 @@ export function workspaceAffordances(input: {
             : 'CONSULTANT',
       message,
       source: source(item.id),
+      title: item.title,
+      href: `/app/plan?view=${item.type === 'ACTION' ? 'actions' : 'guidance'}&item=${encodeURIComponent(item.id)}`,
     });
   }
   return { availableActions, blockers };

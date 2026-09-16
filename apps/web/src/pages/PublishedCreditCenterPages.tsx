@@ -1,3 +1,4 @@
+import { WorkspaceBlockers } from '../components/common/WorkspaceBlockers';
 import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import { CreditNextStep } from '../components/common/CreditNextStep';
 import { ProfileCurrentnessNotice } from '../components/common/ProfileCurrentnessNotice';
@@ -152,6 +153,7 @@ function CreditCenterContent({
         description="Explore your published facts, understand your consultant’s findings, and follow your Plan."
       />
       {current && <ProfileCurrentnessNotice profile={data.workspace?.profile} />}
+      {!consultant && <WorkspaceBlockers blockers={data.workspace?.blockers} />}
       {navigation.length > 0 && (
         <Stack
           direction="row"

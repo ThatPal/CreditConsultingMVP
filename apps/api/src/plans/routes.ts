@@ -1,3 +1,4 @@
+import { getPlanDecisions } from './decisions.js';
 import { listResponseDrafts } from './draftLibrary.js';
 import { clientResponseForm } from './outcomes.js';
 import { Router } from 'express';
@@ -416,7 +417,11 @@ export function createPlanRouter(
   router.get('/client/plan', requireRole('CLIENT'), async (req, res, next) => {
     try {
       const plan = await getClientPlan(prisma, req.auth!.clientId!);
-      res.json({ ...plan, workspace: await getCreditWorkspace(prisma, req.auth!.clientId!, plan) });
+      res.json({
+        ...plan,
+        decisions: await getPlanDecisions(prisma, req.auth!.clientId!),
+        workspace: await getCreditWorkspace(prisma, req.auth!.clientId!, plan),
+      });
     } catch (error) {
       next(error);
     }

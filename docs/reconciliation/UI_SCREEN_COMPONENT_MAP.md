@@ -184,3 +184,5 @@ Sources and detailed missing/embedded/alias decisions: [Portal review](PORTAL_SU
 | apps/web/src/layouts/navigation.tsx                       | Final route ownership registry                | REBUILD   | U1   | Final primary/secondary IA replaces old grouping; preserve deep links and authorization.                                           |
 
 Do not remove RETIRE destinations or legacy persistence until the owning wave proves migration and deep-link parity. U0 gate status is recorded in README; generating this file cannot automatically pass it.
+
+U1 closeout classifications: Home and client Credit Center RECOMPOSE; client Credit Plan RECOMPOSE with Overview/Actions/Guidance/Decisions/Nurture. WorkspaceBlockers and PlanContextViews are new shared/read-presentation components; operationalBlockers and getPlanDecisions are explicit U6/U3/U4 compatibility projections. No source domain or route lifecycle is retired here. Final evidence/acceptance remains governed by the U1 ledger.

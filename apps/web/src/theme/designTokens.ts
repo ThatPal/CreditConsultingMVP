@@ -30,7 +30,7 @@ export const designTokens = {
     border: 'rgba(148, 163, 184, 0.16)',
     borderStrong: 'rgba(103, 232, 249, 0.32)',
     textPrimary: '#f4f7ff',
-    textSecondary: '#a9b7d1',
+    textSecondary: '#bdcbe0',
     textMuted: '#74829f',
     cyan: '#42d3f2',
     blue: '#5b8cff',

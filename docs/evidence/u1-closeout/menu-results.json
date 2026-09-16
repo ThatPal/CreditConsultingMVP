@@ -1,0 +1,44 @@
+[
+  {
+    "path": "/app",
+    "width": 1440,
+    "accountEscapeReturn": true,
+    "notificationTrapCloseReturn": true,
+    "errorRetryEmpty": true
+  },
+  {
+    "path": "/app/credit-center",
+    "width": 1440,
+    "accountEscapeReturn": true,
+    "notificationTrapCloseReturn": true,
+    "errorRetryEmpty": true
+  },
+  {
+    "path": "/app/plan",
+    "width": 1440,
+    "accountEscapeReturn": true,
+    "notificationTrapCloseReturn": true,
+    "errorRetryEmpty": true
+  },
+  {
+    "path": "/app",
+    "width": 390,
+    "accountEscapeReturn": true,
+    "notificationTrapCloseReturn": true,
+    "errorRetryEmpty": true
+  },
+  {
+    "path": "/app/credit-center",
+    "width": 390,
+    "accountEscapeReturn": true,
+    "notificationTrapCloseReturn": true,
+    "errorRetryEmpty": true
+  },
+  {
+    "path": "/app/plan",
+    "width": 390,
+    "accountEscapeReturn": true,
+    "notificationTrapCloseReturn": true,
+    "errorRetryEmpty": true
+  }
+]

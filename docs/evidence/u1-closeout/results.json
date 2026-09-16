@@ -1,0 +1,68 @@
+[
+  {
+    "width": 1440,
+    "path": "/app",
+    "sharedBlocker": true
+  },
+  {
+    "width": 1440,
+    "path": "/app/credit-center",
+    "sharedBlocker": true
+  },
+  {
+    "width": 1440,
+    "path": "/app/plan",
+    "sharedBlocker": true
+  },
+  {
+    "width": 1440,
+    "view": "decisions",
+    "assigned": false,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "view": "nurture",
+    "assigned": false,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "view": "nurture",
+    "assigned": true,
+    "passed": true
+  },
+  {
+    "width": 390,
+    "path": "/app",
+    "sharedBlocker": true
+  },
+  {
+    "width": 390,
+    "path": "/app/credit-center",
+    "sharedBlocker": true
+  },
+  {
+    "width": 390,
+    "path": "/app/plan",
+    "sharedBlocker": true
+  },
+  {
+    "width": 390,
+    "view": "decisions",
+    "assigned": false,
+    "passed": true
+  },
+  {
+    "width": 390,
+    "view": "nurture",
+    "assigned": false,
+    "passed": true
+  },
+  {
+    "width": 390,
+    "view": "nurture",
+    "assigned": true,
+    "passed": true
+  }
+]

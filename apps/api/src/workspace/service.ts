@@ -1,3 +1,4 @@
+import { operationalBlockers } from './operationalBlockers.js';
 import { workspaceAffordances } from './affordances.js';
 import { workspaceRefreshAt } from './refresh.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
@@ -147,8 +148,13 @@ export async function getCreditWorkspace(
     },
     now,
   );
+  const affordances = workspaceAffordances({ currentFocus, plan: plan.plan });
   return {
-    ...workspaceAffordances({ currentFocus, plan: plan.plan }),
+    ...affordances,
+    blockers: [
+      ...affordances.blockers,
+      ...operationalBlockers({ round, liveSession, restrictions: coordinationRestrictions }),
+    ],
     generatedAt: now,
     refreshAt: workspaceRefreshAt(now, publication?.review.readinessExpiresAt, appointment),
     currentFocus,

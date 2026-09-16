@@ -11,7 +11,16 @@ export type PlanSummaryRead = {
   milestoneCount: number;
   nextClientItem: { id: string; title: string; status: string } | null;
 };
+export type WorkspaceBlockerRead = {
+  code: string;
+  scope: string;
+  owner: 'CLIENT' | 'CONSULTANT' | 'SYSTEM' | null;
+  message: string;
+  title?: string;
+  href?: string;
+};
 export type CreditWorkspaceRead = {
+  blockers?: WorkspaceBlockerRead[];
   generatedAt: string;
   refreshAt?: string | null;
   currentFocus: {

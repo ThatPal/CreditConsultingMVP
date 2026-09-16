@@ -1,3 +1,10 @@
+import {
+  PlanViews,
+  PlanDecisions,
+  PlanNurture,
+  type PlanDecisionRead,
+} from '../features/plans/PlanContextViews';
+import { WorkspaceBlockers } from '../components/common/WorkspaceBlockers';
 import { FocusOwner } from '../components/common/FocusOwner';
 import { planReadIdentity } from '../features/plans/planReadIdentity';
 import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
@@ -60,11 +67,13 @@ export type ClientPlanItem = ResponseItem & {
 };
 
 export type ClientPlanResponse = {
+  decisions?: PlanDecisionRead[];
   summary?: PlanSummaryRead;
   workspace?: CreditWorkspaceRead;
   plan: null | {
     id: string;
     title: string;
+    purpose?: string;
     status: string;
     version: { version?: number; staleAt: string | null; items: ClientPlanItem[] };
   };
@@ -81,7 +90,7 @@ function PlanStepTarget({ itemId }: { itemId: string | null }) {
 }
 export function ClientPlanPage() {
   const [search] = useSearchParams();
-  const view = ['actions', 'guidance'].includes(search.get('view') ?? '')
+  const view = ['actions', 'guidance', 'decisions', 'nurture'].includes(search.get('view') ?? '')
     ? search.get('view')!
     : 'overview';
   const query = useQuery({
@@ -116,7 +125,14 @@ export function ClientPlanPage() {
           title="Your next steps"
           description="An approved Plan will appear here when it is ready."
         />
-        <Alert severity="info">No approved Plan is available yet.</Alert>
+        <PlanViews view={view} />
+        {view === 'decisions' ? (
+          <PlanDecisions decisions={data?.decisions ?? []} />
+        ) : view === 'nurture' ? (
+          <PlanNurture active={false} items={[]} />
+        ) : (
+          <Alert severity="info">No approved Plan is available yet.</Alert>
+        )}
         {data?.workspace && <CreditNextStep workspace={data.workspace} />}
         <PlanDraftLibrary />
       </Stack>
@@ -212,35 +228,9 @@ export function ClientPlanPage() {
           description="Your consultant’s guidance, your next actions, and the work you’ve completed."
           actions={<PlanDraftLibrary />}
         />
-        <Stack
-          component="nav"
-          aria-label="Credit Plan views"
-          direction="row"
-          sx={{ gap: 1, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider' }}
-        >
-          {(
-            [
-              ['overview', 'Overview'],
-              ['actions', 'Actions'],
-              ['guidance', 'Guidance'],
-            ] as const
-          ).map(([key, label]) => (
-            <Button
-              key={key}
-              component={Link}
-              to={key === 'overview' ? '/app/plan' : '/app/plan?view=' + key}
-              aria-current={view === key ? 'page' : undefined}
-              sx={{
-                borderRadius: 0,
-                borderBottom: 2,
-                borderColor: view === key ? 'primary.main' : 'transparent',
-              }}
-            >
-              {label}
-            </Button>
-          ))}
-        </Stack>
+        <PlanViews view={view} />
         <ProfileCurrentnessNotice profile={data.workspace?.profile} />
+        <WorkspaceBlockers blockers={data.workspace?.blockers} />
         {plan.version.staleAt && (
           <Alert severity="warning">
             This Plan is being reviewed after a source change. Completed history remains available.
@@ -319,7 +309,11 @@ export function ClientPlanPage() {
             userMustAct={false}
           />
         )}
-        {view === 'overview' ? (
+        {view === 'decisions' ? (
+          <PlanDecisions decisions={data.decisions ?? []} />
+        ) : view === 'nurture' ? (
+          <PlanNurture active={plan.purpose === 'NURTURE'} items={allItems} />
+        ) : view === 'overview' ? (
           <PlanRoadmap items={allItems} />
         ) : (
           <>

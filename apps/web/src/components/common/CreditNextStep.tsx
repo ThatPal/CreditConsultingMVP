@@ -26,7 +26,9 @@ export function CreditNextStep({ workspace }: { workspace: CreditWorkspaceRead }
       </Stack>
       <FocusOwner owner={workspace.currentFocus.owner} />
       <Box>
-        <Typography variant="h3">{workspace.currentFocus.title}</Typography>
+        <Typography variant="h3" component="h2">
+          {workspace.currentFocus.title}
+        </Typography>
         <Typography color="text.secondary" sx={{ mt: 1.5 }}>
           {workspace.currentFocus.detail}
         </Typography>

@@ -1,3 +1,5 @@
+import { WorkspaceBlockers } from '../components/common/WorkspaceBlockers';
+import type { CreditWorkspaceRead } from '../queries/creditWorkspace';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { ReferenceQueryState } from '../components/common/ReferenceQueryState';
 import { FocusOwner } from '../components/common/FocusOwner';
@@ -23,6 +25,7 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SectionCard } from '../components/common/SectionCard';
 
 export type JourneyProjection = {
+  workspace?: CreditWorkspaceRead;
   client: { id: string; firstName: string; lastName: string };
   goal: { goalType: string; scope: string; targetAmount: number | null } | null;
   journey: {
@@ -211,6 +214,7 @@ export function JourneySummary({
         </Stack>
       </Box>
       <ProfileCurrentnessNotice profile={data.foundations.creditProfile} />
+      <WorkspaceBlockers blockers={data.workspace?.blockers} />
       <Box component="section" aria-label="Your financial journey">
         <Typography variant="h3" sx={{ mb: 2 }}>
           Your working picture
