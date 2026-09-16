@@ -163,3 +163,45 @@ test('changing Plan views preserves unsaved responses until explicit departure',
     screen.queryByRole('textbox', { name: 'Optional note for your consultant' }),
   ).not.toBeInTheDocument();
 });
+
+test.each(['old', 'new'])(
+  'failed Plan check preserves answers, pauses writes and safely retries to %s',
+  async (replacement) => {
+    let fail = false;
+    let recovered = false;
+    request.mockImplementation(async (path, options) => {
+      if (options?.method === 'PUT') throw new Error('Save unavailable');
+      if (path === '/api/v1/client/plan') {
+        if (fail) throw new Error('Plan read failed');
+        return plan(recovered ? replacement : 'old');
+      }
+      return { active: true, contextVersion: '2026-09-10T00:00:00Z', draft: null };
+    });
+    const client = setup();
+    const input = await screen.findByRole('textbox', { name: 'Optional note for your consultant' });
+    fireEvent.change(input, { target: { value: 'Keep this answer through the failed check' } });
+    await screen.findByText('Save unavailable', {}, { timeout: 3000 });
+    fail = true;
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['client-plan'] });
+    });
+    const retry = await screen.findByRole('button', { name: 'Retry Plan check' });
+    expect(input).toHaveValue('Keep this answer through the failed check');
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+    const complete = screen.getByRole('button', { name: 'Save completed step' });
+    expect(complete).toBeDisabled();
+    fireEvent.submit(complete.closest('form')!);
+    expect(request.mock.calls.filter(([path]) => path.endsWith('/outcomes'))).toHaveLength(0);
+    fail = false;
+    recovered = true;
+    fireEvent.click(retry);
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Retry Plan check' })).not.toBeInTheDocument(),
+    );
+    expect(input).toHaveValue('Keep this answer through the failed check');
+    if (replacement === 'new') {
+      expect(await screen.findByRole('button', { name: 'Review Plan update' })).toBeEnabled();
+      expect(complete).toBeDisabled();
+    } else expect(complete).toBeEnabled();
+  },
+);

@@ -74,3 +74,5 @@ Latest implementation: [U1 batch 18](BATCH-U1-18.md) aligns shared next-step gui
 Latest implementation: [U1 batch 19](BATCH-U1-19.md) removes competing Plan hero actions, preserves server action wording, and shows shared next-step guidance without a published Plan. 29 tests and desktop/mobile focus/recovery checks pass. U1 remains NOT PASSED.
 
 Latest implementation: [U1 batch 20](BATCH-U1-20.md) adds server-directed timed reference reads for expiry/session boundaries, retaining Plan pending-update protection. 60 focused tests and a timed browser draft-preservation check cover this batch. U1 NOT PASSED.
+
+Latest implementation: [U1 batch 21](BATCH-U1-21.md) adds failed Plan refresh retry/write protection and avoids false update prompts from read timestamps. 23 focused tests pass. Follow the [bounded U1 acceptance worklist](U1_ACCEPTANCE_WORKLIST.md) for the remaining gates; U1 NOT PASSED.

@@ -1,3 +1,4 @@
+import { planReadIdentity } from '../features/plans/planReadIdentity';
 import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import { CreditNextStep } from '../components/common/CreditNextStep';
 import { ProfileCurrentnessNotice } from '../components/common/ProfileCurrentnessNotice';
@@ -95,7 +96,8 @@ export function ClientPlanPage() {
     if (!holding && query.data) setSnapshot(query.data);
   }, [holding, query.data]);
   const data = holding && snapshot ? snapshot : query.data;
-  const updateWaiting = holding && Boolean(snapshot) && query.data !== snapshot;
+  const updateWaiting =
+    holding && Boolean(snapshot) && planReadIdentity(query.data) !== planReadIdentity(snapshot);
   if (query.isLoading && !data) return <Typography>Loading your Plan…</Typography>;
   if (query.isError && !holding)
     return <RecoveryState error={query.error} onRetry={() => void query.refetch()} />;
@@ -122,7 +124,7 @@ export function ClientPlanPage() {
     view === 'actions' ? item.type === 'ACTION' : item.type !== 'ACTION',
   );
   return (
-    <ResponseWritePause.Provider value={updateWaiting}>
+    <ResponseWritePause.Provider value={updateWaiting || query.isError}>
       <Stack spacing={3}>
         {!summary && (
           <Alert severity="warning">
@@ -144,8 +146,29 @@ export function ClientPlanPage() {
           </Alert>
         )}
         {query.isError && holding && (
-          <Alert severity="error">
-            The latest Plan could not be loaded. Your current answers remain here.
+          <Alert
+            sx={{
+              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+              '& .MuiAlert-message': { flex: '1 1 200px' },
+              '& .MuiAlert-action': {
+                flexBasis: { xs: '100%', sm: 'auto' },
+                justifyContent: 'flex-end',
+                m: 0,
+                p: { xs: '8px 0 0', sm: '0 0 0 16px' },
+              },
+            }}
+            severity="error"
+            action={
+              <Button
+                disabled={query.isFetching || pending.busy}
+                onClick={() => void query.refetch()}
+              >
+                {query.isFetching ? 'Checking Plan…' : 'Retry Plan check'}
+              </Button>
+            }
+          >
+            The latest Plan could not be confirmed. Your current answers remain here. New saves and
+            submissions are paused until the Plan check succeeds.
           </Alert>
         )}
         <Dialog

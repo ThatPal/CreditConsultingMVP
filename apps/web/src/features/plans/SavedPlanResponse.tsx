@@ -107,7 +107,7 @@ export function SavedPlanResponse({
   const changed = Boolean(accepted && query.data && identity(accepted) !== identity(query.data));
   const blocked = inheritedPause || changed || query.isError || confirmingSave;
   const pauseMessage = inheritedPause
-    ? 'A Plan update is waiting. Copy any unsaved text before loading it.'
+    ? 'Saving and submission are paused while the Plan needs confirmation. Your local answers remain here.'
     : changed
       ? 'A different saved response is available. Review it before saving or submitting.'
       : query.isError
