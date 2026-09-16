@@ -1,3 +1,4 @@
+import { PlanRoadmap, planStepUrl } from '../features/plans/PlanRoadmap';
 import { PlanFollowUp } from '../features/plans/PlanFollowUp';
 import {
   creditWorkspaceKeys,
@@ -20,7 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
 import { RecoveryState } from '../components/common/InteractionPatterns';
@@ -67,7 +68,20 @@ export type ClientPlanResponse = {
   };
 };
 
+function PlanStepTarget({ itemId }: { itemId: string | null }) {
+  useEffect(() => {
+    if (!itemId) return;
+    const target = document.getElementById('plan-item-' + itemId);
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'start' });
+  }, [itemId]);
+  return null;
+}
 export function ClientPlanPage() {
+  const [search] = useSearchParams();
+  const view = ['actions', 'guidance'].includes(search.get('view') ?? '')
+    ? search.get('view')!
+    : 'overview';
   const query = useQuery({
     queryKey: creditWorkspaceKeys.plan(),
     queryFn: () => apiRequest<ClientPlanResponse>('/api/v1/client/plan'),
@@ -101,7 +115,10 @@ export function ClientPlanPage() {
   // A missing projection is read-only, never reconstructed from browser items.
   const canAct = summary?.canRespond === true;
   const currentFocus = plan.version.items.find((item) => item.id === summary?.nextClientItem?.id);
-  const visibleItems = plan.version.items.filter((item) => item.status !== 'CANCELLED');
+  const allItems = plan.version.items.filter((item) => item.status !== 'CANCELLED');
+  const visibleItems = allItems.filter((item) =>
+    view === 'actions' ? item.type === 'ACTION' : item.type !== 'ACTION',
+  );
   return (
     <ResponseWritePause.Provider value={updateWaiting}>
       <Stack spacing={3}>
@@ -163,6 +180,34 @@ export function ClientPlanPage() {
           description="Your consultant’s guidance, your next actions, and the work you’ve completed."
           actions={<PlanDraftLibrary />}
         />
+        <Stack
+          component="nav"
+          aria-label="Credit Plan views"
+          direction="row"
+          sx={{ gap: 1, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider' }}
+        >
+          {(
+            [
+              ['overview', 'Overview'],
+              ['actions', 'Actions'],
+              ['guidance', 'Guidance'],
+            ] as const
+          ).map(([key, label]) => (
+            <Button
+              key={key}
+              component={Link}
+              to={key === 'overview' ? '/app/plan' : '/app/plan?view=' + key}
+              aria-current={view === key ? 'page' : undefined}
+              sx={{
+                borderRadius: 0,
+                borderBottom: 2,
+                borderColor: view === key ? 'primary.main' : 'transparent',
+              }}
+            >
+              {label}
+            </Button>
+          ))}
+        </Stack>
         {plan.version.staleAt && (
           <Alert severity="warning">
             This Plan is being reviewed after a source change. Completed history remains available.
@@ -187,7 +232,7 @@ export function ClientPlanPage() {
                 {data.workspace?.currentFocus.detail ??
                   'Your guidance and saved work are shown below.'}
               </Typography>
-              {data.workspace && data.workspace.currentFocus.action !== '/app/plan' && (
+              {data.workspace && !data.workspace.currentFocus.action.startsWith('/app/plan') && (
                 <Button
                   component={Link}
                   to={data.workspace.currentFocus.action}
@@ -207,27 +252,21 @@ export function ClientPlanPage() {
                   aria-label="Current Plan action"
                   sx={{ gap: 1, flexWrap: 'wrap', mt: 1 }}
                 >
-                  {currentFocus.deepLink ? (
-                    <Button component={Link} to={currentFocus.deepLink} variant="contained">
-                      Go to current step
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="contained"
-                      aria-label={`Go to step: ${currentFocus.title}`}
-                      onClick={() => {
-                        const target = document.getElementById(`plan-item-${currentFocus.id}`);
+                  <Button
+                    component={Link}
+                    to={planStepUrl(currentFocus)}
+                    variant="contained"
+                    aria-label={'Go to step: ' + currentFocus.title}
+                    onClick={() => {
+                      if (search.get('item') === currentFocus.id) {
+                        const target = document.getElementById('plan-item-' + currentFocus.id);
                         target?.focus({ preventScroll: true });
-                        target?.scrollIntoView({
-                          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-                            ? 'auto'
-                            : 'smooth',
-                        });
-                      }}
-                    >
-                      Go to current step
-                    </Button>
-                  )}
+                        target?.scrollIntoView({ block: 'start' });
+                      }
+                    }}
+                  >
+                    Go to current step
+                  </Button>
 
                   <Button component={Link} to="/app/support?new=1&category=PLAN" variant="outlined">
                     Ask for help
@@ -240,7 +279,7 @@ export function ClientPlanPage() {
                 owner="Your consultant"
               />
             </Stack>
-            {summary?.progressPercent != null && (
+            {view === 'overview' && summary?.progressPercent != null && (
               <>
                 <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                   <ProgressArc value={summary.progressPercent} label="Action progress" />
@@ -268,97 +307,120 @@ export function ClientPlanPage() {
             userMustAct={false}
           />
         )}
-        <CollectionSurface
-          title={`Plan steps · ${visibleItems.length}`}
-          mode="bounded"
-          appearance="plain"
-        >
-          {visibleItems.map((item) => (
-            <Box
-              key={item.id}
-              id={`plan-item-${item.id}`}
-              tabIndex={-1}
-              role="group"
-              aria-label={item.title}
-              sx={{ borderBottom: 1, borderColor: 'divider', scrollMarginTop: 100, py: 1 }}
+        {view === 'overview' ? (
+          <PlanRoadmap items={allItems} />
+        ) : (
+          <>
+            <PlanStepTarget key={view} itemId={search.get('item')} />
+            {search.get('item') && !visibleItems.some((item) => item.id === search.get('item')) && (
+              <Alert severity="info">
+                This step is not available in the current Plan view. Review the overview for your
+                published steps.
+              </Alert>
+            )}
+            {!visibleItems.length && (
+              <Typography color="text.secondary">
+                {view === 'actions'
+                  ? 'No Actions are included in this published Plan. Guidance and milestones are available in their own view.'
+                  : 'No guidance or milestones are included in this published Plan.'}
+              </Typography>
+            )}
+            <CollectionSurface
+              title={`Plan steps · ${visibleItems.length}`}
+              mode="bounded"
+              appearance="plain"
             >
-              <Box sx={{ py: 2, px: { xs: 0, md: 1 } }}>
-                <Stack spacing={1}>
-                  <Stack
-                    direction="row"
-                    sx={{ justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}
-                  >
-                    <Stack>
-                      <Typography variant="overline" color="text.secondary">
-                        {item.type.toLowerCase()}
+              {visibleItems.map((item) => (
+                <Box
+                  key={item.id}
+                  id={`plan-item-${item.id}`}
+                  tabIndex={-1}
+                  role="group"
+                  aria-label={item.title}
+                  sx={{ borderBottom: 1, borderColor: 'divider', scrollMarginTop: 100, py: 1 }}
+                >
+                  <Box sx={{ py: 2, px: { xs: 0, md: 1 } }}>
+                    <Stack spacing={1}>
+                      <Stack
+                        direction="row"
+                        sx={{ justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}
+                      >
+                        <Stack>
+                          <Typography variant="overline" color="text.secondary">
+                            {item.type.toLowerCase()}
+                          </Typography>
+                          <Typography variant="h6">{item.title}</Typography>
+                        </Stack>
+                        <StatusChip
+                          {...(item.status === 'UNABLE'
+                            ? { label: 'Help requested', tone: 'info' as const }
+                            : presentStatus(item.status))}
+                        />
+                      </Stack>
+                      <Typography sx={{ whiteSpace: 'pre-wrap', maxWidth: 800, lineHeight: 1.7 }}>
+                        {item.body}
                       </Typography>
-                      <Typography variant="h6">{item.title}</Typography>
-                    </Stack>
-                    <StatusChip
-                      {...(item.status === 'UNABLE'
-                        ? { label: 'Help requested', tone: 'info' as const }
-                        : presentStatus(item.status))}
-                    />
-                  </Stack>
-                  <Typography sx={{ whiteSpace: 'pre-wrap', maxWidth: 800, lineHeight: 1.7 }}>
-                    {item.body}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Owner:{' '}
-                    {['AWAITING_VERIFICATION', 'UNABLE'].includes(item.status)
-                      ? 'Your consultant'
-                      : item.owner === 'CLIENT'
-                        ? 'You'
-                        : item.owner === 'CONSULTANT'
+                      <Typography variant="caption" color="text.secondary">
+                        Owner:{' '}
+                        {['AWAITING_VERIFICATION', 'UNABLE'].includes(item.status)
                           ? 'Your consultant'
-                          : 'System'}
-                    {item.dueAt ? ` · Timing: ${new Date(item.dueAt).toLocaleDateString()}` : ''}
-                  </Typography>
-                  {item.prerequisites.length > 0 && item.status === 'LOCKED' && (
-                    <Typography color="text.secondary">
-                      Available after: {item.prerequisites.map((value) => value.title).join(', ')}
-                    </Typography>
-                  )}
-                  {item.deepLink && (
-                    <Button component={Link} to={item.deepLink}>
-                      Go to the related step
-                    </Button>
-                  )}
-                  {item.availability?.reason === 'VERIFICATION_REQUIRED' && (
-                    <Typography color="text.secondary">
-                      This step requires consultant or system verification. You do not need to
-                      submit a response.
-                    </Typography>
-                  )}
-                  <PlanFollowUp
-                    item={item}
-                    canAct={canAct && item.availability?.canRespond === true}
-                  />
-                  {item.owner === 'CLIENT' &&
-                    ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
-                    item.type !== 'MILESTONE' && (
-                      <SavedPlanResponse
-                        key={`response:${item.id}:${item.latestOutcomeId}`}
+                          : item.owner === 'CLIENT'
+                            ? 'You'
+                            : item.owner === 'CONSULTANT'
+                              ? 'Your consultant'
+                              : 'System'}
+                        {item.dueAt
+                          ? ` · Timing: ${new Date(item.dueAt).toLocaleDateString()}`
+                          : ''}
+                      </Typography>
+                      {item.prerequisites.length > 0 && item.status === 'LOCKED' && (
+                        <Typography color="text.secondary">
+                          Available after:{' '}
+                          {item.prerequisites.map((value) => value.title).join(', ')}
+                        </Typography>
+                      )}
+                      {item.deepLink && (
+                        <Button component={Link} to={item.deepLink}>
+                          Go to the related step
+                        </Button>
+                      )}
+                      {item.availability?.reason === 'VERIFICATION_REQUIRED' && (
+                        <Typography color="text.secondary">
+                          This step requires consultant or system verification. You do not need to
+                          submit a response.
+                        </Typography>
+                      )}
+                      <PlanFollowUp
                         item={item}
-                        readOnly={!canAct || item.availability?.canRespond !== true}
+                        canAct={canAct && item.availability?.canRespond === true}
                       />
-                    )}
-                  <ResponseHistory key={`${item.id}:${item.latestOutcomeId}`} item={item} />
-                  {item.status === 'UNABLE' && (
-                    <Alert severity="info">
-                      Your help request is saved. Your consultant owns the next step.
-                    </Alert>
-                  )}
-                  {item.status === 'AWAITING_VERIFICATION' && (
-                    <Alert severity="info">
-                      Your update was recorded and is awaiting consultant verification.
-                    </Alert>
-                  )}
-                </Stack>
-              </Box>
-            </Box>
-          ))}
-        </CollectionSurface>
+                      {item.owner === 'CLIENT' &&
+                        ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
+                        item.type !== 'MILESTONE' && (
+                          <SavedPlanResponse
+                            key={`response:${item.id}:${item.latestOutcomeId}`}
+                            item={item}
+                            readOnly={!canAct || item.availability?.canRespond !== true}
+                          />
+                        )}
+                      <ResponseHistory key={`${item.id}:${item.latestOutcomeId}`} item={item} />
+                      {item.status === 'UNABLE' && (
+                        <Alert severity="info">
+                          Your help request is saved. Your consultant owns the next step.
+                        </Alert>
+                      )}
+                      {item.status === 'AWAITING_VERIFICATION' && (
+                        <Alert severity="info">
+                          Your update was recorded and is awaiting consultant verification.
+                        </Alert>
+                      )}
+                    </Stack>
+                  </Box>
+                </Box>
+              ))}
+            </CollectionSurface>
+          </>
+        )}
       </Stack>
     </ResponseWritePause.Provider>
   );

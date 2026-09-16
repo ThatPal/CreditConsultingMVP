@@ -67,7 +67,7 @@ describe('consultant Plan Builder continuity', () => {
       render(
         <ThemeProvider theme={theme}>
           <QueryClientProvider client={new QueryClient()}>
-            <MemoryRouter>
+            <MemoryRouter initialEntries={['/app/plan?view=actions']}>
               <ClientPlanPage />
             </MemoryRouter>
           </QueryClientProvider>
@@ -276,7 +276,7 @@ test('removes the draft form after successful client completion while retaining 
   render(
     <ThemeProvider theme={theme}>
       <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={['/app/plan?view=actions']}>
           <ClientPlanPage />
         </MemoryRouter>
       </QueryClientProvider>
@@ -346,7 +346,7 @@ test.each([true, false])(
     render(
       <ThemeProvider theme={theme}>
         <QueryClientProvider client={new QueryClient()}>
-          <MemoryRouter>
+          <MemoryRouter initialEntries={['/app/plan?view=actions']}>
             <ClientPlanPage />
           </MemoryRouter>
         </QueryClientProvider>
@@ -418,7 +418,7 @@ test.each([
   render(
     <ThemeProvider theme={theme}>
       <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={['/app/plan?view=actions']}>
           <ClientPlanPage />
         </MemoryRouter>
       </QueryClientProvider>
@@ -431,4 +431,78 @@ test.each([
   expect(screen.queryByRole('button', { name: 'Save completed step' })).not.toBeInTheDocument();
   if (availability)
     expect(screen.getByText(/requires consultant or system verification/)).toBeInTheDocument();
+});
+
+test('roadmap and execution views share canonical items without turning guidance into Actions', async () => {
+  mockedApi.mockReset();
+  mockedApi.mockImplementation(async (path) =>
+    path.endsWith('/draft')
+      ? { active: true, contextVersion: '2026-09-10', draft: null }
+      : {
+          summary: {
+            status: 'ACTIVE',
+            canRespond: true,
+            openActionCount: 1,
+            completedActionCount: 0,
+            totalActionCount: 1,
+            progressPercent: 0,
+            nextClientItem: null,
+          },
+          plan: {
+            id: 'plan',
+            title: 'Coordinated views',
+            status: 'ACTIVE',
+            version: {
+              staleAt: null,
+              items: [
+                ['action', 'ACTION', 'Report progress'],
+                ['guide', 'GUIDANCE', 'Read this guidance'],
+                ['milestone', 'MILESTONE', 'Consultant checkpoint'],
+              ].map(([id, type, title]) => ({
+                id,
+                type,
+                title,
+                owner: type === 'MILESTONE' ? 'CONSULTANT' : 'CLIENT',
+                status: 'AVAILABLE',
+                completionMode: 'ACKNOWLEDGEMENT',
+                body: 'Published instructions',
+                prerequisites: [],
+                deepLink: null,
+                availability: {
+                  canRespond: type !== 'MILESTONE',
+                  canSubmitCompletion: true,
+                  canRequestHelp: true,
+                  reason: null,
+                },
+              })),
+            },
+          },
+        },
+  );
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={['/app/plan']}>
+          <ClientPlanPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  await screen.findByRole('heading', { name: 'Your roadmap' });
+  expect(screen.getByRole('link', { name: 'Open step: Report progress' })).toHaveAttribute(
+    'href',
+    '/app/plan?view=actions&item=action',
+  );
+  expect(screen.getByRole('link', { name: 'Open step: Read this guidance' })).toHaveAttribute(
+    'href',
+    '/app/plan?view=guidance&item=guide',
+  );
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('link', { name: 'Actions' }));
+  await screen.findByRole('textbox', { name: 'Optional note for your consultant' });
+  expect(screen.queryByText('Read this guidance')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('link', { name: 'Guidance' }));
+  await screen.findByText('Read this guidance');
+  expect(screen.getByText('Consultant checkpoint')).toBeInTheDocument();
+  expect(screen.queryByText('Report progress')).not.toBeInTheDocument();
 });

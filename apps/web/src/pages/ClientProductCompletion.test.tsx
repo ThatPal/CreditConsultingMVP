@@ -74,7 +74,7 @@ describe('APC Wave 3 client product contracts', () => {
         },
       };
     });
-    wrap(<ClientPlanPage />);
+    wrap(<ClientPlanPage />, '/app/plan?view=actions');
     await waitFor(
       () => expect(screen.getAllByRole('textbox', { name: 'What changed?' })).toHaveLength(2),
       { timeout: 5000 },

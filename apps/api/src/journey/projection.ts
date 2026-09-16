@@ -110,7 +110,12 @@ export function resolveCurrentFocus(input: FocusInput) {
       detail: 'Continue this available step in your Plan.',
       owner: 'CLIENT',
       actionLabel: 'Continue your Plan',
-      action: '/app/plan',
+      action:
+        '/app/plan?' +
+        new URLSearchParams({
+          view: input.plan.nextClientItem.type === 'ACTION' ? 'actions' : 'guidance',
+          item: input.plan.nextClientItem.id,
+        }).toString(),
     };
   if (input.plan?.awaitingVerificationCount)
     return {

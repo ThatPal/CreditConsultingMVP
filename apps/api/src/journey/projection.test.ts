@@ -122,3 +122,31 @@ describe('canonical journey focus', () => {
     expect(appointmentFoundationStatus(null)).toBe('NOT_AVAILABLE');
   });
 });
+
+test.each(['ACTION', 'GUIDANCE'])('current %s focus opens the exact canonical step', (type) => {
+  const plan = summarizePlan({
+    status: 'ACTIVE',
+    version: {
+      items: [
+        {
+          id: 'step / one',
+          title: 'Current step',
+          type,
+          status: 'AVAILABLE',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+        },
+      ],
+    },
+  });
+  const focus = resolveCurrentFocus({
+    activeCycle: null,
+    activeNurture: null,
+    hasGoal: true,
+    plan,
+  });
+  const destination = new URL(focus.action, 'https://example.test');
+  expect(destination.pathname).toBe('/app/plan');
+  expect(destination.searchParams.get('view')).toBe(type === 'ACTION' ? 'actions' : 'guidance');
+  expect(destination.searchParams.get('item')).toBe('step / one');
+});

@@ -63,7 +63,7 @@ function setup() {
         ),
       },
     ],
-    { initialEntries: ['/app/plan'] },
+    { initialEntries: ['/app/plan?view=actions'] },
   );
   render(
     <ThemeProvider theme={theme}>
@@ -144,4 +144,22 @@ test('a running save prevents loading a replacement and newer local edits surviv
   expect(input).toHaveValue('Newer answer while saving');
   expect(screen.getByRole('button', { name: 'Review Plan update' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+});
+
+test('changing Plan views preserves unsaved responses until explicit departure', async () => {
+  setup();
+  const input = await screen.findByRole('textbox', { name: 'Optional note for your consultant' });
+  fireEvent.change(input, { target: { value: 'Keep my work while browsing' } });
+  await screen.findByText('Save unavailable', {}, { timeout: 3000 });
+  fireEvent.click(await screen.findByRole('link', { name: 'Overview' }));
+  await screen.findByRole('dialog');
+  expect(input).toHaveValue('Keep my work while browsing');
+  fireEvent.click(screen.getByRole('button', { name: 'Stay on this page' }));
+  expect(input).toHaveValue('Keep my work while browsing');
+  fireEvent.click(await screen.findByRole('link', { name: 'Overview' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Leave without latest changes' }));
+  await screen.findByRole('heading', { name: 'Your roadmap' });
+  expect(
+    screen.queryByRole('textbox', { name: 'Optional note for your consultant' }),
+  ).not.toBeInTheDocument();
 });
