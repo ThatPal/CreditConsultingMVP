@@ -1,4 +1,5 @@
 import { apiRequest, type CurrentUser } from './auth/api';
+import { creditWorkspaceRoots, creditWorkspaceRootsForDomains } from './queries/creditWorkspace';
 import { signalSessionLoss } from './auth/sessionLoss';
 import { useQueryClient } from '@tanstack/react-query';
 import { type PropsWithChildren, useEffect } from 'react';
@@ -30,20 +31,25 @@ export const liveConnectionCopy = (state: LiveConnectionState) =>
     : 'Reconnecting to live updates. You are viewing the last confirmed state; recent changes may not appear yet.';
 
 const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
-  'application-cycles': ['application-cycles', 'rounds', 'portal-home', 'portal-journey'],
+  'application-cycles': [
+    'application-cycles',
+    'rounds',
+    creditWorkspaceRoots.home,
+    creditWorkspaceRoots.journey,
+  ],
   'credit-profile': [
     'credit-profile',
-    'published-credit-center',
-    'consultant-published-credit-center',
-    'portal-home',
-    'portal-journey',
+    creditWorkspaceRoots.creditCenter,
+    creditWorkspaceRoots.consultantCreditCenter,
+    creditWorkspaceRoots.home,
+    creditWorkspaceRoots.journey,
   ],
   documents: [
     'documents',
     'review-documents',
     'client-documents',
     'document-picker',
-    'client-plan',
+    creditWorkspaceRoots.plan,
     'plan-execution',
     'plan-response-draft',
     'plan-draft-library',
@@ -56,10 +62,10 @@ const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
     'consultant-reviews',
     'review-workspace',
     'credit-center',
-    'published-credit-center',
-    'consultant-published-credit-center',
-    'portal-home',
-    'portal-journey',
+    creditWorkspaceRoots.creditCenter,
+    creditWorkspaceRoots.consultantCreditCenter,
+    creditWorkspaceRoots.home,
+    creditWorkspaceRoots.journey,
   ],
   services: ['services', 'purchases'],
   support: ['support', 'support-cases'],
@@ -68,7 +74,7 @@ const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
   'plan-drafts': ['plan-response-draft', 'plan-draft-library'],
   plan: [
     'plan',
-    'client-plan',
+    creditWorkspaceRoots.plan,
     'plan-builder',
     'plan-execution',
     'plan-sources',
@@ -78,25 +84,33 @@ const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
     'plan-response-draft',
     'post-round',
     'post-round-follow-ups',
-    'portal-home',
-    'portal-journey',
+    creditWorkspaceRoots.home,
+    creditWorkspaceRoots.journey,
   ],
-  strategy: ['strategy', 'portal-home', 'portal-journey'],
-  appointments: ['appointments', 'calendar', 'portal-home', 'portal-journey'],
+  strategy: ['strategy', creditWorkspaceRoots.home, creditWorkspaceRoots.journey],
+  appointments: [
+    'appointments',
+    'calendar',
+    creditWorkspaceRoots.home,
+    creditWorkspaceRoots.journey,
+  ],
   'live-sessions': ['live-session', 'live-sessions'],
   journey: [
     'journey',
-    'portal-home',
-    'portal-journey',
+    creditWorkspaceRoots.home,
+    creditWorkspaceRoots.journey,
     'client-360',
-    'consultant-client-journey',
+    creditWorkspaceRoots.consultantJourney,
     'consultant-client-timeline',
   ],
-  home: ['portal-home', 'portal-journey'],
+  home: [creditWorkspaceRoots.home, creditWorkspaceRoots.journey],
 };
 
 export const queryRootsForLiveDomains = (domains: LiveEventDomain[]) => [
-  ...new Set(domains.flatMap((domain) => queryRootsByDomain[domain] ?? [])),
+  ...new Set([
+    ...domains.flatMap((domain) => queryRootsByDomain[domain] ?? []),
+    ...creditWorkspaceRootsForDomains(domains),
+  ]),
 ];
 
 // Events are refresh hints, never replacements for authenticated query data.

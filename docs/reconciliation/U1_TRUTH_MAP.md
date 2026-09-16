@@ -33,3 +33,7 @@ These are required boundaries, not implemented adapters. No adapter was introduc
 ## Tests that must survive recomposition
 
 Dirty/busy Plan refresh protection; private draft identity/version fencing; accepted-write versus failed-read recovery; history/evidence authorization; client submission distinct from consultant verification; source-review pauses; concurrent approval/reconciliation; account/session fencing; no automatic consequential mutation on reconnect or login. Existing passes 01–59 supply regression evidence, not permission to preserve conflicting business contracts.
+
+## U1-01 progress
+
+The shared creditWorkspace query factory now owns reference query identities and refresh boundaries. Plan response/verification/builder and relevant realtime domains refresh Home/Journey/Center/Plan plus cached scoped CRM summaries. See BATCH-U1-01.md. Server-derived focus/counts/currentness and final composed DTOs above are still outstanding; this plumbing does not make the legacy projections canonical.

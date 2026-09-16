@@ -16,6 +16,7 @@ import {
 import { PublishedCreditFacts } from '../components/common/PublishedCreditFacts';
 import { webEnv } from '../config/env';
 import { CollectionSurface } from '../components/common/CollectionSurface';
+import { creditWorkspaceKeys } from '../queries/creditWorkspace';
 
 type PublishedReview = {
   id: string;
@@ -52,7 +53,7 @@ export function PublishedCreditCenterPage({
   view: 'overview' | 'profile' | 'report' | 'analysis' | 'history';
 }) {
   const query = useQuery({
-    queryKey: ['published-credit-center'],
+    queryKey: creditWorkspaceKeys.creditCenter(),
     queryFn: () => apiRequest<CreditCenterResponse>('/api/v1/client/credit-profile'),
     retry: false,
   });
@@ -65,7 +66,7 @@ export function PublishedCreditCenterPage({
 export function ConsultantClientCreditCenterPage() {
   const { clientId } = useParams();
   const query = useQuery({
-    queryKey: ['consultant-published-credit-center', clientId],
+    queryKey: creditWorkspaceKeys.consultantCreditCenter(clientId),
     queryFn: () =>
       apiRequest<CreditCenterResponse>(`/api/v1/reviews/consultant/${clientId}/credit-center`),
     enabled: Boolean(clientId),

@@ -3,6 +3,7 @@ import { Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography } f
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ResponseWritePause, useNavigationProtection } from '../../NavigationProtection';
 import { apiRequest } from '../../auth/api';
+import { invalidateCreditWorkspace } from '../../queries/creditWorkspace';
 import type { ResponseDraft } from './SavedPlanResponse';
 import { EvidenceFile, PlanAttachments, type PlanFile } from './PlanAttachments';
 
@@ -265,11 +266,7 @@ export function PlanResponse({
     onSuccess: async () => {
       setSavedPayload(serialized);
       client.removeQueries({ queryKey: ['plan-response-draft', item.id] });
-      await Promise.all(
-        ['client-plan', 'portal-home', 'portal-journey'].map((root) =>
-          client.invalidateQueries({ queryKey: [root] }),
-        ),
-      );
+      await invalidateCreditWorkspace(client);
     },
   });
   useNavigationProtection(dirty && !mutation.isSuccess, saving || uploading || mutation.isPending);

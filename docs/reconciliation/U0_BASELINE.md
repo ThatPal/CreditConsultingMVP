@@ -52,6 +52,8 @@ Current server still constructs `Phase7DeterministicProvider`, calls `createEmai
 
 Diagnostic logs: `.tmp/u0-web-recheck.log`, `.tmp/u0-auth-fixed.log`, `.tmp/u0-reconciliation-tests.log`, `.tmp/u0-packages-configured.log`, `.tmp/u0-lint-final.log`. Logs are ignored local evidence; summarized results are retained here. No schema migrations, product behavior changes or compatibility adapters were introduced.
 
-## Remaining U0 work
+## Work identified at this baseline checkpoint (completed in c54b5d1)
 
 Complete per-route and shared-component classifications against final exact specifications, including missing surfaces and duplicate aliases. The generated 120-route / 47-module inventory is explicitly provisional; it is not a completed final-spec mapping. Complete remaining frozen source review needed for that reconciliation, and consolidate the final U0 acceptance checklist. U1 remains unstarted. U0 is not accepted merely because builds pass.
+
+Update: all 120 route / 47 shared-module dispositions are now explicit. See U0_ACCEPTANCE.md for the passed inventory gate; the paragraph above preserves the original checkpoint status.

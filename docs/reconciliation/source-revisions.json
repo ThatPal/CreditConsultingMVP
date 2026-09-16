@@ -98,6 +98,14 @@
       "url": "https://docs.google.com/document/d/1PNwFAl1vrdZ-7vMu42_f9AhZB_GC-UUXcZtIfiKxKYg",
       "paragraphs": 793,
       "review": "Screen inventory and QA interaction/mobile amendments reviewed for route/ownership topology; full wireframe implementation qualification remains pending"
+    },
+    {
+      "id": "16Ta20iaiRoWDRK3hJtVfaktTsLyIiQNeCqmqmmWIiOI",
+      "title": "10 — Security, Privacy, Permissions & Data Governance",
+      "revision": "ANLCKQlvBAC5srxsftUjaNfLEB6iBZSP2qiVXpyz-fQzIFVQchtfnM7W4seszcHbwsWkIeELgnKujWN7SoeQDhDFrTWX8BZDS6VGg92ecVk",
+      "url": "https://docs.google.com/document/d/16Ta20iaiRoWDRK3hJtVfaktTsLyIiQNeCqmqmmWIiOI",
+      "paragraphs": 366,
+      "review": "U1 DTO/client-scope/cache/realtime rules and final reconciliation excerpts reviewed; not full-document acceptance"
     }
   ]
 }

@@ -29,8 +29,10 @@ Downloaded source text remains private under ignored `docs/astra/sources/drive/u
 | U1 truth map                                  | Initial source-level map captured                                                           |
 | Visual baseline                               | Ten real browser captures, including published Profile and expanded Action                  |
 | U0 acceptance                                 | PASSED — baseline/inventory only                                                            |
-| U1 implementation/acceptance                  | STARTING / NOT PASSED                                                                       |
+| U1 implementation/acceptance                  | IN PROGRESS / NOT PASSED                                                                    |
 
 No U1 completion report should exist until both gates actually pass. No broad U2 work is authorized by completion of an individual U1 feature.
 
 Latest checkpoint: baseline diagnostics and tooling-only corrections are complete for this batch; ten screenshot artifacts captured/reviewed. API 354 passing tests across broad + focused runs; web baseline 279/288, with four timeout cases passing diagnostic rerun and five test-isolation failures corrected; auth boundary rerun 10/10. Runtime 3/3, worker 17/17. Root lint passes after excluding ignored tooling and declaring script globals. Both databases match all 69 migration checksums. **Portal/staff/shared dispositions are now complete; U0 acceptance is recorded separately. All final UI and production qualification remains open.**
+
+Latest implementation: [U1 batch 01](BATCH-U1-01.md) records collection interaction repairs and shared reference query refresh. Server truth and final reference-screen compositions remain next.

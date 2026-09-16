@@ -1,4 +1,5 @@
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
+import { creditWorkspaceKeys } from '../queries/creditWorkspace';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import RouteRounded from '@mui/icons-material/RouteRounded';
 import {
@@ -377,7 +378,7 @@ export function JourneySummary({
 
 export function ClientHomePage() {
   const query = useQuery({
-    queryKey: ['portal-home'],
+    queryKey: creditWorkspaceKeys.home(),
     queryFn: () => apiRequest<JourneyProjection>('/api/v1/client/home'),
   });
   return (
@@ -431,7 +432,7 @@ export function ClientHomePage() {
 
 export function ClientJourneyPage() {
   const query = useQuery({
-    queryKey: ['portal-journey'],
+    queryKey: creditWorkspaceKeys.journey(),
     queryFn: () => apiRequest<JourneyProjection>('/api/v1/client/journey'),
   });
   if (query.isLoading) return <LinearProgress />;

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useNavigationProtection } from '../../NavigationProtection';
 import { apiRequest } from '../../auth/api';
+import { invalidateCreditWorkspace } from '../../queries/creditWorkspace';
 import type { ClientPlanResponse } from '../../pages/PlanPages';
 import { ResponseHistory } from './PlanResponse';
 
@@ -96,16 +97,11 @@ export function PlanExecutionReview({
       put(variables.itemId, null);
       setLocalError('');
       await Promise.all(
-        [
-          'plan-execution',
-          'plan-builder',
-          'client-plan',
-          'work-queue',
-          'shell-client-context',
-          'portal-home',
-          'portal-journey',
-        ].map((root) => client.invalidateQueries({ queryKey: [root] })),
+        ['plan-execution', 'plan-builder', 'work-queue', 'shell-client-context'].map((root) =>
+          client.invalidateQueries({ queryKey: [root] }),
+        ),
       );
+      await invalidateCreditWorkspace(client);
     },
   });
   useNavigationProtection(

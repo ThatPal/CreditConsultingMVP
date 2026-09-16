@@ -1,4 +1,5 @@
 import { CancelPrivatePlan } from './CancelPrivatePlan';
+import { invalidateCreditWorkspace } from '../../queries/creditWorkspace';
 import { PlanLibrary } from './PlanLibrary';
 import { PlanPathEditor } from './PlanPathEditor';
 import { PlanVersionHistory } from './PlanVersionHistory';
@@ -237,11 +238,9 @@ function PlanBuilder({
     if (result.isError) throw result.error;
     if (result.data) setEditor(hydrate(result.data));
     await queryClient.invalidateQueries({ queryKey: ['plan-library', clientId] });
-    await queryClient.invalidateQueries({ queryKey: ['client-plan'] });
-    await queryClient.invalidateQueries({ queryKey: ['portal-home'] });
+    await invalidateCreditWorkspace(queryClient);
     await queryClient.invalidateQueries({ queryKey: ['work-queue'] });
     await queryClient.invalidateQueries({ queryKey: ['plan-execution', clientId] });
-    await queryClient.invalidateQueries({ queryKey: ['portal-journey'] });
     await queryClient.invalidateQueries({ queryKey: ['shell-client-context', clientId] });
   };
   const save = useMutation({

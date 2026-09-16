@@ -1,4 +1,5 @@
 import { PlanFollowUp } from '../features/plans/PlanFollowUp';
+import { creditWorkspaceKeys } from '../queries/creditWorkspace';
 import { useEffect, useState } from 'react';
 import { ResponseWritePause, usePendingNavigationWork } from '../NavigationProtection';
 import { PlanDraftLibrary } from '../features/plans/PlanDraftLibrary';
@@ -58,7 +59,7 @@ export type ClientPlanResponse = {
 
 export function ClientPlanPage() {
   const query = useQuery({
-    queryKey: ['client-plan'],
+    queryKey: creditWorkspaceKeys.plan(),
     queryFn: () => apiRequest<ClientPlanResponse>('/api/v1/client/plan'),
   });
   const pending = usePendingNavigationWork();

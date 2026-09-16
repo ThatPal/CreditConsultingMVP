@@ -3,12 +3,18 @@ import { liveConnectionCopy, queryRootsForLiveDomains } from './LiveUpdates';
 import { readableOfferFacts } from './pages/LivePages';
 
 describe('targeted realtime invalidation', () => {
-  test('maps live and work-queue events only to their affected query families', () => {
+  test('live changes refresh reference projections without unrelated payment/document queries', () => {
     expect(queryRootsForLiveDomains(['live-sessions', 'work-queue'])).toEqual([
       'live-session',
       'live-sessions',
       'work-queue',
       'shell-client-context',
+      'portal-home',
+      'portal-journey',
+      'published-credit-center',
+      'client-plan',
+      'consultant-published-credit-center',
+      'consultant-client-journey',
     ]);
     expect(queryRootsForLiveDomains(['live-sessions'])).not.toContain('payments');
     expect(queryRootsForLiveDomains(['live-sessions'])).not.toContain('documents');
@@ -29,6 +35,9 @@ describe('targeted realtime invalidation', () => {
       'post-round-follow-ups',
       'portal-home',
       'portal-journey',
+      'published-credit-center',
+      'consultant-published-credit-center',
+      'consultant-client-journey',
     ]);
   });
 

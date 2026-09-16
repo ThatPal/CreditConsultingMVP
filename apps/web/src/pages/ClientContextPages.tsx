@@ -1,4 +1,5 @@
 import BusinessRounded from '@mui/icons-material/BusinessRounded';
+import { creditWorkspaceKeys } from '../queries/creditWorkspace';
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded';
 import AccountBalanceRounded from '@mui/icons-material/AccountBalanceRounded';
 import {
@@ -243,7 +244,7 @@ export function Client360Page() {
     retry: false,
   });
   const journeyQuery = useQuery({
-    queryKey: ['consultant-client-journey', clientId],
+    queryKey: creditWorkspaceKeys.consultantJourney(clientId),
     queryFn: () => apiRequest<JourneyProjection>(`/api/v1/consultant/clients/${clientId}/journey`),
     enabled: Boolean(clientId),
     retry: false,
