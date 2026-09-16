@@ -1,3 +1,4 @@
+import { ActionProgressDisplay } from '../components/common/ActionProgressDisplay';
 import { designTokens } from '../theme';
 import { PlanRoadmap, planStepUrl } from '../features/plans/PlanRoadmap';
 import { PlanFollowUp } from '../features/plans/PlanFollowUp';
@@ -17,7 +18,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  LinearProgress,
   Stack,
   Typography,
 } from '@mui/material';
@@ -29,11 +29,7 @@ import { RecoveryState } from '../components/common/InteractionPatterns';
 import { StatusChip } from '../components/common/StatusChip';
 import { presentStatus } from '../components/common/statusVocabulary';
 import { CollectionSurface } from '../components/common/CollectionSurface';
-import {
-  DraftPublicationStatus,
-  ProgressArc,
-  WaitingState,
-} from '../components/common/ProductFoundation';
+import { DraftPublicationStatus, WaitingState } from '../components/common/ProductFoundation';
 import { SavedPlanResponse } from '../features/plans/SavedPlanResponse';
 import { ResponseHistory, type ResponseItem } from '../features/plans/PlanResponse';
 import type { PlanItem as Item } from '../features/plans/editor';
@@ -288,22 +284,7 @@ export function ClientPlanPage() {
               />
             </Stack>
             {view === 'overview' && summary?.progressPercent != null && (
-              <>
-                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                  <ProgressArc value={summary.progressPercent} label="Action progress" />
-                </Box>
-                <Stack spacing={1} sx={{ display: { xs: 'flex', sm: 'none' } }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Action progress · {summary.progressPercent}%
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={summary.progressPercent}
-                    aria-label="Action progress"
-                    sx={{ height: 6, borderRadius: 3 }}
-                  />
-                </Stack>
-              </>
+              <ActionProgressDisplay percent={summary.progressPercent} />
             )}
           </Stack>
         </Box>

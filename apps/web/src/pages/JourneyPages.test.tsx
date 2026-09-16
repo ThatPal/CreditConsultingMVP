@@ -98,3 +98,28 @@ test('shows the booked time with its timezone and owning round destination', () 
     '/app/rounds/round-1/schedule',
   );
 });
+
+test('Home renders the server percentage without recomputing from count fields', () => {
+  render(
+    <MemoryRouter>
+      <JourneySummary
+        data={{
+          ...projection,
+          foundations: {
+            ...projection.foundations,
+            plan: {
+              ...projection.foundations.plan,
+              progressPercent: 37,
+              completedActionCount: 0,
+              totalActionCount: 10,
+            },
+          },
+        }}
+        showHistory={false}
+      />
+    </MemoryRouter>,
+  );
+  expect(
+    screen.getByRole('img', { name: 'Action progress: 37 percent complete' }),
+  ).toBeInTheDocument();
+});

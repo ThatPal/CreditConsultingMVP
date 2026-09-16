@@ -1,3 +1,7 @@
+import { ActionProgressDisplay } from '../components/common/ActionProgressDisplay';
+import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined';
+import RouteOutlined from '@mui/icons-material/RouteOutlined';
+import EventOutlined from '@mui/icons-material/EventOutlined';
 import { designTokens } from '../theme';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import { creditWorkspaceKeys } from '../queries/creditWorkspace';
@@ -68,6 +72,7 @@ export type JourneyProjection = {
       openActionCount: number;
       completedActionCount?: number;
       totalActionCount?: number;
+      progressPercent?: number | null;
     };
     appointment: {
       status: string;
@@ -225,7 +230,17 @@ export function JourneySummary({
         <Typography variant="h3" sx={{ mb: 2 }}>
           Your working picture
         </Typography>
-        <Grid container spacing={0} sx={{ borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
+        <Grid
+          container
+          spacing={0}
+          sx={{
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: '24px',
+            overflow: 'hidden',
+            background: designTokens.gradient.data,
+          }}
+        >
           {[
             {
               label: 'Credit Profile',
@@ -279,19 +294,53 @@ export function JourneySummary({
               size={{ xs: 12, md: hasAppointment ? 4 : 6 }}
               sx={{
                 p: 3,
-                pl: { md: index === 0 ? 0 : 3 },
+                pl: 3,
                 borderLeft: { md: index ? 1 : 0 },
                 borderBottom: { xs: index < (hasAppointment ? 2 : 1) ? 1 : 0, md: 0 },
                 borderColor: 'divider',
               }}
             >
-              <Stack spacing={1.5} sx={{ height: '100%' }}>
-                <Typography variant="body2" color="text.secondary">
+              <Stack spacing={1.5} sx={{ height: '100%', position: 'relative' }}>
+                <Stack
+                  direction="row"
+                  sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <Box
+                    aria-hidden="true"
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      display: 'grid',
+                      placeItems: 'center',
+                      color: 'primary.main',
+                      background: designTokens.gradient.active,
+                      borderRadius: '14px',
+                    }}
+                  >
+                    {index === 0 ? (
+                      <FactCheckOutlined />
+                    ) : index === 1 ? (
+                      <RouteOutlined />
+                    ) : (
+                      <EventOutlined />
+                    )}
+                  </Box>
+                  {index === 1 && hasPlan && (
+                    <Box sx={{ position: 'absolute', right: 0, top: 0 }}>
+                      <ActionProgressDisplay percent={plan.progressPercent} compact />
+                    </Box>
+                  )}
+                </Stack>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ pr: index === 1 && plan.progressPercent != null ? '112px' : 0 }}
+                >
                   {record.label}
                 </Typography>
                 <Typography
                   sx={{
-                    fontSize: 26,
+                    fontSize: index === 1 && hasPlan ? 42 : 26,
                     fontWeight: 600,
                     textTransform: 'capitalize',
                     fontVariantNumeric: 'tabular-nums',
