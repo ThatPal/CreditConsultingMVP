@@ -90,8 +90,16 @@ export function ScheduleRoundPage() {
     <Stack spacing={3}>
       <PageHeader
         eyebrow="Application Round · Scheduling"
-        title="Schedule your guided application session"
-        description="Choose an available time. Your internal appointment remains confirmed even if optional calendar sync is delayed."
+        title={
+          appointment
+            ? 'Your guided application appointment'
+            : 'Schedule your guided application session'
+        }
+        description={
+          appointment
+            ? 'Review your confirmed time and check the session status when it is time to meet.'
+            : 'Choose an available time for your guided application session.'
+        }
       />
       {error && <Alert severity="error">{error}</Alert>}
       {!data ? (
@@ -102,7 +110,10 @@ export function ScheduleRoundPage() {
             <Stack spacing={2}>
               <Typography variant="h6">Upcoming appointment</Typography>
               <Typography>
-                {new Date(appointment.startsAt).toLocaleString()} · {appointment.timezone}
+                {new Date(appointment.startsAt).toLocaleString(undefined, {
+                  timeZone: appointment.timezone,
+                })}{' '}
+                · {appointment.timezone}
               </Typography>
               <Stack direction="row" spacing={1}>
                 <Chip label={appointment.status} color="success" />
@@ -111,8 +122,12 @@ export function ScheduleRoundPage() {
               <Button variant="outlined" color="error" onClick={() => void cancel()}>
                 Cancel appointment
               </Button>
+              <Typography color="text.secondary">
+                Your consultant starts the Live session. A confirmed appointment does not mean
+                applications can begin.
+              </Typography>
               <Button component={Link} to={`/app/rounds/${roundId}/live`} variant="contained">
-                Join session
+                View session status
               </Button>
             </Stack>
           </CardContent>

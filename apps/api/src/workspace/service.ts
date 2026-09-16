@@ -124,6 +124,8 @@ export async function getCreditWorkspace(
     hasGoal: Boolean(goal),
     round,
     liveSession,
+    appointment,
+    now,
     coordinationRestrictions,
     majorCase,
     plan: plan.summary,

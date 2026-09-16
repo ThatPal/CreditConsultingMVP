@@ -66,3 +66,5 @@ Latest implementation: [U1 batch 14](BATCH-U1-14.md) shares server-derived Profi
 Latest implementation: [U1 batch 15](BATCH-U1-15.md) adds client-scoped open Live session focus with exact return links and safe source versions. Existing execution authorization remains authoritative. Major/scheduling precedence and full U1 acceptance remain open.
 
 Latest implementation: [U1 batch 16](BATCH-U1-16.md) adds scoped Major restrictions to shared focus, distinguishes restricted Live activity from paused sessions, and preserves exact-case navigation. 55 focused tests pass. Scheduling/action contracts and final acceptance remain open; U1 NOT PASSED.
+
+Latest implementation: [U1 batch 17](BATCH-U1-17.md) adds server-timed appointment focus within the existing pre-session window, preserves restriction/Live precedence, and repairs appointment timezone/session wording. 49 API tests and desktop/mobile checks pass. U1 NOT PASSED; remaining action contracts and final acceptance stay open.

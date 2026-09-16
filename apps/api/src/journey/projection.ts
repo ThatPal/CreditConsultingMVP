@@ -1,3 +1,4 @@
+import { JOIN_WINDOW_MS } from '../live/timing.js';
 import { summarizePlan } from '../workspace/projection.js';
 export { summarizePlan } from '../workspace/projection.js';
 import type {
@@ -7,6 +8,14 @@ import type {
 } from '../generated/prisma/enums.js';
 
 export type FocusInput = {
+  now?: Date;
+  appointment?: {
+    id: string;
+    roundId: string;
+    status: string;
+    startsAt: Date;
+    endsAt: Date;
+  } | null;
   activeNurture: { reasonCode: string } | null;
   activeCycle: { id: string; currentStage: ApplicationCycleStage } | null;
   hasGoal: boolean;
@@ -155,6 +164,23 @@ export function resolveCurrentFocus(input: FocusInput) {
       owner: 'CONSULTANT',
       actionLabel: 'View your Plan',
       action: '/app/plan',
+    };
+  const appointment = input.appointment;
+  const now = input.now?.getTime();
+  if (
+    appointment?.status === 'BOOKED' &&
+    now !== undefined &&
+    now >= appointment.startsAt.getTime() - JOIN_WINDOW_MS &&
+    now < appointment.endsAt.getTime()
+  )
+    return {
+      code: 'APPOINTMENT_UPCOMING',
+      title: 'Review your scheduled application session',
+      detail:
+        'Check your appointment details and preparation. Your consultant must start the Live session before applications can begin.',
+      owner: 'CLIENT',
+      actionLabel: 'View appointment',
+      action: '/app/rounds/' + encodeURIComponent(appointment.roundId) + '/schedule',
     };
   if (input.plan?.nextClientItem)
     return {

@@ -221,3 +221,56 @@ test('active Major case replaces only the no-round fallback; completed case is n
     'READY_FOR_CYCLE',
   );
 });
+
+const scheduledFocusInput = {
+  activeCycle: null,
+  activeNurture: null,
+  hasGoal: true,
+  appointment: {
+    id: 'appointment',
+    roundId: 'round / one',
+    status: 'BOOKED',
+    startsAt: new Date('2026-09-16T15:00:00Z'),
+    endsAt: new Date('2026-09-16T16:00:00Z'),
+  },
+};
+test.each([
+  ['2026-09-16T14:29:59.999Z', false],
+  ['2026-09-16T14:30:00Z', true],
+  ['2026-09-16T15:00:00Z', true],
+  ['2026-09-16T15:59:59.999Z', true],
+  ['2026-09-16T16:00:00Z', false],
+])('scheduled focus boundary %s', (time, expected) => {
+  const focus = resolveCurrentFocus({ ...scheduledFocusInput, now: new Date(time) });
+  expect(focus.code === 'APPOINTMENT_UPCOMING').toBe(expected);
+  if (expected) {
+    expect(focus.action).toBe('/app/rounds/round%20%2F%20one/schedule');
+    expect(focus.actionLabel).toBe('View appointment');
+  }
+});
+test.each(['CANCELLED', 'COMPLETED', 'NO_SHOW'])('excludes appointment status %s', (status) => {
+  expect(
+    resolveCurrentFocus({
+      ...scheduledFocusInput,
+      now: new Date('2026-09-16T15:00:00Z'),
+      appointment: { ...scheduledFocusInput.appointment, status },
+    }).code,
+  ).not.toBe('APPOINTMENT_UPCOMING');
+});
+test('restriction, blocked Round and open Live session precede booked appointment navigation', () => {
+  const input = { ...scheduledFocusInput, now: new Date('2026-09-16T15:00:00Z') };
+  expect(
+    resolveCurrentFocus({
+      ...input,
+      coordinationRestrictions: [{ caseId: 'major', scope: 'SCHEDULING' }],
+    }).code,
+  ).toBe('MAJOR_COORDINATION');
+  expect(
+    resolveCurrentFocus({ ...input, round: { id: 'round', status: 'BLOCKED', strategy: null } })
+      .code,
+  ).toBe('ROUND_BLOCKED');
+  expect(
+    resolveCurrentFocus({ ...input, liveSession: { id: 'live', roundId: 'round', status: 'LIVE' } })
+      .code,
+  ).toBe('LIVE_RETURN');
+});

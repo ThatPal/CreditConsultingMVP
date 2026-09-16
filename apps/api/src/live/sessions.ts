@@ -9,7 +9,7 @@ import { executeConsequentialCommand } from '../transactions/consequentialComman
 import { assertNoCreditActivityRestriction } from '../majorReadiness/service.js';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const JOIN_WINDOW_MS = 30 * 60_000;
+import { JOIN_WINDOW_MS } from './timing.js';
 const PRESENCE_LEASE_MS = 90_000;
 
 export async function assertSessionParticipant(

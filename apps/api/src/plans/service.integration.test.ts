@@ -566,4 +566,35 @@ describe('Plan authoring and approval', () => {
       await prisma.majorReadinessCase.delete({ where: { id: major.id } });
     }
   });
+  test('workspace passes the server clock and client-scoped appointment into shared focus', async () => {
+    const now = new Date('2026-09-16T14:30:00Z');
+    const appointment = {
+      id: randomUUID(),
+      roundId: randomUUID(),
+      status: 'BOOKED',
+      startsAt: new Date('2026-09-16T15:00:00Z'),
+      endsAt: new Date('2026-09-16T16:00:00Z'),
+      timezone: 'America/New_York',
+    };
+    const read = vi.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(appointment as never);
+    try {
+      const workspace = await getCreditWorkspace(prisma, clientId, undefined, now);
+      expect(read).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { clientId, status: 'BOOKED', endsAt: { gt: now } },
+          orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+        }),
+      );
+      expect(workspace.currentFocus.code).toBe('APPOINTMENT_UPCOMING');
+      expect(workspace.currentFocus.action).toBe(
+        '/app/rounds/' + appointment.roundId + '/schedule',
+      );
+      expect(
+        (await getCreditWorkspace(prisma, clientId, undefined, new Date('2026-09-16T16:00:00Z')))
+          .currentFocus.code,
+      ).not.toBe('APPOINTMENT_UPCOMING');
+    } finally {
+      read.mockRestore();
+    }
+  });
 });
