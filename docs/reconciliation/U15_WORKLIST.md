@@ -1,6 +1,6 @@
 # U1.5 — Client Core Experience Finalization
 
-Status: engineering verification PASSED; commit closeout and product review pending. U2 is not started. Stop after U1.5 for product review.
+Status: engineering verification PASSED; ready for product review. U2 is not started. Stop after U1.5 for product review.
 
 Baseline: `0cc3c12546e4ce0f84dadee4206b41e95c4b676c`, clean and synchronized with origin/codex/astra-production on 2026-09-16. Independent Astra worktree only.
 
@@ -32,7 +32,7 @@ Baseline validation: all five packages build; API workspace/Journey/Plan regress
 - [x] Integrated Plan response flow and documented U4 debt.
 - [x] Regression, responsive and accessibility verification.
 - [x] Deterministic desktop/mobile evidence matrix, visual inspection and repairs.
-- [ ] Closeout with explicit gates, final SHA, dependency owners and product review stop.
+- [x] Closeout with explicit gates, final SHA, dependency owners and product review stop.
 
 No new canonical persistence, production fallback credit fixtures, or browser PDF parsing is permitted. Tests/reference fixtures remain separate from runtime data.
 
@@ -59,3 +59,5 @@ No new canonical persistence, production fallback credit fixtures, or browser PD
 | PublishedCreditFacts | KEEP for consultant scope | Client current/history surfaces use U1.5 components; this pass does not redesign CRM |
 
 Evidence and limitations: [review index](../evidence/u15-review/README.md), [read contracts and owners](U15_DATA_CONTRACTS.md).
+
+Validated implementation: `ba5a56513e276cfbdb1a9b9f669c12eeb4d458b4`. See the [completed gate report](U15_COMPLETION_REPORT.md). U2 remains parked.
