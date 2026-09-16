@@ -1,3 +1,4 @@
+import { designTokens } from '../theme';
 import { PlanRoadmap, planStepUrl } from '../features/plans/PlanRoadmap';
 import { PlanFollowUp } from '../features/plans/PlanFollowUp';
 import {
@@ -216,7 +217,14 @@ export function ClientPlanPage() {
         <Box
           component="section"
           aria-label="Current Plan focus"
-          sx={{ borderTop: 1, borderBottom: 1, borderColor: 'divider', py: { xs: 2.5, md: 3 } }}
+          sx={{
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 3,
+            p: { xs: 2.5, md: 4 },
+            background: designTokens.gradient.focus,
+            boxShadow: designTokens.shadow.glow,
+          }}
         >
           <Stack
             direction={{ xs: 'column', sm: 'row' }}

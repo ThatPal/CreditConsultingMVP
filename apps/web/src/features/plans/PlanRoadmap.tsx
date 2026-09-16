@@ -1,3 +1,8 @@
+import BoltRounded from '@mui/icons-material/BoltRounded';
+import FlagRounded from '@mui/icons-material/FlagRounded';
+import AutoStoriesRounded from '@mui/icons-material/AutoStoriesRounded';
+import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
+import { designTokens } from '../../theme';
 import { Box, Button, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 import type { ClientPlanItem } from '../../pages/PlanPages';
@@ -28,11 +33,40 @@ export function PlanRoadmap({ items }: { items: ClientPlanItem[] }) {
               gridTemplateColumns: { xs: '1fr', md: '150px minmax(0,1fr) auto' },
               gap: 2,
               py: 3,
+              pl: { xs: 2, md: 3 },
+              pr: 2,
+              borderLeft: '2px solid',
+              borderLeftColor: item.availability?.canRespond ? 'primary.main' : 'divider',
+              background: item.availability?.canRespond
+                ? designTokens.gradient.subtle
+                : 'transparent',
+              borderRadius: '0 16px 16px 0',
+              mb: 1,
               borderTop: 1,
               borderColor: 'divider',
             }}
           >
             <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  placeItems: 'center',
+                  width: 44,
+                  height: 44,
+                  borderRadius: 2,
+                  color: 'primary.main',
+                  background: designTokens.gradient.active,
+                  boxShadow: item.availability?.canRespond ? designTokens.shadow.glow : 'none',
+                }}
+              >
+                {item.type === 'ACTION' ? (
+                  <BoltRounded />
+                ) : item.type === 'MILESTONE' ? (
+                  <FlagRounded />
+                ) : (
+                  <AutoStoriesRounded />
+                )}
+              </Box>
               <Typography variant="overline">{item.type.toLowerCase()}</Typography>
               <StatusChip
                 {...(item.status === 'UNABLE'
@@ -62,6 +96,7 @@ export function PlanRoadmap({ items }: { items: ClientPlanItem[] }) {
               )}
             </Stack>
             <Button
+              endIcon={<ArrowForwardRounded />}
               component={Link}
               to={planStepUrl(item)}
               aria-label={'Open step: ' + item.title}

@@ -50,3 +50,5 @@ Latest implementation: [U1 batch 06](BATCH-U1-06.md) shares Plan response dispos
 Latest implementation: [U1 batch 07](BATCH-U1-07.md) adds Overview roadmap, Actions and Guidance views over shared Plan items, protects dirty responses when changing views, and routes shared next-step links to the exact item. Decisions/Nurture and remaining domain/action contracts remain open. U1 NOT PASSED.
 
 Latest implementation: [U1 batch 08](BATCH-U1-08.md) reconciles shared typography, teal controls, touch targets and reduced motion, and scopes optional Plan collection restoration to publication/view identity. Reference browser checks preserve focus/count agreement and response recovery. Final truth and screen gates remain open; U1 NOT PASSED.
+
+Latest implementation: [U1 batch 09](BATCH-U1-09.md) follows the user's richer visual direction with score pointers/scales, utilization ring, icon-led Plan steps, shared gradients/glow and blue-slate surfaces. Published values and recovery are preserved. U1 NOT PASSED.

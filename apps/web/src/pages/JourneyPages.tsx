@@ -1,3 +1,4 @@
+import { designTokens } from '../theme';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import { creditWorkspaceKeys } from '../queries/creditWorkspace';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
@@ -128,7 +129,8 @@ export function JourneySummary({
           borderColor: 'divider',
           borderRadius: '20px',
           overflow: 'hidden',
-          background: 'linear-gradient(120deg, #142c36 0%, #153d44 65%, #20514e 100%)',
+          background: designTokens.gradient.focus,
+          boxShadow: designTokens.shadow.glow,
           color: '#f3f8f6',
         }}
       >
@@ -161,7 +163,7 @@ export function JourneySummary({
               to={focus.action}
               variant="contained"
               endIcon={<ArrowForwardRounded />}
-              sx={{ background: '#d1edb5', color: '#173b31', '&:hover': { bgcolor: '#e1f5ce' } }}
+              sx={{ boxShadow: designTokens.shadow.glow }}
             >
               {focus.actionLabel ?? 'View next step'}
             </Button>
