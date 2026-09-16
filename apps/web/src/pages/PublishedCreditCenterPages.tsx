@@ -1,16 +1,15 @@
+import { useEffect, useRef } from 'react';
 import { Alert, Box, Button, Chip, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
-import { SectionCard } from '../components/common/SectionCard';
 import { RecoveryState } from '../components/common/InteractionPatterns';
 import {
   ArchetypeCanvas,
   DraftPublicationStatus,
   EventTimeline,
-  ProductiveEmptyState,
   ProvenanceDetails,
 } from '../components/common/ProductFoundation';
 import { PublishedCreditFacts } from '../components/common/PublishedCreditFacts';
@@ -101,6 +100,16 @@ function CreditCenterContent({
   basePath: string;
   consultant?: boolean;
 }) {
+  const sections = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = sections.current;
+    const selected = container?.querySelector('[aria-current="page"]');
+    if (!container || !selected) return;
+    const viewport = container.getBoundingClientRect();
+    const item = selected.getBoundingClientRect();
+    if (item.right > viewport.right) container.scrollLeft += item.right - viewport.right;
+    else if (item.left < viewport.left) container.scrollLeft += item.left - viewport.left;
+  }, [view]);
   const current = data.current;
   const projection = current?.projection;
   const profile = projection?.profile ?? {};
@@ -139,32 +148,19 @@ function CreditCenterContent({
             : 'Its current status needs consultant review.'}
         </Alert>
       )}
-      {!consultant && data.workspace && view === 'overview' && (
-        <Stack spacing={1} sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
-          <Typography variant="overline">Current focus</Typography>
-          <Typography variant="h3">{data.workspace.currentFocus.title}</Typography>
-          <Typography color="text.secondary">{data.workspace.currentFocus.detail}</Typography>
-          <Typography variant="body2">
-            Actions remaining: {data.workspace.plan.openActionCount} ·{' '}
-            {data.workspace.plan.completedActionCount} completed
-          </Typography>
-          <Button
-            component={Link}
-            to={data.workspace.currentFocus.action}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            {data.workspace.currentFocus.actionLabel}
-          </Button>
-        </Stack>
-      )}
       {navigation.length > 0 && (
         <Stack
           direction="row"
           useFlexGap
           sx={{ flexWrap: 'wrap', gap: 1 }}
+          component="nav"
           aria-label="Credit Center sections"
         >
-          <Stack direction="row" sx={{ overflowX: 'auto', maxWidth: '100%', flexShrink: 1 }}>
+          <Stack
+            ref={sections}
+            direction="row"
+            sx={{ overflowX: 'auto', maxWidth: '100%', flexShrink: 1 }}
+          >
             {navigation.map(([key, label]) => (
               <Button
                 key={key}
@@ -188,33 +184,41 @@ function CreditCenterContent({
           </Button>
           <Button
             component={Link}
-            to="/app/support?new=1&category=CREDIT_REVIEW&subject=Question%20about%20my%20Credit%20Review&contextType=CREDIT_REVIEW"
+            to={
+              current
+                ? `/app/support?new=1&category=CREDIT_REVIEW&subject=Question%20about%20my%20Credit%20Review&contextType=CREDIT_REVIEW&contextId=${encodeURIComponent(current.reviewId)}`
+                : '/app/support?new=1&category=CREDIT_REVIEW'
+            }
             variant="text"
           >
-            Ask about this review
+            {current ? 'Ask about this review' : 'Ask about credit reviews'}
           </Button>
         </Stack>
       )}
       {!current && (
-        <ProductiveEmptyState
-          title="No published Credit Review yet"
-          reason="Once your consultant publishes a review, your credit facts and findings will appear here. Open your review to check its status and any steps you need to complete."
-          owner="Your consultant"
-          action={
-            !consultant ? (
-              <Button component={Link} to="/app/credit-center/review" variant="contained">
-                Check your Credit Review
-              </Button>
-            ) : undefined
-          }
-        />
+        <Stack
+          spacing={2}
+          sx={{ py: 3, borderBottom: 1, borderColor: 'divider', alignItems: 'flex-start' }}
+        >
+          <Typography variant="h2">No published Credit Review yet</Typography>
+          <Typography color="text.secondary" sx={{ maxWidth: 720 }}>
+            Your published credit facts and consultant assessment will appear here after a review is
+            completed. Check your review options to see whether you can start a review or continue
+            one already in progress.
+          </Typography>
+          {!consultant && (
+            <Button component={Link} to="/app/credit-center/review" variant="contained">
+              Check your Credit Review
+            </Button>
+          )}
+        </Stack>
       )}
       {current && (view === 'overview' || consultant) && (
         <>
-          <ArchetypeCanvas
-            archetype="financial-dashboard"
-            role={consultant ? 'consultant' : 'client'}
-            sx={{ borderRadius: { xs: '20px', md: '20px' } }}
+          <Box
+            component="section"
+            aria-label="Published assessment"
+            sx={{ borderLeft: 3, borderColor: 'primary.main', pl: { xs: 2, md: 3 }, py: 1 }}
           >
             <Stack spacing={2}>
               <Stack
@@ -225,7 +229,7 @@ function CreditCenterContent({
                   <Typography variant="overline" color="primary">
                     Your consultant’s assessment
                   </Typography>
-                  <Typography variant="h2">What matters now</Typography>
+                  <Typography variant="h2">Published assessment</Typography>
                 </Box>
                 <Chip
                   color="primary"
@@ -241,7 +245,7 @@ function CreditCenterContent({
                 information.
               </Typography>
             </Stack>
-          </ArchetypeCanvas>
+          </Box>
           <PublishedCreditFacts
             profile={profile}
             reportDate={current.report?.reportDate ?? null}
@@ -263,6 +267,24 @@ function CreditCenterContent({
             </Stack>
           )}
         </>
+      )}
+      {!consultant && data.workspace && view === 'overview' && (
+        <Stack spacing={1} sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
+          <Typography variant="overline">Your next step</Typography>
+          <Typography variant="h3">{data.workspace.currentFocus.title}</Typography>
+          <Typography color="text.secondary">{data.workspace.currentFocus.detail}</Typography>
+          <Typography variant="body2">
+            Actions remaining: {data.workspace.plan.openActionCount} ·{' '}
+            {data.workspace.plan.completedActionCount} completed
+          </Typography>
+          <Button
+            component={Link}
+            to={data.workspace.currentFocus.action}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            {data.workspace.currentFocus.actionLabel}
+          </Button>
+        </Stack>
       )}
       {current && view === 'profile' && (
         <PublishedCreditFacts
@@ -324,27 +346,30 @@ function CreditCenterContent({
             ))}
             <DraftPublicationStatus state="published" owner="Your consultant" />
             <Button component={Link} to="/app/plan" variant="contained">
-              Review the Plan actions for these findings
+              Open Credit Plan
             </Button>
           </ArchetypeCanvas>
           <CollectionSurface
-            title={`Prioritized consultant findings · ${projection?.findings?.length ?? 0}`}
+            title={`Published consultant findings · ${projection?.findings?.length ?? 0}`}
+            appearance="plain"
             mode="bounded"
           >
+            {!projection?.findings?.length && (
+              <Typography color="text.secondary" sx={{ py: 2 }}>
+                No individual findings were included in this publication.
+              </Typography>
+            )}
             {projection?.findings?.map((finding) => (
-              <SectionCard key={finding.code} variant="operational">
+              <Box key={finding.code} sx={{ py: 2.5, borderBottom: 1, borderColor: 'divider' }}>
                 <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
                   <Typography variant="h3">{finding.title}</Typography>
                   <Chip label={finding.severity} />
                 </Stack>
-                <Typography sx={{ mt: 1 }}>
-                  Your consultant identified this because: {finding.summary}
-                </Typography>
+                <Typography sx={{ mt: 1 }}>{finding.summary}</Typography>
                 <Typography color="text.secondary" sx={{ mt: 1 }}>
-                  Your Plan connects this finding to the actions your consultant has approved for
-                  you.
+                  Review your Credit Plan for current actions and guidance.
                 </Typography>
-              </SectionCard>
+              </Box>
             ))}
           </CollectionSurface>
         </Stack>
@@ -356,7 +381,7 @@ function CreditCenterContent({
             events={data.history.map((item, index) => ({
               id: item.id,
               title:
-                index === 0 ? 'Current published Credit Review' : 'Earlier published Credit Review',
+                index === 0 ? 'Latest published Credit Review' : 'Earlier published Credit Review',
               at: item.publishedAt,
               detail: `${item.recommendation.replaceAll('_', ' ')}. Historical versions remain reference-only and never replace current truth.`,
             }))}

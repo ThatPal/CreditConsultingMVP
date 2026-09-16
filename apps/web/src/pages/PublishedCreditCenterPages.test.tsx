@@ -33,6 +33,10 @@ describe('Sprint 8.4 published Credit Center', () => {
     renderPage();
     expect(await screen.findByText(/No published Credit Review yet/i)).toBeInTheDocument();
     expect(screen.queryByText('718')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Ask about this review' })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Ask about credit reviews' }).getAttribute('href'),
+    ).not.toContain('contextId');
   });
 
   test('renders only the published analysis and secure report link', async () => {
@@ -80,6 +84,10 @@ describe('Sprint 8.4 published Credit Center', () => {
     const { rerender } = renderPage('analysis');
     expect(await screen.findByText('Published explanation')).toBeInTheDocument();
     expect(screen.getByText('Approved finding')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ask about this review' })).toHaveAttribute(
+      'href',
+      '/app/support?new=1&category=CREDIT_REVIEW&subject=Question%20about%20my%20Credit%20Review&contextType=CREDIT_REVIEW&contextId=review-1',
+    );
     rerender(
       <ThemeProvider theme={theme}>
         <QueryClientProvider client={new QueryClient()}>
