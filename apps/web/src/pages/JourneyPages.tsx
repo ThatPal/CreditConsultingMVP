@@ -1,3 +1,4 @@
+import { FocusOwner } from '../components/common/FocusOwner';
 import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import {
   ProfileCurrentnessNotice,
@@ -16,7 +17,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   Divider,
   Grid,
   LinearProgress,
@@ -117,16 +117,6 @@ export function JourneySummary({
   const profileAvailable = ['PUBLISHED', 'CURRENT'].includes(data.foundations.creditProfile.status);
   const appointment = data.foundations.appointment;
   const hasAppointment = appointment.status === 'BOOKED' && Boolean(appointment.startsAt);
-  const owner =
-    focus.owner === 'SYSTEM'
-      ? 'Automated check'
-      : focus.owner === 'CONSULTANT'
-        ? staff
-          ? 'Consultant'
-          : 'Your consultant'
-        : staff
-          ? 'Client'
-          : 'You';
   return (
     <Stack spacing={4}>
       <Box
@@ -145,11 +135,7 @@ export function JourneySummary({
         }}
       >
         <Stack spacing={2.5} sx={{ p: { xs: 3, md: 5 }, alignItems: 'flex-start' }}>
-          <Chip
-            label={`Next step · ${owner}`}
-            size="small"
-            sx={{ color: '#ddf2e7', bgcolor: '#ffffff12', border: '1px solid #ffffff30' }}
-          />
+          <FocusOwner owner={focus.owner} staff={staff} />
           <Typography
             component="h2"
             sx={{

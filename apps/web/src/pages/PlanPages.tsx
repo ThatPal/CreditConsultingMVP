@@ -1,3 +1,4 @@
+import { FocusOwner } from '../components/common/FocusOwner';
 import { planReadIdentity } from '../features/plans/planReadIdentity';
 import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import { CreditNextStep } from '../components/common/CreditNextStep';
@@ -258,6 +259,7 @@ export function ClientPlanPage() {
           >
             <Stack spacing={1.5} sx={{ flex: 1 }}>
               <Typography variant="overline">Current focus</Typography>
+              <FocusOwner owner={data.workspace?.currentFocus.owner} />
               <Typography variant="h3">
                 {data.workspace?.currentFocus.title ?? 'Your Plan status'}
               </Typography>

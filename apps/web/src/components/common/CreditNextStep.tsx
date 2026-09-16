@@ -1,3 +1,4 @@
+import { FocusOwner } from './FocusOwner';
 import { Box, Button, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 import NearMeRounded from '@mui/icons-material/NearMeRounded';
@@ -23,6 +24,7 @@ export function CreditNextStep({ workspace }: { workspace: CreditWorkspaceRead }
         <NearMeRounded sx={{ color: 'primary.main' }} />
         <Typography variant="overline">Your next step</Typography>
       </Stack>
+      <FocusOwner owner={workspace.currentFocus.owner} />
       <Box>
         <Typography variant="h3">{workspace.currentFocus.title}</Typography>
         <Typography color="text.secondary" sx={{ mt: 1.5 }}>

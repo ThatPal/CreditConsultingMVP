@@ -29,3 +29,5 @@ Q2: Keep legacy adapters documented with U3/U4/U6 migration owners. Their presen
 Q3: Only after the functional and UI gates pass, produce U1_COMPLETION_REPORT.md with branch/SHA, tests/browser evidence, F01–F24 changes, screen/component classifications, adapters, unresolved later-wave blockers and exact U2 start. No completion report exists yet.
 
 Batch22: the bounded T2 persisted-source verification is complete. The next U1 acceptance task is T1 combined cross-surface state verification, followed by V2/V3 state and accessibility coverage. U1 overall remains NOT PASSED.
+
+Batch23: T1's selected seven-state desktop/mobile presentation matrix is verified (42 cross-surface checks plus 14 Home count checks). Live baseline reads and production-function response fixtures are distinguished in BATCH-U1-23.md. Next work: V2 untested loading/error/no-Profile/completed/historical combinations and V3 keyboard/focus/contrast audit; T3 and V4 remain open.
