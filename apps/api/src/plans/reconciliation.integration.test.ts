@@ -17,7 +17,15 @@ import {
 
 describe('Astra Plan revision and source review', () => {
   const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl || !databaseUrl.includes(':5445/credit_strategy_astra'))
+  const databaseTarget = databaseUrl ? new URL(databaseUrl) : null;
+  const isolatedBaselineDatabase =
+    databaseTarget?.hostname === '127.0.0.1' &&
+    databaseTarget.port === '5446' &&
+    databaseTarget.pathname === '/credit_strategy_astra_u0';
+  if (
+    !databaseUrl ||
+    (!databaseUrl.includes(':5445/credit_strategy_astra') && !isolatedBaselineDatabase)
+  )
     throw new Error('Astra test database required');
   const prisma = createPrisma(databaseUrl);
   const marker = `reconcile-${randomUUID()}`;

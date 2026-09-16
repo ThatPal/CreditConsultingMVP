@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { apiBlobRequest, apiFileRequest, apiRequest, ApiRequestError } from './api';
 import { subscribeToSessionLoss } from './sessionLoss';
+import { bindRequestActor } from './requestActor';
 
+beforeEach(() => bindRequestActor('api-test-account'));
 afterEach(() => vi.restoreAllMocks());
 
 describe('authenticated request session-loss signal', () => {

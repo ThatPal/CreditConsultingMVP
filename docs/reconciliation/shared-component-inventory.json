@@ -1,0 +1,391 @@
+[
+  {
+    "file": "apps/web/src/components/admin/SafeRecordView.tsx",
+    "exports": [
+      "humanizeAdminLabel",
+      "SafeRecordView"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/ChoiceCard.tsx",
+    "exports": [
+      "ChoiceCard"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/CollectionSurface.tsx",
+    "exports": [
+      "CollectionSurface",
+      "CompareTray"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/contentSystem.ts",
+    "exports": [
+      "productTerm",
+      "humanState",
+      "formatQuantity",
+      "formatMoney",
+      "formatProductDate",
+      "freshnessLabel",
+      "safeClientLabel",
+      "validateGovernedActionContent",
+      "isSpecificActionLabel"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/DataNavigation.tsx",
+    "exports": [
+      "DataNavigationToolbar",
+      "DataPagination"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/DocumentPicker.tsx",
+    "exports": [
+      "DocumentPicker"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/DocumentUploadDropzone.tsx",
+    "exports": [
+      "DocumentUploadDropzone"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/domainGlyphs.tsx",
+    "exports": [
+      "domainGlyphs",
+      "DomainGlyph"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/EaseOfUse.tsx",
+    "exports": [
+      "useRestorableViewState",
+      "SplitWorkspace",
+      "CommandPalette",
+      "SafeBulkActionBar",
+      "ShortcutHelp"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/Feedback.tsx",
+    "exports": [
+      "EmptyState",
+      "ErrorAlert",
+      "LoadingSkeleton",
+      "ConfirmDialog"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/FocusSurface.tsx",
+    "exports": [
+      "focusSurfaceContentStyles",
+      "FocusSurface"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/InteractionPatterns.tsx",
+    "exports": [
+      "RecordContext",
+      "RecoveryState",
+      "GovernedActionDialog"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/labels.ts",
+    "exports": [
+      "humanizeCode",
+      "priorityLabel"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/MetricCard.tsx",
+    "exports": [
+      "MetricCard"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/PageHeader.tsx",
+    "exports": [
+      "PageHeader"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/ProductFoundation.tsx",
+    "exports": [
+      "ArchetypeCanvas",
+      "MetricHero",
+      "UtilizationGauge",
+      "ScoreBand",
+      "LifecycleRail",
+      "ProgressArc",
+      "CurrentStateSummary",
+      "PagePurpose",
+      "WaitingState",
+      "ProductiveEmptyState",
+      "SuccessState",
+      "DraftPublicationStatus",
+      "ProvenanceDetails",
+      "FreshnessIndicator",
+      "AutosaveStatus",
+      "StickyActionBar",
+      "ResponsiveContextDrawer",
+      "ComparisonMatrix",
+      "EventTimeline",
+      "Sparkline",
+      "DependencyMap",
+      "MoneyFlow"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/PublishedCreditFacts.tsx",
+    "exports": [
+      "PublishedCreditFacts"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/RouteReadyBoundary.tsx",
+    "exports": [
+      "routeReadyCopy",
+      "RouteReadyBoundary"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/SectionCard.tsx",
+    "exports": [
+      "SectionCard"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/StatusChip.tsx",
+    "exports": [
+      "StatusChip"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/statusVocabulary.ts",
+    "exports": [
+      "presentStatus"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/components/common/StickyTabs.tsx",
+    "exports": [
+      "StickyTabs"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/CancelPrivatePlan.tsx",
+    "exports": [
+      "CancelPrivatePlan"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/ConsultantPlanBuilderPage.tsx",
+    "exports": [
+      "ConsultantPlanBuilderPage"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/DiscardPlanDraft.tsx",
+    "exports": [
+      "DiscardPlanDraft"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/editor.ts",
+    "exports": [
+      "hasProgress",
+      "draftFromBuilder",
+      "draftPayload",
+      "editorIssues"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanAttachments.tsx",
+    "exports": [
+      "EvidenceFile",
+      "PlanAttachments"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanConflictResolution.tsx",
+    "exports": [
+      "conflictChoices",
+      "resolvePlanText",
+      "PlanConflictResolution"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanDraftComparison.tsx",
+    "exports": [
+      "comparePlanDrafts",
+      "PlanDraftComparison"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanDraftLibrary.tsx",
+    "exports": [
+      "PlanDraftLibrary"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanExecutionReview.tsx",
+    "exports": [
+      "PlanExecutionReview"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanFollowUp.tsx",
+    "exports": [
+      "PlanFollowUp"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanLibrary.tsx",
+    "exports": [
+      "PlanLibrary"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanLifecyclePreview.tsx",
+    "exports": [
+      "visiblePreviewItems",
+      "previewReadiness",
+      "PlanLifecyclePreview"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanPathEditor.tsx",
+    "exports": [
+      "PlanPathEditor"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanResponse.tsx",
+    "exports": [
+      "ResponseHistory",
+      "PlanResponse"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanResponsePreview.tsx",
+    "exports": [
+      "PlanResponsePreviewProvider",
+      "PlanResponsePreview"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PlanVersionHistory.tsx",
+    "exports": [
+      "PlanVersionHistory"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/PreviousPlanDraft.tsx",
+    "exports": [
+      "PreviousPlanDraft"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/ResponseSchemaEditor.tsx",
+    "exports": [
+      "ResponseSchemaEditor"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/reviewNotes.ts",
+    "exports": [
+      "reviewNotesPrefix",
+      "reviewNotesKey",
+      "useReviewNotes"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/features/plans/SavedPlanResponse.tsx",
+    "exports": [
+      "SavedPlanResponse"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/layouts/AdminAppShell.tsx",
+    "exports": [
+      "AdminAppShell"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/layouts/AppShell.tsx",
+    "exports": [
+      "AppShell"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/layouts/ClientAppShell.tsx",
+    "exports": [
+      "ClientAppShell"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/layouts/ConsultantAppShell.tsx",
+    "exports": [
+      "ConsultantAppShell"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  },
+  {
+    "file": "apps/web/src/layouts/navigation.tsx",
+    "exports": [
+      "navigationFor",
+      "activeNavigationId",
+      "validateNavigationRegistry"
+    ],
+    "status": "Awaiting final component-by-component classification"
+  }
+]

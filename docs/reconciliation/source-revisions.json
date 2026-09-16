@@ -1,0 +1,87 @@
+{
+  "baseline": "44a905b2d5b804441864ec6faddc8e67552f2491",
+  "retrievedDate": "2026-09-15 America/New_York",
+  "privateSourceTextCommitted": false,
+  "sources": [
+    {
+      "id": "1u7HJ-pTTvVHFFZP8Pj6ubmG1ZYA8Dj_ExlzIvPhW5eM",
+      "title": "Unified Cycle U0-U1 — Baseline, Truth Convergence & New UI Foundation — Codex Build Package",
+      "revision": "ANLCKQmzM51agRuqD1eVYlmf6U9iq7H-_FIvgWEytNGyNFyOMN50Z9k7O8pa3bRJ_NmiVhNlbj01Y5cDirmCMcjnJj3X6k3TtjhE7nqYA7Y",
+      "url": "https://docs.google.com/document/d/1u7HJ-pTTvVHFFZP8Pj6ubmG1ZYA8Dj_ExlzIvPhW5eM",
+      "paragraphs": 202,
+      "review": "Read in full"
+    },
+    {
+      "id": "1JkaRKuychcNcpQFNpJ2YmrJ7cQ0u1VvsJ5_I4gaQ7wE",
+      "title": "Unified Astra + Frozen Specification Reconciliation & Continuous Build Plan",
+      "revision": "ANLCKQnAtgowizgmwucN1Ge9bPsi9PnUtpW9XKwT0V28tjYp6B4pJ8GG3IlvvRlMigzqigjC9DMG7SQeURZZjY1Jr4ndH0lCNp7Fm37cYQY",
+      "url": "https://docs.google.com/document/d/1JkaRKuychcNcpQFNpJ2YmrJ7cQ0u1VvsJ5_I4gaQ7wE",
+      "paragraphs": 218,
+      "review": "Read in full"
+    },
+    {
+      "id": "1J7gduj9rR_NQXLb7maN5wT7_hmwEkRTKS-mCBiT-OdQ",
+      "title": "04 - Master Implementation Coverage Register & Final UX QA",
+      "revision": "ANLCKQnpQYjswzitk_4fNGLkP2l08uR_5sfVtvOSmQAZ9sZdMXmE8yrBgtXlBvVPBCWFwLQGruD3KSn4zudE_xXqNMLnaoaIwzboccrxwsw",
+      "url": "https://docs.google.com/document/d/1J7gduj9rR_NQXLb7maN5wT7_hmwEkRTKS-mCBiT-OdQ",
+      "paragraphs": 431,
+      "review": "Retrieved; relevant sections and latest amendments reviewed; not a full-document acceptance claim"
+    },
+    {
+      "id": "1wOEgVNLDPwvmurT4sIYS0iday6Q69ETQiUXbudkyfcg",
+      "title": "02 - Design System & Component Library",
+      "revision": "ANLCKQm_Ml9O31H3qns9Ke_gRzI_VyNgKJCUWY7u3cQZ-rd_KCbrMrwhxtuVs6lCnCK6POpeGkjuqRUEoQQUwmzaABNSCxZ0UGZlxzXcWo4",
+      "url": "https://docs.google.com/document/d/1wOEgVNLDPwvmurT4sIYS0iday6Q69ETQiUXbudkyfcg",
+      "paragraphs": 1639,
+      "review": "Retrieved; relevant sections and latest amendments reviewed; not a full-document acceptance claim"
+    },
+    {
+      "id": "161kuRuOeIJ2d-S6SLK586DOFcyIAF1kU0cvJrgFwXX0",
+      "title": "01 - Master Application Surface Inventory",
+      "revision": "ANLCKQnYTFu0PQoaL-UiMqCbFZMyV3Pmft__niiqXbK1AFvbchO_jvtv1LqC2KTvTXNIpFcubkYAm-VoQzX-pMGh3bt2Y4dF5cMqzcdoLYM",
+      "url": "https://docs.google.com/document/d/161kuRuOeIJ2d-S6SLK586DOFcyIAF1kU0cvJrgFwXX0",
+      "paragraphs": 1415,
+      "review": "Retrieved; relevant sections and latest amendments reviewed; not a full-document acceptance claim"
+    },
+    {
+      "id": "1uwjWzStBv45fWkAkpuSliDOyGyEHBTx2CVLSGKa_otI",
+      "title": "03 - Exact Screen Specifications & Wireframes",
+      "revision": "ANLCKQk465EDaFaP4-HP-QpsXYxybvRAxEMEeZuQuJOOzglWVagULC0PeHDAYL0ICAf24fKNgapD77hRMWcEC1cQtukVjyBqfShI5EyjLik",
+      "url": "https://docs.google.com/document/d/1uwjWzStBv45fWkAkpuSliDOyGyEHBTx2CVLSGKa_otI",
+      "paragraphs": 5214,
+      "review": "Retrieved; relevant sections and latest amendments reviewed; not a full-document acceptance claim"
+    },
+    {
+      "id": "1SpUodfDzG8yq6R2M6FPeYpvCJTWCmy2mTIF29zYeVq8",
+      "title": "07 — Technical Architecture & Database Design",
+      "revision": "ANLCKQk6NZl6hNwDkNMEQAaKVXAk2dn6ogcC_4Y3k7T1MGl-1GkNDPSL-_9XmaxPDK-uDcsDdC0bXx37nC_ashutwq4fiym0k6yVJi8zS4k",
+      "url": "https://docs.google.com/document/d/1SpUodfDzG8yq6R2M6FPeYpvCJTWCmy2mTIF29zYeVq8",
+      "paragraphs": 1237,
+      "review": "Retrieved; relevant sections and latest amendments reviewed; not a full-document acceptance claim"
+    },
+    {
+      "id": "1gqG-xPUX_5axKgp2VLGyB6-LAJwtxWg5AAp9zdnrKVg",
+      "title": "08 — API, Commands, Queries, Domain Events & Realtime Contracts",
+      "revision": "ANLCKQl3X5RcpDz4S8Cwe2cg_xD3x5gPMZDpN1zVNWMrkB6KH9JW5eZ4qvdXYBHqZoFTvgvqsUX7XqYCBAYMb7JMzDr3AII-khDfzvvW-XQ",
+      "url": "https://docs.google.com/document/d/1gqG-xPUX_5axKgp2VLGyB6-LAJwtxWg5AAp9zdnrKVg",
+      "paragraphs": 1314,
+      "review": "Retrieved; relevant sections and latest amendments reviewed; not a full-document acceptance claim"
+    },
+    {
+      "id": "1qaP7SFEW48jZ4jPKxOpDJrY7tJ7Ovmfj3iv3XRhp8vw",
+      "title": "06 — Screen, UX Architecture & Visual Design",
+      "revision": "ANLCKQnO4fQMo-qdW9S099jtQbqfDxlZexe1tF7mrcnkjIk-YYExwnuL4dx6dDi3YHUTSdJwMOqXakiUqkyZyfHbQ9sg-W8LoQ0c-iVDE6Y",
+      "url": "https://docs.google.com/document/d/1qaP7SFEW48jZ4jPKxOpDJrY7tJ7Ovmfj3iv3XRhp8vw",
+      "paragraphs": 141,
+      "review": "Retrieved; relevant sections and latest amendments reviewed; not a full-document acceptance claim"
+    },
+    {
+      "id": "1YZ60H61Fay-reCDn4xfsMrS9ItbnNURH1pW4uccSPsg",
+      "title": "05 — Business Rules & State Machines",
+      "revision": "ANLCKQkqgFvNc9NkRpxHwZVHYaKtEhPOG3rMVpAAYGDpLWcX-Sd6sDhKdtX4JSASMcQRQYEtESn_RxZY6htB-G8Ik8iw2L7cZtAZcXX3qLw",
+      "url": "https://docs.google.com/document/d/1YZ60H61Fay-reCDn4xfsMrS9ItbnNURH1pW4uccSPsg",
+      "paragraphs": 1552,
+      "review": "Retrieved; relevant sections and latest amendments reviewed; not a full-document acceptance claim"
+    }
+  ]
+}

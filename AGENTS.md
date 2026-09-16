@@ -2,6 +2,8 @@
 
 This checkout is the independent Astra continuation requested on 2026-09-10.
 
+Current execution authority (2026-09-15): read `docs/reconciliation/README.md` and the user-requested Unified U0-U1 build package before continuing. U0 baseline reconciliation supersedes the old next-pass sequence below. Complete U0 before substantive U1 implementation. Final screen QA amendments and frozen contracts govern target behavior; preserve compatible Astra recovery/security work. Current U0 status is recorded honestly in reconciliation documents; do not infer acceptance from file existence.
+
 - Work only in `C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-production`, branch `codex/astra-production`. Verify both before every mutation. The desktop task may initially supply the parent `Credit` directory; explicitly set the working directory to this checkout.
 - Base: `ee3b8648b4a61ab76d4b56bd1cfd307b83bd8eb0` from `rebuild/authenticated-product-poar`. Do not switch, reset, merge into, rebase, seed, stop processes, or edit files in the parent/non-AI/Sol checkouts. Do not run worktree pruning or removal.
 - Read `docs/astra/README.md`, `docs/astra/ROADMAP.md`, `docs/astra/WORKSPACE.md`, and `docs/astra/IMPLEMENTATION-01.md` through `IMPLEMENTATION-59.md` before continuing. The user authorized development after the audit. A1/A2 and the A5 Plan slice are underway; continue the recorded work without asking again to begin.
