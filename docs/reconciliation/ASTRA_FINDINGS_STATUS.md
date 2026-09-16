@@ -36,3 +36,5 @@ Paths below are relative to `apps/` unless prefixed with `docs/`. Prior passes a
 F04/F08/F09/F14 have new U0 browser captures for representative client states. Other rows are source/history assessments unless their cited prior pass contains browser evidence. Full current CRM/Admin browser requalification remains pending. The statuses above do not assert a new exploit, certification, or complete frozen-contract parity.
 
 There is no independent old-Astra remediation backlog: final wave ownership above is the single remaining backlog. The original narrow F04 counting bug and F07 publication-invalidation omission were repaired; their broader final cross-surface acceptance remains unfinished.
+
+U1-02 update: F04 now shares server Action counts across Home, Center and Plan; browser progress/focus derivation is removed. F05 improves active-round selection and publication currentness; F07 adds shared read composition with source identifiers. These remain PARTIAL pending final global Plan, full focus precedence/available actions and reference-screen qualification. See BATCH-U1-02 for precise evidence and limits.

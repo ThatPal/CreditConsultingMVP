@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
+import { getCreditWorkspace } from '../workspace/service.js';
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -13,6 +14,7 @@ export async function getPublishedCreditCenter(prisma: PrismaClient, clientId: s
     include: {
       review: {
         select: {
+          readinessExpiresAt: true,
           intake: {
             select: {
               reportDate: true,
@@ -48,17 +50,25 @@ export async function getPublishedCreditCenter(prisma: PrismaClient, clientId: s
       : null,
   }));
   const current = history[0] ?? null;
+  const workspace = await getCreditWorkspace(
+    prisma,
+    clientId,
+    undefined,
+    new Date(),
+    publications[0] ?? null,
+  );
   const projection = current ? asRecord(current.projection) : {};
   const recommendation = asRecord(projection.recommendation);
   return {
     current,
     history,
+    workspace,
     profile: {
       generalReadiness: current ? 'PUBLISHED' : 'NEEDS_REVIEW',
       freshness: {
         asOf: current?.publishedAt ?? null,
-        expiresAt: null,
-        isCurrent: Boolean(current),
+        expiresAt: workspace.profile.expiresAt,
+        isCurrent: workspace.profile.isCurrent,
       },
       review: current
         ? {

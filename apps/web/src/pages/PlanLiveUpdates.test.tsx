@@ -10,6 +10,17 @@ import { ClientPlanPage } from './PlanPages';
 vi.mock('../auth/api', () => ({ apiRequest: vi.fn() }));
 const request = vi.mocked(apiRequest);
 const plan = (id: string) => ({
+  summary: {
+    status: 'ACTIVE',
+    canRespond: true,
+    openActionCount: 1,
+    completedActionCount: 0,
+    totalActionCount: 1,
+    progressPercent: 0,
+    guidanceCount: 0,
+    milestoneCount: 0,
+    nextClientItem: { id, title: `Step ${id}`, status: 'AVAILABLE' },
+  },
   plan: {
     id: 'plan',
     title: `Plan ${id}`,

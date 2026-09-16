@@ -4,13 +4,8 @@ import { requireClientAccess, requireRole } from '../auth/middleware.js';
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
-import { getClientPlan } from '../plans/service.js';
-import {
-  appointmentFoundationStatus,
-  classifyCycle,
-  resolveCurrentFocus,
-  summarizePlan,
-} from './projection.js';
+import { getCreditWorkspace } from '../workspace/service.js';
+import { classifyCycle } from './projection.js';
 
 const goalSelect = {
   id: true,
@@ -22,60 +17,32 @@ const goalSelect = {
 } as const;
 
 async function projection(prisma: PrismaClient, clientId: string) {
-  const [client, journey, goal, profileState, latestReview, clientPlan, appointment, rounds] =
-    await Promise.all([
-      prisma.client.findUnique({
-        where: { id: clientId },
-        select: { id: true, firstName: true, lastName: true },
-      }),
-      prisma.creditJourney.findUnique({
-        where: { clientId },
-        include: {
-          cycles: {
-            include: { goalSnapshot: true },
-            orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-            take: 25,
-          },
-          nurturePeriods: { orderBy: [{ startedAt: 'desc' }, { id: 'desc' }], take: 25 },
-          _count: { select: { cycles: true, nurturePeriods: true } },
+  const [client, journey, goal, workspace] = await Promise.all([
+    prisma.client.findUnique({
+      where: { id: clientId },
+      select: { id: true, firstName: true, lastName: true },
+    }),
+    prisma.creditJourney.findUnique({
+      where: { clientId },
+      include: {
+        cycles: {
+          include: { goalSnapshot: true },
+          orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+          take: 25,
         },
-      }),
-      prisma.clientGoal.findFirst({
-        where: { clientId, status: 'ACTIVE' },
-        select: goalSelect,
-        orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
-      }),
-      prisma.creditProfileState.findUnique({ where: { clientId } }),
-      prisma.creditReview.findFirst({
-        where: { clientId },
-        select: { id: true, status: true, completedAt: true, readinessExpiresAt: true },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      }),
-      getClientPlan(prisma, clientId),
-      prisma.appointment.findFirst({
-        where: { clientId, status: { in: ['BOOKED', 'COMPLETED'] } },
-        select: { status: true },
-        orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
-      }),
-      prisma.creditCardRound.findMany({
-        where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
-        select: { id: true, cycleId: true, status: true, strategy: { select: { status: true } } },
-        orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-      }),
-    ]);
+        nurturePeriods: { orderBy: [{ startedAt: 'desc' }, { id: 'desc' }], take: 25 },
+        _count: { select: { cycles: true, nurturePeriods: true } },
+      },
+    }),
+    prisma.clientGoal.findFirst({
+      where: { clientId, status: 'ACTIVE' },
+      select: goalSelect,
+      orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+    }),
+    getCreditWorkspace(prisma, clientId),
+  ]);
   if (!client) throw new AppError('NOT_FOUND', 404, 'Client was not found');
-  const activeCycle = journey?.cycles.find((cycle) => cycle.status === 'ACTIVE') ?? null;
-  const activeNurture =
-    journey?.nurturePeriods.find((period) => period.status === 'ACTIVE') ?? null;
-  const plan = summarizePlan(clientPlan.plan);
-  const round = rounds.find((entry) => entry.cycleId === activeCycle?.id) ?? null;
-  const focus = resolveCurrentFocus({
-    activeCycle,
-    activeNurture,
-    hasGoal: Boolean(goal),
-    plan,
-    round,
-  });
+  const focus = workspace.currentFocus;
   return {
     client,
     goal: goal ? { ...goal, targetAmount: goal.targetAmount?.toNumber() ?? null } : null,
@@ -128,14 +95,11 @@ async function projection(prisma: PrismaClient, clientId: string) {
           nurturePeriods: [],
           historyWindow: { limit: 25, cycleTotal: 0, nurturePeriodTotal: 0 },
         },
+    workspace,
     foundations: {
-      creditProfile: profileState ?? {
-        status: latestReview ? 'REVIEW_IN_PROGRESS' : 'NOT_AVAILABLE',
-        effectiveAt: latestReview?.completedAt ?? null,
-        staleAt: latestReview?.readinessExpiresAt ?? null,
-      },
-      plan,
-      appointment: { status: appointmentFoundationStatus(appointment?.status ?? null) },
+      creditProfile: workspace.profile,
+      plan: workspace.plan,
+      appointment: workspace.nextAppointment ?? { status: 'NOT_AVAILABLE' },
     },
     alerts: [],
   };

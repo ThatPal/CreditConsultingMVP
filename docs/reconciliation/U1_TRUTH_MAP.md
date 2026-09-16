@@ -37,3 +37,9 @@ Dirty/busy Plan refresh protection; private draft identity/version fencing; acce
 ## U1-01 progress
 
 The shared creditWorkspace query factory now owns reference query identities and refresh boundaries. Plan response/verification/builder and relevant realtime domains refresh Home/Journey/Center/Plan plus cached scoped CRM summaries. See BATCH-U1-01.md. Server-derived focus/counts/currentness and final composed DTOs above are still outstanding; this plumbing does not make the legacy projections canonical.
+
+## U1-02 progress
+
+Shared `api/src/workspace/service.ts` now composes server focus, Action-only Plan counts and publication currentness for Home/Journey/Center/Plan. Plan no longer derives completion percentages or next focus in the browser. Center currentness is independent of immutable publication content, with exact publication basis and source identifiers. Active Round selection no longer depends on the selected legacy cycle. See BATCH-U1-02 and `apps/api/src/workspace/README.md` for adapter removal owners and verification.
+
+The baseline table above is historical; these narrow inconsistencies are repaired. Final global Plan/available-action DTOs, Live/Major precedence, final professional readiness and removal of legacy fallback remain unfinished. No U1 acceptance is implied.

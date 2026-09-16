@@ -1,6 +1,7 @@
 import { listResponseDrafts } from './draftLibrary.js';
 import { clientResponseForm } from './outcomes.js';
 import { Router } from 'express';
+import { getCreditWorkspace } from '../workspace/service.js';
 import { z } from 'zod';
 import type { AuthorizationDenialRecorder } from '../auth/middleware.js';
 import { requireCapability, requireRole } from '../auth/middleware.js';
@@ -120,10 +121,22 @@ export function createPlanRouter(
       try {
         const before =
           req.query.before === undefined ? undefined : z.string().uuid().parse(req.query.before);
-        const filters = z.object({
-          search: z.string().trim().max(120).optional(),
-          status: z.enum(['DRAFT', 'APPROVED', 'ACTIVE', 'STALE', 'SUPERSEDED', 'COMPLETED', 'CANCELLED']).optional(),
-        }).parse(req.query);
+        const filters = z
+          .object({
+            search: z.string().trim().max(120).optional(),
+            status: z
+              .enum([
+                'DRAFT',
+                'APPROVED',
+                'ACTIVE',
+                'STALE',
+                'SUPERSEDED',
+                'COMPLETED',
+                'CANCELLED',
+              ])
+              .optional(),
+          })
+          .parse(req.query);
         res.json(await listClientPlans(prisma, req.params.clientId as string, before, filters));
       } catch (error) {
         next(error);
@@ -402,7 +415,8 @@ export function createPlanRouter(
   });
   router.get('/client/plan', requireRole('CLIENT'), async (req, res, next) => {
     try {
-      res.json(await getClientPlan(prisma, req.auth!.clientId!));
+      const plan = await getClientPlan(prisma, req.auth!.clientId!);
+      res.json({ ...plan, workspace: await getCreditWorkspace(prisma, req.auth!.clientId!, plan) });
     } catch (error) {
       next(error);
     }

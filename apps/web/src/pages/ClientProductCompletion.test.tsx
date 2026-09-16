@@ -30,6 +30,17 @@ describe('APC Wave 3 client product contracts', () => {
       if (String(path).endsWith('/draft'))
         return { active: true, contextVersion: '2026-09-10T00:00:00Z', draft: null };
       return {
+        summary: {
+          status: 'ACTIVE',
+          canRespond: true,
+          openActionCount: 2,
+          completedActionCount: 0,
+          totalActionCount: 2,
+          progressPercent: 0,
+          guidanceCount: 0,
+          milestoneCount: 0,
+          nextClientItem: { id: 'one', title: 'one balance', status: 'AVAILABLE' },
+        },
         plan: {
           id: 'plan',
           title: 'Preparation path',
@@ -58,7 +69,10 @@ describe('APC Wave 3 client product contracts', () => {
       };
     });
     wrap(<ClientPlanPage />);
-    await waitFor(() => expect(screen.getAllByRole('textbox', { name: 'What changed?' })).toHaveLength(2), { timeout: 5000 });
+    await waitFor(
+      () => expect(screen.getAllByRole('textbox', { name: 'What changed?' })).toHaveLength(2),
+      { timeout: 5000 },
+    );
     const inputs = screen.getAllByRole('textbox', { name: 'What changed?' });
     fireEvent.change(inputs[0]!, { target: { value: 'First account updated' } });
     expect(inputs[0]).toHaveValue('First account updated');

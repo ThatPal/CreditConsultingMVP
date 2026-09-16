@@ -126,3 +126,36 @@ describe('Sprint 8.4 published Credit Center', () => {
     expect(screen.queryByText(/approval probability|score improvement/i)).not.toBeInTheDocument();
   });
 });
+
+test('separates expired currentness from the immutable published summary', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        current: {
+          id: 'published',
+          reviewId: 'review',
+          publishedAt: '2026-09-01',
+          recommendation: 'PREPARE_FIRST',
+          projection: { analysisSummary: 'Original approved analysis', profile: {} },
+          report: null,
+        },
+        history: [],
+        workspace: {
+          profile: { isCurrent: false, reason: 'EXPIRED' },
+          currentFocus: {
+            title: 'Your consultant is checking your update',
+            detail: 'Your update is saved.',
+            action: '/app/plan',
+            actionLabel: 'View your Plan',
+          },
+          plan: { openActionCount: 2, completedActionCount: 1 },
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    ),
+  );
+  renderPage();
+  expect(await screen.findByText(/Its assessment has expired/)).toBeInTheDocument();
+  expect(screen.getByText('Actions remaining: 2 · 1 completed')).toBeInTheDocument();
+  expect(screen.getByText('Your consultant is checking your update')).toBeInTheDocument();
+});

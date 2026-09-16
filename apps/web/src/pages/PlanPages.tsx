@@ -1,5 +1,9 @@
 import { PlanFollowUp } from '../features/plans/PlanFollowUp';
-import { creditWorkspaceKeys } from '../queries/creditWorkspace';
+import {
+  creditWorkspaceKeys,
+  type PlanSummaryRead,
+  type CreditWorkspaceRead,
+} from '../queries/creditWorkspace';
 import { useEffect, useState } from 'react';
 import { ResponseWritePause, usePendingNavigationWork } from '../NavigationProtection';
 import { PlanDraftLibrary } from '../features/plans/PlanDraftLibrary';
@@ -49,6 +53,8 @@ export type ClientPlanItem = ResponseItem & {
 };
 
 export type ClientPlanResponse = {
+  summary?: PlanSummaryRead;
+  workspace?: CreditWorkspaceRead;
   plan: null | {
     id: string;
     title: string;
@@ -87,26 +93,20 @@ export function ClientPlanPage() {
       </Stack>
     );
   const plan = data.plan;
-  const canAct = plan.status === 'ACTIVE' && !plan.version.staleAt;
-  const currentFocus = canAct
-    ? (plan.version.items.find(
-        (item) =>
-          item.owner === 'CLIENT' &&
-          item.type !== 'MILESTONE' &&
-          ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
-      ) ??
-      plan.version.items.find((item) => ['AWAITING_VERIFICATION', 'UNABLE'].includes(item.status)))
-    : undefined;
+  const summary = data.summary;
+  // A missing projection is read-only, never reconstructed from browser items.
+  const canAct = summary?.canRespond === true;
+  const currentFocus = plan.version.items.find((item) => item.id === summary?.nextClientItem?.id);
   const visibleItems = plan.version.items.filter((item) => item.status !== 'CANCELLED');
-  const openActions = visibleItems.filter(
-    (item) => item.type === 'ACTION' && item.status !== 'COMPLETED',
-  ).length;
-  const completed = visibleItems.filter((item) =>
-    ['COMPLETED', 'VERIFIED'].includes(item.status),
-  ).length;
   return (
     <ResponseWritePause.Provider value={updateWaiting}>
       <Stack spacing={3}>
+        {!summary && (
+          <Alert severity="warning">
+            The current Plan status is unavailable. Refresh before continuing; saved work remains
+            available below.
+          </Alert>
+        )}
         {updateWaiting && (
           <Alert
             severity="warning"
@@ -177,24 +177,25 @@ export function ClientPlanPage() {
             <Stack spacing={1.5} sx={{ flex: 1 }}>
               <Typography variant="overline">Current focus</Typography>
               <Typography variant="h3">
-                {plan.status === 'STALE'
-                  ? 'Your consultant is reviewing this Plan'
-                  : (currentFocus?.title ??
-                    (completed === visibleItems.length && visibleItems.length > 0
-                      ? 'Your Plan steps are complete'
-                      : 'Your consultant owns the next step'))}
+                {data.workspace?.currentFocus.title ?? 'Your Plan status'}
               </Typography>
               <Typography color="text.secondary">
-                {(currentFocus?.status === 'UNABLE'
-                  ? 'Your consultant will reply with guidance before you continue this step. Your help request is saved below.'
-                  : currentFocus?.body) ??
-                  (completed === visibleItems.length && visibleItems.length > 0
-                    ? 'Your completed work is saved below. Return Home to see what comes next in your journey.'
-                    : 'Check the owner and status of each remaining step below.')}
+                {data.workspace?.currentFocus.detail ??
+                  'Your guidance and saved work are shown below.'}
               </Typography>
+              {data.workspace && data.workspace.currentFocus.action !== '/app/plan' && (
+                <Button
+                  component={Link}
+                  to={data.workspace.currentFocus.action}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  {data.workspace.currentFocus.actionLabel}
+                </Button>
+              )}
               <Typography variant="body2">
-                Actions remaining: {openActions} · {completed} of {visibleItems.length} total steps
-                completed
+                {summary
+                  ? `Actions remaining: ${summary.openActionCount} · ${summary.completedActionCount} of ${summary.totalActionCount} actions completed`
+                  : 'Action counts unavailable'}
               </Typography>
               <DraftPublicationStatus
                 state="published"
@@ -202,15 +203,14 @@ export function ClientPlanPage() {
                 owner="Your consultant"
               />
             </Stack>
-            <ProgressArc
-              value={visibleItems.length ? (completed / visibleItems.length) * 100 : 0}
-              label="Plan progress"
-            />
+            {summary?.progressPercent != null && (
+              <ProgressArc value={summary.progressPercent} label="Action progress" />
+            )}
           </Stack>
         </ArchetypeCanvas>
-        {currentFocus?.status === 'AWAITING_VERIFICATION' && (
+        {data.workspace?.currentFocus.code === 'PLAN_VERIFICATION' && (
           <WaitingState
-            prerequisite={`${currentFocus.title} is awaiting verification`}
+            prerequisite="Your submitted Plan response is awaiting verification"
             owner="Your consultant"
             unavailable="The dependent Plan step"
             userMustAct={false}

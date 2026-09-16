@@ -25,6 +25,17 @@ describe('consultant Plan Builder continuity', () => {
     'does not offer client completion for $status / $owner work',
     async ({ status, owner, staleAt }) => {
       mockedApi.mockResolvedValue({
+        summary: {
+          status,
+          canRespond: status === 'ACTIVE',
+          openActionCount: 1,
+          completedActionCount: 0,
+          totalActionCount: 1,
+          progressPercent: 0,
+          guidanceCount: 0,
+          milestoneCount: 0,
+          nextClientItem: null,
+        },
         plan: {
           id: 'plan',
           title: 'Preparation',
@@ -189,6 +200,27 @@ test('removes the draft form after successful client completion while retaining 
       return { outcomeId: 'done' };
     }
     return {
+      summary: {
+        status: 'ACTIVE',
+        canRespond: true,
+        openActionCount: completed ? 0 : 1,
+        completedActionCount: completed ? 1 : 0,
+        totalActionCount: 1,
+        progressPercent: completed ? 100 : 0,
+        guidanceCount: 0,
+        milestoneCount: 0,
+        nextClientItem: completed
+          ? null
+          : { id: 'step', title: 'Gather questions', status: 'AVAILABLE' },
+      },
+      workspace: {
+        currentFocus: {
+          title: completed ? 'Your goal is ready for review' : 'Gather questions',
+          detail: 'Shared server focus',
+          action: '/app/goals',
+          actionLabel: 'View goals',
+        },
+      },
       plan: {
         id: 'plan',
         title: 'Draft lifecycle',
@@ -237,7 +269,7 @@ test('removes the draft form after successful client completion while retaining 
     { target: { value: 'My questions' } },
   );
   fireEvent.click(screen.getByRole('button', { name: 'Save completed step' }));
-  await screen.findByRole('heading', { name: 'Your Plan steps are complete' });
+  await screen.findByRole('heading', { name: 'Your goal is ready for review' });
   await waitFor(() =>
     expect(
       screen.queryByRole('textbox', { name: 'Optional note for your consultant' }),
@@ -246,3 +278,68 @@ test('removes the draft form after successful client completion while retaining 
   expect(screen.queryByRole('button', { name: 'Save draft' })).not.toBeInTheDocument();
   expect(screen.getByText('Response history · 1')).toBeInTheDocument();
 });
+
+test.each([true, false])(
+  'uses the server summary, failing closed when absent: %s',
+  async (hasSummary) => {
+    mockedApi.mockReset();
+    mockedApi.mockResolvedValue({
+      summary: hasSummary
+        ? {
+            status: 'ACTIVE',
+            canRespond: false,
+            openActionCount: 7,
+            completedActionCount: 3,
+            totalActionCount: 10,
+            progressPercent: 30,
+            guidanceCount: 0,
+            milestoneCount: 0,
+            nextClientItem: null,
+          }
+        : undefined,
+      plan: {
+        id: 'plan',
+        title: 'Server-owned status',
+        status: 'ACTIVE',
+        version: {
+          staleAt: null,
+          items: [
+            {
+              id: 'step',
+              title: 'One visible step',
+              body: 'Details',
+              type: 'ACTION',
+              owner: 'CLIENT',
+              status: 'AVAILABLE',
+              completionMode: 'ACKNOWLEDGEMENT',
+              prerequisites: [],
+              deepLink: null,
+            },
+          ],
+        },
+      },
+    });
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter>
+            <ClientPlanPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+    await screen.findByRole('heading', { name: 'Server-owned status' });
+    expect(
+      screen.getByText(
+        hasSummary
+          ? 'Actions remaining: 7 · 3 of 10 actions completed'
+          : 'Action counts unavailable',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('textbox', { name: 'Optional note for your consultant' }),
+    ).not.toBeInTheDocument();
+    if (!hasSummary)
+      expect(screen.getByText(/current Plan status is unavailable/)).toBeInTheDocument();
+  },
+);

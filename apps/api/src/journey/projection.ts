@@ -1,3 +1,5 @@
+import { summarizePlan } from '../workspace/projection.js';
+export { summarizePlan } from '../workspace/projection.js';
 import type {
   ApplicationCycleStage,
   ApplicationCycleStatus,
@@ -11,35 +13,6 @@ export type FocusInput = {
   round?: { id: string; status: string; strategy: { status: string } | null } | null;
   plan?: ReturnType<typeof summarizePlan>;
 };
-
-export function summarizePlan(
-  plan: {
-    status: string;
-    version: {
-      items: Array<{ id: string; type: string; status: string; owner: string; title: string }>;
-    };
-  } | null,
-) {
-  const items = plan?.version.items ?? [];
-  const actions = items.filter((item) => item.type === 'ACTION' && item.status !== 'CANCELLED');
-  return {
-    status: plan?.status ?? 'NOT_AVAILABLE',
-    openActionCount: actions.filter((item) => item.status !== 'COMPLETED').length,
-    completedActionCount: actions.filter((item) => item.status === 'COMPLETED').length,
-    totalActionCount: actions.length,
-    awaitingVerificationCount: items.filter((item) => item.status === 'AWAITING_VERIFICATION')
-      .length,
-    nextClientItem:
-      plan && ['ACTIVE', 'APPROVED'].includes(plan.status)
-        ? (items.find(
-            (item) =>
-              item.owner === 'CLIENT' &&
-              item.type !== 'MILESTONE' &&
-              ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
-          ) ?? null)
-        : null,
-  };
-}
 
 const stageFocus: Record<ApplicationCycleStage, { code: string; title: string; action: string }> = {
   STARTED: { code: 'CONFIRM_GOAL', title: 'Confirm your goal', action: '/app/goals' },
@@ -108,7 +81,7 @@ export function resolveCurrentFocus(input: FocusInput) {
       detail: 'Your consultant must resolve a restriction before applications can continue.',
       owner: 'CONSULTANT',
       actionLabel: 'View round status',
-      action: '/app/application-rounds',
+      action: `/app/rounds/${input.round.id}`,
     };
   if (input.round?.strategy?.status === 'STALE')
     return {
@@ -118,7 +91,7 @@ export function resolveCurrentFocus(input: FocusInput) {
         'Information used to prepare your strategy has changed. Wait for the updated strategy before applying.',
       owner: 'CONSULTANT',
       actionLabel: 'View round status',
-      action: '/app/application-rounds',
+      action: `/app/rounds/${input.round.id}`,
     };
   if (input.plan?.status === 'STALE')
     return {
@@ -144,6 +117,15 @@ export function resolveCurrentFocus(input: FocusInput) {
       code: 'PLAN_VERIFICATION',
       title: 'Your consultant is checking your update',
       detail: 'Your update is saved. Your consultant owns the next step.',
+      owner: 'CONSULTANT',
+      actionLabel: 'View your Plan',
+      action: '/app/plan',
+    };
+  if (input.plan?.needsConsultantCount)
+    return {
+      code: 'PLAN_HELP',
+      title: 'Your consultant is reviewing your request',
+      detail: 'Your request is saved. Wait for guidance before continuing this step.',
       owner: 'CONSULTANT',
       actionLabel: 'View your Plan',
       action: '/app/plan',

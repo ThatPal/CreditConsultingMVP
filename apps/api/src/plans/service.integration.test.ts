@@ -1,3 +1,5 @@
+import { getCreditWorkspace } from '../workspace/service.js';
+import { getPublishedCreditCenter } from '../reviews/publishedCreditCenter.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
@@ -121,10 +123,16 @@ describe('Plan authoring and approval', () => {
       ids.push(
         (await createPlanDraft(prisma, clientId, { ...draft, title: `Library ${index}` })).planId,
       );
-    const first = await listClientPlans(prisma, clientId, undefined, { search: 'Library', status: 'DRAFT' });
+    const first = await listClientPlans(prisma, clientId, undefined, {
+      search: 'Library',
+      status: 'DRAFT',
+    });
     expect(first.plans).toHaveLength(20);
     expect(first.nextBefore).toBeTruthy();
-    const second = await listClientPlans(prisma, clientId, first.nextBefore!, { search: 'Library', status: 'DRAFT' });
+    const second = await listClientPlans(prisma, clientId, first.nextBefore!, {
+      search: 'Library',
+      status: 'DRAFT',
+    });
     expect(second.plans).toHaveLength(1);
     expect(second.nextBefore).toBeNull();
     expect([...first.plans, ...second.plans].map((plan) => plan.id).sort()).toEqual(ids.sort());
@@ -134,15 +142,37 @@ describe('Plan authoring and approval', () => {
   test('searches saved version titles within the client and combines lifecycle filters', async () => {
     const first = await createPlanDraft(prisma, clientId, { ...draft, title: 'Earlier name' });
     const builder = await getPlanBuilder(prisma, clientId, first.planId);
-    await revisePlanDraft(prisma, first.planId, builder.plan!.versions[0]!.optimisticVersion, { ...draft, title: 'Updated research title' });
-    const closed = await createPlanDraft(prisma, clientId, { ...draft, title: 'Updated closed title' });
+    await revisePlanDraft(prisma, first.planId, builder.plan!.versions[0]!.optimisticVersion, {
+      ...draft,
+      title: 'Updated research title',
+    });
+    const closed = await createPlanDraft(prisma, clientId, {
+      ...draft,
+      title: 'Updated closed title',
+    });
     await prisma.plan.update({ where: { id: closed.planId }, data: { status: 'CANCELLED' } });
-    const matching = await listClientPlans(prisma, clientId, undefined, { search: '  UPDATED  ', status: 'DRAFT' });
-    expect(matching.plans.map(plan => plan.id)).toEqual([first.planId]);
+    const matching = await listClientPlans(prisma, clientId, undefined, {
+      search: '  UPDATED  ',
+      status: 'DRAFT',
+    });
+    expect(matching.plans.map((plan) => plan.id)).toEqual([first.planId]);
     expect(matching.plans[0]!.versions[0]!.title).toBe('Updated research title');
-    expect((await listClientPlans(prisma, clientId, undefined, { search: 'Earlier name' })).plans.map(plan => plan.id)).toEqual([first.planId]);
-    expect((await listClientPlans(prisma, clientId, undefined, { search: 'Updated', status: 'CANCELLED' })).plans.map(plan => plan.id)).toEqual([closed.planId]);
-    expect((await listClientPlans(prisma, randomUUID(), undefined, { search: 'Updated' })).plans).toEqual([]);
+    expect(
+      (await listClientPlans(prisma, clientId, undefined, { search: 'Earlier name' })).plans.map(
+        (plan) => plan.id,
+      ),
+    ).toEqual([first.planId]);
+    expect(
+      (
+        await listClientPlans(prisma, clientId, undefined, {
+          search: 'Updated',
+          status: 'CANCELLED',
+        })
+      ).plans.map((plan) => plan.id),
+    ).toEqual([closed.planId]);
+    expect(
+      (await listClientPlans(prisma, randomUUID(), undefined, { search: 'Updated' })).plans,
+    ).toEqual([]);
     await prisma.plan.deleteMany({ where: { clientId } });
   });
 
@@ -183,6 +213,16 @@ describe('Plan authoring and approval', () => {
     expect(clientView.plan?.version.items[0]?.title).toBe('Read this first');
     expect(JSON.stringify(clientView)).not.toContain('Updated draft guidance');
     expect(JSON.stringify(clientView)).not.toContain('Never expose this rationale');
+    const workspace = await getCreditWorkspace(prisma, clientId, clientView);
+    const center = await getPublishedCreditCenter(prisma, clientId);
+    expect(workspace.plan).toEqual(clientView.summary);
+    expect(center.workspace.plan).toEqual(clientView.summary);
+    expect(center.workspace.currentFocus).toEqual(workspace.currentFocus);
+    expect(workspace.plan).toMatchObject({ totalActionCount: 1, guidanceCount: 1 });
+    expect(JSON.stringify(workspace)).not.toMatch(
+      /Never expose this rationale|Updated draft guidance|Private future Plan/,
+    );
+    expect((await getCreditWorkspace(prisma, randomUUID())).plan.source).toBeNull();
   });
   test('private revisions and source updates cannot promote an older publication', async () => {
     const older = await createPlanDraft(prisma, clientId, {

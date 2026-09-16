@@ -1,5 +1,36 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+export type PlanSummaryRead = {
+  status: string;
+  canRespond: boolean;
+  openActionCount: number;
+  completedActionCount: number;
+  totalActionCount: number;
+  progressPercent: number | null;
+  guidanceCount: number;
+  milestoneCount: number;
+  nextClientItem: { id: string; title: string; status: string } | null;
+};
+export type CreditWorkspaceRead = {
+  generatedAt: string;
+  currentFocus: {
+    code: string;
+    title: string;
+    detail: string | null;
+    owner: string;
+    action: string;
+    actionLabel: string;
+  };
+  plan: PlanSummaryRead;
+  profile: {
+    status: string;
+    isCurrent: boolean;
+    reason: string;
+    effectiveAt: string | null;
+    expiresAt: string | null;
+  };
+};
+
 // U1 compatibility boundary: keep existing cache identities while their query
 // implementations converge on GetPortalHome/GetCreditCenter/GetCreditPlan.
 // No domain state lives here. Replace legacy query implementations in U1;

@@ -16,7 +16,7 @@ import {
 import { PublishedCreditFacts } from '../components/common/PublishedCreditFacts';
 import { webEnv } from '../config/env';
 import { CollectionSurface } from '../components/common/CollectionSurface';
-import { creditWorkspaceKeys } from '../queries/creditWorkspace';
+import { creditWorkspaceKeys, type CreditWorkspaceRead } from '../queries/creditWorkspace';
 
 type PublishedReview = {
   id: string;
@@ -42,6 +42,7 @@ type PublishedReview = {
 };
 
 type CreditCenterResponse = {
+  workspace?: CreditWorkspaceRead;
   current: PublishedReview | null;
   history: PublishedReview[];
   client?: { id: string; firstName: string; lastName: string };
@@ -130,6 +131,32 @@ function CreditCenterContent({
         }
         description="Explore your published facts, understand your consultant’s findings, and follow your Plan."
       />
+      {current && data.workspace && !data.workspace.profile.isCurrent && (
+        <Alert severity="warning">
+          This published review remains available as history.{' '}
+          {data.workspace.profile.reason === 'EXPIRED'
+            ? 'Its assessment has expired.'
+            : 'Its current status needs consultant review.'}
+        </Alert>
+      )}
+      {!consultant && data.workspace && view === 'overview' && (
+        <Stack spacing={1} sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
+          <Typography variant="overline">Current focus</Typography>
+          <Typography variant="h3">{data.workspace.currentFocus.title}</Typography>
+          <Typography color="text.secondary">{data.workspace.currentFocus.detail}</Typography>
+          <Typography variant="body2">
+            Actions remaining: {data.workspace.plan.openActionCount} ·{' '}
+            {data.workspace.plan.completedActionCount} completed
+          </Typography>
+          <Button
+            component={Link}
+            to={data.workspace.currentFocus.action}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            {data.workspace.currentFocus.actionLabel}
+          </Button>
+        </Stack>
+      )}
       {navigation.length > 0 && (
         <Stack
           direction="row"

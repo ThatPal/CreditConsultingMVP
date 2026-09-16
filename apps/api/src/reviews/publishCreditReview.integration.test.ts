@@ -136,6 +136,21 @@ describe('Sprint 8.3 immutable publication transaction', () => {
     const creditCenter = await getPublishedCreditCenter(prisma, clientId);
     expect(creditCenter.current?.reviewId).toBe(review.id);
     expect(creditCenter.history).toHaveLength(1);
+    expect(creditCenter.workspace.profile.isCurrent).toBe(true);
+    const original = await prisma.creditReview.findUniqueOrThrow({ where: { id: review.id } });
+    await prisma.creditReview.update({
+      where: { id: review.id },
+      data: { readinessExpiresAt: new Date('2000-01-01') },
+    });
+    const expired = await getPublishedCreditCenter(prisma, clientId);
+    expect(expired.workspace.profile).toMatchObject({ isCurrent: false, reason: 'EXPIRED' });
+    expect(expired.profile.freshness.isCurrent).toBe(false);
+    expect(expired.current).toEqual(creditCenter.current);
+    expect(expired.history).toEqual(creditCenter.history);
+    await prisma.creditReview.update({
+      where: { id: review.id },
+      data: { readinessExpiresAt: original.readinessExpiresAt },
+    });
     expect(await prisma.publishedCreditReview.count({ where: { reviewId: review.id } })).toBe(1);
     expect(
       await prisma.auditEvent.count({

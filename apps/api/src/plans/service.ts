@@ -1,4 +1,5 @@
 import type { PlanLifecycleStatus } from '../generated/prisma/enums.js';
+import { summarizePlan } from '../workspace/projection.js';
 import { createHash } from 'node:crypto';
 import {
   executeConsequentialCommand,
@@ -589,7 +590,12 @@ export async function getPlanVersionHistory(
   };
 }
 
-export async function listClientPlans(prisma: PrismaClient, clientId: string, before?: string, filters: { search?: string | undefined; status?: PlanLifecycleStatus | undefined } = {}) {
+export async function listClientPlans(
+  prisma: PrismaClient,
+  clientId: string,
+  before?: string,
+  filters: { search?: string | undefined; status?: PlanLifecycleStatus | undefined } = {},
+) {
   if (
     before &&
     !(await prisma.plan.findFirst({ where: { id: before, clientId }, select: { id: true } }))
@@ -597,11 +603,17 @@ export async function listClientPlans(prisma: PrismaClient, clientId: string, be
     throw new AppError('NOT_FOUND', 404, 'Plan was not found');
   const search = filters.search?.trim();
   const plans = await prisma.plan.findMany({
-    where: { clientId, ...(filters.status ? { status: filters.status } : {}),
-      ...(search ? { OR: [
-        { title: { contains: search, mode: 'insensitive' as const } },
-        { versions: { some: { title: { contains: search, mode: 'insensitive' as const } } } },
-      ] } : {}),
+    where: {
+      clientId,
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' as const } },
+              { versions: { some: { title: { contains: search, mode: 'insensitive' as const } } } },
+            ],
+          }
+        : {}),
     },
     orderBy: { id: 'desc' },
     ...(before ? { cursor: { id: before }, skip: 1 } : {}),
@@ -718,26 +730,25 @@ export async function getClientPlan(prisma: PrismaClient, clientId: string, plan
     throw new AppError('NOT_FOUND', 404, 'Plan was not found');
   const plan = await publishedPlan(prisma, clientId, planId);
   const version = plan?.versions[0];
-  return {
-    plan:
-      plan && version
-        ? {
-            id: plan.id,
-            title: version.title ?? plan.title,
-            purpose: version.purpose ?? plan.purpose,
-            status: version.status,
-            version: {
-              ...clientSafeVersion(version),
-              items: await Promise.all(
-                clientSafeVersion(version).items.map(async (item) => ({
-                  ...item,
-                  ...(await itemHistory(prisma, plan.id, version.version, item.stableKey)),
-                })),
-              ),
-            },
-          }
-        : null,
-  };
+  const published =
+    plan && version
+      ? {
+          id: plan.id,
+          title: version.title ?? plan.title,
+          purpose: version.purpose ?? plan.purpose,
+          status: version.status,
+          version: {
+            ...clientSafeVersion(version),
+            items: await Promise.all(
+              clientSafeVersion(version).items.map(async (item) => ({
+                ...item,
+                ...(await itemHistory(prisma, plan.id, version.version, item.stableKey)),
+              })),
+            ),
+          },
+        }
+      : null;
+  return { plan: published, summary: summarizePlan(published) };
 }
 
 export function clientSafeVersion(
@@ -1849,12 +1860,15 @@ export async function saveResponseDraft(
       create: { itemId, actorId, ...data },
       update: { ...data, revision: { increment: 1 } },
     });
-    await tx.outboxEvent.create({ data: {
-      eventType: 'plan.response-draft.saved',
-      eventKey: `plan.response-draft.saved:${saved.id}:${saved.revision}`,
-      aggregateType: 'PlanResponseDraft', aggregateId: saved.id,
-      payload: { clientId, targetUserId: actorId, domains: ['plan-drafts'] },
-    } });
+    await tx.outboxEvent.create({
+      data: {
+        eventType: 'plan.response-draft.saved',
+        eventKey: `plan.response-draft.saved:${saved.id}:${saved.revision}`,
+        aggregateType: 'PlanResponseDraft',
+        aggregateId: saved.id,
+        payload: { clientId, targetUserId: actorId, domains: ['plan-drafts'] },
+      },
+    });
     return getResponseDraft(tx, clientId, itemId, actorId);
   });
 }
@@ -1889,12 +1903,15 @@ export async function discardResponseDraft(
         'The saved response changed in another tab. Refresh and review it before discarding.',
       );
     await tx.planResponseDraft.delete({ where: { id: draft.id } });
-    await tx.outboxEvent.create({ data: {
-      eventType: 'plan.response-draft.discarded',
-      eventKey: `plan.response-draft.discarded:${draft.id}:${draft.revision}`,
-      aggregateType: 'PlanResponseDraft', aggregateId: draft.id,
-      payload: { clientId, targetUserId: actorId, domains: ['plan-drafts'] },
-    } });
+    await tx.outboxEvent.create({
+      data: {
+        eventType: 'plan.response-draft.discarded',
+        eventKey: `plan.response-draft.discarded:${draft.id}:${draft.revision}`,
+        aggregateType: 'PlanResponseDraft',
+        aggregateId: draft.id,
+        payload: { clientId, targetUserId: actorId, domains: ['plan-drafts'] },
+      },
+    });
     return { discarded: true };
   });
 }
