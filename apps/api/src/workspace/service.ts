@@ -1,3 +1,4 @@
+import { workspaceAffordances } from './affordances.js';
 import { workspaceRefreshAt } from './refresh.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { getClientPlan } from '../plans/service.js';
@@ -147,6 +148,7 @@ export async function getCreditWorkspace(
     now,
   );
   return {
+    ...workspaceAffordances({ currentFocus, plan: plan.plan }),
     generatedAt: now,
     refreshAt: workspaceRefreshAt(now, publication?.review.readinessExpiresAt, appointment),
     currentFocus,

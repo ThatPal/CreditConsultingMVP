@@ -1,3 +1,4 @@
+import { getCreditWorkspace } from '../workspace/service.js';
 import { listResponseDrafts } from './draftLibrary.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -130,16 +131,31 @@ describe('consequential client Plan execution', () => {
   });
 
   test('enforces prerequisites and records duplicate-safe structured domain outcomes', async () => {
-    await expect(
-      executePlanItem(prisma, {
-        clientId,
-        itemId: actionId,
-        actorId: clientUserId,
-        idempotencyKey: randomUUID(),
-        action: 'COMPLETE',
-        outcome: { balance: 1200 },
-      }),
-    ).rejects.toMatchObject({ code: 'PLAN_ITEM_LOCKED' });
+    for (let read = 0; read < 2; read++) {
+      const workspace = await getCreditWorkspace(prisma, clientId);
+      expect(
+        workspace.availableActions.some(
+          (action) => action.kind === 'COMMAND' && action.source.itemId === actionId,
+        ),
+      ).toBe(false);
+      expect(workspace.blockers).toContainEqual(
+        expect.objectContaining({
+          code: 'STEP_LOCKED',
+          owner: null,
+          source: expect.objectContaining({ itemId: actionId }),
+        }),
+      );
+      await expect(
+        executePlanItem(prisma, {
+          clientId,
+          itemId: actionId,
+          actorId: clientUserId,
+          idempotencyKey: randomUUID(),
+          action: 'COMPLETE',
+          outcome: { balance: 1200 },
+        }),
+      ).rejects.toMatchObject({ code: 'PLAN_ITEM_LOCKED' });
+    }
     const key = randomUUID();
     const first = await executePlanItem(prisma, {
       clientId,

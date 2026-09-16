@@ -475,6 +475,8 @@ describe('Plan authoring and approval', () => {
     try {
       const workspace = await getCreditWorkspace(prisma, clientId);
       const center = await getPublishedCreditCenter(prisma, clientId);
+      expect(center.workspace.availableActions).toEqual(workspace.availableActions);
+      expect(center.workspace.blockers).toEqual(workspace.blockers);
       expect(read).toHaveBeenCalledWith({
         where: {
           clientId,

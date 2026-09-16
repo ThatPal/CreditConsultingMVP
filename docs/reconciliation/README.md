@@ -86,3 +86,5 @@ Latest implementation: [U1 batch 24](BATCH-U1-24.md) preserves loading/error pag
 Latest implementation: [U1 batch 25](BATCH-U1-25.md) verifies completed/no-Profile reference states, repairs mobile navigation focus and semantics, and corrects Plan heading structure. Twelve browser scenarios pass, including six mobile focus-trap/return checks. U1 NOT PASSED; remaining contrast/recovery and contract gates stay open.
 
 Latest implementation: [U1 batch 26](BATCH-U1-26.md) separates notification failure/loading/empty states, adds accessible popup control/focus behavior, and verifies six menu/recovery browser scenarios plus selected contrast boundaries. 25 tests pass. T3 inspection identifies the remaining shared blocker/action envelope gap; U1 NOT PASSED.
+
+Latest implementation: [U1 batch 27](BATCH-U1-27.md) adds shared typed Plan command/navigation affordances and scoped blockers with exact source basis. 55 tests pass; real API reads agree across Home/Center/Plan after isolated restart. Broader T3 domains and final U1 acceptance remain open.
