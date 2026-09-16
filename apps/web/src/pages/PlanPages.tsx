@@ -30,7 +30,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { PageHeader } from '../components/common/PageHeader';
-import { RecoveryState } from '../components/common/InteractionPatterns';
+import { ReferenceQueryState } from '../components/common/ReferenceQueryState';
 import { StatusChip } from '../components/common/StatusChip';
 import { presentStatus } from '../components/common/statusVocabulary';
 import { CollectionSurface } from '../components/common/CollectionSurface';
@@ -99,9 +99,15 @@ export function ClientPlanPage() {
   const data = holding && snapshot ? snapshot : query.data;
   const updateWaiting =
     holding && Boolean(snapshot) && planReadIdentity(query.data) !== planReadIdentity(snapshot);
-  if (query.isLoading && !data) return <Typography>Loading your Plan…</Typography>;
+  if (query.isLoading && !data) return <ReferenceQueryState title="Your Credit Plan" loading />;
   if (query.isError && !holding)
-    return <RecoveryState error={query.error} onRetry={() => void query.refetch()} />;
+    return (
+      <ReferenceQueryState
+        title="Your Credit Plan"
+        error={query.error}
+        onRetry={() => void query.refetch()}
+      />
+    );
   if (!data?.plan)
     return (
       <Stack spacing={2}>

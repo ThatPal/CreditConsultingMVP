@@ -1,0 +1,22 @@
+[
+  {
+    "state": "empty",
+    "width": 1440,
+    "passed": true
+  },
+  {
+    "state": "history",
+    "width": 1440,
+    "passed": true
+  },
+  {
+    "state": "empty",
+    "width": 390,
+    "passed": true
+  },
+  {
+    "state": "history",
+    "width": 390,
+    "passed": true
+  }
+]

@@ -31,3 +31,5 @@ Q3: Only after the functional and UI gates pass, produce U1_COMPLETION_REPORT.md
 Batch22: the bounded T2 persisted-source verification is complete. The next U1 acceptance task is T1 combined cross-surface state verification, followed by V2/V3 state and accessibility coverage. U1 overall remains NOT PASSED.
 
 Batch23: T1's selected seven-state desktop/mobile presentation matrix is verified (42 cross-surface checks plus 14 Home count checks). Live baseline reads and production-function response fixtures are distinguished in BATCH-U1-23.md. Next work: V2 untested loading/error/no-Profile/completed/historical combinations and V3 keyboard/focus/contrast audit; T3 and V4 remain open.
+
+Batch24: V2 initial loading/read failure/keyboard retry verified for Home/Center/Plan at desktop/mobile widths; Center no-publication and historical expansion/collapse/focus verified separately. Completed states and cross-surface no-Profile combinations remain, alongside full V3 accessibility and T3/V4 contract disposition. See BATCH-U1-24.md; U1 NOT PASSED.

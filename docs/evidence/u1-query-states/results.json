@@ -1,0 +1,56 @@
+[
+  {
+    "surface": "home",
+    "width": 1440,
+    "loadingHeading": true,
+    "announcedLoading": true,
+    "safeError": true,
+    "keyboardRetry": true,
+    "noOverflow": true
+  },
+  {
+    "surface": "credit-profile",
+    "width": 1440,
+    "loadingHeading": true,
+    "announcedLoading": true,
+    "safeError": true,
+    "keyboardRetry": true,
+    "noOverflow": true
+  },
+  {
+    "surface": "plan",
+    "width": 1440,
+    "loadingHeading": true,
+    "announcedLoading": true,
+    "safeError": true,
+    "keyboardRetry": true,
+    "noOverflow": true
+  },
+  {
+    "surface": "home",
+    "width": 390,
+    "loadingHeading": true,
+    "announcedLoading": true,
+    "safeError": true,
+    "keyboardRetry": true,
+    "noOverflow": true
+  },
+  {
+    "surface": "credit-profile",
+    "width": 390,
+    "loadingHeading": true,
+    "announcedLoading": true,
+    "safeError": true,
+    "keyboardRetry": true,
+    "noOverflow": true
+  },
+  {
+    "surface": "plan",
+    "width": 390,
+    "loadingHeading": true,
+    "announcedLoading": true,
+    "safeError": true,
+    "keyboardRetry": true,
+    "noOverflow": true
+  }
+]

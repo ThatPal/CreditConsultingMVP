@@ -13,9 +13,8 @@ import { Alert, Box, Button, Chip, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
-import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
-import { RecoveryState } from '../components/common/InteractionPatterns';
+import { ReferenceQueryState } from '../components/common/ReferenceQueryState';
 import { DraftPublicationStatus } from '../components/common/ProductFoundation';
 import { PublishedCreditFacts } from '../components/common/PublishedCreditFacts';
 import { CollectionSurface } from '../components/common/CollectionSurface';
@@ -62,9 +61,15 @@ export function PublishedCreditCenterPage({
     queryFn: () => apiRequest<CreditCenterResponse>('/api/v1/client/credit-profile'),
     retry: false,
   });
-  if (query.isLoading) return <LoadingSkeleton />;
+  if (query.isLoading) return <ReferenceQueryState title="Credit Center" loading />;
   if (query.isError)
-    return <RecoveryState error={query.error} onRetry={() => void query.refetch()} />;
+    return (
+      <ReferenceQueryState
+        title="Credit Center"
+        error={query.error}
+        onRetry={() => void query.refetch()}
+      />
+    );
   return <CreditCenterContent data={query.data!} view={view} basePath="/app/credit-center" />;
 }
 
@@ -78,7 +83,7 @@ export function ConsultantClientCreditCenterPage() {
     enabled: Boolean(clientId),
     retry: false,
   });
-  if (query.isLoading) return <LoadingSkeleton />;
+  if (query.isLoading) return <ReferenceQueryState title="Credit Center" loading />;
   if (query.isError)
     return (
       <Alert severity="error">

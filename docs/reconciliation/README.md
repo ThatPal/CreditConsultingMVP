@@ -80,3 +80,5 @@ Latest implementation: [U1 batch 21](BATCH-U1-21.md) adds failed Plan refresh re
 Latest implementation: [U1 batch 22](BATCH-U1-22.md) verifies persisted Round/Strategy/Appointment/Live sources and real start/clear commands, and fixes session start for blocked/completed/cancelled Rounds. T2 persisted-source evidence is closed; next is the combined reference-state matrix. U1 NOT PASSED.
 
 Latest implementation: [U1 batch 23](BATCH-U1-23.md) shares explicit focus-owner labels and verifies the seven-state Home/Center/Plan matrix at desktop/mobile widths. 42 reference checks plus 14 Home count checks and 23 tests pass. Next: remaining state/accessibility coverage and contract dispositions; U1 NOT PASSED.
+
+Latest implementation: [U1 batch 24](BATCH-U1-24.md) preserves loading/error page context and verifies keyboard retry on Home/Center/Plan plus Center empty/history states. 24 tests and ten browser scenarios pass; five-package build and lint pass. Remaining acceptance gates stay open; U1 NOT PASSED.

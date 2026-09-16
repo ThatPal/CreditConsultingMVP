@@ -1,3 +1,5 @@
+import { LoadingSkeleton } from '../components/common/Feedback';
+import { ReferenceQueryState } from '../components/common/ReferenceQueryState';
 import { FocusOwner } from '../components/common/FocusOwner';
 import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import {
@@ -13,16 +15,7 @@ import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import { creditWorkspaceKeys } from '../queries/creditWorkspace';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import RouteRounded from '@mui/icons-material/RouteRounded';
-import {
-  Alert,
-  Box,
-  Button,
-  Divider,
-  Grid,
-  LinearProgress,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Alert, Box, Button, Divider, Grid, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
@@ -459,7 +452,7 @@ export function ClientHomePage() {
         title={query.data ? `Welcome back, ${query.data.client.firstName}` : 'Welcome back'}
         description="Your next step, your credit picture, and the work ahead."
       />
-      {query.isLoading && <LinearProgress />}
+      {query.isLoading && <LoadingSkeleton label="Loading your Home overview" />}
       {query.isError && (
         <Alert severity="error">
           <Stack spacing={1}>
@@ -507,8 +500,15 @@ export function ClientJourneyPage() {
     refetchInterval: creditWorkspaceRefetchInterval,
     queryFn: () => apiRequest<JourneyProjection>('/api/v1/client/journey'),
   });
-  if (query.isLoading) return <LinearProgress />;
-  if (query.isError) return <Alert severity="error">Your journey could not be loaded.</Alert>;
+  if (query.isLoading) return <ReferenceQueryState title="Your journey" loading />;
+  if (query.isError)
+    return (
+      <ReferenceQueryState
+        title="Your journey"
+        error={query.error}
+        onRetry={() => void query.refetch()}
+      />
+    );
   return (
     <Stack spacing={3}>
       <PageHeader
