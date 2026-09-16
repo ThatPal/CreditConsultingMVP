@@ -21,6 +21,7 @@ export function CollectionSurface({
   busy = false,
   maxHeight = 520,
   appearance = 'panel',
+  scrollKey,
 }: {
   title: string;
   mode: CollectionMode;
@@ -31,13 +32,17 @@ export function CollectionSurface({
   busy?: boolean;
   maxHeight?: number;
   appearance?: 'panel' | 'plain';
+  /** Stable, account/resource/view-scoped identity. Omit to disable restoration. */
+  scrollKey?: string;
 }) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // Capture the mounted element: React may clear the ref before cleanup.
     const element = body.current;
     if (!element) return;
-    const key = `collection-scroll:${title}`;
+    if (!scrollKey) return;
+    element.scrollTop = 0;
+    const key = `collection-scroll:v2:${scrollKey}`;
     try {
       const saved = sessionStorage.getItem(key);
       const offset = saved === null ? NaN : Number(saved);
@@ -52,7 +57,7 @@ export function CollectionSurface({
         // Preserve the usable collection when storage is blocked or full.
       }
     };
-  }, [title]);
+  }, [scrollKey]);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (
       event.defaultPrevented ||

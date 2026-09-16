@@ -329,6 +329,11 @@ export function ClientPlanPage() {
               title={`Plan steps · ${visibleItems.length}`}
               mode="bounded"
               appearance="plain"
+              {...(!search.get('item') && plan.version.version
+                ? {
+                    scrollKey: JSON.stringify(['client-plan', plan.id, plan.version.version, view]),
+                  }
+                : {})}
             >
               {visibleItems.map((item) => (
                 <Box

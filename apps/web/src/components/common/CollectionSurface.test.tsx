@@ -16,7 +16,7 @@ describe('collection keyboard and optional storage boundary', () => {
       throw new Error('full');
     });
     const view = render(
-      <CollectionSurface title="Queue" mode="bounded">
+      <CollectionSurface title="Queue" mode="bounded" scrollKey="account-a/queue">
         <button data-collection-item>Open record</button>
       </CollectionSurface>,
     );
@@ -25,9 +25,9 @@ describe('collection keyboard and optional storage boundary', () => {
   });
 
   test('restores a valid offset and saves the mounted element offset on exit', () => {
-    sessionStorage.setItem('collection-scroll:Queue', '90');
+    sessionStorage.setItem('collection-scroll:v2:account-a/queue', '90');
     const view = render(
-      <CollectionSurface title="Queue" mode="bounded">
+      <CollectionSurface title="Queue" mode="bounded" scrollKey="account-a/queue">
         Records
       </CollectionSurface>,
     );
@@ -35,15 +35,15 @@ describe('collection keyboard and optional storage boundary', () => {
     expect(region.scrollTop).toBe(90);
     region.scrollTop = 180;
     view.unmount();
-    expect(sessionStorage.getItem('collection-scroll:Queue')).toBe('180');
+    expect(sessionStorage.getItem('collection-scroll:v2:account-a/queue')).toBe('180');
   });
 
   test.each(['NaN', '-1', 'Infinity', 'not a number'])(
     'ignores invalid saved offset %s',
     (offset) => {
-      sessionStorage.setItem('collection-scroll:Queue', offset);
+      sessionStorage.setItem('collection-scroll:v2:account-a/queue', offset);
       render(
-        <CollectionSurface title="Queue" mode="bounded">
+        <CollectionSurface title="Queue" mode="bounded" scrollKey="account-a/queue">
           Records
         </CollectionSurface>,
       );
@@ -53,7 +53,7 @@ describe('collection keyboard and optional storage boundary', () => {
 
   test('editing fields and nested buttons retain their own arrow keys', () => {
     render(
-      <CollectionSurface title="Queue" mode="bounded">
+      <CollectionSurface title="Queue" mode="bounded" scrollKey="account-a/queue">
         <div data-collection-item tabIndex={0}>
           <input aria-label="Amount" type="number" />
           <textarea aria-label="Response" />
@@ -90,7 +90,7 @@ describe('collection keyboard and optional storage boundary', () => {
 
   test('moves among eligible rows, preserves modified keys and does not trap the last row', () => {
     render(
-      <CollectionSurface title="Queue" mode="bounded">
+      <CollectionSurface title="Queue" mode="bounded" scrollKey="account-a/queue">
         <button data-collection-item>First</button>
         <button data-collection-item disabled>
           Unavailable
@@ -131,4 +131,39 @@ describe('collection keyboard and optional storage boundary', () => {
     fireEvent.keyDown(inner, { key: 'ArrowDown' });
     expect(inner).toHaveFocus();
   });
+});
+
+test('switching collection scope saves the old position and resets an unseen scope', () => {
+  const view = render(
+    <CollectionSurface title="Queue" mode="bounded" scrollKey="account-a/resource-a">
+      Records
+    </CollectionSurface>,
+  );
+  screen.getByRole('region').scrollTop = 180;
+  view.rerender(
+    <CollectionSurface title="Queue" mode="bounded" scrollKey="account-b/resource-b">
+      Records
+    </CollectionSurface>,
+  );
+  expect(screen.getByRole('region').scrollTop).toBe(0);
+  screen.getByRole('region').scrollTop = 40;
+  view.rerender(
+    <CollectionSurface title="Renamed queue" mode="bounded" scrollKey="account-a/resource-a">
+      Records
+    </CollectionSurface>,
+  );
+  expect(screen.getByRole('region').scrollTop).toBe(180);
+  expect(sessionStorage.getItem('collection-scroll:v2:account-b/resource-b')).toBe('40');
+});
+test('unscoped collections never use a title as storage identity', () => {
+  sessionStorage.setItem('collection-scroll:Queue', '90');
+  const view = render(
+    <CollectionSurface title="Queue" mode="bounded">
+      Records
+    </CollectionSurface>,
+  );
+  expect(screen.getByRole('region').scrollTop).toBe(0);
+  screen.getByRole('region').scrollTop = 180;
+  view.unmount();
+  expect(sessionStorage.getItem('collection-scroll:Queue')).toBe('90');
 });
