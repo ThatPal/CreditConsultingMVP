@@ -1,3 +1,7 @@
+import {
+  ProfileCurrentnessNotice,
+  type ProfileCurrentnessRead,
+} from '../components/common/ProfileCurrentnessNotice';
 import { ActionProgressDisplay } from '../components/common/ActionProgressDisplay';
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined';
 import RouteOutlined from '@mui/icons-material/RouteOutlined';
@@ -66,7 +70,7 @@ export type JourneyProjection = {
     historyWindow?: { limit: number; cycleTotal: number; nurturePeriodTotal: number };
   };
   foundations: {
-    creditProfile: { status: string; effectiveAt?: string | null };
+    creditProfile: ProfileCurrentnessRead;
     plan: {
       status: string;
       openActionCount: number;
@@ -226,6 +230,7 @@ export function JourneySummary({
           )}
         </Stack>
       </Box>
+      <ProfileCurrentnessNotice profile={data.foundations.creditProfile} />
       <Box component="section" aria-label="Your financial journey">
         <Typography variant="h3" sx={{ mb: 2 }}>
           Your working picture

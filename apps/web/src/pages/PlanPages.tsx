@@ -1,3 +1,4 @@
+import { ProfileCurrentnessNotice } from '../components/common/ProfileCurrentnessNotice';
 import { ActionProgressDisplay } from '../components/common/ActionProgressDisplay';
 import { designTokens } from '../theme';
 import { PlanRoadmap, planStepUrl } from '../features/plans/PlanRoadmap';
@@ -205,6 +206,7 @@ export function ClientPlanPage() {
             </Button>
           ))}
         </Stack>
+        <ProfileCurrentnessNotice profile={data.workspace?.profile} />
         {plan.version.staleAt && (
           <Alert severity="warning">
             This Plan is being reviewed after a source change. Completed history remains available.

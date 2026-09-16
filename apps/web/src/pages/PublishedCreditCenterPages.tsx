@@ -1,3 +1,4 @@
+import { ProfileCurrentnessNotice } from '../components/common/ProfileCurrentnessNotice';
 import { CreditSourceReport } from '../components/common/CreditSourceReport';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
@@ -143,14 +144,7 @@ function CreditCenterContent({
         }
         description="Explore your published facts, understand your consultant’s findings, and follow your Plan."
       />
-      {current && data.workspace && !data.workspace.profile.isCurrent && (
-        <Alert severity="warning">
-          This published review remains available as history.{' '}
-          {data.workspace.profile.reason === 'EXPIRED'
-            ? 'Its assessment has expired.'
-            : 'Its current status needs consultant review.'}
-        </Alert>
-      )}
+      {current && <ProfileCurrentnessNotice profile={data.workspace?.profile} />}
       {navigation.length > 0 && (
         <Stack
           direction="row"

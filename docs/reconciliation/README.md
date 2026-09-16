@@ -60,3 +60,5 @@ Latest implementation: [U1 batch 11](BATCH-U1-11.md) shares server-driven Action
 Latest implementation: [U1 batch 12](BATCH-U1-12.md) makes publication history expandable with snapshot-specific assessments/facts and improves analysis reasons/findings. Currentness is not inferred from history order. U1 NOT PASSED.
 
 Latest implementation: [U1 batch 13](BATCH-U1-13.md) improves source-report metadata/preview presentation and missing/unpublished states, preserving the secure document destination. U1 NOT PASSED.
+
+Latest implementation: [U1 batch 14](BATCH-U1-14.md) shares server-derived Profile currentness explanations across Home, Center and Plan without changing command authority or response recovery. 27 focused tests pass; full server blocker/action/Live/Major contracts remain open. U1 NOT PASSED.

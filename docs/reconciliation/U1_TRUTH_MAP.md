@@ -45,3 +45,5 @@ Shared `api/src/workspace/service.ts` now composes server focus, Action-only Pla
 The baseline table above is historical; these narrow inconsistencies are repaired. Final global Plan/available-action DTOs, Live/Major precedence, final professional readiness and removal of legacy fallback remain unfinished. No U1 acceptance is implied.
 
 U1-06: per-item client response disposition is shared by published Plan reads, next-step selection and private draft eligibility. Missing per-item permission fails closed in the Portal. Verification-only focus names consultant/system ownership. This is a bounded legacy response adapter, not final global available actions; see BATCH-U1-06.
+
+U1-14: the reference surfaces now share Profile currentness reason copy over the existing workspace DTO. EXPIRED, BASIS_UNCONFIRMED and REASSESSMENT_REQUIRED remain distinct. Browser presentation never recalculates expiry or Plan authority. This closes a presentation mismatch, not the remaining server contract gaps.
