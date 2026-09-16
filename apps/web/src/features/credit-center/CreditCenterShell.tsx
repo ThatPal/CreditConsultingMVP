@@ -1,4 +1,6 @@
 import { Box, Button, Stack, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
+import CreditScoreRounded from '@mui/icons-material/CreditScoreRounded';
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../auth/api';
@@ -59,23 +61,47 @@ export function CreditCenterHeader({
         }}
       >
         <Box>
-          <Typography variant="h1">Credit Center</Typography>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                display: 'grid',
+                placeItems: 'center',
+                width: 40,
+                height: 40,
+                borderRadius: 1.5,
+                color: 'primary.main',
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
+                border: 1,
+                borderColor: (t) => alpha(t.palette.primary.main, 0.22),
+              }}
+            >
+              <CreditScoreRounded aria-hidden="true" />
+            </Box>
+            <Typography variant="h1">Credit Center</Typography>
+          </Stack>
           <Typography color="text.secondary" sx={{ mt: 0.75 }}>
             Your credit picture, analysis, and plan.
           </Typography>
         </Box>
         <Box
           sx={{
-            border: 1,
-            borderColor: 'divider',
-            borderRadius: 1,
-            px: 2,
-            py: 1,
-            bgcolor: 'background.paper',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
             flexShrink: 0,
+            color: 'text.secondary',
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 600 }} aria-label={'Viewing ' + label}>
+          <Box
+            aria-hidden="true"
+            sx={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              bgcolor: unavailable ? 'warning.main' : 'text.secondary',
+            }}
+          />
+          <Typography variant="body2" aria-label={'Viewing ' + label}>
             {label}
           </Typography>
         </Box>
@@ -115,7 +141,7 @@ export function CreditCenterHeader({
           </Button>
         </Stack>
       )}
-      <Box sx={{ mt: { xs: 2, lg: 2 } }}>
+      <Box sx={{ mt: { xs: 2, lg: 3 } }}>
         <CreditCenterNavigation area={area} />
       </Box>
     </Box>

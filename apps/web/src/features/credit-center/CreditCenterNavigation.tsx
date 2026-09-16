@@ -1,4 +1,5 @@
 import { rememberCreditCenterHub } from './hubPosition';
+import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import CheckRounded from '@mui/icons-material/CheckRounded';
@@ -92,10 +93,10 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
             px: 2,
             justifyContent: 'space-between',
             border: 1,
-            borderColor: 'divider',
-            borderRadius: 1,
+            borderColor: (t) => alpha(t.palette.primary.main, 0.24),
+            borderRadius: 1.5,
             color: 'text.primary',
-            bgcolor: 'background.paper',
+            bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
           }}
         >
           {creditCenterAreas.find((a) => a.id === area)!.title}
@@ -180,12 +181,27 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
           to={path(id)}
           aria-current={id === area ? 'page' : undefined}
           sx={{
-            px: 2,
-            py: 1.5,
-            borderRadius: 0,
-            borderBottom: 2,
-            borderColor: id === area ? 'primary.main' : 'transparent',
-            color: id === area ? 'primary.main' : 'text.secondary',
+            px: 2.5,
+            py: 1.75,
+            position: 'relative',
+            borderRadius: '8px 8px 0 0',
+            fontWeight: id === area ? 700 : 500,
+            bgcolor: id === area ? (t) => alpha(t.palette.primary.main, 0.07) : 'transparent',
+            color: id === area ? 'primary.light' : 'text.secondary',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              bottom: -1,
+              left: 16,
+              right: 16,
+              height: 3,
+              borderRadius: '3px 3px 0 0',
+              bgcolor: id === area ? 'primary.main' : 'transparent',
+            },
+            '&:hover': {
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
+              color: 'text.primary',
+            },
           }}
         >
           {title}
