@@ -183,3 +183,41 @@ test.each(['ENDED', 'SCHEDULED', 'READY'])(
     ).toBe('ROUND_BLOCKED');
   },
 );
+
+test('Major coordination precedes ordinary Plan focus and links to the restriction case', () => {
+  const focus = resolveCurrentFocus({
+    activeCycle: null,
+    activeNurture: null,
+    hasGoal: true,
+    coordinationRestrictions: [{ caseId: 'case / one', scope: 'SCHEDULING' }],
+  });
+  expect(focus).toMatchObject({
+    code: 'MAJOR_COORDINATION',
+    owner: 'CONSULTANT',
+    action: '/app/major-readiness/coordination?caseId=case%20%2F%20one',
+  });
+});
+test('Live restrictions retain session navigation while requiring consultant review', () => {
+  const focus = resolveCurrentFocus({
+    activeCycle: null,
+    activeNurture: null,
+    hasGoal: true,
+    liveSession: { id: 'live', roundId: 'round', status: 'LIVE' },
+    coordinationRestrictions: [{ caseId: 'case', scope: 'LIVE_EXECUTION' }],
+  });
+  expect(focus).toMatchObject({
+    code: 'LIVE_RESTRICTED',
+    owner: 'CONSULTANT',
+    action: '/app/rounds/round/live',
+  });
+  expect(focus.detail).toContain('Wait for your consultant');
+});
+test('active Major case replaces only the no-round fallback; completed case is not active work', () => {
+  const base = { activeCycle: null, activeNurture: null, hasGoal: true };
+  expect(
+    resolveCurrentFocus({ ...base, majorCase: { id: 'case', status: 'ASSESSMENT' } }).code,
+  ).toBe('MAJOR_READINESS');
+  expect(resolveCurrentFocus({ ...base, majorCase: { id: 'case', status: 'COMPLETE' } }).code).toBe(
+    'READY_FOR_CYCLE',
+  );
+});

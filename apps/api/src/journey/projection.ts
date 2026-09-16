@@ -10,6 +10,8 @@ export type FocusInput = {
   activeNurture: { reasonCode: string } | null;
   activeCycle: { id: string; currentStage: ApplicationCycleStage } | null;
   hasGoal: boolean;
+  coordinationRestrictions?: Array<{ caseId: string; scope: string }>;
+  majorCase?: { id: string; status: string } | null;
   round?: { id: string; status: string; strategy: { status: string } | null } | null;
   plan?: ReturnType<typeof summarizePlan>;
   liveSession?: { id: string; roundId: string; status: string } | null;
@@ -82,25 +84,49 @@ export function resolveCurrentFocus(input: FocusInput) {
       input.liveSession.status,
     )
   ) {
+    const restricted = Boolean(
+      input.coordinationRestrictions?.some((r) => r.scope === 'LIVE_EXECUTION'),
+    );
     const paused = input.liveSession.status === 'PAUSED';
     const waiting = input.liveSession.status === 'WAITING_FOR_CONSULTANT';
     return {
-      code: paused ? 'LIVE_PAUSED' : waiting ? 'LIVE_WAITING' : 'LIVE_RETURN',
-      title: paused
-        ? 'Your application session is paused'
-        : waiting
-          ? 'Your session is waiting for your consultant'
-          : 'Return to your application session',
-      detail: paused
-        ? 'Return to the session to review its status. Wait for your consultant before continuing applications.'
-        : waiting
-          ? 'Your consultant owns the next step. You can return to the session to see its status.'
-          : 'Your guided session is open. Follow the session instructions and consultant guidance before taking an application step.',
-      owner: paused || waiting ? 'CONSULTANT' : 'CLIENT',
+      code: restricted
+        ? 'LIVE_RESTRICTED'
+        : paused
+          ? 'LIVE_PAUSED'
+          : waiting
+            ? 'LIVE_WAITING'
+            : 'LIVE_RETURN',
+      title: restricted
+        ? 'Your application activity needs coordination'
+        : paused
+          ? 'Your application session is paused'
+          : waiting
+            ? 'Your session is waiting for your consultant'
+            : 'Return to your application session',
+      detail:
+        restricted || paused
+          ? 'Return to the session to review its status. Wait for your consultant before continuing applications.'
+          : waiting
+            ? 'Your consultant owns the next step. You can return to the session to see its status.'
+            : 'Your guided session is open. Follow the session instructions and consultant guidance before taking an application step.',
+      owner: restricted || paused || waiting ? 'CONSULTANT' : 'CLIENT',
       actionLabel: 'Return to session',
       action: '/app/rounds/' + encodeURIComponent(input.liveSession.roundId) + '/live',
     };
   }
+  if (input.coordinationRestrictions?.length)
+    return {
+      code: 'MAJOR_COORDINATION',
+      title: 'Your card activity needs coordination',
+      detail:
+        'Your consultant has restricted some card activity while reviewing your Major Readiness needs. Review the coordination guidance before proceeding.',
+      owner: 'CONSULTANT',
+      actionLabel: 'View coordination guidance',
+      action:
+        '/app/major-readiness/coordination?caseId=' +
+        encodeURIComponent(input.coordinationRestrictions[0]!.caseId),
+    };
   if (input.round?.status === 'BLOCKED')
     return {
       code: 'ROUND_BLOCKED',
@@ -171,6 +197,16 @@ export function resolveCurrentFocus(input: FocusInput) {
       owner: input.plan.professionalVerificationOwner,
       actionLabel: 'View your Plan',
       action: '/app/plan',
+    };
+  if (!input.round && input.majorCase && input.majorCase.status !== 'COMPLETE')
+    return {
+      code: 'MAJOR_READINESS',
+      title: 'Review your Major Readiness status',
+      detail:
+        'Your Major Readiness case is in progress. Review its current assessment and coordination guidance.',
+      owner: 'CONSULTANT',
+      actionLabel: 'View Major Readiness',
+      action: '/app/major-readiness/readiness?caseId=' + encodeURIComponent(input.majorCase.id),
     };
   if (input.activeNurture)
     return {

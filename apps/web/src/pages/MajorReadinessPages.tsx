@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Chip, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
@@ -39,9 +39,16 @@ export function MajorReadinessPage({
   view?: 'intake' | 'readiness' | 'preparation' | 'coordination' | 'timeline';
 }) {
   const qc = useQueryClient();
+  const [search] = useSearchParams();
+  const selectedCaseId = search.get('caseId');
   const q = useQuery({
-    queryKey: ['major-readiness'],
-    queryFn: () => apiRequest<{ case: Case | null }>('/api/v1/major-readiness-v2/client/case'),
+    queryKey: ['major-readiness', selectedCaseId],
+    queryFn: () =>
+      apiRequest<{ case: Case | null }>(
+        selectedCaseId
+          ? '/api/v1/major-readiness-v2/client/cases/' + encodeURIComponent(selectedCaseId)
+          : '/api/v1/major-readiness-v2/client/case',
+      ),
     retry: false,
   });
   const [intentType, setIntent] = useState('MORTGAGE');
@@ -105,7 +112,10 @@ export function MajorReadinessPage({
               <Button
                 component={Link}
                 key={x}
-                to={x === 'intake' ? '/app/major-readiness' : `/app/major-readiness/${x}`}
+                to={
+                  (x === 'intake' ? '/app/major-readiness' : `/app/major-readiness/${x}`) +
+                  (selectedCaseId ? '?caseId=' + encodeURIComponent(selectedCaseId) : '')
+                }
                 variant={view === x ? 'contained' : 'outlined'}
               >
                 {label(x)}

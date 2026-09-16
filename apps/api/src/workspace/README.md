@@ -11,3 +11,5 @@
 Evidence: workspace/projection tests, Plan service integration, Review publication integration, Plan page/response/live-update tests and BATCH-U1-02. No final DTO or U1 acceptance claim.
 
 U1-15: ApplicationSession is a U6 read adapter. Open session status/id/version supplies return-to-session navigation, never execution permission. Scope is clientId plus endedAt null and explicit open statuses; only safe source fields are selected. Projection tests and Plan service composition tests cover this boundary; persisted full-session fixtures remain outstanding.
+
+U1-16: Major case/restriction compatibility reads supply safe coordination focus and exact-case navigation. Uncleared restrictions use the same client scope as existing command guards. No permission or lifecycle changes; clearing remains subject to command revalidation. Final scheduling and comprehensive action contracts remain outstanding.

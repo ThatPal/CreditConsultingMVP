@@ -1,3 +1,4 @@
+import { getCase, clearRestrictions } from '../majorReadiness/service.js';
 import { getCreditWorkspace } from '../workspace/service.js';
 import { getPublishedCreditCenter } from '../reviews/publishedCreditCenter.js';
 import { randomUUID } from 'node:crypto';
@@ -490,6 +491,79 @@ describe('Plan authoring and approval', () => {
       expect((await getCreditWorkspace(prisma, randomUUID())).sources.liveSession).toBeNull();
     } finally {
       read.mockRestore();
+    }
+  });
+  test('persisted coordination restrictions are scoped, shared and cleared without resuming work', async () => {
+    const major = await prisma.majorReadinessCase.create({
+      data: { clientId, intentType: 'MORTGAGE', status: 'COORDINATION', createdByUserId: actorId },
+    });
+    try {
+      const recommendation = await prisma.majorReadinessRecommendation.create({
+        data: {
+          caseId: major.id,
+          version: 1,
+          type: 'PREPARE_FIRST',
+          clientSafeExplanation: 'Coordinate timing',
+          internalRationale: 'private-major-rationale',
+          sourceFingerprint: 'private-major-source',
+          sourceSnapshot: {},
+          approvedByUserId: actorId,
+          approvedAt: new Date(),
+        },
+      });
+      const decision = await prisma.coordinationDecision.create({
+        data: {
+          caseId: major.id,
+          version: 1,
+          type: 'PAUSE_CARD_ACTIVITY',
+          clientSafeExplanation: 'Wait for guidance',
+          internalRationale: 'private-decision-rationale',
+          sourceRecommendationId: recommendation.id,
+          decidedByUserId: actorId,
+        },
+      });
+      await prisma.clientCreditActivityRestriction.create({
+        data: {
+          clientId,
+          caseId: major.id,
+          decisionId: decision.id,
+          scope: 'SCHEDULING',
+          reasonCode: 'PAUSE_CARD_ACTIVITY',
+        },
+      });
+      const workspace = await getCreditWorkspace(prisma, clientId);
+      expect(workspace.currentFocus).toMatchObject({
+        code: 'MAJOR_COORDINATION',
+        action: '/app/major-readiness/coordination?caseId=' + major.id,
+      });
+      expect((await getPublishedCreditCenter(prisma, clientId)).workspace.currentFocus).toEqual(
+        workspace.currentFocus,
+      );
+      expect(JSON.stringify(workspace)).not.toMatch(/private-major|private-decision/);
+      expect((await getCreditWorkspace(prisma, randomUUID())).coordinationRestrictions).toEqual([]);
+      await expect(getCase(prisma, randomUUID(), major.id)).rejects.toMatchObject({
+        code: 'MAJOR_READINESS_CASE_NOT_FOUND',
+      });
+      const cleared = await clearRestrictions(prisma, {
+        caseId: major.id,
+        clientId,
+        actorId,
+        reason: 'Test reassessment',
+        idempotencyKey: randomUUID(),
+      });
+      expect(cleared).toMatchObject({
+        result: { cleared: 1, revalidationRequired: true },
+        replayed: false,
+      });
+      const after = await getCreditWorkspace(prisma, clientId);
+      expect(after.coordinationRestrictions).toEqual([]);
+      expect(after.currentFocus.code).not.toBe('MAJOR_COORDINATION');
+    } finally {
+      await prisma.majorReadinessEvent.deleteMany({ where: { caseId: major.id } });
+      await prisma.clientCreditActivityRestriction.deleteMany({ where: { caseId: major.id } });
+      await prisma.coordinationDecision.deleteMany({ where: { caseId: major.id } });
+      await prisma.majorReadinessRecommendation.deleteMany({ where: { caseId: major.id } });
+      await prisma.majorReadinessCase.delete({ where: { id: major.id } });
     }
   });
 });

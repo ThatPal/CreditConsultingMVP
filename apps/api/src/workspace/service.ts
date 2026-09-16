@@ -18,80 +18,101 @@ export async function getCreditWorkspace(
     review: { readinessExpiresAt: Date | null };
   } | null,
 ) {
-  const [plan, state, publication, review, goal, journey, rounds, appointment, liveSession] =
-    await Promise.all([
-      suppliedPlan ?? getClientPlan(prisma, clientId),
-      prisma.creditProfileState.findUnique({
-        where: { clientId },
-        select: {
-          status: true,
-          sourceReviewId: true,
-          staleAt: true,
-          updatedAt: true,
-        },
-      }),
-      publicationBasis !== undefined
-        ? publicationBasis
-        : prisma.publishedCreditReview.findFirst({
-            where: { clientId },
-            orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
-            select: {
-              id: true,
-              reviewId: true,
-              publishedAt: true,
-              review: { select: { readinessExpiresAt: true } },
-            },
-          }),
-      prisma.creditReview.findFirst({
-        where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
-        select: { id: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.clientGoal.findFirst({ where: { clientId, status: 'ACTIVE' }, select: { id: true } }),
-      prisma.creditJourney.findUnique({
-        where: { clientId },
-        select: {
-          cycles: {
-            where: { status: 'ACTIVE' },
-            orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-            take: 1,
-            select: { id: true, currentStage: true },
+  const [
+    plan,
+    state,
+    publication,
+    review,
+    goal,
+    journey,
+    rounds,
+    appointment,
+    liveSession,
+    coordinationRestrictions,
+    majorCase,
+  ] = await Promise.all([
+    suppliedPlan ?? getClientPlan(prisma, clientId),
+    prisma.creditProfileState.findUnique({
+      where: { clientId },
+      select: {
+        status: true,
+        sourceReviewId: true,
+        staleAt: true,
+        updatedAt: true,
+      },
+    }),
+    publicationBasis !== undefined
+      ? publicationBasis
+      : prisma.publishedCreditReview.findFirst({
+          where: { clientId },
+          orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+          select: {
+            id: true,
+            reviewId: true,
+            publishedAt: true,
+            review: { select: { readinessExpiresAt: true } },
           },
-          nurturePeriods: {
-            where: { status: 'ACTIVE' },
-            orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-            take: 1,
-            select: { reasonCode: true },
-          },
+        }),
+    prisma.creditReview.findFirst({
+      where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.clientGoal.findFirst({ where: { clientId, status: 'ACTIVE' }, select: { id: true } }),
+    prisma.creditJourney.findUnique({
+      where: { clientId },
+      select: {
+        cycles: {
+          where: { status: 'ACTIVE' },
+          orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+          take: 1,
+          select: { id: true, currentStage: true },
         },
-      }),
-      prisma.creditCardRound.findMany({
-        where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
-        select: { id: true, status: true, strategy: { select: { status: true } } },
-        orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-      }),
-      prisma.appointment.findFirst({
-        where: { clientId, status: 'BOOKED', endsAt: { gt: now } },
-        select: {
-          id: true,
-          startsAt: true,
-          endsAt: true,
-          timezone: true,
-          status: true,
-          roundId: true,
+        nurturePeriods: {
+          where: { status: 'ACTIVE' },
+          orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+          take: 1,
+          select: { reasonCode: true },
         },
-        orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
-      }),
-      prisma.applicationSession.findFirst({
-        where: {
-          clientId,
-          endedAt: null,
-          status: { in: ['LIVE', 'PAUSED', 'WAITING_FOR_CLIENT', 'WAITING_FOR_CONSULTANT'] },
-        },
-        select: { id: true, roundId: true, status: true, version: true, updatedAt: true },
-        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
-      }),
-    ]);
+      },
+    }),
+    prisma.creditCardRound.findMany({
+      where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
+      select: { id: true, status: true, strategy: { select: { status: true } } },
+      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+    }),
+    prisma.appointment.findFirst({
+      where: { clientId, status: 'BOOKED', endsAt: { gt: now } },
+      select: {
+        id: true,
+        startsAt: true,
+        endsAt: true,
+        timezone: true,
+        status: true,
+        roundId: true,
+      },
+      orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+    }),
+    prisma.applicationSession.findFirst({
+      where: {
+        clientId,
+        endedAt: null,
+        status: { in: ['LIVE', 'PAUSED', 'WAITING_FOR_CLIENT', 'WAITING_FOR_CONSULTANT'] },
+      },
+      select: { id: true, roundId: true, status: true, version: true, updatedAt: true },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+    }),
+    prisma.clientCreditActivityRestriction.findMany({
+      where: { clientId, clearedAt: null },
+      select: { id: true, caseId: true, decisionId: true, scope: true, effectiveAt: true },
+      orderBy: [{ effectiveAt: 'desc' }, { id: 'asc' }],
+    }),
+    prisma.majorReadinessCase.findFirst({
+      where: { clientId, status: { not: 'COMPLETE' } },
+      select: { id: true, status: true, version: true, updatedAt: true },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+    }),
+  ]);
   const round =
     rounds.find((r) => r.status === 'BLOCKED') ??
     rounds.find((r) => r.strategy?.status === 'STALE') ??
@@ -103,6 +124,8 @@ export async function getCreditWorkspace(
     hasGoal: Boolean(goal),
     round,
     liveSession,
+    coordinationRestrictions,
+    majorCase,
     plan: plan.summary,
   });
   const profile = profileCurrentness(
@@ -126,9 +149,11 @@ export async function getCreditWorkspace(
     plan: plan.summary,
     profile,
     nextAppointment: appointment,
+    coordinationRestrictions,
     // Versions represent the actual source basis, never a synthetic global revision.
     sources: {
       liveSession,
+      majorCase,
       plan: plan.summary.source,
       profile: profile.source,
       profileStateUpdatedAt: profile.stateUpdatedAt,
