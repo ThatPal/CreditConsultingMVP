@@ -1,12 +1,19 @@
 [
   {
     "route": "/",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/goal-intake",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/goal-intake",
     "line": 261,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Public acquisition root (currently intake redirect)",
     "wave": "U9",
-    "proposedClassification": "KEEP",
+    "proposedClassification": "REBUILD",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
     "apiReferencesInModule": [],
     "majorChildrenInModule": [],
@@ -15,9 +22,13 @@
   },
   {
     "route": "/login",
+    "index": false,
     "component": "LoginPage",
-    "file": "apps/web/src/pages/AuthPages.tsx",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 262,
+    "file": "apps/web/src/pages/AuthPages.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -58,9 +69,13 @@
   },
   {
     "route": "/mfa",
+    "index": false,
     "component": "StaffMfaPage",
-    "file": "apps/web/src/pages/AuthPages.tsx",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 263,
+    "file": "apps/web/src/pages/AuthPages.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -101,9 +116,13 @@
   },
   {
     "route": "/register",
+    "index": false,
     "component": "RegisterPage",
-    "file": "apps/web/src/pages/AuthPages.tsx",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 264,
+    "file": "apps/web/src/pages/AuthPages.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -144,9 +163,13 @@
   },
   {
     "route": "/goal-intake",
+    "index": false,
     "component": "GoalIntakePage",
-    "file": "apps/web/src/pages/GoalIntakePage.tsx",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 265,
+    "file": "apps/web/src/pages/GoalIntakePage.tsx",
     "targetFamily": "Goals / onboarding",
     "wave": "U4",
     "proposedClassification": "REBUILD",
@@ -182,9 +205,13 @@
   },
   {
     "route": "/verify-email",
+    "index": false,
     "component": "VerifyEmailPage",
-    "file": "apps/web/src/pages/AuthPages.tsx",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 266,
+    "file": "apps/web/src/pages/AuthPages.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -225,10 +252,17 @@
   },
   {
     "route": "/lead-wizard",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/goal-intake",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/goal-intake",
     "line": 267,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
@@ -239,9 +273,13 @@
   },
   {
     "route": "/forgot-password",
+    "index": false,
     "component": "ForgotPasswordPage",
-    "file": "apps/web/src/pages/AuthPages.tsx",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 268,
+    "file": "apps/web/src/pages/AuthPages.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -282,9 +320,13 @@
   },
   {
     "route": "/reset-password",
+    "index": false,
     "component": "ResetPasswordPage",
-    "file": "apps/web/src/pages/AuthPages.tsx",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 269,
+    "file": "apps/web/src/pages/AuthPages.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -325,63 +367,105 @@
   },
   {
     "route": "/dev/design-system",
-    "component": "LoadingSkeleton",
-    "file": "apps/web/src/components/common/Feedback.tsx",
+    "index": false,
+    "component": "DesignSystemPage",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 271,
-    "targetFamily": "Pending final family review",
-    "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
+    "file": "apps/web/src/pages/dev/DesignSystemPage.tsx",
+    "targetFamily": "Development-only evidence",
+    "wave": "U1",
+    "proposedClassification": "RESTYLE",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
     "apiReferencesInModule": [],
     "majorChildrenInModule": [
-      "SectionCard",
       "Stack",
-      "Box",
+      "PageHeader",
+      "Button",
+      "RocketLaunchRounded",
+      "SectionCard",
+      "Grid",
+      "StatusChip",
       "Typography",
+      "Box",
+      "AutoAwesomeRounded",
+      "LinearProgress",
+      "MetricCard",
+      "CreditScoreRounded",
+      "FocusSurface",
       "Alert",
+      "CheckCircleRounded",
+      "TextField",
+      "MenuItem",
+      "FormControlLabel",
+      "Checkbox",
+      "Link",
+      "RadioGroup",
+      "Radio",
+      "Switch",
+      "FormHelperText",
+      "Tooltip",
+      "MenuRounded",
+      "Table",
+      "TableHead",
+      "TableRow",
+      "TableCell",
+      "TableBody",
+      "LoadingSkeleton",
+      "CircularProgress",
       "Skeleton",
-      "Dialog",
-      "DialogTitle",
-      "DialogContent",
-      "DialogContentText",
-      "DialogActions",
-      "Button"
+      "Divider",
+      "ErrorAlert",
+      "EmptyState",
+      "LockRounded",
+      "ConfirmDialog",
+      "Drawer"
     ],
     "desktop": "Not requalified in U0",
     "mobile": "Not requalified in U0"
   },
   {
     "route": "/dev/shell/:role",
-    "component": "LoadingSkeleton",
-    "file": "apps/web/src/components/common/Feedback.tsx",
+    "index": false,
+    "component": "ShellEvidencePage",
+    "props": {},
+    "guards": [],
+    "redirectTo": null,
     "line": 281,
-    "targetFamily": "Pending final family review",
-    "wave": "U8",
-    "proposedClassification": "RECOMPOSE",
+    "file": "apps/web/src/pages/dev/ShellEvidencePage.tsx",
+    "targetFamily": "Development-only evidence",
+    "wave": "U1",
+    "proposedClassification": "RESTYLE",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
     "apiReferencesInModule": [],
     "majorChildrenInModule": [
-      "SectionCard",
+      "AppShell",
       "Stack",
-      "Box",
-      "Typography",
+      "PageHeader",
       "Alert",
-      "Skeleton",
-      "Dialog",
-      "DialogTitle",
-      "DialogContent",
-      "DialogContentText",
-      "DialogActions",
-      "Button"
+      "SectionCard",
+      "Typography"
     ],
     "desktop": "Not requalified in U0",
     "mobile": "Not requalified in U0"
   },
   {
     "route": "/app",
+    "index": false,
     "component": "ClientAppShell",
-    "file": "apps/web/src/layouts/ClientAppShell.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 292,
+    "file": "apps/web/src/layouts/ClientAppShell.tsx",
     "targetFamily": "CP-SHELL-01",
     "wave": "U1",
     "proposedClassification": "RECOMPOSE",
@@ -397,9 +481,20 @@
   },
   {
     "route": "/app",
+    "index": true,
     "component": "ClientHomePage",
-    "file": "apps/web/src/pages/JourneyPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 293,
+    "file": "apps/web/src/pages/JourneyPages.tsx",
     "targetFamily": "CP-01",
     "wave": "U1",
     "proposedClassification": "RECOMPOSE",
@@ -431,9 +526,20 @@
   },
   {
     "route": "/app/journey",
+    "index": false,
     "component": "ClientJourneyPage",
-    "file": "apps/web/src/pages/JourneyPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 294,
+    "file": "apps/web/src/pages/JourneyPages.tsx",
     "targetFamily": "PORTAL-02 Journey",
     "wave": "U1",
     "proposedClassification": "REBUILD",
@@ -465,9 +571,20 @@
   },
   {
     "route": "/app/plan",
+    "index": false,
     "component": "ClientPlanPage",
-    "file": "apps/web/src/pages/PlanPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 295,
+    "file": "apps/web/src/pages/PlanPages.tsx",
     "targetFamily": "CP-PL-01 / CP-AC-01 / CP-AC-02",
     "wave": "U1",
     "proposedClassification": "RECOMPOSE",
@@ -507,9 +624,22 @@
   },
   {
     "route": "/app/credit-center",
+    "index": false,
     "component": "PublishedCreditCenterPage",
-    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
+    "props": {
+      "view": "overview"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 296,
+    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
     "targetFamily": "CP-CC-01/03/06/09/10",
     "wave": "U1",
     "proposedClassification": "REBUILD",
@@ -544,9 +674,22 @@
   },
   {
     "route": "/app/credit-center/profile",
+    "index": false,
     "component": "PublishedCreditCenterPage",
-    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
+    "props": {
+      "view": "profile"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 297,
+    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
     "targetFamily": "CP-CC-01/03/06/09/10",
     "wave": "U1",
     "proposedClassification": "REBUILD",
@@ -581,9 +724,22 @@
   },
   {
     "route": "/app/credit-center/report",
+    "index": false,
     "component": "PublishedCreditCenterPage",
-    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
+    "props": {
+      "view": "report"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 301,
+    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
     "targetFamily": "CP-CC-01/03/06/09/10",
     "wave": "U1",
     "proposedClassification": "REBUILD",
@@ -618,9 +774,22 @@
   },
   {
     "route": "/app/credit-center/analysis",
+    "index": false,
     "component": "PublishedCreditCenterPage",
-    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
+    "props": {
+      "view": "analysis"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 305,
+    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
     "targetFamily": "CP-CC-01/03/06/09/10",
     "wave": "U1",
     "proposedClassification": "REBUILD",
@@ -655,9 +824,22 @@
   },
   {
     "route": "/app/credit-center/history",
+    "index": false,
     "component": "PublishedCreditCenterPage",
-    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
+    "props": {
+      "view": "history"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 309,
+    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
     "targetFamily": "CP-CC-01/03/06/09/10",
     "wave": "U1",
     "proposedClassification": "REBUILD",
@@ -692,9 +874,20 @@
   },
   {
     "route": "/app/credit-center/review",
+    "index": false,
     "component": "ClientReviewPage",
-    "file": "apps/web/src/pages/ReviewPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 313,
+    "file": "apps/web/src/pages/ReviewPages.tsx",
     "targetFamily": "CP-CC / CRM-11 Review",
     "wave": "U3",
     "proposedClassification": "REBUILD",
@@ -785,9 +978,20 @@
   },
   {
     "route": "/app/readiness",
+    "index": false,
     "component": "ReadinessPage",
-    "file": "apps/web/src/pages/PlatformPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 314,
+    "file": "apps/web/src/pages/PlatformPages.tsx",
     "targetFamily": "Legacy readiness → owning Review/Plan/Round",
     "wave": "U4",
     "proposedClassification": "RETIRE",
@@ -836,9 +1040,20 @@
   },
   {
     "route": "/app/cards",
+    "index": false,
     "component": "CardsPage",
-    "file": "apps/web/src/pages/CardsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 315,
+    "file": "apps/web/src/pages/CardsPage.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -875,9 +1090,20 @@
   },
   {
     "route": "/app/cards/explore",
+    "index": false,
     "component": "ExploreCardsPage",
-    "file": "apps/web/src/pages/CardCatalogPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 316,
+    "file": "apps/web/src/pages/CardCatalogPages.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -921,9 +1147,20 @@
   },
   {
     "route": "/app/cards/wishlist",
+    "index": false,
     "component": "CardWishlistPage",
-    "file": "apps/web/src/pages/CardCatalogPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 317,
+    "file": "apps/web/src/pages/CardCatalogPages.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -967,9 +1204,20 @@
   },
   {
     "route": "/app/cards/:productId",
+    "index": false,
     "component": "CardDetailPage",
-    "file": "apps/web/src/pages/CardCatalogPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 318,
+    "file": "apps/web/src/pages/CardCatalogPages.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -1013,9 +1261,20 @@
   },
   {
     "route": "/app/application-rounds",
+    "index": false,
     "component": "SeasonalCyclePage",
-    "file": "apps/web/src/pages/Phase11Pages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 319,
+    "file": "apps/web/src/pages/Phase11Pages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -1059,9 +1318,20 @@
   },
   {
     "route": "/app/rounds/:roundId",
+    "index": false,
     "component": "RoundPage",
-    "file": "apps/web/src/pages/Phase11Pages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 320,
+    "file": "apps/web/src/pages/Phase11Pages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -1105,9 +1375,20 @@
   },
   {
     "route": "/app/rounds/:roundId/major-check",
+    "index": false,
     "component": "MajorApplicationCheckPage",
-    "file": "apps/web/src/pages/Phase11Pages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 321,
+    "file": "apps/web/src/pages/Phase11Pages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -1151,9 +1432,20 @@
   },
   {
     "route": "/app/rounds/:roundId/strategy",
+    "index": false,
     "component": "ClientStrategyPage",
-    "file": "apps/web/src/pages/StrategyPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 322,
+    "file": "apps/web/src/pages/StrategyPages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -1200,9 +1492,20 @@
   },
   {
     "route": "/app/rounds/:roundId/schedule",
+    "index": false,
     "component": "ScheduleRoundPage",
-    "file": "apps/web/src/pages/LivePages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 323,
+    "file": "apps/web/src/pages/LivePages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -1252,9 +1555,20 @@
   },
   {
     "route": "/app/rounds/:roundId/live",
+    "index": false,
     "component": "LiveSessionPage",
-    "file": "apps/web/src/pages/LivePages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 324,
+    "file": "apps/web/src/pages/LivePages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -1304,9 +1618,20 @@
   },
   {
     "route": "/app/rounds/:roundId/results",
+    "index": false,
     "component": "PostRoundPage",
-    "file": "apps/web/src/pages/PostRoundPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 325,
+    "file": "apps/web/src/pages/PostRoundPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -1345,9 +1670,20 @@
   },
   {
     "route": "/app/rounds/:roundId/follow-up",
+    "index": false,
     "component": "PostRoundFollowUpPage",
-    "file": "apps/web/src/pages/PostRoundPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 326,
+    "file": "apps/web/src/pages/PostRoundPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -1386,9 +1722,20 @@
   },
   {
     "route": "/app/rounds/:roundId/analysis",
+    "index": false,
     "component": "RoundAnalysisPage",
-    "file": "apps/web/src/pages/PostRoundPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 327,
+    "file": "apps/web/src/pages/PostRoundPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -1427,9 +1774,20 @@
   },
   {
     "route": "/app/major-readiness",
+    "index": false,
     "component": "MajorReadinessPage",
-    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 328,
+    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -1459,9 +1817,22 @@
   },
   {
     "route": "/app/major-readiness/readiness",
+    "index": false,
     "component": "MajorReadinessPage",
-    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
+    "props": {
+      "view": "readiness"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 329,
+    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -1491,9 +1862,22 @@
   },
   {
     "route": "/app/major-readiness/preparation",
+    "index": false,
     "component": "MajorReadinessPage",
-    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
+    "props": {
+      "view": "preparation"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 333,
+    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -1523,9 +1907,22 @@
   },
   {
     "route": "/app/major-readiness/coordination",
+    "index": false,
     "component": "MajorReadinessPage",
-    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
+    "props": {
+      "view": "coordination"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 337,
+    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -1555,9 +1952,22 @@
   },
   {
     "route": "/app/major-readiness/timeline",
+    "index": false,
     "component": "MajorReadinessPage",
-    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
+    "props": {
+      "view": "timeline"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 341,
+    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -1587,9 +1997,20 @@
   },
   {
     "route": "/app/goals",
+    "index": false,
     "component": "GoalsPage",
-    "file": "apps/web/src/pages/GoalsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 342,
+    "file": "apps/web/src/pages/GoalsPage.tsx",
     "targetFamily": "Goals / onboarding",
     "wave": "U4",
     "proposedClassification": "REBUILD",
@@ -1639,9 +2060,20 @@
   },
   {
     "route": "/app/services",
+    "index": false,
     "component": "ServicesPage",
-    "file": "apps/web/src/pages/ServicesPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 343,
+    "file": "apps/web/src/pages/ServicesPage.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -1679,9 +2111,20 @@
   },
   {
     "route": "/app/services/active",
+    "index": false,
     "component": "ActiveServicesPage",
-    "file": "apps/web/src/pages/ServicesPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 344,
+    "file": "apps/web/src/pages/ServicesPage.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -1719,9 +2162,20 @@
   },
   {
     "route": "/app/services/history",
+    "index": false,
     "component": "PurchaseHistoryPage",
-    "file": "apps/web/src/pages/ServicesPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 345,
+    "file": "apps/web/src/pages/ServicesPage.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -1759,9 +2213,20 @@
   },
   {
     "route": "/app/checkout/:purchaseIntentId",
+    "index": false,
     "component": "CheckoutPage",
-    "file": "apps/web/src/pages/CheckoutPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 346,
+    "file": "apps/web/src/pages/CheckoutPage.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -1786,9 +2251,20 @@
   },
   {
     "route": "/app/documents",
+    "index": false,
     "component": "DocumentsPage",
-    "file": "apps/web/src/pages/DocumentsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 347,
+    "file": "apps/web/src/pages/DocumentsPage.tsx",
     "targetFamily": "Support / Documents / Notifications",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -1829,9 +2305,20 @@
   },
   {
     "route": "/app/notifications",
+    "index": false,
     "component": "NotificationsPage",
-    "file": "apps/web/src/pages/NotificationsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 348,
+    "file": "apps/web/src/pages/NotificationsPage.tsx",
     "targetFamily": "Support / Documents / Notifications",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -1869,9 +2356,20 @@
   },
   {
     "route": "/app/support",
+    "index": false,
     "component": "SupportPage",
-    "file": "apps/web/src/pages/SupportPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 349,
+    "file": "apps/web/src/pages/SupportPage.tsx",
     "targetFamily": "Support / Documents / Notifications",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -1924,9 +2422,20 @@
   },
   {
     "route": "/app/account",
+    "index": false,
     "component": "AccountPage",
-    "file": "apps/web/src/pages/AccountPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 350,
+    "file": "apps/web/src/pages/AccountPage.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -1951,9 +2460,20 @@
   },
   {
     "route": "/app/account/security",
+    "index": false,
     "component": "SecurityPage",
-    "file": "apps/web/src/pages/SecurityPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 351,
+    "file": "apps/web/src/pages/SecurityPage.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -1986,12 +2506,26 @@
   },
   {
     "route": "/app/*",
+    "index": false,
     "component": "FoundationPage",
-    "file": "apps/web/src/pages/ShellPages.tsx",
+    "props": {
+      "title": "Page not found",
+      "description": "This portal route is not available."
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CLIENT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 352,
-    "targetFamily": "Route alias / safe fallback",
-    "wave": "U9",
-    "proposedClassification": "KEEP",
+    "file": "apps/web/src/pages/ShellPages.tsx",
+    "targetFamily": "Contextual not-found state",
+    "wave": "U1",
+    "proposedClassification": "RESTYLE",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
@@ -2018,9 +2552,20 @@
   },
   {
     "route": "/crm",
+    "index": false,
     "component": "ConsultantAppShell",
-    "file": "apps/web/src/layouts/ConsultantAppShell.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 365,
+    "file": "apps/web/src/layouts/ConsultantAppShell.tsx",
     "targetFamily": "Pending final family review",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -2036,9 +2581,20 @@
   },
   {
     "route": "/crm",
+    "index": true,
     "component": "ConsultantDashboardPage",
-    "file": "apps/web/src/pages/PlatformPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 366,
+    "file": "apps/web/src/pages/PlatformPages.tsx",
     "targetFamily": "CRM-01/02/03/04",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -2087,9 +2643,20 @@
   },
   {
     "route": "/crm/work-queue",
+    "index": false,
     "component": "WorkQueuePage",
-    "file": "apps/web/src/pages/PlatformPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 367,
+    "file": "apps/web/src/pages/PlatformPages.tsx",
     "targetFamily": "CRM-01/02/03/04",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -2138,9 +2705,20 @@
   },
   {
     "route": "/crm/clients",
+    "index": false,
     "component": "ClientsPage",
-    "file": "apps/web/src/pages/ClientContextPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 368,
+    "file": "apps/web/src/pages/ClientContextPages.tsx",
     "targetFamily": "CRM-01/02/03/04",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -2188,9 +2766,20 @@
   },
   {
     "route": "/crm/clients/:clientId",
+    "index": false,
     "component": "Client360Page",
-    "file": "apps/web/src/pages/ClientContextPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 369,
+    "file": "apps/web/src/pages/ClientContextPages.tsx",
     "targetFamily": "CRM-01/02/03/04",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -2238,36 +2827,91 @@
   },
   {
     "route": "/crm/clients/:clientId/plan",
-    "component": "LoadingSkeleton",
-    "file": "apps/web/src/components/common/Feedback.tsx",
+    "index": false,
+    "component": "ConsultantPlanBuilderPage",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 370,
-    "targetFamily": "Pending final family review",
-    "wave": "U8",
+    "file": "apps/web/src/features/plans/ConsultantPlanBuilderPage.tsx",
+    "targetFamily": "CRM-12",
+    "wave": "U4",
     "proposedClassification": "RECOMPOSE",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
-    "apiReferencesInModule": [],
+    "apiReferencesInModule": [
+      "/api/v1/consultant/clients/${clientId}/plan${activePlanId === ",
+      "/api/v1/consultant/clients/${clientId}/plans${editor.planId ? ",
+      "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/approve",
+      "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/sources",
+      "/api/v1/consultant/clients/${clientId}/plans/${editor!.planId}/reconcile"
+    ],
     "majorChildrenInModule": [
-      "SectionCard",
       "Stack",
-      "Box",
+      "PlanLibrary",
+      "PlanBuilder",
+      "Editor",
+      "BuilderResponse",
+      "SourcePreview",
       "Typography",
+      "RecoveryState",
+      "PageHeader",
       "Alert",
-      "Skeleton",
+      "Button",
+      "PlanItem",
+      "PlanVersionHistory",
+      "PlanExecutionReview",
+      "CancelPrivatePlan",
+      "PlanPathEditor",
+      "Chip",
+      "Box",
+      "TextField",
+      "MenuItem",
+      "List",
+      "ListItemButton",
+      "AddRounded",
+      "IconButton",
+      "ArrowUpwardRounded",
+      "ArrowDownwardRounded",
+      "ResponseSchemaEditor",
+      "FormControlLabel",
+      "Checkbox",
+      "Divider",
+      "Drawer",
+      "CloseRounded",
       "Dialog",
       "DialogTitle",
       "DialogContent",
-      "DialogContentText",
+      "PlanLifecyclePreview",
       "DialogActions",
-      "Button"
+      "PlanDraftComparison",
+      "PlanConflictResolution"
     ],
     "desktop": "Not requalified in U0",
     "mobile": "Not requalified in U0"
   },
   {
     "route": "/crm/clients/:clientId/cards",
+    "index": false,
     "component": "ConsultantClientCardsPage",
-    "file": "apps/web/src/pages/CardCatalogPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 378,
+    "file": "apps/web/src/pages/CardCatalogPages.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -2311,9 +2955,20 @@
   },
   {
     "route": "/crm/clients/:clientId/rounds/:roundId/strategy",
+    "index": false,
     "component": "ConsultantStrategyPage",
-    "file": "apps/web/src/pages/StrategyPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 379,
+    "file": "apps/web/src/pages/StrategyPages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -2360,9 +3015,22 @@
   },
   {
     "route": "/crm/clients/:clientId/rounds/:roundId/results",
+    "index": false,
     "component": "PostRoundPage",
-    "file": "apps/web/src/pages/PostRoundPages.tsx",
+    "props": {
+      "consultant": true
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 383,
+    "file": "apps/web/src/pages/PostRoundPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -2401,9 +3069,22 @@
   },
   {
     "route": "/crm/clients/:clientId/rounds/:roundId/analysis",
+    "index": false,
     "component": "RoundAnalysisPage",
-    "file": "apps/web/src/pages/PostRoundPages.tsx",
+    "props": {
+      "consultant": true
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 387,
+    "file": "apps/web/src/pages/PostRoundPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -2442,9 +3123,20 @@
   },
   {
     "route": "/crm/clients/:clientId/rounds/:roundId/finalize",
+    "index": false,
     "component": "RoundFinalizationPage",
-    "file": "apps/web/src/pages/PostRoundPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 391,
+    "file": "apps/web/src/pages/PostRoundPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -2483,9 +3175,20 @@
   },
   {
     "route": "/crm/clients/:clientId/major-readiness/:caseId",
+    "index": false,
     "component": "ConsultantMajorReadinessPage",
-    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 395,
+    "file": "apps/web/src/pages/MajorReadinessPages.tsx",
     "targetFamily": "Post-Round / Major Readiness",
     "wave": "U7",
     "proposedClassification": "REBUILD",
@@ -2515,9 +3218,20 @@
   },
   {
     "route": "/crm/clients/:clientId/credit-center",
+    "index": false,
     "component": "ConsultantClientCreditCenterPage",
-    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 399,
+    "file": "apps/web/src/pages/PublishedCreditCenterPages.tsx",
     "targetFamily": "CRM-06",
     "wave": "U3",
     "proposedClassification": "RECOMPOSE",
@@ -2552,9 +3266,20 @@
   },
   {
     "route": "/crm/clients/:clientId/reviews/:reviewId",
+    "index": false,
     "component": "ConsultantReviewWorkspacePage",
-    "file": "apps/web/src/pages/ReviewPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 403,
+    "file": "apps/web/src/pages/ReviewPages.tsx",
     "targetFamily": "CP-CC / CRM-11 Review",
     "wave": "U3",
     "proposedClassification": "REBUILD",
@@ -2645,9 +3370,20 @@
   },
   {
     "route": "/crm/reviews",
+    "index": false,
     "component": "ConsultantReviewsPage",
-    "file": "apps/web/src/pages/ReviewPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 407,
+    "file": "apps/web/src/pages/ReviewPages.tsx",
     "targetFamily": "CP-CC / CRM-11 Review",
     "wave": "U3",
     "proposedClassification": "REBUILD",
@@ -2738,9 +3474,22 @@
   },
   {
     "route": "/crm/card-catalog",
+    "index": false,
     "component": "ExploreCardsPage",
-    "file": "apps/web/src/pages/CardCatalogPages.tsx",
+    "props": {
+      "consultant": true
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 408,
+    "file": "apps/web/src/pages/CardCatalogPages.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -2784,9 +3533,22 @@
   },
   {
     "route": "/crm/card-insights",
+    "index": false,
     "component": "InsightOperationsPage",
-    "file": "apps/web/src/pages/CardCatalogPages.tsx",
+    "props": {
+      "canApprove": true
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 409,
+    "file": "apps/web/src/pages/CardCatalogPages.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -2830,9 +3592,20 @@
   },
   {
     "route": "/crm/reviews/:clientId/:reviewId",
+    "index": false,
     "component": "ConsultantReviewWorkspacePage",
-    "file": "apps/web/src/pages/ReviewPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 410,
+    "file": "apps/web/src/pages/ReviewPages.tsx",
     "targetFamily": "CP-CC / CRM-11 Review",
     "wave": "U3",
     "proposedClassification": "REBUILD",
@@ -2923,9 +3696,22 @@
   },
   {
     "route": "/crm/readiness",
+    "index": false,
     "component": "ReadinessPage",
-    "file": "apps/web/src/pages/PlatformPages.tsx",
+    "props": {
+      "consultant": true
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 411,
+    "file": "apps/web/src/pages/PlatformPages.tsx",
     "targetFamily": "Legacy readiness → owning Review/Plan/Round",
     "wave": "U4",
     "proposedClassification": "RETIRE",
@@ -2974,9 +3760,20 @@
   },
   {
     "route": "/crm/support",
+    "index": false,
     "component": "ConsultantSupportPage",
-    "file": "apps/web/src/pages/ConsultantSupportPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 412,
+    "file": "apps/web/src/pages/ConsultantSupportPage.tsx",
     "targetFamily": "Support / Documents / Notifications",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3023,9 +3820,20 @@
   },
   {
     "route": "/crm/sessions",
+    "index": false,
     "component": "LiveSessionsPage",
-    "file": "apps/web/src/pages/LivePages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 413,
+    "file": "apps/web/src/pages/LivePages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -3075,9 +3883,20 @@
   },
   {
     "route": "/crm/live-sessions",
+    "index": false,
     "component": "LiveSessionsPage",
-    "file": "apps/web/src/pages/LivePages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 414,
+    "file": "apps/web/src/pages/LivePages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -3127,9 +3946,22 @@
   },
   {
     "route": "/crm/live-sessions/:sessionId",
+    "index": false,
     "component": "LiveSessionPage",
-    "file": "apps/web/src/pages/LivePages.tsx",
+    "props": {
+      "consultant": true
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 415,
+    "file": "apps/web/src/pages/LivePages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -3179,9 +4011,20 @@
   },
   {
     "route": "/crm/calendar",
+    "index": false,
     "component": "ConsultantCalendarPage",
-    "file": "apps/web/src/pages/LivePages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 416,
+    "file": "apps/web/src/pages/LivePages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -3231,9 +4074,20 @@
   },
   {
     "route": "/crm/clients/:clientId/appointments/:appointmentId",
+    "index": false,
     "component": "AppointmentDetailPage",
-    "file": "apps/web/src/pages/LivePages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 417,
+    "file": "apps/web/src/pages/LivePages.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -3283,9 +4137,20 @@
   },
   {
     "route": "/crm/account",
+    "index": false,
     "component": "StaffAccountPage",
-    "file": "apps/web/src/pages/ShellPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 421,
+    "file": "apps/web/src/pages/ShellPages.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -3315,9 +4180,20 @@
   },
   {
     "route": "/crm/account/security",
+    "index": false,
     "component": "SecurityPage",
-    "file": "apps/web/src/pages/SecurityPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 422,
+    "file": "apps/web/src/pages/SecurityPage.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -3350,12 +4226,26 @@
   },
   {
     "route": "/crm/*",
+    "index": false,
     "component": "FoundationPage",
-    "file": "apps/web/src/pages/ShellPages.tsx",
+    "props": {
+      "title": "Page not found",
+      "description": "This CRM route is not available."
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['CONSULTANT']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 423,
-    "targetFamily": "Route alias / safe fallback",
-    "wave": "U9",
-    "proposedClassification": "KEEP",
+    "file": "apps/web/src/pages/ShellPages.tsx",
+    "targetFamily": "Contextual not-found state",
+    "wave": "U1",
+    "proposedClassification": "RESTYLE",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
@@ -3382,9 +4272,20 @@
   },
   {
     "route": "/admin",
+    "index": false,
     "component": "AdminAppShell",
-    "file": "apps/web/src/layouts/AdminAppShell.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 436,
+    "file": "apps/web/src/layouts/AdminAppShell.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3400,9 +4301,20 @@
   },
   {
     "route": "/admin/card-catalog",
+    "index": false,
     "component": "CatalogOperationsPage",
-    "file": "apps/web/src/pages/CardCatalogPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 437,
+    "file": "apps/web/src/pages/CardCatalogPages.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -3446,9 +4358,20 @@
   },
   {
     "route": "/admin/card-insights",
+    "index": false,
     "component": "InsightOperationsPage",
-    "file": "apps/web/src/pages/CardCatalogPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 438,
+    "file": "apps/web/src/pages/CardCatalogPages.tsx",
     "targetFamily": "Cards / catalog / research",
     "wave": "U5",
     "proposedClassification": "REBUILD",
@@ -3492,9 +4415,20 @@
   },
   {
     "route": "/admin",
+    "index": true,
     "component": "AdminLandingPage",
-    "file": "apps/web/src/pages/ShellPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 439,
+    "file": "apps/web/src/pages/ShellPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3524,9 +4458,20 @@
   },
   {
     "route": "/admin/users",
+    "index": false,
     "component": "AdminUsersPage",
-    "file": "apps/web/src/pages/AdminIdentityPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 440,
+    "file": "apps/web/src/pages/AdminIdentityPages.tsx",
     "targetFamily": "ADMIN-02/03/04",
     "wave": "U2",
     "proposedClassification": "RECOMPOSE",
@@ -3566,9 +4511,20 @@
   },
   {
     "route": "/admin/users/:userId",
+    "index": false,
     "component": "AdminUserDetailPage",
-    "file": "apps/web/src/pages/AdminIdentityPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 441,
+    "file": "apps/web/src/pages/AdminIdentityPages.tsx",
     "targetFamily": "ADMIN-02/03/04",
     "wave": "U2",
     "proposedClassification": "RECOMPOSE",
@@ -3608,9 +4564,20 @@
   },
   {
     "route": "/admin/access-grants",
+    "index": false,
     "component": "AdminAccessGrantsPage",
-    "file": "apps/web/src/pages/AdminIdentityPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 442,
+    "file": "apps/web/src/pages/AdminIdentityPages.tsx",
     "targetFamily": "ADMIN-02/03/04",
     "wave": "U2",
     "proposedClassification": "RECOMPOSE",
@@ -3650,9 +4617,22 @@
   },
   {
     "route": "/admin/audit-events",
+    "index": false,
     "component": "AdminEventListPage",
-    "file": "apps/web/src/pages/AdminAuditPages.tsx",
+    "props": {
+      "kind": "audit"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 443,
+    "file": "apps/web/src/pages/AdminAuditPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3683,9 +4663,22 @@
   },
   {
     "route": "/admin/audit-events/:eventId",
+    "index": false,
     "component": "AdminEventDetailPage",
-    "file": "apps/web/src/pages/AdminAuditPages.tsx",
+    "props": {
+      "kind": "audit"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 444,
+    "file": "apps/web/src/pages/AdminAuditPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3716,9 +4709,22 @@
   },
   {
     "route": "/admin/security-events",
+    "index": false,
     "component": "AdminEventListPage",
-    "file": "apps/web/src/pages/AdminAuditPages.tsx",
+    "props": {
+      "kind": "security"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 445,
+    "file": "apps/web/src/pages/AdminAuditPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3749,9 +4755,22 @@
   },
   {
     "route": "/admin/security-events/:eventId",
+    "index": false,
     "component": "AdminEventDetailPage",
-    "file": "apps/web/src/pages/AdminAuditPages.tsx",
+    "props": {
+      "kind": "security"
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 446,
+    "file": "apps/web/src/pages/AdminAuditPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3782,9 +4801,20 @@
   },
   {
     "route": "/admin/ai/jobs",
+    "index": false,
     "component": "AdminAIJobsPage",
-    "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 450,
+    "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3819,9 +4849,20 @@
   },
   {
     "route": "/admin/ai/jobs/:jobId",
+    "index": false,
     "component": "AdminAIJobDetailPage",
-    "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 451,
+    "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3856,9 +4897,20 @@
   },
   {
     "route": "/admin/ai/processes",
+    "index": false,
     "component": "AdminAIProcessesPage",
-    "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 452,
+    "file": "apps/web/src/pages/AdminAIJobsPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3893,9 +4945,20 @@
   },
   {
     "route": "/admin/sources",
+    "index": false,
     "component": "AdminSourcesPage",
-    "file": "apps/web/src/pages/AdminSourcesPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 453,
+    "file": "apps/web/src/pages/AdminSourcesPage.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3924,9 +4987,20 @@
   },
   {
     "route": "/admin/workflow-rules",
+    "index": false,
     "component": "AdminWorkflowPage",
-    "file": "apps/web/src/pages/AdminWorkflowPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 454,
+    "file": "apps/web/src/pages/AdminWorkflowPage.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3954,9 +5028,20 @@
   },
   {
     "route": "/admin/notification-operations",
+    "index": false,
     "component": "AdminNotificationsPage",
-    "file": "apps/web/src/pages/AdminNotificationsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 455,
+    "file": "apps/web/src/pages/AdminNotificationsPage.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -3985,9 +5070,20 @@
   },
   {
     "route": "/admin/integrations",
+    "index": false,
     "component": "AdminIntegrationsPage",
-    "file": "apps/web/src/pages/AdminIntegrationsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 456,
+    "file": "apps/web/src/pages/AdminIntegrationsPage.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -4014,9 +5110,20 @@
   },
   {
     "route": "/admin/scheduled-jobs",
+    "index": false,
     "component": "AdminScheduledJobsPage",
-    "file": "apps/web/src/pages/AdminScheduledJobsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 457,
+    "file": "apps/web/src/pages/AdminScheduledJobsPage.tsx",
     "targetFamily": "Round / strategy / live / appointment",
     "wave": "U6",
     "proposedClassification": "REBUILD",
@@ -4044,9 +5151,20 @@
   },
   {
     "route": "/admin/system-health",
+    "index": false,
     "component": "SystemHealthPage",
-    "file": "apps/web/src/pages/ShellPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 458,
+    "file": "apps/web/src/pages/ShellPages.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -4076,9 +5194,20 @@
   },
   {
     "route": "/admin/retention",
+    "index": false,
     "component": "AdminRetentionPage",
-    "file": "apps/web/src/pages/AdminRetentionPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 459,
+    "file": "apps/web/src/pages/AdminRetentionPage.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -4106,9 +5235,20 @@
   },
   {
     "route": "/admin/reports",
+    "index": false,
     "component": "AdminReportsPage",
-    "file": "apps/web/src/pages/AdminReportsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 460,
+    "file": "apps/web/src/pages/AdminReportsPage.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -4139,9 +5279,20 @@
   },
   {
     "route": "/admin/settings",
+    "index": false,
     "component": "AdminSettingsPage",
-    "file": "apps/web/src/pages/AdminSettingsPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 461,
+    "file": "apps/web/src/pages/AdminSettingsPage.tsx",
     "targetFamily": "Admin operational surfaces",
     "wave": "U8",
     "proposedClassification": "RECOMPOSE",
@@ -4167,9 +5318,20 @@
   },
   {
     "route": "/admin/services",
+    "index": false,
     "component": "AdminServicesPage",
-    "file": "apps/web/src/pages/AdminServicesPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 462,
+    "file": "apps/web/src/pages/AdminServicesPages.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -4205,9 +5367,20 @@
   },
   {
     "route": "/admin/services/:serviceProductId",
+    "index": false,
     "component": "AdminServiceDetailPage",
-    "file": "apps/web/src/pages/AdminServicesPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 463,
+    "file": "apps/web/src/pages/AdminServicesPages.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -4243,9 +5416,20 @@
   },
   {
     "route": "/admin/payments",
+    "index": false,
     "component": "AdminPaymentsPage",
-    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 464,
+    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -4286,9 +5470,20 @@
   },
   {
     "route": "/admin/payments/:paymentId",
+    "index": false,
     "component": "AdminPaymentDetailPage",
-    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 465,
+    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -4329,9 +5524,20 @@
   },
   {
     "route": "/admin/integrations/paypal",
+    "index": false,
     "component": "AdminPayPalPage",
-    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 466,
+    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -4372,9 +5578,20 @@
   },
   {
     "route": "/admin/integrations/stripe",
+    "index": false,
     "component": "AdminStripePage",
-    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 467,
+    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -4415,9 +5632,20 @@
   },
   {
     "route": "/admin/integrations/bofa",
+    "index": false,
     "component": "AdminBofaPage",
-    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 468,
+    "file": "apps/web/src/pages/AdminPaymentsPages.tsx",
     "targetFamily": "Services / commerce / gateways",
     "wave": "U7",
     "proposedClassification": "RECOMPOSE",
@@ -4458,9 +5686,20 @@
   },
   {
     "route": "/admin/account",
+    "index": false,
     "component": "StaffAccountPage",
-    "file": "apps/web/src/pages/ShellPages.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 469,
+    "file": "apps/web/src/pages/ShellPages.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -4490,9 +5729,20 @@
   },
   {
     "route": "/admin/account/security",
+    "index": false,
     "component": "SecurityPage",
-    "file": "apps/web/src/pages/SecurityPage.tsx",
+    "props": {},
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 470,
+    "file": "apps/web/src/pages/SecurityPage.tsx",
     "targetFamily": "Auth / account / security",
     "wave": "U2",
     "proposedClassification": "RESTYLE",
@@ -4525,12 +5775,26 @@
   },
   {
     "route": "/admin/*",
+    "index": false,
     "component": "FoundationPage",
-    "file": "apps/web/src/pages/ShellPages.tsx",
+    "props": {
+      "title": "Page not found",
+      "description": "This Admin route is not available or is not yet implemented."
+    },
+    "guards": [
+      {
+        "component": "ProtectedRoute",
+        "props": {
+          "roles": "{['ADMIN']}"
+        }
+      }
+    ],
+    "redirectTo": null,
     "line": 471,
-    "targetFamily": "Route alias / safe fallback",
-    "wave": "U9",
-    "proposedClassification": "KEEP",
+    "file": "apps/web/src/pages/ShellPages.tsx",
+    "targetFamily": "Contextual not-found state",
+    "wave": "U1",
+    "proposedClassification": "RESTYLE",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
     "apiReferencesInModule": [
       "/api/v1/admin/dashboard"
@@ -4557,10 +5821,17 @@
   },
   {
     "route": "/client",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/app",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/app",
     "line": 483,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
@@ -4571,10 +5842,17 @@
   },
   {
     "route": "/client/overview",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/app",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/app",
     "line": 484,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
@@ -4585,10 +5863,17 @@
   },
   {
     "route": "/client/credit-profile",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/app/credit-center",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/app/credit-center",
     "line": 485,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
@@ -4599,10 +5884,17 @@
   },
   {
     "route": "/client/account",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/app/account",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/app/account",
     "line": 486,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
@@ -4613,10 +5905,17 @@
   },
   {
     "route": "/consultant",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/crm",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/crm",
     "line": 487,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
@@ -4627,10 +5926,17 @@
   },
   {
     "route": "/consultant/dashboard",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/crm",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/crm",
     "line": 488,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
@@ -4641,10 +5947,17 @@
   },
   {
     "route": "/consultant/account",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/crm/account",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/crm/account",
     "line": 489,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",
@@ -4655,10 +5968,17 @@
   },
   {
     "route": "/*",
+    "index": false,
     "component": "Navigate",
-    "file": null,
+    "props": {
+      "to": "/login",
+      "replace": true
+    },
+    "guards": [],
+    "redirectTo": "/login",
     "line": 490,
-    "targetFamily": "Route alias / safe fallback",
+    "file": null,
+    "targetFamily": "Compatibility redirect; validate destination before retirement",
     "wave": "U9",
     "proposedClassification": "KEEP",
     "classificationReview": "PROVISIONAL — requires per-surface final-spec validation",

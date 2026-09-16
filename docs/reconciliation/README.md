@@ -15,6 +15,10 @@ Baseline: `codex/astra-production` at `44a905b2d5b804441864ec6faddc8e67552f2491`
 
 Downloaded source text remains private under ignored `docs/astra/sources/drive/u0-*`. Fetching a document is not a claim that every section has been reviewed. Screen-specific sections and latest amendments must be read before implementation. Source revision metadata is recorded separately.
 
+## Latest topology review
+
+[Staff surface reconciliation](STAFF_SURFACE_RECONCILIATION.md) now maps all 28 CRM and 27 Admin screen IDs plus System Health to current routes, embedded sections or missing final surfaces. It records treatments, owning waves and alias compatibility decisions. This is ownership/topology review, not full visual or workflow acceptance. The route extractor now correctly identifies lazy screens instead of their loading fallbacks, and preserves props, index identity, authorization wrappers and redirect destinations. The inventory remains 120 routes / 47 shared modules.
+
 ## Acceptance status
 
 | Deliverable                                   | Status                                                                     |
