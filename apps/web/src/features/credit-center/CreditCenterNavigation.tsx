@@ -1,13 +1,28 @@
 import { rememberCreditCenterHub } from './hubPosition';
-import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
+import { useState } from 'react';
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import CloseRounded from '@mui/icons-material/CloseRounded';
+import CheckRounded from '@mui/icons-material/CheckRounded';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import CreditScoreRounded from '@mui/icons-material/CreditScoreRounded';
 import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
 import InsightsRounded from '@mui/icons-material/InsightsRounded';
 import RouteRounded from '@mui/icons-material/RouteRounded';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
-import { Box, Button, ButtonBase, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Link } from 'react-router-dom';
+import {
+  Box,
+  Button,
+  ButtonBase,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Stack,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import { Link, useSearchParams } from 'react-router-dom';
 
 export const creditCenterAreas = [
   {
@@ -53,17 +68,122 @@ export const creditCenterPath = (area: CreditCenterArea) =>
 
 export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
   const wide = useMediaQuery(useTheme().breakpoints.up('lg'));
+  const [open, setOpen] = useState(false);
+  const [search] = useSearchParams();
+  const review = search.get('review');
+  const path = (id: CreditCenterArea) =>
+    creditCenterPath(id) + (review ? '?review=' + encodeURIComponent(review) : '');
   if (!wide)
-    return area === 'overview' ? null : (
-      <Button
-        component={Link}
-        to={creditCenterPath('overview')}
-        state={{ restoreCreditCenter: true }}
-        startIcon={<ArrowBackRounded />}
-        sx={{ alignSelf: 'flex-start' }}
-      >
-        Credit Center
-      </Button>
+    return (
+      <>
+        <Button
+          fullWidth
+          aria-label={
+            'Credit Center section: ' + creditCenterAreas.find((a) => a.id === area)!.title
+          }
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+          endIcon={<ExpandMoreRounded />}
+          sx={{
+            height: 50,
+            px: 2,
+            justifyContent: 'space-between',
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 1,
+            color: 'text.primary',
+            bgcolor: 'background.paper',
+            fontSize: 15,
+          }}
+        >
+          {creditCenterAreas.find((a) => a.id === area)!.title}
+        </Button>
+        <Dialog
+          open={open}
+          onClose={() => setOpen(false)}
+          aria-labelledby="credit-center-area-title"
+          aria-describedby="credit-center-area-description"
+          fullWidth
+          maxWidth="sm"
+          slotProps={{
+            paper: {
+              sx: {
+                position: 'fixed',
+                bottom: 0,
+                m: 0,
+                width: '100%',
+                maxHeight: '85dvh',
+                borderBottomLeftRadius: 0,
+                borderBottomRightRadius: 0,
+                backgroundImage: 'none',
+              },
+            },
+          }}
+        >
+          <DialogTitle id="credit-center-area-heading" sx={{ pr: 7, pb: 0.5 }}>
+            <span id="credit-center-area-title">Credit Center</span>
+            <IconButton
+              aria-label="Close area selector"
+              onClick={() => setOpen(false)}
+              sx={{ position: 'absolute', right: 12, top: 12 }}
+            >
+              <CloseRounded />
+            </IconButton>
+          </DialogTitle>
+          <Typography
+            id="credit-center-area-description"
+            color="text.secondary"
+            sx={{ px: 3, pb: 2 }}
+          >
+            Choose an area
+          </Typography>
+          <DialogContent sx={{ p: 0 }}>
+            <Box component="nav" aria-label="Credit Center areas">
+              {creditCenterAreas.map(({ id, title, detail }) => (
+                <ButtonBase
+                  key={id}
+                  component={Link}
+                  to={path(id)}
+                  aria-current={id === area ? 'page' : undefined}
+                  onClick={() => setOpen(false)}
+                  sx={{
+                    width: '100%',
+                    px: 3,
+                    py: 1.75,
+                    gap: 2,
+                    justifyContent: 'space-between',
+                    textAlign: 'left',
+                    borderTop: 1,
+                    borderColor: 'divider',
+                    bgcolor: id === area ? 'action.selected' : 'transparent',
+                    '&:hover': { bgcolor: 'action.hover' },
+                    '&:focus-visible': {
+                      outline: '2px solid',
+                      outlineColor: 'primary.main',
+                      outlineOffset: -2,
+                    },
+                  }}
+                >
+                  <Box>
+                    <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {id === 'overview'
+                        ? 'Your credit picture at a glance.'
+                        : id === 'history'
+                          ? 'See how your credit picture has changed.'
+                          : detail}
+                    </Typography>
+                  </Box>
+                  {id === area && (
+                    <CheckRounded color="primary" fontSize="small" aria-label="Selected area" />
+                  )}
+                </ButtonBase>
+              ))}
+            </Box>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   return (
     <Stack
@@ -76,7 +196,7 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
         <Button
           key={id}
           component={Link}
-          to={creditCenterPath(id)}
+          to={path(id)}
           aria-current={id === area ? 'page' : undefined}
           sx={{
             px: 2,

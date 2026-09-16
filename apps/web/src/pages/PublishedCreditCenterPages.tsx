@@ -10,10 +10,7 @@ import {
 } from '../features/credit-center/CreditData';
 import { CreditProfile } from '../features/credit-center/CreditProfile';
 import { ReportAccounts } from '../features/credit-center/ReportAccounts';
-import {
-  CreditCenterNavigation,
-  CreditCenterDestinations,
-} from '../features/credit-center/CreditCenterNavigation';
+import { CreditCenterDestinations } from '../features/credit-center/CreditCenterNavigation';
 import { WorkspaceBlockers } from '../components/common/WorkspaceBlockers';
 import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import { CreditNextStep } from '../components/common/CreditNextStep';
@@ -79,16 +76,15 @@ export function PublishedCreditCenterPage({
   if (query.isLoading)
     return (
       <Stack spacing={2}>
-        <CreditCenterNavigation area={view} />
-        <ReferenceQueryState title="Credit Center" loading />
+        <ReferenceQueryState title="Credit Center" loading headingComponent="h2" />
       </Stack>
     );
   if (query.isError)
     return (
       <Stack spacing={2}>
-        <CreditCenterNavigation area={view} />
         <ReferenceQueryState
           title="Credit Center"
+          headingComponent="h2"
           error={query.error}
           onRetry={() => void query.refetch()}
         />
@@ -134,41 +130,45 @@ function CreditCenterContent({
   const publishedDate = current ? new Date(current.publishedAt).toLocaleDateString() : undefined;
   return (
     <Stack spacing={3}>
-      {!consultant && <CreditCenterNavigation area={view} />}
-      <PageHeader
-        eyebrow={consultant ? 'CRM · Published Credit Center' : 'Credit Center'}
-        title={
-          consultant && data.client
-            ? `${data.client.firstName} ${data.client.lastName}`
-            : {
-                overview: 'Your credit, in context',
-                profile: 'Credit Profile',
-                report: 'Report Details',
-                analysis: 'Analysis',
-                history: 'Credit over time',
+      {consultant && (
+        <>
+          <PageHeader
+            eyebrow={consultant ? 'CRM · Published Credit Center' : 'Credit Center'}
+            title={
+              consultant && data.client
+                ? `${data.client.firstName} ${data.client.lastName}`
+                : {
+                    overview: 'Your credit, in context',
+                    profile: 'Credit Profile',
+                    report: 'Report Details',
+                    analysis: 'Analysis',
+                    history: 'Credit over time',
+                  }[view]
+            }
+            description={
+              {
+                overview:
+                  'Your credit picture, what it means, how it has changed, and what to do next.',
+                profile: 'Understand the facts and calculations in your reviewed credit picture.',
+                report:
+                  'Browse the evidence behind your Credit Profile and access the original report.',
+                analysis:
+                  'Read what your consultant identified, why it matters, and what comes next.',
+                history:
+                  'Compare what was known at each publication without losing the source context.',
               }[view]
-        }
-        description={
-          {
-            overview:
-              'Your credit picture, what it means, how it has changed, and what to do next.',
-            profile: 'Understand the facts and calculations in your reviewed credit picture.',
-            report:
-              'Browse the evidence behind your Credit Profile and access the original report.',
-            analysis: 'Read what your consultant identified, why it matters, and what comes next.',
-            history:
-              'Compare what was known at each publication without losing the source context.',
-          }[view]
-        }
-      />
-      {current && (
-        <Typography variant="body2" color="text.secondary">
-          {current.report?.reportSource ?? 'Published Credit Review'} · Report{' '}
-          {current.report?.reportDate
-            ? formatReportDate(current.report.reportDate)
-            : 'date unavailable'}{' '}
-          · Published {publishedDate}
-        </Typography>
+            }
+          />
+          {current && (
+            <Typography variant="body2" color="text.secondary">
+              {current.report?.reportSource ?? 'Published Credit Review'} · Report{' '}
+              {current.report?.reportDate
+                ? formatReportDate(current.report.reportDate)
+                : 'date unavailable'}{' '}
+              · Published {publishedDate}
+            </Typography>
+          )}
+        </>
       )}
       {current && <ProfileCurrentnessNotice profile={data.workspace?.profile} />}
       {!consultant && <WorkspaceBlockers blockers={data.workspace?.blockers} />}

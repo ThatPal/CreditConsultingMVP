@@ -1,13 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { theme } from '../../theme';
-import {
-  CreditCenterNavigation,
-  CreditCenterDestinations,
-  creditCenterAreas,
-} from './CreditCenterNavigation';
+import { CreditCenterNavigation, creditCenterAreas } from './CreditCenterNavigation';
 const media = vi.hoisted(() => ({ wide: true }));
 vi.mock('@mui/material', async (original) => ({
   ...(await original<typeof import('@mui/material')>()),
@@ -30,30 +26,39 @@ test.each(creditCenterAreas)('wide $title has one selected peer among six', ({ i
     screen.getAllByRole('link').filter((a) => a.getAttribute('aria-current') === 'page'),
   ).toHaveLength(1);
 });
-test('mobile hub offers all destinations without the six-peer strip', () => {
-  media.wide = false;
-  show(
-    <>
-      <CreditCenterNavigation area="overview" />
-      <CreditCenterDestinations />
-    </>,
-  );
-  expect(
-    screen.queryByRole('navigation', { name: 'Credit Center sections' }),
-  ).not.toBeInTheDocument();
-  expect(screen.getAllByRole('link')).toHaveLength(5);
-});
-test.each(['profile', 'report', 'analysis', 'plan', 'history'] as const)(
-  'mobile direct %s entry always has explicit hub return',
-  (area) => {
+test.each(creditCenterAreas)(
+  'mobile $title retains its selector and six ordered areas',
+  async ({ id, title }) => {
     media.wide = false;
-    show(<CreditCenterNavigation area={area} />);
-    expect(screen.getByRole('link', { name: 'Credit Center' })).toHaveAttribute(
-      'href',
+    show(<CreditCenterNavigation area={id} />);
+    const trigger = screen.getByRole('button', { name: 'Credit Center section: ' + title });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: /^Credit Center$/ });
+    const links = within(dialog).getAllByRole('link');
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([
       '/app/credit-center',
-    );
-    expect(
-      screen.queryByRole('navigation', { name: 'Credit Center sections' }),
-    ).not.toBeInTheDocument();
+      '/app/credit-center/profile',
+      '/app/credit-center/report',
+      '/app/credit-center/analysis',
+      '/app/credit-center/plan',
+      '/app/credit-center/history',
+    ]);
+    expect(links.find((a) => a.getAttribute('aria-current') === 'page')).toHaveTextContent(title);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close area selector' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
   },
 );
+
+test('area navigation preserves an explicit Review context', () => {
+  render(
+    <ThemeProvider theme={theme}>
+      <MemoryRouter initialEntries={['/app/credit-center/profile?review=older']}>
+        <CreditCenterNavigation area="profile" />
+      </MemoryRouter>
+    </ThemeProvider>,
+  );
+  for (const link of screen.getAllByRole('link'))
+    expect(link.getAttribute('href')).toContain('?review=older');
+});

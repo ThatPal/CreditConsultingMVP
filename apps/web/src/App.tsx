@@ -1,3 +1,4 @@
+import { CreditCenterShell } from './features/credit-center/CreditCenterShell';
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './auth/ProtectedRoute';
@@ -292,25 +293,27 @@ export function App() {
         <Route path="/app" element={<ClientAppShell />}>
           <Route index element={<ClientHomePage />} />
           <Route path="journey" element={<ClientJourneyPage />} />
-          <Route path="plan" element={<ClientPlanPage />} />
-          <Route path="credit-center/plan" element={<ClientPlanPage />} />
-          <Route path="credit-center" element={<PublishedCreditCenterPage view="overview" />} />
-          <Route
-            path="credit-center/profile"
-            element={<PublishedCreditCenterPage view="profile" />}
-          />
-          <Route
-            path="credit-center/report"
-            element={<PublishedCreditCenterPage view="report" />}
-          />
-          <Route
-            path="credit-center/analysis"
-            element={<PublishedCreditCenterPage view="analysis" />}
-          />
-          <Route
-            path="credit-center/history"
-            element={<PublishedCreditCenterPage view="history" />}
-          />
+          <Route element={<CreditCenterShell />}>
+            <Route path="plan" element={<ClientPlanPage />} />
+            <Route path="credit-center/plan" element={<ClientPlanPage />} />
+            <Route path="credit-center" element={<PublishedCreditCenterPage view="overview" />} />
+            <Route
+              path="credit-center/profile"
+              element={<PublishedCreditCenterPage view="profile" />}
+            />
+            <Route
+              path="credit-center/report"
+              element={<PublishedCreditCenterPage view="report" />}
+            />
+            <Route
+              path="credit-center/analysis"
+              element={<PublishedCreditCenterPage view="analysis" />}
+            />
+            <Route
+              path="credit-center/history"
+              element={<PublishedCreditCenterPage view="history" />}
+            />
+          </Route>
           <Route path="credit-center/review" element={<ClientReviewPage />} />
           <Route path="readiness" element={<ReadinessPage />} />
           <Route path="cards" element={<CardsPage />} />

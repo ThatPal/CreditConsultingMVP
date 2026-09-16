@@ -1,0 +1,64 @@
+{
+  "results": [
+    {
+      "area": "overview",
+      "width": 1440,
+      "shellHeight": 204
+    },
+    {
+      "area": "profile",
+      "width": 1440,
+      "shellHeight": 204
+    },
+    {
+      "area": "overview",
+      "width": 390,
+      "shellHeight": 206
+    },
+    {
+      "area": "profile",
+      "width": 390,
+      "shellHeight": 206
+    },
+    {
+      "area": "overview",
+      "width": 390,
+      "shellHeight": 206
+    },
+    {
+      "area": "profile",
+      "width": 390,
+      "shellHeight": 206
+    },
+    {
+      "area": "report",
+      "width": 390,
+      "shellHeight": 206
+    },
+    {
+      "area": "analysis",
+      "width": 390,
+      "shellHeight": 206
+    },
+    {
+      "area": "plan",
+      "width": 390,
+      "shellHeight": 206
+    },
+    {
+      "area": "history",
+      "width": 390,
+      "shellHeight": 206
+    },
+    {
+      "area": "plan",
+      "width": 390,
+      "shellHeight": 206
+    }
+  ],
+  "errors": [],
+  "mobileAreaSwitching": "six areas passed",
+  "escapeFocusRestore": "passed",
+  "legacyPlanShell": "passed",
+  "historicalComposition": "Deferred: current API does not provide Review-scoped workspace/Plan"
+}

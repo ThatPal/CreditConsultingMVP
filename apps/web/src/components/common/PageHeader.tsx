@@ -2,11 +2,13 @@ import { Box, Stack, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
 
 export function PageHeader({
+  headingComponent = 'h1',
   eyebrow,
   title,
   description,
   actions,
 }: {
+  headingComponent?: 'h1' | 'h2';
   eyebrow?: string;
   title: string;
   description?: string;
@@ -40,7 +42,11 @@ export function PageHeader({
             {eyebrow}
           </Typography>
         )}
-        <Typography variant="h1" sx={{ textWrap: 'balance', maxWidth: 900 }}>
+        <Typography
+          variant="h1"
+          component={headingComponent}
+          sx={{ textWrap: 'balance', maxWidth: 900 }}
+        >
           {title}
         </Typography>
         {description && (

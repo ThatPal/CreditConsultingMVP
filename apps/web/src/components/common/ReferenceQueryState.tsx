@@ -3,11 +3,13 @@ import { PageHeader } from './PageHeader';
 import { LoadingSkeleton } from './Feedback';
 import { RecoveryState } from './InteractionPatterns';
 export function ReferenceQueryState({
+  headingComponent = 'h1',
   title,
   loading = false,
   error,
   onRetry,
 }: {
+  headingComponent?: 'h1' | 'h2';
   title: string;
   loading?: boolean;
   error?: unknown;
@@ -16,6 +18,7 @@ export function ReferenceQueryState({
   return (
     <Stack spacing={3}>
       <PageHeader
+        headingComponent={headingComponent}
         eyebrow="Your workspace"
         title={title}
         description={

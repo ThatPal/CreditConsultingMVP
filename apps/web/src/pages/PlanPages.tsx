@@ -1,6 +1,5 @@
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import { Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
-import { CreditCenterNavigation } from '../features/credit-center/CreditCenterNavigation';
 import { PlanDecisions, type PlanDecisionRead } from '../features/plans/PlanContextViews';
 import { WorkspaceBlockers } from '../components/common/WorkspaceBlockers';
 import { FocusOwner } from '../components/common/FocusOwner';
@@ -109,15 +108,14 @@ export function ClientPlanPage() {
   if (query.isLoading && !data)
     return (
       <Stack spacing={2}>
-        <CreditCenterNavigation area="plan" />
-        <ReferenceQueryState title="Your Credit Plan" loading />
+        <ReferenceQueryState title="Your Credit Plan" loading headingComponent="h2" />
       </Stack>
     );
   if (query.isError && !holding)
     return (
       <Stack spacing={2}>
-        <CreditCenterNavigation area="plan" />
         <ReferenceQueryState
+          headingComponent="h2"
           title="Your Credit Plan"
           error={query.error}
           onRetry={() => void query.refetch()}
@@ -127,8 +125,8 @@ export function ClientPlanPage() {
   if (!data?.plan)
     return (
       <Stack spacing={2}>
-        <CreditCenterNavigation area="plan" />
         <PageHeader
+          headingComponent="h2"
           eyebrow="Plan"
           title="Your next steps"
           description="An approved Plan will appear here when it is ready."
@@ -236,8 +234,8 @@ export function ClientPlanPage() {
             </Button>
           </DialogActions>
         </Dialog>
-        <CreditCenterNavigation area="plan" />
         <PageHeader
+          headingComponent="h2"
           eyebrow="Credit Center · Plan"
           title={plan.title}
           description="Your consultant’s guidance, your next actions, and the work you’ve completed."
