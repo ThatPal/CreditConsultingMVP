@@ -58,3 +58,5 @@ Latest implementation: [U1 batch 10](BATCH-U1-10.md) recomposes Credit Center wi
 Latest implementation: [U1 batch 11](BATCH-U1-11.md) shares server-driven Action progress between Home and Plan and recomposes the Home summary into a visual data surface. 28 focused tests pass; recovery and cross-surface truth checks remain intact. U1 NOT PASSED.
 
 Latest implementation: [U1 batch 12](BATCH-U1-12.md) makes publication history expandable with snapshot-specific assessments/facts and improves analysis reasons/findings. Currentness is not inferred from history order. U1 NOT PASSED.
+
+Latest implementation: [U1 batch 13](BATCH-U1-13.md) improves source-report metadata/preview presentation and missing/unpublished states, preserving the secure document destination. U1 NOT PASSED.

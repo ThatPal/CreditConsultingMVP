@@ -1,3 +1,4 @@
+import { CreditSourceReport } from '../components/common/CreditSourceReport';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
@@ -14,13 +15,8 @@ import { apiRequest } from '../auth/api';
 import { LoadingSkeleton } from '../components/common/Feedback';
 import { PageHeader } from '../components/common/PageHeader';
 import { RecoveryState } from '../components/common/InteractionPatterns';
-import {
-  ArchetypeCanvas,
-  DraftPublicationStatus,
-  ProvenanceDetails,
-} from '../components/common/ProductFoundation';
+import { DraftPublicationStatus } from '../components/common/ProductFoundation';
 import { PublishedCreditFacts } from '../components/common/PublishedCreditFacts';
-import { webEnv } from '../config/env';
 import { CollectionSurface } from '../components/common/CollectionSurface';
 import { creditWorkspaceKeys, type CreditWorkspaceRead } from '../queries/creditWorkspace';
 
@@ -217,8 +213,28 @@ function CreditCenterContent({
       {!current && (
         <Stack
           spacing={2}
-          sx={{ py: 3, borderBottom: 1, borderColor: 'divider', alignItems: 'flex-start' }}
+          sx={{
+            p: { xs: 3, md: 5 },
+            border: 1,
+            borderRadius: '24px',
+            borderColor: 'divider',
+            background: designTokens.gradient.data,
+            alignItems: 'flex-start',
+          }}
         >
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: '18px',
+              display: 'grid',
+              placeItems: 'center',
+              background: designTokens.gradient.active,
+              color: 'primary.main',
+            }}
+          >
+            <ArticleOutlined sx={{ fontSize: 30 }} />
+          </Box>
           <Typography variant="h2">No published Credit Review yet</Typography>
           <Typography color="text.secondary" sx={{ maxWidth: 720 }}>
             Your published credit facts and consultant assessment will appear here after a review is
@@ -333,45 +349,7 @@ function CreditCenterContent({
           publishedAt={current.publishedAt}
         />
       )}
-      {current && view === 'report' && (
-        <ArchetypeCanvas archetype="client-workbench" role="client">
-          <Typography variant="h2" gutterBottom>
-            Source report
-          </Typography>
-          {current.report ? (
-            <Stack spacing={1}>
-              <Typography>{current.report.originalFileName}</Typography>
-              <Typography color="text.secondary">
-                {current.report.reportSource || 'Source not specified'} ·{' '}
-                {current.report.reportDate
-                  ? `Report dated ${new Date(current.report.reportDate).toLocaleDateString()}`
-                  : 'Report date unavailable'}
-              </Typography>
-              <Button
-                component="a"
-                href={`${webEnv.VITE_API_URL}${current.report.contentPath}`}
-                target="_blank"
-                rel="noreferrer"
-                variant="contained"
-              >
-                Preview secure source report
-              </Button>
-            </Stack>
-          ) : (
-            <Alert severity="info">
-              No source report is attached. Your published Profile and Analysis remain available;
-              ask Support if you expected a report.
-            </Alert>
-          )}
-          <ProvenanceDetails
-            source={current.report?.reportSource || 'Published Credit Review'}
-            {...(current.report?.reportDate || current.report?.uploadedAt
-              ? { asOf: (current.report?.reportDate || current.report?.uploadedAt)! }
-              : {})}
-            method="This document is the evidence source used for the published Profile and consultant interpretation."
-          />
-        </ArchetypeCanvas>
-      )}
+      {current && view === 'report' && <CreditSourceReport report={current.report} />}
       {current && view === 'analysis' && (
         <Stack spacing={2}>
           <Box
