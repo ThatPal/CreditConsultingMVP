@@ -20,6 +20,7 @@ export function CollectionSurface({
   empty,
   busy = false,
   maxHeight = 520,
+  appearance = 'panel',
 }: {
   title: string;
   mode: CollectionMode;
@@ -29,6 +30,7 @@ export function CollectionSurface({
   empty?: boolean;
   busy?: boolean;
   maxHeight?: number;
+  appearance?: 'panel' | 'plain';
 }) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -97,11 +99,11 @@ export function CollectionSurface({
       data-collection-mode={mode}
       aria-busy={busy}
       sx={{
-        border: '1px solid',
+        border: appearance === 'plain' ? 0 : '1px solid',
         borderColor: 'divider',
-        borderRadius: 3,
+        borderRadius: appearance === 'plain' ? 0 : 3,
         overflow: 'hidden',
-        bgcolor: 'rgba(13,21,40,.72)',
+        bgcolor: appearance === 'plain' ? 'transparent' : 'rgba(13,21,40,.72)',
       }}
     >
       <Stack
@@ -109,10 +111,11 @@ export function CollectionSurface({
           position: 'sticky',
           top: 0,
           zIndex: 2,
-          p: 2,
+          p: appearance === 'plain' ? 0 : 2,
+          py: 2,
           borderBottom: '1px solid',
           borderColor: 'divider',
-          bgcolor: 'rgba(16,24,44,.96)',
+          bgcolor: appearance === 'plain' ? 'background.default' : 'rgba(16,24,44,.96)',
           backdropFilter: 'blur(12px)',
         }}
         spacing={1}

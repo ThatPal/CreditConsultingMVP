@@ -40,3 +40,5 @@ Latest implementation: [U1 batch 01](BATCH-U1-01.md) records collection interact
 Latest implementation: [U1 batch 02](BATCH-U1-02.md) shares server focus, Action counts and Profile currentness across Home/Center/Plan, preserving history and response recovery. Final shell/reference-screen composition and remaining source/action contracts are next. U1 remains NOT PASSED.
 
 Latest implementation: [U1 batch 03](BATCH-U1-03.md) aligns the seven primary Portal destinations, gives Credit Plan independent navigation ownership and replaces empty Home appointments with conditional dated context. U1 remains NOT PASSED; final page compositions and action contracts remain.
+
+Latest implementation: [U1 batch 04](BATCH-U1-04.md) flattens the Plan execution layout and removes the floating bar over response content while preserving draft/live-update recovery. Final multi-view Plan and other reference compositions remain open; U1 NOT PASSED.

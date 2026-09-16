@@ -11,11 +11,11 @@ import {
   Alert,
   Box,
   Button,
-  CardContent,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  LinearProgress,
   Stack,
   Typography,
 } from '@mui/material';
@@ -28,10 +28,8 @@ import { StatusChip } from '../components/common/StatusChip';
 import { presentStatus } from '../components/common/statusVocabulary';
 import { CollectionSurface } from '../components/common/CollectionSurface';
 import {
-  ArchetypeCanvas,
   DraftPublicationStatus,
   ProgressArc,
-  StickyActionBar,
   WaitingState,
 } from '../components/common/ProductFoundation';
 import { SavedPlanResponse } from '../features/plans/SavedPlanResponse';
@@ -156,18 +154,18 @@ export function ClientPlanPage() {
         <PageHeader
           eyebrow="Your plan"
           title={plan.title}
-          description="Your preparation steps, supporting guidance, and consultant checkpoints in one place."
+          description="Your consultant’s guidance, your next actions, and the work you’ve completed."
+          actions={<PlanDraftLibrary />}
         />
-        <PlanDraftLibrary />
         {plan.version.staleAt && (
           <Alert severity="warning">
             This Plan is being reviewed after a source change. Completed history remains available.
           </Alert>
         )}
-        <ArchetypeCanvas
-          archetype="guided-decision"
-          role="client"
-          sx={{ borderRadius: { xs: '20px', md: '20px' } }}
+        <Box
+          component="section"
+          aria-label="Current Plan focus"
+          sx={{ borderTop: 1, borderBottom: 1, borderColor: 'divider', py: { xs: 2.5, md: 3 } }}
         >
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
@@ -197,6 +195,39 @@ export function ClientPlanPage() {
                   ? `Actions remaining: ${summary.openActionCount} · ${summary.completedActionCount} of ${summary.totalActionCount} actions completed`
                   : 'Action counts unavailable'}
               </Typography>
+              {currentFocus && ['AVAILABLE', 'IN_PROGRESS'].includes(currentFocus.status) && (
+                <Stack
+                  direction="row"
+                  aria-label="Current Plan action"
+                  sx={{ gap: 1, flexWrap: 'wrap', mt: 1 }}
+                >
+                  {currentFocus.deepLink ? (
+                    <Button component={Link} to={currentFocus.deepLink} variant="contained">
+                      Go to current step
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      aria-label={`Go to step: ${currentFocus.title}`}
+                      onClick={() => {
+                        const target = document.getElementById(`plan-item-${currentFocus.id}`);
+                        target?.focus({ preventScroll: true });
+                        target?.scrollIntoView({
+                          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                            ? 'auto'
+                            : 'smooth',
+                        });
+                      }}
+                    >
+                      Go to current step
+                    </Button>
+                  )}
+
+                  <Button component={Link} to="/app/support?new=1&category=PLAN" variant="outlined">
+                    Ask for help
+                  </Button>
+                </Stack>
+              )}
               <DraftPublicationStatus
                 state="published"
                 {...(plan.version.version ? { version: plan.version.version } : {})}
@@ -204,10 +235,25 @@ export function ClientPlanPage() {
               />
             </Stack>
             {summary?.progressPercent != null && (
-              <ProgressArc value={summary.progressPercent} label="Action progress" />
+              <>
+                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                  <ProgressArc value={summary.progressPercent} label="Action progress" />
+                </Box>
+                <Stack spacing={1} sx={{ display: { xs: 'flex', sm: 'none' } }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Action progress · {summary.progressPercent}%
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={summary.progressPercent}
+                    aria-label="Action progress"
+                    sx={{ height: 6, borderRadius: 3 }}
+                  />
+                </Stack>
+              </>
             )}
           </Stack>
-        </ArchetypeCanvas>
+        </Box>
         {data.workspace?.currentFocus.code === 'PLAN_VERIFICATION' && (
           <WaitingState
             prerequisite="Your submitted Plan response is awaiting verification"
@@ -216,8 +262,11 @@ export function ClientPlanPage() {
             userMustAct={false}
           />
         )}
-        <Typography variant="h3">Guidance, actions & milestones</Typography>
-        <CollectionSurface title={`Plan steps · ${visibleItems.length}`} mode="bounded">
+        <CollectionSurface
+          title={`Plan steps · ${visibleItems.length}`}
+          mode="bounded"
+          appearance="plain"
+        >
           {visibleItems.map((item) => (
             <Box
               key={item.id}
@@ -227,7 +276,7 @@ export function ClientPlanPage() {
               aria-label={item.title}
               sx={{ borderBottom: 1, borderColor: 'divider', scrollMarginTop: 100, py: 1 }}
             >
-              <CardContent>
+              <Box sx={{ py: 2, px: { xs: 0, md: 1 } }}>
                 <Stack spacing={1}>
                   <Stack
                     direction="row"
@@ -245,7 +294,9 @@ export function ClientPlanPage() {
                         : presentStatus(item.status))}
                     />
                   </Stack>
-                  <Typography>{item.body}</Typography>
+                  <Typography sx={{ whiteSpace: 'pre-wrap', maxWidth: 800, lineHeight: 1.7 }}>
+                    {item.body}
+                  </Typography>
                   <Typography variant="caption" color="text.secondary">
                     Owner:{' '}
                     {['AWAITING_VERIFICATION', 'UNABLE'].includes(item.status)
@@ -289,38 +340,10 @@ export function ClientPlanPage() {
                     </Alert>
                   )}
                 </Stack>
-              </CardContent>
+              </Box>
             </Box>
           ))}
         </CollectionSurface>
-        {currentFocus && currentFocus.status === 'AVAILABLE' && (
-          <StickyActionBar label="Current Plan action">
-            {currentFocus.deepLink ? (
-              <Button component={Link} to={currentFocus.deepLink} variant="contained">
-                Go to current step
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                aria-label={`Go to step: ${currentFocus.title}`}
-                onClick={() => {
-                  const target = document.getElementById(`plan-item-${currentFocus.id}`);
-                  target?.focus({ preventScroll: true });
-                  target?.scrollIntoView({
-                    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-                      ? 'auto'
-                      : 'smooth',
-                  });
-                }}
-              >
-                Go to current step
-              </Button>
-            )}
-            <Button component={Link} to="/app/support?new=1&category=PLAN" variant="outlined">
-              Ask for help
-            </Button>
-          </StickyActionBar>
-        )}
       </Stack>
     </ResponseWritePause.Provider>
   );
