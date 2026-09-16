@@ -27,10 +27,12 @@ export function PublishedCreditFacts({
   profile,
   reportDate,
   publishedAt,
+  embedded = false,
 }: {
   profile: Record<string, unknown>;
   reportDate?: string | null;
   publishedAt: string;
+  embedded?: boolean;
 }) {
   const utilization = number(profile.aggregateUtilization);
   return (
@@ -38,12 +40,12 @@ export function PublishedCreditFacts({
       component="section"
       aria-label="Published credit facts"
       sx={{
-        border: 1,
+        border: embedded ? 0 : 1,
         borderColor: 'divider',
-        borderRadius: 3,
-        p: { xs: 2.5, md: 4 },
-        background: designTokens.gradient.data,
-        boxShadow: designTokens.shadow.glow,
+        borderRadius: embedded ? 0 : 3,
+        p: embedded ? 0 : { xs: 2.5, md: 4 },
+        background: embedded ? 'transparent' : designTokens.gradient.data,
+        boxShadow: embedded ? 'none' : designTokens.shadow.glow,
       }}
     >
       <Stack

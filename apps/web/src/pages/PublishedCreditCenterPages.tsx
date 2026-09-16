@@ -1,3 +1,7 @@
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
+import HistoryRounded from '@mui/icons-material/HistoryRounded';
+import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
+import { Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import InsightsRounded from '@mui/icons-material/InsightsRounded';
 import NearMeRounded from '@mui/icons-material/NearMeRounded';
@@ -13,7 +17,6 @@ import { RecoveryState } from '../components/common/InteractionPatterns';
 import {
   ArchetypeCanvas,
   DraftPublicationStatus,
-  EventTimeline,
   ProvenanceDetails,
 } from '../components/common/ProductFoundation';
 import { PublishedCreditFacts } from '../components/common/PublishedCreditFacts';
@@ -371,21 +374,46 @@ function CreditCenterContent({
       )}
       {current && view === 'analysis' && (
         <Stack spacing={2}>
-          <ArchetypeCanvas archetype="guided-decision" role="client">
+          <Box
+            component="section"
+            aria-label="Published recommendation"
+            sx={{
+              p: { xs: 3, md: 4 },
+              borderRadius: '24px',
+              background: designTokens.gradient.focus,
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <InsightsRounded sx={{ color: 'primary.main', mb: 2 }} />
             <Typography variant="h2" gutterBottom>
               Consultant recommendation
             </Typography>
             <Typography>
               {projection?.recommendation?.explanation || 'No published explanation was supplied.'}
             </Typography>
-            {projection?.recommendation?.reasons?.map((reason) => (
-              <Chip key={reason} label={reason} sx={{ mr: 1, mt: 2 }} />
-            ))}
+            {!!projection?.recommendation?.reasons?.length && (
+              <Box
+                component="ul"
+                sx={{
+                  pl: 3,
+                  my: 2,
+                  '& li': { pl: 1, mb: 1, lineHeight: 1.7 },
+                  '& li::marker': { color: 'primary.main' },
+                }}
+              >
+                {projection.recommendation.reasons.map((reason, index) => (
+                  <Box component="li" key={index}>
+                    {reason}
+                  </Box>
+                ))}
+              </Box>
+            )}
             <DraftPublicationStatus state="published" owner="Your consultant" />
             <Button component={Link} to="/app/plan" variant="contained">
               Open Credit Plan
             </Button>
-          </ArchetypeCanvas>
+          </Box>
           <CollectionSurface
             title={`Published consultant findings · ${projection?.findings?.length ?? 0}`}
             appearance="plain"
@@ -397,33 +425,38 @@ function CreditCenterContent({
               </Typography>
             )}
             {projection?.findings?.map((finding) => (
-              <Box key={finding.code} sx={{ py: 2.5, borderBottom: 1, borderColor: 'divider' }}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
-                  <Typography variant="h3">{finding.title}</Typography>
-                  <Chip label={finding.severity} />
-                </Stack>
-                <Typography sx={{ mt: 1 }}>{finding.summary}</Typography>
-                <Typography color="text.secondary" sx={{ mt: 1 }}>
-                  Review your Credit Plan for current actions and guidance.
-                </Typography>
+              <Box
+                key={finding.code}
+                sx={{
+                  py: 3,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  display: 'grid',
+                  gridTemplateColumns: '40px minmax(0,1fr)',
+                  gap: 2,
+                }}
+              >
+                <ArticleOutlined aria-hidden="true" sx={{ color: 'primary.main', mt: 0.5 }} />
+                <Box>
+                  <Stack
+                    direction="row"
+                    sx={{ justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
+                  >
+                    <Typography variant="h3">{finding.title}</Typography>
+                    <Chip
+                      size="small"
+                      label={finding.severity.replaceAll('_', ' ').toLowerCase()}
+                    />
+                  </Stack>
+                  <Typography sx={{ mt: 1 }}>{finding.summary}</Typography>
+                </Box>
               </Box>
             ))}
           </CollectionSurface>
         </Stack>
       )}
       {current && view === 'history' && (
-        <ArchetypeCanvas archetype="lifecycle-timeline" role="client">
-          <EventTimeline
-            title="Published Credit Review history"
-            events={data.history.map((item, index) => ({
-              id: item.id,
-              title:
-                index === 0 ? 'Latest published Credit Review' : 'Earlier published Credit Review',
-              at: item.publishedAt,
-              detail: `${item.recommendation.replaceAll('_', ' ')}. Historical versions remain reference-only and never replace current truth.`,
-            }))}
-          />
-        </ArchetypeCanvas>
+        <CreditReviewHistory history={data.history} latestId={current.id} />
       )}
     </Stack>
   );
@@ -468,5 +501,103 @@ function CreditNextStep({ workspace }: { workspace: CreditWorkspaceRead }) {
         {workspace.currentFocus.actionLabel}
       </Button>
     </Stack>
+  );
+}
+
+export function CreditReviewHistory({
+  history,
+  latestId,
+}: {
+  history: PublishedReview[];
+  latestId: string;
+}) {
+  return (
+    <Box component="section" aria-label="Published Credit Review history">
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 2 }}>
+        <HistoryRounded sx={{ color: 'primary.main', fontSize: 32 }} />
+        <Box>
+          <Typography variant="h2">Published Credit Review history</Typography>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            Explore the assessment and credit facts saved with each publication.
+          </Typography>
+        </Box>
+      </Stack>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        A publication records what was known then. Check your current Plan for what to do now.
+      </Typography>
+      {!history.length && <Typography>No publication history is available.</Typography>}
+      <Stack spacing={2}>
+        {history.map((item) => (
+          <Accordion
+            key={item.id}
+            slotProps={{ transition: { mountOnEnter: true, unmountOnExit: true } }}
+            disableGutters
+            elevation={0}
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: '20px !important',
+              background: item.id === latestId ? designTokens.gradient.data : 'background.paper',
+              '&::before': { display: 'none' },
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMoreRounded />}
+              sx={{
+                px: { xs: 2, md: 3 },
+                py: 1,
+                '& .MuiAccordionSummary-content': { minWidth: 0 },
+              }}
+            >
+              <Stack spacing={1} sx={{ minWidth: 0 }}>
+                <Typography variant="overline" color="primary">
+                  {new Date(item.publishedAt).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </Typography>
+                <Typography variant="h3">
+                  {item.id === latestId
+                    ? 'Latest published Credit Review'
+                    : 'Earlier published Credit Review'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {item.recommendation.replaceAll('_', ' ').toLowerCase()} · View saved assessment
+                </Typography>
+              </Stack>
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: { xs: 2, md: 3 }, pb: 3 }}>
+              <Stack spacing={3}>
+                <Box sx={{ borderLeft: 3, borderColor: 'primary.main', pl: 2 }}>
+                  <Typography variant="overline">Assessment at publication</Typography>
+                  <Typography sx={{ mt: 1 }}>
+                    {item.projection.analysisSummary ||
+                      'No assessment summary was included in this publication.'}
+                  </Typography>
+                  {item.projection.recommendation?.explanation && (
+                    <Typography color="text.secondary" sx={{ mt: 1 }}>
+                      {item.projection.recommendation.explanation}
+                    </Typography>
+                  )}
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  {item.report?.reportSource
+                    ? 'Report source: ' + item.report.reportSource
+                    : 'Report source not supplied'}
+                  . This saved publication is read-only.
+                </Typography>
+                <PublishedCreditFacts
+                  embedded
+                  profile={item.projection.profile ?? {}}
+                  reportDate={item.report?.reportDate ?? null}
+                  publishedAt={item.publishedAt}
+                />
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </Stack>
+    </Box>
   );
 }
