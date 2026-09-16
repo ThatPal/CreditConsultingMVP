@@ -1,3 +1,4 @@
+import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import { CreditNextStep } from '../components/common/CreditNextStep';
 import { ProfileCurrentnessNotice } from '../components/common/ProfileCurrentnessNotice';
 import { ActionProgressDisplay } from '../components/common/ActionProgressDisplay';
@@ -83,6 +84,7 @@ export function ClientPlanPage() {
     : 'overview';
   const query = useQuery({
     queryKey: creditWorkspaceKeys.plan(),
+    refetchInterval: creditWorkspaceRefetchInterval,
     queryFn: () => apiRequest<ClientPlanResponse>('/api/v1/client/plan'),
   });
   const pending = usePendingNavigationWork();

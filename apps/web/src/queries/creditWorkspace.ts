@@ -13,6 +13,7 @@ export type PlanSummaryRead = {
 };
 export type CreditWorkspaceRead = {
   generatedAt: string;
+  refreshAt?: string | null;
   currentFocus: {
     code: string;
     title: string;
@@ -79,4 +80,22 @@ export function invalidateCreditWorkspace(client: QueryClient) {
   return Promise.all(
     creditWorkspaceRefreshRoots.map((root) => client.invalidateQueries({ queryKey: [root] })),
   );
+}
+
+/** Schedules authenticated reads using server-relative time, never local domain transitions. */
+export function creditWorkspaceRefetchInterval(query: {
+  state: { data: unknown; dataUpdatedAt: number; status: string };
+}): number | false {
+  if (query.state.status !== 'success') return false;
+  const data = query.state.data as
+    { workspace?: { generatedAt?: string; refreshAt?: string | null } } | undefined;
+  const workspace = data?.workspace;
+  if (!workspace?.generatedAt || !workspace.refreshAt) return false;
+  const generated = Date.parse(workspace.generatedAt),
+    boundary = Date.parse(workspace.refreshAt);
+  if (!Number.isFinite(generated) || !Number.isFinite(boundary) || boundary <= generated)
+    return false;
+  const elapsed = Math.max(0, Date.now() - query.state.dataUpdatedAt);
+  // Avoid immediate loops and browser timeout overflow; long waits refetch at most daily.
+  return Math.min(86_400_000, Math.max(1000, boundary - generated - elapsed));
 }

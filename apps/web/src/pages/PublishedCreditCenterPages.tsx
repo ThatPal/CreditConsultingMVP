@@ -1,3 +1,4 @@
+import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import { CreditNextStep } from '../components/common/CreditNextStep';
 import { ProfileCurrentnessNotice } from '../components/common/ProfileCurrentnessNotice';
 import { CreditSourceReport } from '../components/common/CreditSourceReport';
@@ -57,6 +58,7 @@ export function PublishedCreditCenterPage({
 }) {
   const query = useQuery({
     queryKey: creditWorkspaceKeys.creditCenter(),
+    refetchInterval: creditWorkspaceRefetchInterval,
     queryFn: () => apiRequest<CreditCenterResponse>('/api/v1/client/credit-profile'),
     retry: false,
   });
@@ -70,6 +72,7 @@ export function ConsultantClientCreditCenterPage() {
   const { clientId } = useParams();
   const query = useQuery({
     queryKey: creditWorkspaceKeys.consultantCreditCenter(clientId),
+    refetchInterval: creditWorkspaceRefetchInterval,
     queryFn: () =>
       apiRequest<CreditCenterResponse>(`/api/v1/reviews/consultant/${clientId}/credit-center`),
     enabled: Boolean(clientId),

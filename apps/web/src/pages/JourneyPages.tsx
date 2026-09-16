@@ -1,3 +1,4 @@
+import { creditWorkspaceRefetchInterval } from '../queries/creditWorkspace';
 import {
   ProfileCurrentnessNotice,
   type ProfileCurrentnessRead,
@@ -462,6 +463,7 @@ export function JourneySummary({
 export function ClientHomePage() {
   const query = useQuery({
     queryKey: creditWorkspaceKeys.home(),
+    refetchInterval: creditWorkspaceRefetchInterval,
     queryFn: () => apiRequest<JourneyProjection>('/api/v1/client/home'),
   });
   return (
@@ -516,6 +518,7 @@ export function ClientHomePage() {
 export function ClientJourneyPage() {
   const query = useQuery({
     queryKey: creditWorkspaceKeys.journey(),
+    refetchInterval: creditWorkspaceRefetchInterval,
     queryFn: () => apiRequest<JourneyProjection>('/api/v1/client/journey'),
   });
   if (query.isLoading) return <LinearProgress />;

@@ -15,3 +15,5 @@ U1-15: ApplicationSession is a U6 read adapter. Open session status/id/version s
 U1-16: Major case/restriction compatibility reads supply safe coordination focus and exact-case navigation. Uncleared restrictions use the same client scope as existing command guards. No permission or lifecycle changes; clearing remains subject to command revalidation. Final scheduling and comprehensive action contracts remain outstanding.
 
 U1-17: Appointment focus uses the injected server clock and existing session window constant. It is appointment navigation only; command guards remain authoritative. Contextual schedule route is a U6 compatibility surface; continuously idle boundary refresh and final preparation contracts remain open.
+
+U1-20: refreshAt is a future read boundary from current publication expiry and appointment timing. It grants no authority and stores no lifecycle state. Browser refetch uses server-relative duration; Plan snapshot/recovery protection remains active.

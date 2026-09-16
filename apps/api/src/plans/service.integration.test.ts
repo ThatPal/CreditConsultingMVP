@@ -586,6 +586,7 @@ describe('Plan authoring and approval', () => {
         }),
       );
       expect(workspace.currentFocus.code).toBe('APPOINTMENT_UPCOMING');
+      expect(workspace.refreshAt).toEqual(appointment.endsAt);
       expect(workspace.currentFocus.action).toBe(
         '/app/rounds/' + appointment.roundId + '/schedule',
       );
