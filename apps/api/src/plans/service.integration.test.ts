@@ -1,7 +1,7 @@
 import { getCreditWorkspace } from '../workspace/service.js';
 import { getPublishedCreditCenter } from '../reviews/publishedCreditCenter.js';
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { createPrisma } from '../lib/prisma.js';
 import {
   approvePlan,
@@ -458,5 +458,38 @@ describe('Plan authoring and approval', () => {
         null,
       ),
     ).rejects.toMatchObject({ code: 'PLAN_PUBLICATION_CHANGED' });
+  });
+
+  test('workspace and Center compose the safe session read with client and lifecycle filters', async () => {
+    const session = {
+      id: randomUUID(),
+      roundId: randomUUID(),
+      status: 'LIVE',
+      version: 3,
+      updatedAt: new Date(),
+    };
+    const read = vi
+      .spyOn(prisma.applicationSession, 'findFirst')
+      .mockResolvedValue(session as never);
+    try {
+      const workspace = await getCreditWorkspace(prisma, clientId);
+      const center = await getPublishedCreditCenter(prisma, clientId);
+      expect(read).toHaveBeenCalledWith({
+        where: {
+          clientId,
+          endedAt: null,
+          status: { in: ['LIVE', 'PAUSED', 'WAITING_FOR_CLIENT', 'WAITING_FOR_CONSULTANT'] },
+        },
+        select: { id: true, roundId: true, status: true, version: true, updatedAt: true },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      });
+      expect(center.workspace.currentFocus).toEqual(workspace.currentFocus);
+      expect(workspace.currentFocus.action).toBe('/app/rounds/' + session.roundId + '/live');
+      expect(workspace.sources.liveSession).toEqual(session);
+      read.mockResolvedValueOnce(null);
+      expect((await getCreditWorkspace(prisma, randomUUID())).sources.liveSession).toBeNull();
+    } finally {
+      read.mockRestore();
+    }
   });
 });

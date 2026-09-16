@@ -12,6 +12,7 @@ export type FocusInput = {
   hasGoal: boolean;
   round?: { id: string; status: string; strategy: { status: string } | null } | null;
   plan?: ReturnType<typeof summarizePlan>;
+  liveSession?: { id: string; roundId: string; status: string } | null;
 };
 
 const stageFocus: Record<ApplicationCycleStage, { code: string; title: string; action: string }> = {
@@ -74,6 +75,32 @@ const stageFocus: Record<ApplicationCycleStage, { code: string; title: string; a
 };
 
 export function resolveCurrentFocus(input: FocusInput) {
+  // U6 compatibility: session navigation is not execution/release permission.
+  if (
+    input.liveSession &&
+    ['LIVE', 'PAUSED', 'WAITING_FOR_CLIENT', 'WAITING_FOR_CONSULTANT'].includes(
+      input.liveSession.status,
+    )
+  ) {
+    const paused = input.liveSession.status === 'PAUSED';
+    const waiting = input.liveSession.status === 'WAITING_FOR_CONSULTANT';
+    return {
+      code: paused ? 'LIVE_PAUSED' : waiting ? 'LIVE_WAITING' : 'LIVE_RETURN',
+      title: paused
+        ? 'Your application session is paused'
+        : waiting
+          ? 'Your session is waiting for your consultant'
+          : 'Return to your application session',
+      detail: paused
+        ? 'Return to the session to review its status. Wait for your consultant before continuing applications.'
+        : waiting
+          ? 'Your consultant owns the next step. You can return to the session to see its status.'
+          : 'Your guided session is open. Follow the session instructions and consultant guidance before taking an application step.',
+      owner: paused || waiting ? 'CONSULTANT' : 'CLIENT',
+      actionLabel: 'Return to session',
+      action: '/app/rounds/' + encodeURIComponent(input.liveSession.roundId) + '/live',
+    };
+  }
   if (input.round?.status === 'BLOCKED')
     return {
       code: 'ROUND_BLOCKED',

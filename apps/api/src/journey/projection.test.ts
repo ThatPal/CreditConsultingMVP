@@ -150,3 +150,36 @@ test.each(['ACTION', 'GUIDANCE'])('current %s focus opens the exact canonical st
   expect(destination.searchParams.get('view')).toBe(type === 'ACTION' ? 'actions' : 'guidance');
   expect(destination.searchParams.get('item')).toBe('step / one');
 });
+
+test.each(['LIVE', 'PAUSED', 'WAITING_FOR_CLIENT', 'WAITING_FOR_CONSULTANT'])(
+  'open session %s takes navigation focus over blocked rounds and old Plan work',
+  (status) => {
+    const focus = resolveCurrentFocus({
+      activeCycle: null,
+      activeNurture: null,
+      hasGoal: true,
+      round: { id: 'round', status: 'BLOCKED', strategy: null },
+      liveSession: { id: 'session', roundId: 'round / one', status },
+    });
+    expect(focus.action).toBe('/app/rounds/round%20%2F%20one/live');
+    expect(focus.actionLabel).toBe('Return to session');
+    expect(focus.owner).toBe(
+      ['PAUSED', 'WAITING_FOR_CONSULTANT'].includes(status) ? 'CONSULTANT' : 'CLIENT',
+    );
+    expect(focus.detail).not.toMatch(/you can apply|ready to apply/i);
+  },
+);
+test.each(['ENDED', 'SCHEDULED', 'READY'])(
+  'session %s does not override a blocking restriction',
+  (status) => {
+    expect(
+      resolveCurrentFocus({
+        activeCycle: null,
+        activeNurture: null,
+        hasGoal: true,
+        round: { id: 'round', status: 'BLOCKED', strategy: null },
+        liveSession: { id: 'session', roundId: 'round', status },
+      }).code,
+    ).toBe('ROUND_BLOCKED');
+  },
+);

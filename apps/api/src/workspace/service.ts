@@ -18,70 +18,80 @@ export async function getCreditWorkspace(
     review: { readinessExpiresAt: Date | null };
   } | null,
 ) {
-  const [plan, state, publication, review, goal, journey, rounds, appointment] = await Promise.all([
-    suppliedPlan ?? getClientPlan(prisma, clientId),
-    prisma.creditProfileState.findUnique({
-      where: { clientId },
-      select: {
-        status: true,
-        sourceReviewId: true,
-        staleAt: true,
-        updatedAt: true,
-      },
-    }),
-    publicationBasis !== undefined
-      ? publicationBasis
-      : prisma.publishedCreditReview.findFirst({
-          where: { clientId },
-          orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
-          select: {
-            id: true,
-            reviewId: true,
-            publishedAt: true,
-            review: { select: { readinessExpiresAt: true } },
+  const [plan, state, publication, review, goal, journey, rounds, appointment, liveSession] =
+    await Promise.all([
+      suppliedPlan ?? getClientPlan(prisma, clientId),
+      prisma.creditProfileState.findUnique({
+        where: { clientId },
+        select: {
+          status: true,
+          sourceReviewId: true,
+          staleAt: true,
+          updatedAt: true,
+        },
+      }),
+      publicationBasis !== undefined
+        ? publicationBasis
+        : prisma.publishedCreditReview.findFirst({
+            where: { clientId },
+            orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+            select: {
+              id: true,
+              reviewId: true,
+              publishedAt: true,
+              review: { select: { readinessExpiresAt: true } },
+            },
+          }),
+      prisma.creditReview.findFirst({
+        where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.clientGoal.findFirst({ where: { clientId, status: 'ACTIVE' }, select: { id: true } }),
+      prisma.creditJourney.findUnique({
+        where: { clientId },
+        select: {
+          cycles: {
+            where: { status: 'ACTIVE' },
+            orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+            take: 1,
+            select: { id: true, currentStage: true },
           },
-        }),
-    prisma.creditReview.findFirst({
-      where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
-      select: { id: true },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.clientGoal.findFirst({ where: { clientId, status: 'ACTIVE' }, select: { id: true } }),
-    prisma.creditJourney.findUnique({
-      where: { clientId },
-      select: {
-        cycles: {
-          where: { status: 'ACTIVE' },
-          orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-          take: 1,
-          select: { id: true, currentStage: true },
+          nurturePeriods: {
+            where: { status: 'ACTIVE' },
+            orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+            take: 1,
+            select: { reasonCode: true },
+          },
         },
-        nurturePeriods: {
-          where: { status: 'ACTIVE' },
-          orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-          take: 1,
-          select: { reasonCode: true },
+      }),
+      prisma.creditCardRound.findMany({
+        where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
+        select: { id: true, status: true, strategy: { select: { status: true } } },
+        orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+      }),
+      prisma.appointment.findFirst({
+        where: { clientId, status: 'BOOKED', endsAt: { gt: now } },
+        select: {
+          id: true,
+          startsAt: true,
+          endsAt: true,
+          timezone: true,
+          status: true,
+          roundId: true,
         },
-      },
-    }),
-    prisma.creditCardRound.findMany({
-      where: { clientId, status: { notIn: ['COMPLETE', 'CANCELLED'] } },
-      select: { id: true, status: true, strategy: { select: { status: true } } },
-      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-    }),
-    prisma.appointment.findFirst({
-      where: { clientId, status: 'BOOKED', endsAt: { gt: now } },
-      select: {
-        id: true,
-        startsAt: true,
-        endsAt: true,
-        timezone: true,
-        status: true,
-        roundId: true,
-      },
-      orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
-    }),
-  ]);
+        orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+      }),
+      prisma.applicationSession.findFirst({
+        where: {
+          clientId,
+          endedAt: null,
+          status: { in: ['LIVE', 'PAUSED', 'WAITING_FOR_CLIENT', 'WAITING_FOR_CONSULTANT'] },
+        },
+        select: { id: true, roundId: true, status: true, version: true, updatedAt: true },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      }),
+    ]);
   const round =
     rounds.find((r) => r.status === 'BLOCKED') ??
     rounds.find((r) => r.strategy?.status === 'STALE') ??
@@ -92,6 +102,7 @@ export async function getCreditWorkspace(
     activeNurture: journey?.nurturePeriods[0] ?? null,
     hasGoal: Boolean(goal),
     round,
+    liveSession,
     plan: plan.summary,
   });
   const profile = profileCurrentness(
@@ -117,6 +128,7 @@ export async function getCreditWorkspace(
     nextAppointment: appointment,
     // Versions represent the actual source basis, never a synthetic global revision.
     sources: {
+      liveSession,
       plan: plan.summary.source,
       profile: profile.source,
       profileStateUpdatedAt: profile.stateUpdatedAt,

@@ -9,3 +9,5 @@
 `generatedAt` describes read time; source IDs/version numbers/state timestamps identify basis. Parallel reads and independent surface requests are not a globally atomic snapshot. Commands continue to revalidate source versions, actor scope and eligibility. The optional supplied Plan/publication inputs are internal reuse of the same caller-selected basis, never request-body input.
 
 Evidence: workspace/projection tests, Plan service integration, Review publication integration, Plan page/response/live-update tests and BATCH-U1-02. No final DTO or U1 acceptance claim.
+
+U1-15: ApplicationSession is a U6 read adapter. Open session status/id/version supplies return-to-session navigation, never execution permission. Scope is clientId plus endedAt null and explicit open statuses; only safe source fields are selected. Projection tests and Plan service composition tests cover this boundary; persisted full-session fixtures remain outstanding.
