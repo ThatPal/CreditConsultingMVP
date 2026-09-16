@@ -38,3 +38,5 @@ Latest checkpoint: baseline diagnostics and tooling-only corrections are complet
 Latest implementation: [U1 batch 01](BATCH-U1-01.md) records collection interaction repairs and shared reference query refresh. Server truth and final reference-screen compositions remain next.
 
 Latest implementation: [U1 batch 02](BATCH-U1-02.md) shares server focus, Action counts and Profile currentness across Home/Center/Plan, preserving history and response recovery. Final shell/reference-screen composition and remaining source/action contracts are next. U1 remains NOT PASSED.
+
+Latest implementation: [U1 batch 03](BATCH-U1-03.md) aligns the seven primary Portal destinations, gives Credit Plan independent navigation ownership and replaces empty Home appointments with conditional dated context. U1 remains NOT PASSED; final page compositions and action contracts remain.

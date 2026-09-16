@@ -1,4 +1,5 @@
 import AccountCircleRounded from '@mui/icons-material/AccountCircleRounded';
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import MenuRounded from '@mui/icons-material/MenuRounded';
 import NotificationsNoneRounded from '@mui/icons-material/NotificationsNoneRounded';
 import BoltRounded from '@mui/icons-material/BoltRounded';
@@ -109,6 +110,11 @@ function Sidebar({
   const activeId = activeNavigationId(items, pathname);
   const primaryItems = items.filter((item) => item.section === 'primary');
   const utilityItems = items.filter((item) => item.section === 'utility');
+  const activeUtility = utilityItems.some((item) => item.id === activeId);
+  const [moreOpen, setMoreOpen] = useState(activeUtility);
+  useEffect(() => {
+    if (activeUtility) setMoreOpen(true);
+  }, [activeUtility, pathname]);
   const renderItems = (navigationItems: NavigationItem[]) =>
     navigationItems.map(({ id, label, path, icon: Icon }) => (
       <ListItemButton
@@ -200,17 +206,39 @@ function Sidebar({
       >
         {role !== 'admin' && (
           <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
-            {role === 'client' ? 'Plan' : 'Workspace'}
+            {role === 'client' ? 'Your workspace' : 'Workspace'}
           </Typography>
         )}
         {primaryNavigation}
         {utilityItems.length > 0 && (
           <>
             <Divider sx={{ my: 1.5 }} />
-            <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
-              Utilities
-            </Typography>
-            {renderItems(utilityItems)}
+            {role === 'client' ? (
+              <>
+                <Button
+                  fullWidth
+                  aria-expanded={moreOpen}
+                  aria-controls="client-secondary-navigation"
+                  onClick={() => setMoreOpen((value) => !value)}
+                  endIcon={
+                    <ExpandMoreRounded sx={{ transform: moreOpen ? 'rotate(180deg)' : 'none' }} />
+                  }
+                  sx={{ justifyContent: 'space-between', color: 'text.secondary', px: 1.5, mb: 1 }}
+                >
+                  More
+                </Button>
+                <Box id="client-secondary-navigation" hidden={!moreOpen}>
+                  {renderItems(utilityItems)}
+                </Box>
+              </>
+            ) : (
+              <>
+                <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
+                  Utilities
+                </Typography>
+                {renderItems(utilityItems)}
+              </>
+            )}
           </>
         )}
       </List>

@@ -65,7 +65,15 @@ const registry: NavigationItem[] = [
     icon: CreditScoreRounded,
     shell: 'client',
     section: 'primary',
-    owns: ['/app/credit-center', '/app/plan'],
+    owns: ['/app/credit-center'],
+  }),
+  n({
+    id: 'portal-plan',
+    label: 'Credit Plan',
+    path: '/app/plan',
+    icon: TaskAltRounded,
+    shell: 'client',
+    section: 'primary',
   }),
   n({
     id: 'portal-cards',
@@ -81,7 +89,7 @@ const registry: NavigationItem[] = [
     path: '/app/application-rounds',
     icon: CalendarMonthRounded,
     shell: 'client',
-    section: 'primary',
+    section: 'utility',
     owns: ['/app/application-rounds', '/app/rounds'],
   }),
   n({
@@ -90,7 +98,7 @@ const registry: NavigationItem[] = [
     path: '/app/major-readiness',
     icon: TaskAltRounded,
     shell: 'client',
-    section: 'primary',
+    section: 'utility',
   }),
   n({
     id: 'portal-services',

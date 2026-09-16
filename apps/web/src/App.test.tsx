@@ -73,11 +73,18 @@ describe('application shells', () => {
     expect(within(navigation).getByRole('link', { name: 'Credit Center' })).toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Plan' })).not.toBeInTheDocument();
     expect(
+      within(navigation).queryByRole('link', { name: 'Application Rounds' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(within(navigation).getByRole('button', { name: 'More' }));
+    expect(
       within(navigation).getByRole('link', { name: 'Application Rounds' }),
     ).toBeInTheDocument();
-    expect(within(navigation).getByText('Utilities')).toBeInTheDocument();
+    expect(within(navigation).getByText('More')).toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Security' })).not.toBeInTheDocument();
-    expect(within(navigation).queryByText('Credit Plan')).not.toBeInTheDocument();
+    expect(within(navigation).getByRole('link', { name: 'Credit Plan' })).toHaveAttribute(
+      'href',
+      '/app/plan',
+    );
     expect(within(navigation).queryByText('Reviews')).not.toBeInTheDocument();
     expect(within(navigation).getByRole('link', { name: 'Home' })).toHaveAttribute(
       'aria-current',
@@ -110,7 +117,15 @@ describe('application shells', () => {
         'commerce.manage',
       ],
     } as CurrentUser;
-    expect(activeNavigationId(navigationFor(client, 'client'), '/app/plan')).toBe('portal-credit');
+    expect(
+      navigationFor(client, 'client')
+        .filter((item) => item.section === 'primary')
+        .map((item) => item.label),
+    ).toEqual(['Home', 'Journey', 'Credit Center', 'Credit Plan', 'Cards', 'Services', 'Support']);
+    expect(activeNavigationId(navigationFor(client, 'client'), '/app/plan')).toBe('portal-plan');
+    expect(activeNavigationId(navigationFor(client, 'client'), '/app/plan/responses')).toBe(
+      'portal-plan',
+    );
     expect(activeNavigationId(navigationFor(client, 'client'), '/app/cards/example')).toBe(
       'portal-cards',
     );

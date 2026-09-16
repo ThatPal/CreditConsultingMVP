@@ -68,7 +68,13 @@ export type JourneyProjection = {
       completedActionCount?: number;
       totalActionCount?: number;
     };
-    appointment: { status: string };
+    appointment: {
+      status: string;
+      id?: string;
+      startsAt?: string;
+      timezone?: string;
+      roundId?: string | null;
+    };
   };
 };
 
@@ -98,6 +104,8 @@ export function JourneySummary({
   const plan = data.foundations.plan;
   const hasPlan = plan.status !== 'NOT_AVAILABLE';
   const profileAvailable = ['PUBLISHED', 'CURRENT'].includes(data.foundations.creditProfile.status);
+  const appointment = data.foundations.appointment;
+  const hasAppointment = appointment.status === 'BOOKED' && Boolean(appointment.startsAt);
   const owner =
     focus.owner === 'CONSULTANT'
       ? staff
@@ -196,7 +204,7 @@ export function JourneySummary({
             <Button
               component={Link}
               to="/app/goals"
-              sx={{ alignSelf: 'flex-start', color: '#d1edb5', px: 0 }}
+              sx={{ alignSelf: 'flex-start', color: '#d1edb5' }}
             >
               Review your goal <ArrowForwardRounded sx={{ ml: 1, fontSize: 18 }} />
             </Button>
@@ -233,26 +241,37 @@ export function JourneySummary({
               href: '/app/plan',
               link: 'Open your Plan',
             },
-            {
-              label: 'Appointment',
-              value: ['NOT_AVAILABLE', 'NOT_SCHEDULED'].includes(
-                data.foundations.appointment.status,
-              )
-                ? 'Not scheduled'
-                : readable(data.foundations.appointment.status),
-              detail: 'Find your appointment details and scheduling options.',
-              href: '/app/application-rounds',
-              link: 'View round appointments',
-            },
+            ...(hasAppointment
+              ? [
+                  {
+                    label: 'Upcoming appointment',
+                    value: new Intl.DateTimeFormat('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      ...(appointment.timezone ? { timeZone: appointment.timezone } : {}),
+                    }).format(new Date(appointment.startsAt!)),
+                    detail: new Intl.DateTimeFormat('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      timeZoneName: 'short',
+                      ...(appointment.timezone ? { timeZone: appointment.timezone } : {}),
+                    }).format(new Date(appointment.startsAt!)),
+                    href: appointment.roundId
+                      ? '/app/rounds/' + appointment.roundId + '/schedule'
+                      : '/app/support',
+                    link: appointment.roundId ? 'View appointment' : 'Ask about your appointment',
+                  },
+                ]
+              : []),
           ].map((record, index) => (
             <Grid
               key={record.label}
-              size={{ xs: 12, md: 4 }}
+              size={{ xs: 12, md: hasAppointment ? 4 : 6 }}
               sx={{
                 p: 3,
                 pl: { md: index === 0 ? 0 : 3 },
                 borderLeft: { md: index ? 1 : 0 },
-                borderBottom: { xs: index < 2 ? 1 : 0, md: 0 },
+                borderBottom: { xs: index < (hasAppointment ? 2 : 1) ? 1 : 0, md: 0 },
                 borderColor: 'divider',
               }}
             >
