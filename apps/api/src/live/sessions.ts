@@ -11,6 +11,14 @@ import { assertNoCreditActivityRestriction } from '../majorReadiness/service.js'
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 import { JOIN_WINDOW_MS } from './timing.js';
 const PRESENCE_LEASE_MS = 90_000;
+function assertRoundCanStart(status: string | undefined) {
+  if (!status || ['BLOCKED', 'COMPLETE', 'CANCELLED'].includes(status))
+    throw new AppError(
+      'ROUND_NOT_ACTIVE',
+      409,
+      'This Round cannot start an application session. Ask your consultant to review its status.',
+    );
+}
 
 export async function assertSessionParticipant(
   prisma: PrismaClient,
@@ -53,6 +61,7 @@ export async function startApplicationSession(
     where: { id: appointment.roundId },
     include: { strategy: { include: { approvedVersion: true } } },
   });
+  assertRoundCanStart(round?.status);
   if (
     !round?.strategy?.approvedVersion ||
     round.strategy.status !== 'APPROVED' ||
@@ -86,6 +95,13 @@ export async function startApplicationSession(
       }),
     },
     mutate: async (tx) => {
+      // Serialize against a concurrent Round status change before creating the session.
+      await tx.$queryRaw`SELECT id FROM "CreditCardRound" WHERE id = ${appointment.roundId}::uuid FOR UPDATE`;
+      const currentRound = await tx.creditCardRound.findUnique({
+        where: { id: appointment.roundId },
+        select: { status: true },
+      });
+      assertRoundCanStart(currentRound?.status);
       const session = await tx.applicationSession.upsert({
         where: { roundId: appointment.roundId },
         update: {},

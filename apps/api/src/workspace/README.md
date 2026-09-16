@@ -17,3 +17,5 @@ U1-16: Major case/restriction compatibility reads supply safe coordination focus
 U1-17: Appointment focus uses the injected server clock and existing session window constant. It is appointment navigation only; command guards remain authoritative. Contextual schedule route is a U6 compatibility surface; continuously idle boundary refresh and final preparation contracts remain open.
 
 U1-20: refreshAt is a future read boundary from current publication expiry and appointment timing. It grants no authority and stores no lifecycle state. Browser refetch uses server-relative duration; Plan snapshot/recovery protection remains active.
+
+U1-22: live.integration.test.ts now verifies the previously outstanding persisted source chain, exact client scope/lifecycle filtering, Center agreement and Major restriction clearing via real commands. Synthetic test DB only; full application/provider/concurrency qualification remains outside this bounded read-adapter verification.
