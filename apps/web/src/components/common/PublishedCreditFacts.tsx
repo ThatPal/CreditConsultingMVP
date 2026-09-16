@@ -1,3 +1,8 @@
+import AccountBalanceWalletOutlined from '@mui/icons-material/AccountBalanceWalletOutlined';
+import CreditCardOutlined from '@mui/icons-material/CreditCardOutlined';
+import AccountBalanceOutlined from '@mui/icons-material/AccountBalanceOutlined';
+import ManageSearchOutlined from '@mui/icons-material/ManageSearchOutlined';
+import ReportOutlined from '@mui/icons-material/ReportOutlined';
 import { PublishedScoreGauge, PublishedUtilizationRing } from './PublishedCreditVisuals';
 import { designTokens } from '../../theme';
 import { Box, Divider, Grid, Stack, Typography } from '@mui/material';
@@ -90,8 +95,19 @@ export function PublishedCreditFacts({
           gap: 3,
         }}
       >
-        {facts.map(([key, label]) => (
-          <Box key={key}>
+        {facts.map(([key, label], index) => (
+          <Box key={key} sx={{ borderLeft: '1px solid', borderColor: 'divider', pl: 2 }}>
+            <Box aria-hidden="true" sx={{ color: 'primary.main', mb: 1.5 }}>
+              {
+                [
+                  <AccountBalanceWalletOutlined key="balance" />,
+                  <CreditCardOutlined key="limit" />,
+                  <AccountBalanceOutlined key="accounts" />,
+                  <ManageSearchOutlined key="inquiries" />,
+                  <ReportOutlined key="items" />,
+                ][index]
+              }
+            </Box>
             <Typography component="dt" variant="caption" color="text.secondary">
               {label}
             </Typography>

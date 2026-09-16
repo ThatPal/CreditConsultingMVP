@@ -52,3 +52,5 @@ Latest implementation: [U1 batch 07](BATCH-U1-07.md) adds Overview roadmap, Acti
 Latest implementation: [U1 batch 08](BATCH-U1-08.md) reconciles shared typography, teal controls, touch targets and reduced motion, and scopes optional Plan collection restoration to publication/view identity. Reference browser checks preserve focus/count agreement and response recovery. Final truth and screen gates remain open; U1 NOT PASSED.
 
 Latest implementation: [U1 batch 09](BATCH-U1-09.md) follows the user's richer visual direction with score pointers/scales, utilization ring, icon-led Plan steps, shared gradients/glow and blue-slate surfaces. Published values and recovery are preserved. U1 NOT PASSED.
+
+Latest implementation: [U1 batch 10](BATCH-U1-10.md) recomposes Credit Center with ivory/mint advisory context alongside a dark action rail, extends light/dark contrast to Home, and strengthens navigation and financial iconography. U1 NOT PASSED.

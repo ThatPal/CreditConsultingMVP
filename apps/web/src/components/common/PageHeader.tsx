@@ -19,11 +19,30 @@ export function PageHeader({
     >
       <Box>
         {eyebrow && (
-          <Typography variant="overline" color="primary">
+          <Typography
+            variant="overline"
+            color="primary"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mb: 1,
+              '&::before': {
+                content: '""',
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                bgcolor: 'primary.main',
+                boxShadow: '0 0 14px #66d8bd88',
+              },
+            }}
+          >
             {eyebrow}
           </Typography>
         )}
-        <Typography variant="h1">{title}</Typography>
+        <Typography variant="h1" sx={{ textWrap: 'balance', maxWidth: 900 }}>
+          {title}
+        </Typography>
         {description && (
           <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 720 }}>
             {description}

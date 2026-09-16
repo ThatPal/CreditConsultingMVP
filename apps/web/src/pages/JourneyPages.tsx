@@ -176,7 +176,13 @@ export function JourneySummary({
             borderLeft: { md: '1px solid #ffffff20' },
             borderTop: { xs: '1px solid #ffffff20', md: 0 },
             justifyContent: 'center',
-            bgcolor: '#ffffff05',
+            background: designTokens.gradient.advisory,
+            color: designTokens.color.focusText,
+            '& .MuiTypography-root': { color: 'inherit' },
+            '& .MuiButton-root': { color: designTokens.color.focusLink },
+            '& .MuiButton-root:focus-visible': {
+              outlineColor: designTokens.color.focusLink + ' !important',
+            },
           }}
         >
           <Typography variant="overline" sx={{ color: '#cee0dc' }}>

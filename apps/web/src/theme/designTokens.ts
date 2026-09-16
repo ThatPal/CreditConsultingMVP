@@ -19,11 +19,11 @@ export const designTokens = {
   size: { touchTarget: 44 },
   accent: { main: '#66d8bd', hover: '#8be5cf', dark: '#268b74', text: '#081f19' },
   color: {
-    canvas: '#0b1420',
+    canvas: '#0b1220',
     canvasRaised: '#101e2d',
     sidebar: 'rgba(11, 23, 36, 0.96)',
     topbar: 'rgba(11, 20, 32, 0.88)',
-    surface: '#132436',
+    surface: '#152337',
     surfaceElevated: '#193044',
     surfaceOperational: '#0d1528',
     surfaceOverlay: '#19233b',
@@ -52,7 +52,9 @@ export const designTokens = {
     focusSkeleton: '#c7d5ce',
   },
   gradient: {
-    data: 'radial-gradient(ellipse at 12% 0%, rgba(102,216,189,.16), transparent 55%), linear-gradient(125deg, #172d3e, #112132 65%, #1b263d)',
+    advisory:
+      'radial-gradient(ellipse at 100% 0%, #c9e7ce 0%, transparent 60%), linear-gradient(135deg, #f5f3e9, #e4efe2)',
+    data: 'radial-gradient(ellipse at 12% 0%, rgba(102,216,189,.16), transparent 55%), linear-gradient(125deg, #183a45, #142b3e 55%, #292c4b)',
     focus:
       'radial-gradient(ellipse at 95% 0%, rgba(112,205,232,.20), transparent 55%), linear-gradient(120deg, #1c3d43, #173144 65%, #27344d)',
     brand: 'linear-gradient(115deg, #b6f0cb 0%, #66d8bd 48%, #70cde8 100%)',

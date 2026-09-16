@@ -1,3 +1,7 @@
+import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
+import InsightsRounded from '@mui/icons-material/InsightsRounded';
+import NearMeRounded from '@mui/icons-material/NearMeRounded';
+import { designTokens } from '../theme';
 import { useEffect, useRef } from 'react';
 import { Alert, Box, Button, Chip, Stack, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
@@ -159,7 +163,16 @@ function CreditCenterContent({
           <Stack
             ref={sections}
             direction="row"
-            sx={{ overflowX: 'auto', maxWidth: '100%', flexShrink: 1 }}
+            sx={{
+              overflowX: 'auto',
+              maxWidth: '100%',
+              flexShrink: 1,
+              p: 0.5,
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: '16px',
+              bgcolor: 'rgba(4,13,25,.42)',
+            }}
           >
             {navigation.map(([key, label]) => (
               <Button
@@ -169,10 +182,13 @@ function CreditCenterContent({
                 variant="text"
                 aria-current={view === key ? 'page' : undefined}
                 sx={{
-                  borderRadius: 0,
+                  borderRadius: '12px',
                   flexShrink: 0,
-                  borderBottom: 2,
-                  borderColor: view === key ? 'primary.main' : 'transparent',
+                  color: view === key ? '#092820' : 'text.secondary',
+                  background: view === key ? designTokens.gradient.brand : 'transparent',
+                  '&:hover': {
+                    background: view === key ? designTokens.gradient.brand : 'action.hover',
+                  },
                 }}
               >
                 {label}
@@ -216,35 +232,71 @@ function CreditCenterContent({
       {current && (view === 'overview' || consultant) && (
         <>
           <Box
-            component="section"
-            aria-label="Published assessment"
-            sx={{ borderLeft: 3, borderColor: 'primary.main', pl: { xs: 2, md: 3 }, py: 1 }}
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                lg: consultant || !data.workspace ? '1fr' : 'minmax(0, 1.65fr) minmax(280px, 1fr)',
+              },
+              gap: 2.5,
+            }}
           >
-            <Stack spacing={2}>
-              <Stack
-                direction="row"
-                sx={{ justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
-              >
-                <Box>
-                  <Typography variant="overline" color="primary">
-                    Your consultant’s assessment
-                  </Typography>
-                  <Typography variant="h2">Published assessment</Typography>
+            <Box
+              component="section"
+              aria-label="Published assessment"
+              sx={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '24px',
+                p: { xs: 3, md: 4 },
+                background: designTokens.gradient.advisory,
+                color: designTokens.color.focusText,
+                boxShadow: '0 16px 48px rgba(0,0,0,.16)',
+                '& .MuiTypography-root': { color: 'inherit' },
+                '& .MuiChip-root': { color: '#174936', borderColor: '#aac5b5', bgcolor: '#d5e8da' },
+              }}
+            >
+              <Stack spacing={2} sx={{ position: 'relative' }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    placeItems: 'center',
+                    width: 48,
+                    height: 48,
+                    borderRadius: '16px',
+                    bgcolor: '#164c3c',
+                    color: '#c6efbd',
+                    boxShadow: '0 6px 20px #164c3c22',
+                  }}
+                >
+                  <InsightsRounded />
                 </Box>
-                <Chip
-                  color="primary"
-                  label={current.recommendation.replaceAll('_', ' ').toLowerCase()}
-                />
+                <Stack
+                  direction="row"
+                  sx={{ justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
+                >
+                  <Box>
+                    <Typography variant="overline" color="primary">
+                      Your consultant’s assessment
+                    </Typography>
+                    <Typography variant="h2">Published assessment</Typography>
+                  </Box>
+                  <Chip
+                    color="primary"
+                    label={current.recommendation.replaceAll('_', ' ').toLowerCase()}
+                  />
+                </Stack>
+                <Typography>
+                  {projection?.analysisSummary || 'No published summary was supplied.'}
+                </Typography>
+                <DraftPublicationStatus state="published" owner="Your consultant" />
+                <Typography variant="caption" color="text.secondary">
+                  Published {publishedDate}. See the report date below for the age of the source
+                  information.
+                </Typography>
               </Stack>
-              <Typography>
-                {projection?.analysisSummary || 'No published summary was supplied.'}
-              </Typography>
-              <DraftPublicationStatus state="published" owner="Your consultant" />
-              <Typography variant="caption" color="text.secondary">
-                Published {publishedDate}. See the report date below for the age of the source
-                information.
-              </Typography>
-            </Stack>
+            </Box>
+            {!consultant && data.workspace && <CreditNextStep workspace={data.workspace} />}
           </Box>
           <PublishedCreditFacts
             profile={profile}
@@ -268,23 +320,8 @@ function CreditCenterContent({
           )}
         </>
       )}
-      {!consultant && data.workspace && view === 'overview' && (
-        <Stack spacing={1} sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
-          <Typography variant="overline">Your next step</Typography>
-          <Typography variant="h3">{data.workspace.currentFocus.title}</Typography>
-          <Typography color="text.secondary">{data.workspace.currentFocus.detail}</Typography>
-          <Typography variant="body2">
-            Actions remaining: {data.workspace.plan.openActionCount} ·{' '}
-            {data.workspace.plan.completedActionCount} completed
-          </Typography>
-          <Button
-            component={Link}
-            to={data.workspace.currentFocus.action}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            {data.workspace.currentFocus.actionLabel}
-          </Button>
-        </Stack>
+      {!current && !consultant && data.workspace && view === 'overview' && (
+        <CreditNextStep workspace={data.workspace} />
       )}
       {current && view === 'profile' && (
         <PublishedCreditFacts
@@ -388,6 +425,48 @@ function CreditCenterContent({
           />
         </ArchetypeCanvas>
       )}
+    </Stack>
+  );
+}
+
+function CreditNextStep({ workspace }: { workspace: CreditWorkspaceRead }) {
+  return (
+    <Stack
+      component="section"
+      aria-label="Your next step"
+      spacing={2}
+      sx={{
+        p: { xs: 3, md: 4 },
+        borderRadius: '24px',
+        border: 1,
+        borderColor: 'divider',
+        background: designTokens.gradient.focus,
+        justifyContent: 'space-between',
+      }}
+    >
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+        <NearMeRounded sx={{ color: 'primary.main' }} />
+        <Typography variant="overline">Your next step</Typography>
+      </Stack>
+      <Box>
+        <Typography variant="h3">{workspace.currentFocus.title}</Typography>
+        <Typography color="text.secondary" sx={{ mt: 1.5 }}>
+          {workspace.currentFocus.detail}
+        </Typography>
+      </Box>
+      <Typography variant="body2">
+        Actions remaining: {workspace.plan.openActionCount} · {workspace.plan.completedActionCount}{' '}
+        completed
+      </Typography>
+      <Button
+        component={Link}
+        to={workspace.currentFocus.action}
+        endIcon={<ArrowForwardRounded />}
+        variant="contained"
+        sx={{ alignSelf: 'flex-start' }}
+      >
+        {workspace.currentFocus.actionLabel}
+      </Button>
     </Stack>
   );
 }
