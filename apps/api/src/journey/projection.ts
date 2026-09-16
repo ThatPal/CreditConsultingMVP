@@ -130,6 +130,16 @@ export function resolveCurrentFocus(input: FocusInput) {
       actionLabel: 'View your Plan',
       action: '/app/plan',
     };
+  if (input.plan?.professionalVerificationCount)
+    return {
+      code: 'PLAN_CHECK',
+      title: 'Your Plan has a verification step',
+      detail:
+        'These steps require verification before they can be completed. You do not need to submit a response.',
+      owner: input.plan.professionalVerificationOwner,
+      actionLabel: 'View your Plan',
+      action: '/app/plan',
+    };
   if (input.activeNurture)
     return {
       code: 'NURTURE',

@@ -32,6 +32,12 @@ const plan = (id: string) => ({
         {
           id,
           type: 'ACTION',
+          availability: {
+            canRespond: true,
+            canSubmitCompletion: true,
+            canRequestHelp: true,
+            reason: null,
+          },
           completionMode: 'ACKNOWLEDGEMENT',
           owner: 'CLIENT',
           status: 'AVAILABLE',

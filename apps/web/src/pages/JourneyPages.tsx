@@ -107,13 +107,15 @@ export function JourneySummary({
   const appointment = data.foundations.appointment;
   const hasAppointment = appointment.status === 'BOOKED' && Boolean(appointment.startsAt);
   const owner =
-    focus.owner === 'CONSULTANT'
-      ? staff
-        ? 'Consultant'
-        : 'Your consultant'
-      : staff
-        ? 'Client'
-        : 'You';
+    focus.owner === 'SYSTEM'
+      ? 'Automated check'
+      : focus.owner === 'CONSULTANT'
+        ? staff
+          ? 'Consultant'
+          : 'Your consultant'
+        : staff
+          ? 'Client'
+          : 'You';
   return (
     <Stack spacing={4}>
       <Box

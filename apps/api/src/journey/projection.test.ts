@@ -8,7 +8,12 @@ import {
 
 describe('canonical journey focus', () => {
   test('counts unfinished actions, excluding guidance, milestones and cancelled work', () => {
-    const item = { id: 'item', owner: 'CLIENT', title: 'A step' };
+    const item = {
+      id: 'item',
+      owner: 'CLIENT',
+      completionMode: 'ACKNOWLEDGEMENT',
+      title: 'A step',
+    };
     const summary = summarizePlan({
       status: 'ACTIVE',
       version: {
@@ -51,7 +56,14 @@ describe('canonical journey focus', () => {
       status: 'STALE',
       version: {
         items: [
-          { id: 'item', type: 'ACTION', status: 'AVAILABLE', owner: 'CLIENT', title: 'Apply' },
+          {
+            id: 'item',
+            type: 'ACTION',
+            status: 'AVAILABLE',
+            owner: 'CLIENT',
+            completionMode: 'ACKNOWLEDGEMENT',
+            title: 'Apply',
+          },
         ],
       },
     });

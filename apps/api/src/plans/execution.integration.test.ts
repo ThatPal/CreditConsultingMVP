@@ -686,8 +686,14 @@ describe('consequential client Plan execution', () => {
     };
     const first = await saveResponseDraft(prisma, clientId, draftStepId, clientUserId, input);
     expect(first.draft).toMatchObject({ revision: 1, note: 'Work in progress' });
-    const savedEvent = await prisma.outboxEvent.findUnique({ where: { eventKey: `plan.response-draft.saved:${first.draft!.id}:1` } });
-    expect(savedEvent?.payload).toEqual({ clientId, targetUserId: clientUserId, domains: ['plan-drafts'] });
+    const savedEvent = await prisma.outboxEvent.findUnique({
+      where: { eventKey: `plan.response-draft.saved:${first.draft!.id}:1` },
+    });
+    expect(savedEvent?.payload).toEqual({
+      clientId,
+      targetUserId: clientUserId,
+      domains: ['plan-drafts'],
+    });
     expect(
       (await getResponseDraft(prisma, clientId, draftStepId, clientUserId)).draft?.values,
     ).toEqual({
@@ -707,7 +713,11 @@ describe('consequential client Plan execution', () => {
         contextVersion: '2000-01-01T00:00:00.000Z',
       }),
     ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONTEXT_CHANGED' });
-    expect(await prisma.outboxEvent.count({ where: { aggregateId: first.draft!.id, eventType: 'plan.response-draft.saved' } })).toBe(1);
+    expect(
+      await prisma.outboxEvent.count({
+        where: { aggregateId: first.draft!.id, eventType: 'plan.response-draft.saved' },
+      }),
+    ).toBe(1);
     expect(await prisma.planItemOutcome.count({ where: { planItemId: draftStepId } })).toBe(0);
     expect(await prisma.workItem.count({ where: { sourceId: draftStepId } })).toBe(0);
     await saveResponseDraft(prisma, clientId, draftStepId, clientUserId, {
@@ -1110,9 +1120,15 @@ describe('consequential client Plan execution', () => {
         revision: updated.revision,
       }),
     ).toEqual({ discarded: true });
-    const discardedEvents = await prisma.outboxEvent.findMany({ where: { aggregateId: updated.id, eventType: 'plan.response-draft.discarded' } });
+    const discardedEvents = await prisma.outboxEvent.findMany({
+      where: { aggregateId: updated.id, eventType: 'plan.response-draft.discarded' },
+    });
     expect(discardedEvents).toHaveLength(1);
-    expect(discardedEvents[0]!.payload).toEqual({ clientId, targetUserId: clientUserId, domains: ['plan-drafts'] });
+    expect(discardedEvents[0]!.payload).toEqual({
+      clientId,
+      targetUserId: clientUserId,
+      domains: ['plan-drafts'],
+    });
     const recreated = (await saveResponseDraft(prisma, clientId, item.id, clientUserId, input))
       .draft!;
     expect(recreated.revision).toBe(1);
@@ -1196,5 +1212,51 @@ describe('consequential client Plan execution', () => {
     expect(JSON.stringify(all)).not.toContain('Never client-visible');
     expect((await listResponseDrafts(prisma, randomUUID(), clientUserId)).drafts).toEqual([]);
     expect((await listResponseDrafts(prisma, clientId, randomUUID())).drafts).toEqual([]);
+  });
+
+  test('legacy inconsistent verification ownership exposes no response action and rejects drafts', async () => {
+    const created = await createPlanDraft(prisma, clientId, {
+      title: 'Verification only',
+      purpose: 'PREPARATION',
+      items: [
+        {
+          stableKey: 'verify',
+          type: 'ACTION',
+          owner: 'CONSULTANT',
+          completionMode: 'CONSULTANT_VERIFY',
+          clientTitle: 'Consultant confirmation',
+          sortOrder: 0,
+        },
+      ],
+      dependencies: [],
+    });
+    await approvePlan(prisma, clientId, created.planId, consultantId);
+    // Publication validation prevents this mismatch in new Plans. Simulate an
+    // inconsistent legacy row to verify fail-closed reads and draft writes.
+    await prisma.planItem.updateMany({
+      where: { planVersionId: created.versionId },
+      data: { owner: 'CLIENT' },
+    });
+    const view = await getClientPlan(prisma, clientId);
+    const step = view.plan!.version.items[0]!;
+    expect(step.availability).toMatchObject({
+      canRespond: false,
+      canSubmitCompletion: false,
+      reason: 'VERIFICATION_REQUIRED',
+    });
+    expect(view.summary.nextClientItem).toBeNull();
+    const draft = await getResponseDraft(prisma, clientId, step.id, clientUserId);
+    expect(draft.active).toBe(false);
+    await expect(
+      saveResponseDraft(prisma, clientId, step.id, clientUserId, {
+        expectedRevision: 0,
+        contextVersion: draft.contextVersion,
+        values: {},
+        note: 'Should not save',
+        help: false,
+        documentIds: [],
+      }),
+    ).rejects.toMatchObject({ code: 'PLAN_DRAFT_CONTEXT_CHANGED' });
+    expect(await prisma.planResponseDraft.count({ where: { itemId: step.id } })).toBe(0);
   });
 });

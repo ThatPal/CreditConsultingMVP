@@ -46,6 +46,12 @@ describe('consultant Plan Builder continuity', () => {
               {
                 id: 'item',
                 type: 'ACTION',
+                availability: {
+                  canRespond: true,
+                  canSubmitCompletion: true,
+                  canRequestHelp: true,
+                  reason: null,
+                },
                 completionMode: 'ACKNOWLEDGEMENT',
                 status: 'AVAILABLE',
                 owner,
@@ -102,6 +108,12 @@ describe('consultant Plan Builder continuity', () => {
               {
                 stableKey: 'saved-step',
                 type: 'ACTION',
+                availability: {
+                  canRespond: true,
+                  canSubmitCompletion: true,
+                  canRequestHelp: true,
+                  reason: null,
+                },
                 completionMode: 'ACKNOWLEDGEMENT',
                 owner: 'CLIENT',
                 clientTitle: 'Keep this saved action',
@@ -231,6 +243,12 @@ test('removes the draft form after successful client completion while retaining 
             {
               id: 'step',
               type: 'ACTION',
+              availability: {
+                canRespond: true,
+                canSubmitCompletion: true,
+                canRequestHelp: true,
+                reason: null,
+              },
               completionMode: 'ACKNOWLEDGEMENT',
               status: completed ? 'COMPLETED' : 'AVAILABLE',
               owner: 'CLIENT',
@@ -309,6 +327,12 @@ test.each([true, false])(
               title: 'One visible step',
               body: 'Details',
               type: 'ACTION',
+              availability: {
+                canRespond: true,
+                canSubmitCompletion: true,
+                canRequestHelp: true,
+                reason: null,
+              },
               owner: 'CLIENT',
               status: 'AVAILABLE',
               completionMode: 'ACKNOWLEDGEMENT',
@@ -343,3 +367,68 @@ test.each([true, false])(
       expect(screen.getByText(/current Plan status is unavailable/)).toBeInTheDocument();
   },
 );
+
+test.each([
+  undefined,
+  {
+    canRespond: false,
+    canSubmitCompletion: false,
+    canRequestHelp: false,
+    reason: 'VERIFICATION_REQUIRED',
+  },
+])('does not offer a response without item permission', async (availability) => {
+  mockedApi.mockReset();
+  mockedApi.mockImplementation(async (path) =>
+    path.endsWith('/draft')
+      ? { active: false, draft: null }
+      : {
+          summary: {
+            status: 'ACTIVE',
+            canRespond: true,
+            openActionCount: 1,
+            completedActionCount: 0,
+            totalActionCount: 1,
+            progressPercent: 0,
+            nextClientItem: null,
+          },
+          plan: {
+            id: 'plan',
+            title: 'Verification step',
+            status: 'ACTIVE',
+            version: {
+              staleAt: null,
+              items: [
+                {
+                  id: 'step',
+                  type: 'ACTION',
+                  status: 'AVAILABLE',
+                  owner: 'CLIENT',
+                  completionMode: 'CONSULTANT_VERIFY',
+                  title: 'Confirm evidence',
+                  body: 'Your consultant verifies this step.',
+                  deepLink: null,
+                  prerequisites: [],
+                  availability,
+                },
+              ],
+            },
+          },
+        },
+  );
+  render(
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <ClientPlanPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+  await screen.findByRole('heading', { name: 'Verification step' });
+  expect(
+    screen.queryByRole('textbox', { name: 'Optional note for your consultant' }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Save completed step' })).not.toBeInTheDocument();
+  if (availability)
+    expect(screen.getByText(/requires consultant or system verification/)).toBeInTheDocument();
+});

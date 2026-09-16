@@ -37,6 +37,12 @@ import { ResponseHistory, type ResponseItem } from '../features/plans/PlanRespon
 import type { PlanItem as Item } from '../features/plans/editor';
 
 export type ClientPlanItem = ResponseItem & {
+  availability?: {
+    canRespond: boolean;
+    canSubmitCompletion: boolean;
+    canRequestHelp: boolean;
+    reason: string | null;
+  };
   stableKey?: string;
   id: string;
   type: Item['type'];
@@ -318,14 +324,23 @@ export function ClientPlanPage() {
                       Go to the related step
                     </Button>
                   )}
-                  <PlanFollowUp item={item} canAct={canAct} />
+                  {item.availability?.reason === 'VERIFICATION_REQUIRED' && (
+                    <Typography color="text.secondary">
+                      This step requires consultant or system verification. You do not need to
+                      submit a response.
+                    </Typography>
+                  )}
+                  <PlanFollowUp
+                    item={item}
+                    canAct={canAct && item.availability?.canRespond === true}
+                  />
                   {item.owner === 'CLIENT' &&
                     ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
                     item.type !== 'MILESTONE' && (
                       <SavedPlanResponse
                         key={`response:${item.id}:${item.latestOutcomeId}`}
                         item={item}
-                        readOnly={!canAct}
+                        readOnly={!canAct || item.availability?.canRespond !== true}
                       />
                     )}
                   <ResponseHistory key={`${item.id}:${item.latestOutcomeId}`} item={item} />

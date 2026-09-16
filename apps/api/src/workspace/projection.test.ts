@@ -17,6 +17,7 @@ test('counts Actions separately and never equates submission with completion', (
   const item = {
     id: 'item',
     owner: 'CLIENT',
+    completionMode: 'ACKNOWLEDGEMENT',
     title: 'Client step',
     type: 'ACTION',
     consultantRationale: 'private',
@@ -59,7 +60,16 @@ test.each([
     status: String(status),
     version: {
       staleAt,
-      items: [{ id: 'step', type: 'ACTION', owner: 'CLIENT', title: 'Step', status: 'AVAILABLE' }],
+      items: [
+        {
+          id: 'step',
+          type: 'ACTION',
+          owner: 'CLIENT',
+          completionMode: 'ACKNOWLEDGEMENT',
+          title: 'Step',
+          status: 'AVAILABLE',
+        },
+      ],
     },
   });
   expect(result.canRespond).toBe(false);

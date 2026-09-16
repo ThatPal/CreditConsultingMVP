@@ -1,3 +1,4 @@
+import { clientItemAvailability } from '../plans/clientAvailability.js';
 // U1 read adapter over published PlanVersion/PlanItem. U4 replaces the source
 // with CreditPlan/PlanItem; it must preserve these Action/Guidance distinctions.
 type PlanRead = {
@@ -7,7 +8,14 @@ type PlanRead = {
     id?: string;
     version?: number;
     staleAt?: Date | string | null;
-    items: Array<{ id: string; type: string; status: string; owner: string; title: string }>;
+    items: Array<{
+      id: string;
+      type: string;
+      status: string;
+      owner: string;
+      title: string;
+      completionMode?: string;
+    }>;
   };
 } | null;
 
@@ -24,12 +32,22 @@ export function summarizePlan(plan: PlanRead) {
   const nextClientItem = canRespond
     ? items.find(
         (item) =>
-          item.owner === 'CLIENT' &&
-          item.type !== 'MILESTONE' &&
-          ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
+          clientItemAvailability({ status: plan!.status, staleAt: plan!.version.staleAt }, item)
+            .canRespond,
       )
     : undefined;
+  const verificationSteps = items.filter(
+    (item) =>
+      ['AVAILABLE', 'IN_PROGRESS'].includes(item.status) &&
+      ['CONSULTANT_VERIFY', 'SYSTEM_VERIFY'].includes(item.completionMode ?? ''),
+  );
   return {
+    professionalVerificationCount: verificationSteps.length,
+    professionalVerificationOwner: verificationSteps.some(
+      (item) => item.completionMode === 'CONSULTANT_VERIFY',
+    )
+      ? 'CONSULTANT'
+      : 'SYSTEM',
     status: stale ? 'STALE' : (plan?.status ?? 'NOT_AVAILABLE'),
     source: plan
       ? {

@@ -1,4 +1,5 @@
 import type { PlanLifecycleStatus } from '../generated/prisma/enums.js';
+import { clientItemAvailability } from './clientAvailability.js';
 import { summarizePlan } from '../workspace/projection.js';
 import { createHash } from 'node:crypto';
 import {
@@ -784,6 +785,10 @@ export function clientSafeVersion(
         dueAt: item.dueAt,
         deepLink: item.deepLink,
         responseForm: clientResponseForm(item.outcomeSchema, item.completionMode),
+        availability: clientItemAvailability(version, {
+          ...item,
+          responseForm: clientResponseForm(item.outcomeSchema, item.completionMode),
+        }),
         prerequisites: item.prerequisites.map(({ prerequisiteItem }) => ({
           id: prerequisiteItem.id,
           title: prerequisiteItem.clientTitle,
@@ -1703,9 +1708,10 @@ async function responseDraftContext(
     version: version!,
     active:
       plan?.status === 'ACTIVE' &&
-      version?.status === 'ACTIVE' &&
-      !version.staleAt &&
-      ['AVAILABLE', 'IN_PROGRESS'].includes(item.status),
+      clientItemAvailability(version!, {
+        ...item,
+        responseForm: clientResponseForm(item.outcomeSchema, item.completionMode),
+      }).canRespond,
   };
 }
 export async function getResponseDraft(

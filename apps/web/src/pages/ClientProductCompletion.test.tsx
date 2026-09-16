@@ -50,6 +50,12 @@ describe('APC Wave 3 client product contracts', () => {
             items: ['one', 'two'].map((id) => ({
               id,
               type: 'ACTION',
+              availability: {
+                canRespond: true,
+                canSubmitCompletion: true,
+                canRequestHelp: true,
+                reason: null,
+              },
               owner: 'CLIENT',
               completionMode: 'STRUCTURED_OUTCOME',
               status: 'AVAILABLE',
