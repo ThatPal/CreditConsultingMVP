@@ -6,6 +6,7 @@ import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import CheckRounded from '@mui/icons-material/CheckRounded';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import CreditScoreRounded from '@mui/icons-material/CreditScoreRounded';
+import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
 import InsightsRounded from '@mui/icons-material/InsightsRounded';
 import RouteRounded from '@mui/icons-material/RouteRounded';
@@ -30,7 +31,7 @@ export const creditCenterAreas = [
     id: 'overview',
     title: 'Overview',
     detail: 'Your credit picture in context.',
-    icon: CreditScoreRounded,
+    icon: HomeOutlined,
   },
   {
     id: 'profile',
@@ -72,14 +73,13 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
   const [open, setOpen] = useState(false);
   const [search] = useSearchParams();
   const review = search.get('review');
+  const selectedArea = creditCenterAreas.find((a) => a.id === area)!;
+  const AreaIcon = selectedArea.icon;
   const path = (id: CreditCenterArea) =>
     creditCenterPath(id) + (review ? '?review=' + encodeURIComponent(review) : '');
   if (!wide)
     return (
       <>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-          SECTION
-        </Typography>
         <Button
           fullWidth
           aria-label={
@@ -90,17 +90,32 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
           onClick={() => setOpen(true)}
           endIcon={<ExpandMoreRounded />}
           sx={{
-            height: 50,
+            minHeight: 62,
             px: 2,
             justifyContent: 'space-between',
             border: 1,
             borderColor: (t) => alpha(t.palette.primary.main, 0.24),
-            borderRadius: 1.5,
+            borderRadius: '10px',
             color: 'text.primary',
-            bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
+            background: portalSurfaces.panel,
           }}
         >
-          {creditCenterAreas.find((a) => a.id === area)!.title}
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, textAlign: 'left' }}>
+            <AreaIcon color="primary" />
+            <Box>
+              <Typography
+                component="span"
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block' }}
+              >
+                Section
+              </Typography>
+              <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>
+                {selectedArea.title}
+              </Typography>
+            </Box>
+          </Stack>
         </Button>
         <Dialog
           open={open}
@@ -119,7 +134,7 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
                 borderBottomLeftRadius: 0,
                 borderBottomRightRadius: 0,
                 backgroundImage: 'none',
-                bgcolor: portalSurfaces.chrome,
+                background: portalSurfaces.overlay,
                 pb: 'env(safe-area-inset-bottom)',
               },
             },
@@ -188,7 +203,7 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
             px: 2.5,
             py: 1.75,
             position: 'relative',
-            borderRadius: '8px 8px 0 0',
+            borderRadius: 0,
             fontWeight: id === area ? 700 : 500,
             bgcolor: id === area ? (t) => alpha(t.palette.primary.main, 0.07) : 'transparent',
             color: id === area ? 'primary.light' : 'text.secondary',

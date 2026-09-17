@@ -64,4 +64,6 @@ Final `pnpm --filter @credit/web build` **passed** (TypeScript project build and
 
 ## Review gate
 
+Follow-up shell correction: see [updated reference comparison, changed files, tests and screenshots](../evidence/ui-shell-correction/README.md). This supersedes the initial shell screenshots/branding treatment while leaving Overview content and the backend deferral unchanged.
+
 UI-F01/UI-F02/UI-F03 only. Visual review remains required. No UI-F04 or later Credit Center implementation began. Atomic publication remains explicitly deferred; no production readiness claim follows from these UI checks.

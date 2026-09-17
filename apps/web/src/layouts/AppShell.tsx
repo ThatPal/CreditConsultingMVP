@@ -1,3 +1,4 @@
+import { PortalBrand } from './PortalBrand';
 import { ClientPortalNavigation } from './ClientPortalNavigation';
 import { portalSurfaces } from '../theme/portalSurfaces';
 import CloseRounded from '@mui/icons-material/CloseRounded';
@@ -300,7 +301,7 @@ export function AppShell({
       document.body.scrollTop = 0;
     }
   }, [location.pathname, location.hash]);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const queryClient = useQueryClient();
   const notificationsQuery = useQuery({
     queryKey: ['notifications'],
@@ -473,22 +474,34 @@ export function AppShell({
             >
               <MenuRounded />
             </IconButton>
-            <Box sx={{ display: { lg: 'none' } }}>
-              <Brand compact />
-            </Box>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                ml: { xs: role === 'client' ? 1.5 : 'auto', lg: 0 },
-                display: role === 'client' ? 'block' : { xs: 'none', sm: 'block' },
-                ...(role === 'client' ? { fontSize: { xs: 12, sm: 14 } } : {}),
-              }}
-            >
-              {role === 'client'
-                ? 'Credit Strategy · ' + (activeItem?.label ?? 'Client portal')
-                : shellLabel}
-            </Typography>
+            {role === 'client' ? (
+              <>
+                <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
+                  <PortalBrand compact />
+                </Box>
+                <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
+                  <Typography sx={{ fontWeight: 650 }}>
+                    Welcome back{user?.firstName ? ', ' + user.firstName : ''}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Your strategy. Your next opportunity.
+                  </Typography>
+                </Box>
+              </>
+            ) : (
+              <>
+                <Box sx={{ display: { lg: 'none' } }}>
+                  <Brand compact />
+                </Box>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ ml: { xs: 'auto', lg: 0 }, display: { xs: 'none', sm: 'block' } }}
+                >
+                  {shellLabel}
+                </Typography>
+              </>
+            )}
             {role === 'consultant' && (
               <Autocomplete
                 size="small"
@@ -585,12 +598,34 @@ export function AppShell({
                     sx={{
                       width: 34,
                       height: 34,
-                      bgcolor: 'rgba(155, 120, 255, 0.2)',
-                      color: 'secondary.light',
+                      bgcolor:
+                        role === 'client' ? 'rgba(102,216,189,.16)' : 'rgba(155, 120, 255, 0.2)',
+                      color: role === 'client' ? 'primary.light' : 'secondary.light',
                     }}
                   >
-                    <AccountCircleRounded fontSize="small" />
+                    {role === 'client' && user?.firstName ? (
+                      user.firstName[0]?.toUpperCase()
+                    ) : (
+                      <AccountCircleRounded fontSize="small" />
+                    )}
                   </Avatar>
+                  {role === 'client' && (
+                    <Box
+                      sx={{
+                        display: { xs: 'none', lg: 'block' },
+                        textAlign: 'left',
+                        ml: 1.5,
+                        mr: 1,
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 650 }}>
+                        {user?.firstName ?? 'Your account'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Client Portal
+                      </Typography>
+                    </Box>
+                  )}
                 </IconButton>
               </Tooltip>
             </Stack>
@@ -676,7 +711,19 @@ export function AppShell({
           anchorEl={accountAnchor}
           open={Boolean(accountAnchor)}
           onClose={closeAccountMenu}
-          slotProps={{ list: { id: 'account-menu', 'aria-label': 'Account menu' } }}
+          slotProps={{
+            list: { id: 'account-menu', 'aria-label': 'Account menu' },
+            paper: {
+              sx:
+                role === 'client'
+                  ? {
+                      background: portalSurfaces.overlay,
+                      border: 1,
+                      borderColor: portalSurfaces.border,
+                    }
+                  : {},
+            },
+          }}
         >
           <MenuItem
             onClick={() => {
@@ -721,7 +768,18 @@ export function AppShell({
               role: 'dialog',
               'aria-modal': true,
               'aria-labelledby': 'notification-heading',
-              sx: { width: 380, maxWidth: 'calc(100vw - 24px)', mt: 1 },
+              sx: {
+                width: 380,
+                maxWidth: 'calc(100vw - 24px)',
+                mt: 1,
+                ...(role === 'client'
+                  ? {
+                      background: portalSurfaces.overlay,
+                      border: 1,
+                      borderColor: portalSurfaces.border,
+                    }
+                  : {}),
+              },
             },
           }}
         >

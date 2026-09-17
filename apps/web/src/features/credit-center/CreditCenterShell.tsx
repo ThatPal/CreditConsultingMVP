@@ -1,6 +1,5 @@
 import { Box, Button, Stack, Typography } from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import CreditScoreRounded from '@mui/icons-material/CreditScoreRounded';
+import { portalSurfaces } from '../../theme/portalSurfaces';
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../auth/api';
@@ -58,57 +57,41 @@ export function CreditCenterHeader({
           justifyContent: 'space-between',
           alignItems: { xs: 'flex-start', lg: 'center' },
           gap: { xs: 1.5, lg: 3 },
+          px: { xs: 0, lg: 2 },
+          py: { xs: 0, lg: 1.75 },
+          border: { xs: 'none', lg: `1px solid ${portalSurfaces.border}` },
+          borderRadius: '10px',
+          background: { xs: 'none', lg: portalSurfaces.panel },
         }}
       >
-        <Box>
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                display: 'grid',
-                placeItems: 'center',
-                width: 40,
-                height: 40,
-                borderRadius: 1.5,
-                color: 'primary.main',
-                bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
-                border: 1,
-                borderColor: (t) => alpha(t.palette.primary.main, 0.22),
-              }}
-            >
-              <CreditScoreRounded aria-hidden="true" />
-            </Box>
-            <Typography variant="h1">Credit Center</Typography>
-          </Stack>
-          <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h1" sx={{ fontSize: { xs: 24, lg: 28 }, letterSpacing: '-.03em' }}>
+            Credit Center
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 14 }}>
             Your credit profile, analysis, and strategy — all in one place.
           </Typography>
         </Box>
         <Box
+          aria-label={'Viewing ' + label}
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
             flexShrink: 0,
-            color: 'text.secondary',
+            px: { xs: 0, lg: 1.75 },
+            py: { xs: 0.25, lg: 1 },
+            minWidth: { lg: 180 },
+            border: { xs: 'none', lg: `1px solid ${portalSurfaces.border}` },
+            borderRadius: '8px',
+            background: { xs: 'none', lg: portalSurfaces.panel },
           }}
         >
-          <Box
-            aria-hidden="true"
-            sx={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              bgcolor: unavailable ? 'warning.main' : 'text.secondary',
-            }}
-          />
-          <Typography variant="body2" aria-label={'Viewing ' + label}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
             {label}
-            {current && !unavailable && (
-              <Box component="span" sx={{ ml: 1, color: 'text.primary' }}>
-                {formatReportDate(current.publishedAt)}
-              </Box>
-            )}
           </Typography>
+          {current && !unavailable && (
+            <Typography variant="body2" sx={{ mt: 0.25 }}>
+              {formatReportDate(current.publishedAt)}
+            </Typography>
+          )}
         </Box>
       </Stack>
       {unavailable && (
@@ -146,7 +129,7 @@ export function CreditCenterHeader({
           </Button>
         </Stack>
       )}
-      <Box sx={{ mt: { xs: 2, lg: 3 } }}>
+      <Box sx={{ mt: { xs: 1.5, lg: 1 } }}>
         <CreditCenterNavigation area={area} />
       </Box>
     </Box>

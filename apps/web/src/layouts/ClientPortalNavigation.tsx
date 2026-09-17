@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
-  Button,
   ButtonBase,
   Dialog,
   DialogContent,
@@ -19,9 +18,47 @@ import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import LogoutRounded from '@mui/icons-material/LogoutRounded';
 import LockOutlined from '@mui/icons-material/LockOutlined';
+import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded';
+import HomeOutlined from '@mui/icons-material/HomeOutlined';
+import MapOutlined from '@mui/icons-material/MapOutlined';
+import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
+import CreditCardOutlined from '@mui/icons-material/CreditCardOutlined';
+import LayersOutlined from '@mui/icons-material/LayersOutlined';
+import ChatBubbleOutlineRounded from '@mui/icons-material/ChatBubbleOutlineRounded';
+import PersonOutlineRounded from '@mui/icons-material/PersonOutlineRounded';
+import { PortalBrand } from './PortalBrand';
 import { useAuth } from '../auth/AuthProvider';
 import { activeNavigationId, type NavigationItem } from './navigation';
 import { portalSurfaces } from '../theme/portalSurfaces';
+
+const portalIcons: Record<string, typeof HomeOutlined> = {
+  'portal-home': HomeOutlined,
+  'portal-journey': MapOutlined,
+  'portal-credit': DescriptionOutlined,
+  'portal-cards': CreditCardOutlined,
+  'portal-services': LayersOutlined,
+  'portal-support': ChatBubbleOutlineRounded,
+  'portal-documents': DescriptionOutlined,
+  'portal-account': PersonOutlineRounded,
+};
+// Identical geometry for links and actions; no Button startIcon negative margins.
+const rowStyle = {
+  width: '100%',
+  minHeight: 46,
+  display: 'flex',
+  justifyContent: 'flex-start',
+  gap: 1.75,
+  px: 2,
+  py: 1.25,
+  mb: 0.5,
+  borderRadius: '8px',
+  textAlign: 'left',
+  border: '1px solid transparent',
+  color: 'text.secondary',
+  '&:hover': { background: portalSurfaces.selected },
+  '& > svg:first-of-type': { width: 22, height: 22, flexShrink: 0 },
+  '& > .MuiTypography-root': { fontSize: 14, fontWeight: 500, flex: 1 },
+} as const;
 
 export function SecureWorkspace() {
   return (
@@ -32,7 +69,7 @@ export function SecureWorkspace() {
         p: 2,
         border: 1,
         borderColor: portalSurfaces.border,
-        borderRadius: 2,
+        borderRadius: '10px',
         background: portalSurfaces.panel,
         alignItems: 'center',
       }}
@@ -69,50 +106,46 @@ export function ClientPortalNavigation({
   const direct = primary.slice(0, 4);
   const utilities = items.filter((i) => i.section === 'utility');
   const rows = (entries: NavigationItem[]) =>
-    entries.map(({ id, path, label, icon: Icon }) => (
-      <ButtonBase
-        key={id}
-        component={Link}
-        to={path}
-        onClick={() => setOpen(false)}
-        aria-current={active === id ? 'page' : undefined}
-        sx={{
-          width: '100%',
-          justifyContent: 'flex-start',
-          gap: 1.75,
-          px: 2,
-          py: 1.35,
-          mb: 0.4,
-          borderRadius: 1,
-          textAlign: 'left',
-          borderLeft: '2px solid',
-          borderColor: active === id ? 'primary.main' : 'transparent',
-          color: active === id ? 'text.primary' : 'text.secondary',
-          background: active === id ? portalSurfaces.selected : 'transparent',
-          '&:hover': { bgcolor: 'action.hover' },
-        }}
-      >
-        <Icon sx={{ fontSize: 21, color: active === id ? 'primary.main' : 'inherit' }} />
-        <Typography variant="body2" sx={{ fontWeight: active === id ? 700 : 500 }}>
-          {label}
-        </Typography>
-      </ButtonBase>
-    ));
+    entries.map(({ id, path, label, icon }) => {
+      const Icon = portalIcons[id] ?? icon;
+      return (
+        <ButtonBase
+          key={id}
+          component={Link}
+          to={path}
+          onClick={() => setOpen(false)}
+          aria-current={active === id ? 'page' : undefined}
+          sx={{
+            ...rowStyle,
+            borderColor: active === id ? portalSurfaces.border : 'transparent',
+            boxShadow:
+              active === id ? 'inset 2px 0 #66d8bd, 0 0 16px rgba(37,207,174,.07)' : 'none',
+            color: active === id ? 'text.primary' : 'text.secondary',
+            background: active === id ? portalSurfaces.selected : 'transparent',
+            '&:hover': { bgcolor: 'action.hover' },
+          }}
+        >
+          <Icon sx={{ fontSize: 21, color: active === id ? 'primary.main' : 'inherit' }} />
+          <Typography variant="body2" sx={{ fontWeight: active === id ? 700 : 500 }}>
+            {label}
+          </Typography>
+          {!desktop && <ChevronRightRounded sx={{ fontSize: 18, opacity: 0.7 }} />}
+        </ButtonBase>
+      );
+    });
   const accountActions = (
     <>
-      <Button
-        fullWidth
+      <ButtonBase
         component={Link}
         to="/app/account/security"
-        startIcon={<SettingsOutlined />}
         onClick={() => setOpen(false)}
-        sx={{ justifyContent: 'flex-start', px: 2, color: 'text.secondary' }}
+        sx={rowStyle}
       >
-        Settings
-      </Button>
-      <Button
-        fullWidth
-        startIcon={<LogoutRounded />}
+        <SettingsOutlined />
+        <Typography>Settings</Typography>
+        {!desktop && <ChevronRightRounded sx={{ fontSize: 18, opacity: 0.7 }} />}
+      </ButtonBase>
+      <ButtonBase
         onClick={async () => {
           try {
             await logout();
@@ -121,10 +154,11 @@ export function ClientPortalNavigation({
             setError(true);
           }
         }}
-        sx={{ justifyContent: 'flex-start', px: 2, color: 'text.secondary' }}
+        sx={rowStyle}
       >
-        Sign Out
-      </Button>
+        <LogoutRounded />
+        <Typography>Sign Out</Typography>
+      </ButtonBase>
       {error && <Alert severity="error">Sign out could not be completed. Please try again.</Alert>}
     </>
   );
@@ -142,38 +176,22 @@ export function ClientPortalNavigation({
           borderColor: portalSurfaces.border,
         }}
       >
-        <Stack direction="row" spacing={1.5} sx={{ p: 3, alignItems: 'center' }}>
-          <Box
-            aria-hidden
-            sx={{ color: 'primary.main', fontSize: 34, fontWeight: 800, lineHeight: 1 }}
-          >
-            C<span style={{ color: 'white', fontSize: 18 }}>.</span>
-          </Box>
-          <Box>
-            <Typography sx={{ fontWeight: 750, fontSize: 16 }}>Credit Strategy</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Your private advisory workspace
-            </Typography>
-          </Box>
-        </Stack>
+        <Box sx={{ px: 2.5, py: 3, borderBottom: 1, borderColor: portalSurfaces.border, mb: 2 }}>
+          <PortalBrand />
+        </Box>
         <Box component="nav" aria-label="Client navigation" sx={{ px: 1.5, pb: 2 }}>
           {rows(primary)}
           <Divider sx={{ my: 2 }} />
-          <Button
-            fullWidth
+          <ButtonBase
             aria-expanded={expanded}
             aria-controls="portal-more-desktop"
             onClick={() => setExpanded(!expanded)}
-            startIcon={<MoreHorizRounded />}
-            endIcon={
-              <ExpandMoreRounded
-                sx={{ ml: 'auto', transform: expanded ? 'rotate(180deg)' : 'none' }}
-              />
-            }
-            sx={{ justifyContent: 'flex-start', color: 'text.secondary', px: 2 }}
+            sx={rowStyle}
           >
-            More
-          </Button>
+            <MoreHorizRounded />
+            <Typography>More</Typography>
+            <ExpandMoreRounded sx={{ transform: expanded ? 'rotate(180deg)' : 'none' }} />
+          </ButtonBase>
           <Box id="portal-more-desktop" hidden={!expanded}>
             {rows(utilities)}
             {accountActions}
@@ -204,30 +222,33 @@ export function ClientPortalNavigation({
           boxShadow: '0 -8px 28px rgba(0,0,0,.15)',
         }}
       >
-        {direct.map(({ id, path, label, icon: Icon }) => (
-          <ButtonBase
-            key={id}
-            component={Link}
-            to={path}
-            aria-current={active === id ? 'page' : undefined}
-            sx={{
-              minHeight: 68,
-              flexDirection: 'column',
-              gap: 0.6,
-              color: active === id ? 'primary.main' : 'text.secondary',
-              borderTop: '2px solid',
-              borderColor: active === id ? 'primary.main' : 'transparent',
-              background: active === id ? portalSurfaces.selected : 'transparent',
-            }}
-          >
-            <Icon sx={{ fontSize: 22 }} />
-            <Typography
-              sx={{ fontSize: 10.5, whiteSpace: 'nowrap', fontWeight: active === id ? 700 : 500 }}
+        {direct.map(({ id, path, label, icon }) => {
+          const Icon = portalIcons[id] ?? icon;
+          return (
+            <ButtonBase
+              key={id}
+              component={Link}
+              to={path}
+              aria-current={active === id ? 'page' : undefined}
+              sx={{
+                minHeight: 68,
+                flexDirection: 'column',
+                gap: 0.6,
+                color: active === id ? 'primary.main' : 'text.secondary',
+                '& svg': {
+                  filter: active === id ? 'drop-shadow(0 0 6px rgba(37,207,174,.35))' : 'none',
+                },
+              }}
             >
-              {label}
-            </Typography>
-          </ButtonBase>
-        ))}
+              <Icon sx={{ fontSize: 22 }} />
+              <Typography
+                sx={{ fontSize: 10.5, whiteSpace: 'nowrap', fontWeight: active === id ? 700 : 500 }}
+              >
+                {label}
+              </Typography>
+            </ButtonBase>
+          );
+        })}
         <ButtonBase
           onClick={() => setOpen(true)}
           aria-current={!direct.some((i) => i.id === active) ? 'page' : undefined}
@@ -261,12 +282,24 @@ export function ClientPortalNavigation({
               width: '100%',
               maxHeight: '88dvh',
               borderRadius: '20px 20px 0 0',
-              bgcolor: portalSurfaces.chrome,
+              background: portalSurfaces.overlay,
               pb: 'env(safe-area-inset-bottom)',
             },
           },
         }}
       >
+        <Box
+          aria-hidden="true"
+          sx={{
+            width: 44,
+            height: 4,
+            borderRadius: 2,
+            bgcolor: 'text.secondary',
+            opacity: 0.4,
+            mx: 'auto',
+            mt: 1.25,
+          }}
+        />
         <DialogTitle
           id="portal-more-heading"
           sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
