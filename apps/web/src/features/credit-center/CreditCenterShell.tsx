@@ -80,7 +80,7 @@ export function CreditCenterHeader({
             <Typography variant="h1">Credit Center</Typography>
           </Stack>
           <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-            Your credit picture, analysis, and plan.
+            Your credit profile, analysis, and strategy — all in one place.
           </Typography>
         </Box>
         <Box
@@ -103,6 +103,11 @@ export function CreditCenterHeader({
           />
           <Typography variant="body2" aria-label={'Viewing ' + label}>
             {label}
+            {current && !unavailable && (
+              <Box component="span" sx={{ ml: 1, color: 'text.primary' }}>
+                {formatReportDate(current.publishedAt)}
+              </Box>
+            )}
           </Typography>
         </Box>
       </Stack>

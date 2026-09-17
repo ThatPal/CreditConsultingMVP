@@ -1,3 +1,5 @@
+import { ClientPortalNavigation } from './ClientPortalNavigation';
+import { portalSurfaces } from '../theme/portalSurfaces';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import AccountCircleRounded from '@mui/icons-material/AccountCircleRounded';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
@@ -400,6 +402,7 @@ export function AppShell({
     <Box
       sx={{
         minHeight: '100vh',
+        ...(role === 'client' ? { background: portalSurfaces.canvas } : {}),
         height: { lg: '100vh' },
         display: 'flex',
         overflow: { lg: 'hidden' },
@@ -409,7 +412,9 @@ export function AppShell({
         component="aside"
         sx={{ width: { lg: sidebarWidth }, height: { lg: '100vh' }, flexShrink: 0 }}
       >
-        {desktop ? (
+        {role === 'client' ? (
+          <ClientPortalNavigation items={items} desktop={desktop} />
+        ) : desktop ? (
           <Sidebar items={items} dense={dense} role={role} />
         ) : (
           <Drawer
@@ -451,12 +456,12 @@ export function AppShell({
           position="sticky"
           elevation={0}
           sx={{
-            bgcolor: designTokens.color.topbar,
+            bgcolor: role === 'client' ? portalSurfaces.chrome : designTokens.color.topbar,
             backdropFilter: 'blur(18px)',
             borderBottom: `1px solid ${designTokens.color.border}`,
           }}
         >
-          <Toolbar sx={{ minHeight: { xs: 68, sm: 76 } }}>
+          <Toolbar sx={{ minHeight: role === 'client' ? { xs: 64, sm: 64 } : { xs: 68, sm: 76 } }}>
             <IconButton
               ref={navigationTrigger}
               aria-label="Open navigation"
@@ -464,7 +469,7 @@ export function AppShell({
               aria-controls="mobile-navigation"
               aria-haspopup="dialog"
               onClick={() => setOpen(true)}
-              sx={{ display: { lg: 'none' }, mr: 1 }}
+              sx={{ display: role === 'client' ? 'none' : { lg: 'none' }, mr: 1 }}
             >
               <MenuRounded />
             </IconButton>
@@ -474,9 +479,15 @@ export function AppShell({
             <Typography
               variant="body2"
               color="text.secondary"
-              sx={{ ml: { xs: 'auto', lg: 0 }, display: { xs: 'none', sm: 'block' } }}
+              sx={{
+                ml: { xs: role === 'client' ? 1.5 : 'auto', lg: 0 },
+                display: role === 'client' ? 'block' : { xs: 'none', sm: 'block' },
+                ...(role === 'client' ? { fontSize: { xs: 12, sm: 14 } } : {}),
+              }}
             >
-              {shellLabel}
+              {role === 'client'
+                ? 'Credit Strategy · ' + (activeItem?.label ?? 'Client portal')
+                : shellLabel}
             </Typography>
             {role === 'consultant' && (
               <Autocomplete
@@ -821,7 +832,7 @@ export function AppShell({
             )}
           </Box>
         </Popover>
-        {activeItem && (
+        {activeItem && role !== 'client' && (
           <Box
             component="nav"
             aria-label="Page context"
@@ -848,7 +859,11 @@ export function AppShell({
             minHeight: 0,
             flex: { lg: 1 },
             overflowY: { lg: 'auto' },
-            p: { xs: 2, sm: 3, xl: 5 },
+            p: { xs: 2, sm: 3, xl: role === 'client' ? 4 : 5 },
+            pb:
+              role === 'client'
+                ? { xs: 'calc(92px + env(safe-area-inset-bottom))', lg: 4 }
+                : undefined,
             maxWidth: dense ? 1720 : 1500,
             mx: 'auto',
           }}

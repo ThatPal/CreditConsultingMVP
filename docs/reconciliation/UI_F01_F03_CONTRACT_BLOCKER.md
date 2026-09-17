@@ -1,6 +1,12 @@
 # UI-F01–UI-F03 implementation preflight
 
-Date: 2026-09-17. Status: stopped at the package's architecture-conflict gate; UI implementation has not started.
+Date: 2026-09-17. Status: UNBLOCKED by explicit user clarification. Original preflight findings below are retained as the decision record.
+
+## Approved resolution
+
+The user authorized UI-F01–UI-F03 to use the existing independently published Review and Plan contracts. UI-F03 §13.15 is a target backend architecture requirement, explicitly deferred from this UI slice. Do not change frozen publication/domain architecture. Consume only authoritative published/current reads, never drafts or AIOutput. The screen model/adapter boundary must allow a future atomic query to replace the compatibility reads without redesigning Overview.
+
+This resolution selects option 1 below. The original stop condition is resolved; backend atomic publication remains outstanding and must not be reported complete by this UI implementation.
 
 ## Branch and scope
 

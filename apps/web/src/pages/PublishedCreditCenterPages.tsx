@@ -1,4 +1,5 @@
 import { FocusOwner } from '../components/common/FocusOwner';
+import { CreditOverview } from '../features/credit-center/CreditOverview';
 import { AnalysisFinding } from '../features/credit-center/AnalysisFinding';
 import { useCreditCenterHubRestore } from '../features/credit-center/hubPosition';
 import { CreditHistory } from '../features/credit-center/CreditHistory';
@@ -123,6 +124,7 @@ function CreditCenterContent({
   consultant?: boolean;
 }) {
   useCreditCenterHubRestore(!consultant && view === 'overview');
+  if (!consultant && view === 'overview') return <CreditOverview read={data} />;
   const current = data.current;
   const projection = current?.projection;
   const profile = projection?.profile ?? {};

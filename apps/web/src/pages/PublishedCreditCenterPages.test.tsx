@@ -127,9 +127,12 @@ describe('Sprint 8.4 published Credit Center', () => {
     );
     renderPage();
     expect(await screen.findByText('720')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /credit utilization 24 percent/i })).toBeInTheDocument();
-    expect(screen.getByText('Equifax')).toBeInTheDocument();
-    expect(screen.getByText('TransUnion')).toBeInTheDocument();
+    expect(screen.getByText('24%')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /Experian: score range unavailable/i }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Equifax').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('TransUnion').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Not available in this report').length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText(/approval probability|score improvement/i)).not.toBeInTheDocument();
   });
@@ -165,6 +168,6 @@ test('separates expired currentness from the immutable published summary', async
   renderPage();
   expect(await screen.findByText('Your published assessment has expired')).toBeInTheDocument();
   expect(screen.getByText('Original approved analysis')).toBeInTheDocument();
-  expect(screen.getByText('Actions remaining: 2 · 1 completed')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Current Priorities' })).toBeInTheDocument();
   expect(screen.getByText('Your consultant is checking your update')).toBeInTheDocument();
 });

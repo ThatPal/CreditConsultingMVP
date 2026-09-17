@@ -34,7 +34,7 @@ test.each(creditCenterAreas)(
     const trigger = screen.getByRole('button', { name: 'Credit Center section: ' + title });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(trigger);
-    const dialog = screen.getByRole('dialog', { name: 'Go to' });
+    const dialog = screen.getByRole('dialog', { name: 'Credit Center sections' });
     const links = within(dialog).getAllByRole('link');
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
       '/app/credit-center',

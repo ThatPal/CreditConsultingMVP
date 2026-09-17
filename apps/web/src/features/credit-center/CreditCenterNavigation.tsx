@@ -1,4 +1,5 @@
 import { rememberCreditCenterHub } from './hubPosition';
+import { portalSurfaces } from '../../theme/portalSurfaces';
 import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
@@ -118,11 +119,13 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
                 borderBottomLeftRadius: 0,
                 borderBottomRightRadius: 0,
                 backgroundImage: 'none',
+                bgcolor: portalSurfaces.chrome,
+                pb: 'env(safe-area-inset-bottom)',
               },
             },
           }}
         >
-          <DialogTitle id="credit-center-area-title">Go to</DialogTitle>
+          <DialogTitle id="credit-center-area-title">Credit Center sections</DialogTitle>
           <DialogContent sx={{ p: 0 }}>
             <Box component="nav" aria-label="Credit Center areas">
               {creditCenterAreas.map(({ id, title, icon: Icon }) => (
@@ -141,7 +144,7 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
                     textAlign: 'left',
                     borderTop: 1,
                     borderColor: 'divider',
-                    bgcolor: id === area ? 'action.selected' : 'transparent',
+                    background: id === area ? portalSurfaces.selected : 'transparent',
                     '&:hover': { bgcolor: 'action.hover' },
                     '&:focus-visible': {
                       outline: '2px solid',
@@ -174,11 +177,12 @@ export function CreditCenterNavigation({ area }: { area: CreditCenterArea }) {
       direction="row"
       sx={{ borderBottom: 1, borderColor: 'divider', gap: 0.5 }}
     >
-      {creditCenterAreas.map(({ id, title }) => (
+      {creditCenterAreas.map(({ id, title, icon: Icon }) => (
         <Button
           key={id}
           component={Link}
           to={path(id)}
+          startIcon={<Icon sx={{ fontSize: 18 }} />}
           aria-current={id === area ? 'page' : undefined}
           sx={{
             px: 2.5,
