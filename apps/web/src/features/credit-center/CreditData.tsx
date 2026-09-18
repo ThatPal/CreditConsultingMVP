@@ -63,7 +63,13 @@ export function CreditDataValue({
   );
 }
 
-export function BureauScoreGallery({ scores }: { scores: ScoreFact[] }) {
+export function BureauScoreGallery({
+  scores,
+  profile = false,
+}: {
+  scores: ScoreFact[];
+  profile?: boolean;
+}) {
   const [index, setIndex] = useState(0);
   const start = useRef<number | null>(null);
   const score = scores[Math.min(index, Math.max(0, scores.length - 1))];
@@ -80,6 +86,12 @@ export function BureauScoreGallery({ scores }: { scores: ScoreFact[] }) {
     <Box
       component="section"
       aria-label="Bureau scores"
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          move(e.key === 'ArrowRight' ? 1 : -1);
+        }
+      }}
       onTouchStart={(e) => {
         start.current = e.touches[0]?.clientX ?? null;
       }}
@@ -92,8 +104,10 @@ export function BureauScoreGallery({ scores }: { scores: ScoreFact[] }) {
       }}
       sx={{
         p: { xs: 2.5, md: 4 },
-        borderRadius: 3,
-        background: designTokens.gradient.data,
+        borderRadius: profile ? 0 : 3,
+        background: profile
+          ? 'linear-gradient(120deg, #f8fcfb, #e6f3ef)'
+          : designTokens.gradient.data,
         minWidth: 0,
       }}
     >
@@ -116,60 +130,77 @@ export function BureauScoreGallery({ scores }: { scores: ScoreFact[] }) {
           </Button>
         ))}
       </Stack>
-      <Box aria-live="polite" aria-atomic="true">
-        <Typography variant="overline">{score?.bureau ?? 'Credit score'}</Typography>
-        <Typography
-          sx={{
-            fontSize: score?.value != null ? { xs: 76, md: 96 } : 24,
-            fontWeight: 500,
-            letterSpacing: '-.05em',
-            lineHeight: 1.15,
-            fontVariantNumeric: 'tabular-nums',
-            my: 2,
-          }}
-        >
-          {score?.value ?? 'Not available in this report'}
-        </Typography>
-        <Typography color="text.secondary">
-          {score?.model ?? 'Scoring model not supplied'}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {score?.date
-            ? 'Report dated ' + formatReportDate(score.date)
-            : 'Report date not supplied'}
-        </Typography>
-        {suppliedRange && score && score.value !== null && (
-          <Box
-            role="img"
-            aria-label={`${score.bureau} score ${score.value}, supplied range ${suppliedRange[0]} to ${suppliedRange[1]}`}
-            sx={{ mt: 3 }}
+      <Box
+        aria-live="polite"
+        aria-atomic="true"
+        sx={
+          profile
+            ? {
+                display: { md: 'grid' },
+                gridTemplateColumns: 'minmax(220px, .75fr) minmax(0, 1fr)',
+                columnGap: 5,
+                alignItems: 'center',
+              }
+            : {}
+        }
+      >
+        <Box>
+          <Typography variant="overline">{score?.bureau ?? 'Credit score'}</Typography>
+          <Typography
+            sx={{
+              fontSize: score?.value != null ? { xs: 76, md: 96 } : 24,
+              fontWeight: 500,
+              letterSpacing: '-.05em',
+              lineHeight: 1.15,
+              fontVariantNumeric: 'tabular-nums',
+              my: 2,
+            }}
           >
-            <Box sx={{ height: 8, position: 'relative', bgcolor: 'divider', borderRadius: 4 }}>
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: `${((score!.value! - suppliedRange[0]) / (suppliedRange[1] - suppliedRange[0])) * 100}%`,
-                  top: -5,
-                  width: 4,
-                  height: 18,
-                  bgcolor: 'primary.main',
-                }}
-              />
-            </Box>
-            <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 1 }}>
-              <Typography variant="caption">{suppliedRange[0]}</Typography>
-              <Typography variant="caption">{suppliedRange[1]}</Typography>
-            </Stack>
-          </Box>
-        )}
-        {!suppliedRange && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            A rating scale is unavailable because this publication does not include the score’s
-            range.
+            {score?.value ?? 'Not available in this report'}
           </Typography>
-        )}
+        </Box>
+        <Box>
+          <Typography color="text.secondary">
+            {score?.model ?? 'Scoring model not supplied'}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {score?.date
+              ? 'Report dated ' + formatReportDate(score.date)
+              : 'Report date not supplied'}
+          </Typography>
+          {suppliedRange && score && score.value !== null && (
+            <Box
+              role="img"
+              aria-label={`${score.bureau} score ${score.value}, supplied range ${suppliedRange[0]} to ${suppliedRange[1]}`}
+              sx={{ mt: 3 }}
+            >
+              <Box sx={{ height: 8, position: 'relative', bgcolor: 'divider', borderRadius: 4 }}>
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: `${((score!.value! - suppliedRange[0]) / (suppliedRange[1] - suppliedRange[0])) * 100}%`,
+                    top: -5,
+                    width: 4,
+                    height: 18,
+                    bgcolor: 'primary.main',
+                  }}
+                />
+              </Box>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 1 }}>
+                <Typography variant="caption">{suppliedRange[0]}</Typography>
+                <Typography variant="caption">{suppliedRange[1]}</Typography>
+              </Stack>
+            </Box>
+          )}
+          {!suppliedRange && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              A rating scale is unavailable because this publication does not include the score’s
+              range.
+            </Typography>
+          )}
+        </Box>
       </Box>
-      {!!score?.factors.length && (
+      {!profile && !!score?.factors.length && (
         <Accordion>
           <AccordionSummary expandIcon={<ExpandMoreRounded />}>
             Factors included with your score
@@ -181,7 +212,15 @@ export function BureauScoreGallery({ scores }: { scores: ScoreFact[] }) {
           </AccordionDetails>
         </Accordion>
       )}
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          mt: 2,
+          ...(profile ? { maxWidth: 320 } : {}),
+        }}
+      >
         <Button aria-label="Previous bureau" disabled={index === 0} onClick={() => move(-1)}>
           <ChevronLeftRounded />
         </Button>

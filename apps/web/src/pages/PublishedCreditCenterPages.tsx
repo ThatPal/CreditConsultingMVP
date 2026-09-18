@@ -199,11 +199,19 @@ function CreditCenterContent({
           >
             <ArticleOutlined sx={{ fontSize: 30 }} />
           </Box>
-          <Typography variant="h2">No published Credit Review yet</Typography>
+          <Typography variant="h2">
+            {view === 'profile'
+              ? data.workspace?.profile?.status === 'REVIEW_IN_PROGRESS'
+                ? 'Your Credit Profile is being prepared'
+                : 'Your Credit Profile starts with a Review'
+              : 'No published Credit Review yet'}
+          </Typography>
           <Typography color="text.secondary" sx={{ maxWidth: 720 }}>
-            Your published credit facts and consultant assessment will appear here after a review is
-            completed. Check your review options to see whether you can start a review or continue
-            one already in progress.
+            {view === 'profile'
+              ? data.workspace?.profile?.status === 'REVIEW_IN_PROGRESS'
+                ? 'Your Credit Profile is being prepared as part of your Review. Published facts will appear here when it is complete.'
+                : 'Your Credit Profile will appear after your first Review is published.'
+              : 'Your published credit facts and consultant assessment will appear here after a review is completed. Check your review options to see whether you can start a review or continue one already in progress.'}
           </Typography>
           {!consultant && (
             <Button component={Link} to="/app/credit-center/review" variant="contained">
@@ -370,7 +378,13 @@ function CreditCenterContent({
       {!current && !consultant && data.workspace && view === 'overview' && (
         <CreditNextStep workspace={data.workspace} />
       )}
-      {current && view === 'profile' && <CreditProfile data={experience} />}
+      {current && view === 'profile' && (
+        <CreditProfile
+          data={experience}
+          reportDate={current.report?.reportDate ?? null}
+          publishedAt={current.publishedAt}
+        />
+      )}
       {current && view === 'report' && (
         <Stack spacing={4}>
           <Typography color="text.secondary">

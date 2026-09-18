@@ -13,16 +13,19 @@ export function ProfileEvidence({ data, section }: { data: CreditExperience; sec
         {!data.inquiries.length && (
           <Typography>No inquiries were included in this report section.</Typography>
         )}
-        {data.inquiries.map((q, i) => (
-          <Box key={i} sx={{ borderLeft: 2, borderColor: 'primary.main', pl: 2 }}>
-            <Typography>
-              {q.date} · {q.bureau}
-            </Typography>
-            <Typography>
-              {q.creditor} · {q.type ?? 'Type not supplied'}
-            </Typography>
-          </Box>
-        ))}
+        {[...data.inquiries]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .slice(0, 5)
+          .map((q, i) => (
+            <Box key={i} sx={{ borderLeft: 2, borderColor: 'primary.main', pl: 2 }}>
+              <Typography>
+                {q.date} · {q.bureau}
+              </Typography>
+              <Typography>
+                {q.creditor} · {q.type ?? 'Type not supplied'}
+              </Typography>
+            </Box>
+          ))}
       </Stack>
     );
   if (section === 'negatives')
@@ -35,7 +38,7 @@ export function ProfileEvidence({ data, section }: { data: CreditExperience; sec
         {!data.negatives.length && (
           <Typography>No negative items were included in this report section.</Typography>
         )}
-        {data.negatives.map((n, i) => (
+        {data.negatives.slice(0, 3).map((n, i) => (
           <Box key={i}>
             <Typography>
               {n.title} · {n.bureau}
@@ -58,7 +61,15 @@ export function ProfileEvidence({ data, section }: { data: CreditExperience; sec
   if (section === 'accounts') {
     const groups = Object.entries(
       accounts.reduce<Record<string, number>>((all, a) => {
-        const key = a.type ?? 'Type unknown';
+        const type = a.type?.toLowerCase();
+        const key =
+          type === 'revolving'
+            ? 'Revolving'
+            : type === 'installment'
+              ? 'Installment'
+              : type === 'mortgage'
+                ? 'Mortgage'
+                : 'Other / unknown';
         all[key] = (all[key] ?? 0) + 1;
         return all;
       }, {}),
@@ -111,42 +122,53 @@ export function ProfileEvidence({ data, section }: { data: CreditExperience; sec
   if (section === 'payment')
     return (
       <Stack spacing={2}>
-        {accounts.map((a) => (
-          <Box key={a.id}>
-            <Typography>
-              {a.creditor} · {a.paymentStatus ?? 'Payment status not supplied'}
-            </Typography>
-            <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', mt: 1 }}>
-              {a.paymentHistory.map((p, i) => (
-                <Box key={i} sx={{ border: 1, borderColor: 'divider', p: 1, borderRadius: 1 }}>
-                  <Typography variant="caption">{p.month}</Typography>
-                  <Typography variant="body2">{p.status}</Typography>
-                </Box>
-              ))}
-            </Stack>
-          </Box>
-        ))}
+        {accounts
+          .filter(
+            (a) =>
+              a.paymentStatus &&
+              !['current', 'paid', 'on time'].includes(a.paymentStatus.toLowerCase()),
+          )
+          .slice(0, 3)
+          .map((a) => (
+            <Box key={a.id}>
+              <Typography>
+                {a.creditor} · {a.paymentStatus ?? 'Payment status not supplied'}
+              </Typography>
+              <Typography variant="caption">
+                Reported {a.reportedAt ?? 'date not supplied'}
+              </Typography>
+            </Box>
+          ))}
       </Stack>
     );
   if (section === 'bureaus')
     return (
       <Stack spacing={2}>
-        {accounts.map((a) => (
-          <Box key={a.id}>
-            <Typography>{a.creditor}</Typography>
-            {a.bureaus.map((b) => (
-              <Typography key={b.name} variant="body2" color="text.secondary">
-                {b.name} · balance{' '}
-                {b.balance.value === null
-                  ? 'not available'
-                  : '$' + b.balance.value.toLocaleString()}{' '}
-                · limit{' '}
-                {b.limit.value === null ? 'not available' : '$' + b.limit.value.toLocaleString()} ·{' '}
-                {b.status ?? 'Status not supplied'}
-              </Typography>
-            ))}
-          </Box>
-        ))}
+        {accounts
+          .filter(
+            (a) =>
+              a.bureaus.length > 1 &&
+              new Set(
+                a.bureaus.map((b) => JSON.stringify([b.balance.value, b.limit.value, b.status])),
+              ).size > 1,
+          )
+          .slice(0, 5)
+          .map((a) => (
+            <Box key={a.id}>
+              <Typography>{a.creditor}</Typography>
+              {a.bureaus.map((b) => (
+                <Typography key={b.name} variant="body2" color="text.secondary">
+                  {b.name} · balance{' '}
+                  {b.balance.value === null
+                    ? 'not available'
+                    : '$' + b.balance.value.toLocaleString()}{' '}
+                  · limit{' '}
+                  {b.limit.value === null ? 'not available' : '$' + b.limit.value.toLocaleString()}{' '}
+                  · {b.status ?? 'Status not supplied'}
+                </Typography>
+              ))}
+            </Box>
+          ))}
       </Stack>
     );
   return null;

@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "liveData": "Synthetic local client, authoritative published read",
+  "fixtures": [
+    "PARTIAL",
+    "STALE",
+    "NO_REVIEW",
+    "IN_PROGRESS"
+  ],
+  "checks": [
+    "Focal bureau arrow keyboard",
+    "Independent disclosures",
+    "Anchor expands and focuses",
+    "Six inherited mobile destinations and focus restoration",
+    "No overflow: 360,390,768,1199,1200,1440",
+    "Draft/internal data hidden",
+    "Stale snapshot retained"
+  ],
+  "errors": []
+}
