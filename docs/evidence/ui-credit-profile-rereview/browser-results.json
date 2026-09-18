@@ -9,8 +9,8 @@
     "IN_PROGRESS"
   ],
   "checks": [
-    "Typed reference: five ranked account rows, model/range, capacity, secondary summaries",
-    "Workflow restrictions absent from Profile",
+    "Typed full-data reference: five ranked rows, supplied model/range, capacity, mix, inquiries, negatives, differences and source factors",
+    "Workflow restrictions absent",
     "Focal bureau arrow keyboard",
     "Independent disclosures",
     "Anchor expands and focuses",

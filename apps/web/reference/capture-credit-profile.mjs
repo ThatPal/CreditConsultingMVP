@@ -34,13 +34,29 @@ try {
       (await page.getByRole('article', { name: 'Credit Profile' }).boundingBox()).height + 700,
     );
     await page.setViewportSize({ width: before.width, height });
+    // Wait for the internal viewport to resize and paint, not just the screenshot canvas.
+    await page.waitForFunction(() => {
+      const link = [...document.querySelectorAll('a')].find(
+        (a) => a.textContent.trim() === 'See Analysis',
+      );
+      if (!link) return false;
+      const rect = link.getBoundingClientRect();
+      return (
+        document
+          .elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+          ?.closest('a') === link
+      );
+    });
+    await page.waitForTimeout(300);
     await page.screenshot({ path: out + '/' + name + '.png' });
     await page.setViewportSize(before);
+    await page.waitForTimeout(300);
   };
   await page.goto(url);
   await page.getByRole('article', { name: 'Credit Profile' }).waitFor();
   await page.waitForLoadState('networkidle');
   const check = async () => {
+    await page.waitForTimeout(300);
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,
