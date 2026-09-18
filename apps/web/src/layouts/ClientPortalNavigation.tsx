@@ -234,6 +234,9 @@ export function ClientPortalNavigation({
                 minHeight: 68,
                 flexDirection: 'column',
                 gap: 0.6,
+                borderTop: '2px solid',
+                borderColor: active === id ? 'primary.main' : 'transparent',
+                background: active === id ? portalSurfaces.selected : 'transparent',
                 color: active === id ? 'primary.main' : 'text.secondary',
                 '& svg': {
                   filter: active === id ? 'drop-shadow(0 0 6px rgba(37,207,174,.35))' : 'none',
@@ -259,6 +262,11 @@ export function ClientPortalNavigation({
             minHeight: 68,
             flexDirection: 'column',
             gap: 0.6,
+            borderTop: '2px solid',
+            borderColor: direct.some((i) => i.id === active) ? 'transparent' : 'primary.main',
+            background: direct.some((i) => i.id === active)
+              ? 'transparent'
+              : portalSurfaces.selected,
             color: direct.some((i) => i.id === active) ? 'text.secondary' : 'primary.main',
           }}
         >

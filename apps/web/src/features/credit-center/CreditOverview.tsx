@@ -1,13 +1,21 @@
 import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Alert, Box, Button, ButtonBase, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, ButtonBase, Stack, Tooltip, Typography } from '@mui/material';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import CreditScoreRounded from '@mui/icons-material/CreditScoreRounded';
 import RouteRounded from '@mui/icons-material/RouteRounded';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import SpeedOutlined from '@mui/icons-material/SpeedOutlined';
+import AccountBalanceWalletOutlined from '@mui/icons-material/AccountBalanceWalletOutlined';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
+import CreditCardOutlined from '@mui/icons-material/CreditCardOutlined';
+import PaymentsOutlined from '@mui/icons-material/PaymentsOutlined';
+import CheckCircleOutlineRounded from '@mui/icons-material/CheckCircleOutlineRounded';
+import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded';
+import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded';
 import { apiRequest } from '../../auth/api';
 import type { ClientPlanResponse } from '../../pages/PlanPages';
 import { creditWorkspaceKeys, creditWorkspaceRefetchInterval } from '../../queries/creditWorkspace';
@@ -36,56 +44,108 @@ function Destination({ to, children }: { to: string; children: ReactNode }) {
     </Button>
   );
 }
+function FindingSymbol({ severity }: { severity: string }) {
+  // Presentation follows the published finding, never a classification inferred from its text.
+  const presentation =
+    severity === 'POSITIVE'
+      ? { Icon: CheckCircleOutlineRounded, color: 'primary.main', label: 'Positive finding' }
+      : severity === 'CAUTION'
+        ? { Icon: WarningAmberRounded, color: 'warning.main', label: 'Caution finding' }
+        : severity === 'CRITICAL'
+          ? { Icon: ErrorOutlineRounded, color: 'error.main', label: 'Critical finding' }
+          : { Icon: InfoOutlined, color: 'info.main', label: 'Informational finding' };
+  return (
+    <Tooltip title={presentation.label}>
+      <Box
+        role="img"
+        aria-label={presentation.label}
+        sx={{
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          border: '1px solid',
+          borderColor: 'currentColor',
+          color: presentation.color,
+          display: 'grid',
+          placeItems: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <presentation.Icon sx={{ fontSize: 20 }} />
+      </Box>
+    </Tooltip>
+  );
+}
 function Panel({
   title,
   eyebrow,
   action,
   children,
-  light = false,
+  assessment = false,
 }: {
   title: string;
   eyebrow?: string;
   action?: ReactNode;
   children: ReactNode;
-  light?: boolean;
+  assessment?: boolean;
 }) {
   return (
     <Box
       component="section"
       sx={{
-        p: { xs: 2, md: 2.5 },
+        p: { xs: 2, lg: 3 },
         minWidth: 0,
         border: 1,
-        borderColor: light ? designTokens.color.focusBorder : portalSurfaces.border,
-        borderRadius: '12px',
-        background: light ? designTokens.gradient.advisory : portalSurfaces.panel,
-        color: light ? designTokens.color.focusText : 'text.primary',
-        ...(light
+        borderColor: assessment ? '#b9d9cf' : portalSurfaces.border,
+        borderRadius: '14px',
+        background: assessment
+          ? 'radial-gradient(ellipse at 100% 0%, rgba(102,216,189,.14), transparent 65%), linear-gradient(145deg, #f4f8f7, #e8f2ef)'
+          : portalSurfaces.panel,
+        color: assessment ? '#173e35' : 'text.primary',
+        boxShadow: '0 10px 30px rgba(0,0,0,.08)',
+        ...(assessment
           ? {
-              '& .MuiButton-root': { color: designTokens.color.focusLink },
               '& .MuiTypography-root': { color: 'inherit' },
+              '& .MuiStack-root': { color: 'inherit' },
+              '& .MuiTypography-colorTextSecondary': { color: '#48675e' },
+              '& .MuiButton-root': { color: '#075f55' },
+              '& .MuiSvgIcon-root': { color: '#087f65' },
+              '& [tabindex="0"]': { color: '#48675e' },
             }
           : {}),
       }}
     >
-      {eyebrow && (
-        <Typography variant="overline" sx={{ fontSize: 10, opacity: 0.8 }}>
-          {eyebrow}
-        </Typography>
-      )}
       <Stack
         direction="row"
         sx={{
           gap: 1,
           justifyContent: 'space-between',
           alignItems: 'center',
-          mb: 2,
+          mb: { xs: 2, lg: 2.5 },
           flexWrap: 'wrap',
         }}
       >
-        <Typography component="h2" variant="h4" sx={{ fontSize: 16 }}>
-          {title}
-        </Typography>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+          <Typography
+            component="h2"
+            variant="h4"
+            sx={{ fontSize: { xs: 16, lg: 17 }, fontWeight: 650, letterSpacing: '-.02em' }}
+          >
+            {title}
+          </Typography>
+          {eyebrow && (
+            <Tooltip title={eyebrow}>
+              <Box
+                component="span"
+                tabIndex={0}
+                aria-label={eyebrow}
+                sx={{ display: 'inline-flex', color: 'text.secondary' }}
+              >
+                <InfoOutlined sx={{ fontSize: 14 }} />
+              </Box>
+            </Tooltip>
+          )}
+        </Stack>
         {action}
       </Stack>
       {children}
@@ -96,11 +156,11 @@ function Snapshot({ data }: { data: CreditExperience }) {
   const [selected, setSelected] = useState(0);
   const [touch, setTouch] = useState<number | null>(null);
   const metrics = [
-    ['aggregateUtilization', 'Utilization', '%'],
-    ['openAccounts', 'Open accounts', ''],
-    ['recentInquiries', 'Reported inquiries', ''],
-    ['revolvingLimit', 'Revolving limits', '$'],
-    ['revolvingBalance', 'Reported balances', '$'],
+    ['aggregateUtilization', 'Utilization', '%', SpeedOutlined],
+    ['openAccounts', 'Open accounts', '', CreditCardOutlined],
+    ['recentInquiries', 'Reported inquiries', '', SearchOutlined],
+    ['revolvingLimit', 'Revolving limits', '$', AccountBalanceWalletOutlined],
+    ['revolvingBalance', 'Reported balances', '$', PaymentsOutlined],
   ] as const;
   return (
     <Panel
@@ -109,6 +169,14 @@ function Snapshot({ data }: { data: CreditExperience }) {
       action={<Destination to="/app/credit-center/profile">View Profile</Destination>}
     >
       <Box
+        sx={{
+          borderRadius: '12px',
+          pt: { xs: 0, lg: 1 },
+          pb: { xs: 0, lg: 1 },
+          background: {
+            lg: 'radial-gradient(ellipse at 50% 42%, rgba(102,216,189,.07), transparent 72%)',
+          },
+        }}
         onTouchStart={(e) => setTouch(e.touches[0]?.clientX ?? null)}
         onTouchEnd={(e) => {
           if (touch !== null) {
@@ -170,7 +238,8 @@ function Snapshot({ data }: { data: CreditExperience }) {
               >
                 <Box
                   sx={{
-                    width: { xs: 140, md: 88, xl: 108 },
+                    width: { xs: 140, md: 112, xl: 132 },
+                    maxWidth: '100%',
                     mx: 'auto',
                     position: 'relative',
                     mb: 1,
@@ -210,7 +279,7 @@ function Snapshot({ data }: { data: CreditExperience }) {
                       position: 'absolute',
                       top: '34%',
                       width: '100%',
-                      fontSize: s.value === null ? 22 : { xs: 38, md: 26 },
+                      fontSize: s.value === null ? 22 : { xs: 38, md: 32, xl: 36 },
                       fontWeight: 650,
                       fontVariantNumeric: 'tabular-nums',
                     }}
@@ -247,16 +316,16 @@ function Snapshot({ data }: { data: CreditExperience }) {
         component="dl"
         sx={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 2,
+          gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+          gap: { xs: 1.5, lg: 2.25 },
           m: 0,
-          mt: 2,
-          pt: 2,
+          mt: { xs: 2, lg: 2.5 },
+          pt: { xs: 2, lg: 2.5 },
           borderTop: 1,
           borderColor: 'divider',
         }}
       >
-        {metrics.map(([key, label, unit]) => {
+        {metrics.map(([key, label, unit, Icon], index) => {
           const f = data.metrics[key];
           const value = !f || f.value === null || f.quality === 'UNKNOWN' ? null : f.value;
           return (
@@ -269,25 +338,46 @@ function Snapshot({ data }: { data: CreditExperience }) {
               }
               sx={{
                 color: 'inherit',
+                minWidth: 0,
+                gridColumn: index < 3 ? 'span 2' : 'span 3',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 0.75,
                 textDecoration: 'none',
                 '&:hover dt': { color: 'primary.main' },
               }}
             >
-              <Typography component="dt" variant="caption" color="text.secondary">
-                {label}
-              </Typography>
-              <Typography
-                component="dd"
-                sx={{ m: 0, fontSize: value === null ? 13 : 21, fontWeight: 600 }}
-              >
-                {f?.quality === 'NOT_APPLICABLE'
-                  ? 'Not applicable'
-                  : value === null
-                    ? 'Not available in this report'
-                    : (unit === '$' ? '$' : '') +
-                      value.toLocaleString() +
-                      (unit === '%' ? '%' : '')}
-              </Typography>
+              <Icon
+                aria-hidden="true"
+                sx={{ fontSize: 20, color: 'primary.light', mt: 0.25, flexShrink: 0 }}
+              />
+              <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                <Typography
+                  component="dt"
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ order: 1, lineHeight: 1.4 }}
+                >
+                  {label}
+                </Typography>
+                <Typography
+                  component="dd"
+                  sx={{
+                    m: 0,
+                    fontSize: value === null ? 12 : 16,
+                    fontWeight: 600,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {f?.quality === 'NOT_APPLICABLE'
+                    ? 'Not applicable'
+                    : value === null
+                      ? 'Not available in this report'
+                      : (unit === '$' ? '$' : '') +
+                        value.toLocaleString() +
+                        (unit === '%' ? '%' : '')}
+                </Typography>
+              </Box>
             </Box>
           );
         })}
@@ -317,7 +407,7 @@ export function CreditOverviewView({
   const m = model;
   const columns = { xs: '1fr', lg: 'minmax(0,1.35fr) repeat(2,minmax(0,1fr))' };
   return (
-    <Stack spacing={2.5} data-lifecycle={m.lifecycle}>
+    <Stack spacing={{ xs: 2.5, lg: 3 }} data-lifecycle={m.lifecycle}>
       {m.banner && (
         <Alert
           severity={m.banner.tone}
@@ -326,7 +416,7 @@ export function CreditOverviewView({
             border: 1,
             borderColor: m.banner.tone === 'warning' ? 'warning.main' : portalSurfaces.border,
             bgcolor: 'rgba(26,131,115,.09)',
-            borderRadius: 2,
+            borderRadius: '10px',
           }}
         >
           <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{m.banner.title}</Typography>
@@ -397,7 +487,7 @@ export function CreditOverviewView({
         </>
       ) : (
         <>
-          <Box sx={{ display: 'grid', gridTemplateColumns: columns, gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: columns, gap: { xs: 2, lg: 3 } }}>
             <Snapshot data={m.snapshot} />
             <Panel
               title={m.changes.state === 'BASELINE' ? 'Your Baseline' : 'What Changed'}
@@ -409,9 +499,11 @@ export function CreditOverviewView({
               }
             >
               {m.changes.state === 'BASELINE' ? (
-                <Stack spacing={2}>
-                  <HistoryRounded color="primary" sx={{ fontSize: 32, mt: 2 }} />
-                  <Typography>This is your first reviewed credit snapshot.</Typography>
+                <Stack spacing={1.5}>
+                  <HistoryRounded color="primary" sx={{ fontSize: 32 }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    This is your first reviewed credit snapshot.
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Changes will appear here after a future comparable Review.
                   </Typography>
@@ -456,20 +548,7 @@ export function CreditOverviewView({
                 <Stack spacing={2.5}>
                   {m.findings.items.map((f, i) => (
                     <Stack key={f.code + i} direction="row" spacing={1.5}>
-                      <Box
-                        sx={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: '50%',
-                          bgcolor: 'rgba(102,216,189,.12)',
-                          color: 'primary.main',
-                          display: 'grid',
-                          placeItems: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <InsightsOutlined sx={{ fontSize: 18 }} />
-                      </Box>
+                      <FindingSymbol severity={f.severity} />
                       <Box>
                         <Typography variant="body2" sx={{ fontWeight: 700 }}>
                           {f.title}
@@ -489,22 +568,29 @@ export function CreditOverviewView({
               )}
             </Panel>
           </Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: columns, gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: columns, gap: { xs: 2, lg: 3 } }}>
             <Panel
               title="Consultant Assessment"
+              assessment
               eyebrow="Professional guidance"
-              light
               action={
                 m.assessment ? (
                   <Destination to="/app/credit-center/analysis">View full Analysis</Destination>
                 ) : undefined
               }
             >
-              <InsightsOutlined sx={{ fontSize: 30, mb: 2 }} />
-              <Typography sx={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: 'center', mb: 1.5, color: 'primary.main' }}
+              >
+                <InsightsOutlined sx={{ fontSize: 24 }} />
+                <Typography variant="caption">Published professional assessment</Typography>
+              </Stack>
+              <Typography variant="body2" sx={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                 {m.assessment ?? 'No assessment text was included in this publication.'}
               </Typography>
-              <Typography variant="caption" sx={{ display: 'block', mt: 3 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
                 Published {formatReportDate(m.publishedAt)}
               </Typography>
             </Panel>
@@ -534,9 +620,12 @@ export function CreditOverviewView({
                     </Typography>
                   )}
                   {m.priorities.noAction && (
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      No immediate action is required by your published Plan.
-                    </Typography>
+                    <Stack direction="row" spacing={1.25} sx={{ mb: 2, alignItems: 'flex-start' }}>
+                      <CheckCircleOutlineRounded color="primary" sx={{ fontSize: 28 }} />
+                      <Typography variant="body2">
+                        No immediate action is required by your published Plan.
+                      </Typography>
+                    </Stack>
                   )}
                   {m.priorities.items.length ? (
                     <Stack component="ol" sx={{ p: 0, m: 0, listStyle: 'none', gap: 2 }}>
@@ -603,7 +692,33 @@ export function CreditOverviewView({
               }
             >
               {m.progress ? (
-                <Box sx={{ pl: 2, borderLeft: 2, borderColor: 'primary.main' }}>
+                <Box sx={{ position: 'relative', pl: 4 }}>
+                  <Box
+                    aria-hidden="true"
+                    sx={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 2,
+                      width: 18,
+                      height: 18,
+                      border: '2px solid',
+                      borderColor: 'primary.main',
+                      borderRadius: '50%',
+                      bgcolor: portalSurfaces.chrome,
+                      boxShadow: '0 0 14px rgba(102,216,189,.18)',
+                    }}
+                  />
+                  <Box
+                    aria-hidden="true"
+                    sx={{
+                      position: 'absolute',
+                      left: 8,
+                      top: 24,
+                      bottom: 4,
+                      width: 2,
+                      background: 'linear-gradient(rgba(102,216,189,.5), transparent)',
+                    }}
+                  />
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>
                     {m.progress.title}
                   </Typography>
@@ -613,7 +728,15 @@ export function CreditOverviewView({
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    sx={{ display: 'block', mt: 2 }}
+                    sx={{
+                      display: 'inline-block',
+                      mt: 1.5,
+                      mb: 1,
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: '6px',
+                      bgcolor: 'rgba(102,216,189,.08)',
+                    }}
                   >
                     Next step owner:{' '}
                     {m.progress.owner === 'CLIENT'
@@ -651,14 +774,14 @@ export function CreditOverviewView({
                     component={Link}
                     to={creditCenterPath(id)}
                     sx={{
-                      p: 1.75,
+                      p: 1.5,
                       alignItems: 'flex-start',
                       textAlign: 'left',
                       flexDirection: { xs: 'row', lg: 'column' },
-                      gap: 1.5,
+                      gap: 1,
                       border: 1,
                       borderColor: portalSurfaces.border,
-                      borderRadius: 1.5,
+                      borderRadius: '8px',
                       '&:hover': { bgcolor: 'action.hover', borderColor: 'primary.main' },
                     }}
                   >

@@ -586,9 +586,30 @@ export function AppShell({
                   </Badge>
                 </IconButton>
               </Tooltip>
+              {role === 'client' && (
+                <Divider
+                  orientation="vertical"
+                  sx={{
+                    display: { xs: 'none', lg: 'block' },
+                    height: 36,
+                    borderColor: portalSurfaces.border,
+                  }}
+                />
+              )}
               <Tooltip title="Account">
                 <IconButton
                   aria-label="Account profile"
+                  sx={
+                    role === 'client'
+                      ? {
+                          borderRadius: { xs: '50%', lg: '8px' },
+                          px: { xs: 1, lg: 1.25 },
+                          py: { xs: 1, lg: 0.75 },
+                          gap: { lg: 1.25 },
+                          '&:hover': { bgcolor: 'rgba(102,216,189,.06)' },
+                        }
+                      : undefined
+                  }
                   aria-controls={accountAnchor ? 'account-menu' : undefined}
                   aria-haspopup="menu"
                   aria-expanded={Boolean(accountAnchor)}
@@ -614,17 +635,35 @@ export function AppShell({
                       sx={{
                         display: { xs: 'none', lg: 'block' },
                         textAlign: 'left',
-                        ml: 1.5,
-                        mr: 1,
+                        minWidth: 82,
                       }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 650 }}>
+                      <Typography
+                        component="span"
+                        variant="body2"
+                        sx={{ display: 'block', fontWeight: 600, lineHeight: 1.4 }}
+                      >
                         {user?.firstName ?? 'Your account'}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        component="span"
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', lineHeight: 1.4 }}
+                      >
                         Client Portal
                       </Typography>
                     </Box>
+                  )}
+                  {role === 'client' && (
+                    <ExpandMoreRounded
+                      sx={{
+                        display: { xs: 'none', lg: 'block' },
+                        fontSize: 18,
+                        ml: 1,
+                        color: 'text.secondary',
+                      }}
+                    />
                   )}
                 </IconButton>
               </Tooltip>

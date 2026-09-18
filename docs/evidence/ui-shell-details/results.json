@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "checks": [
+    "Desktop profile hover has 10px corners; account menu opens",
+    "Mobile review context has full-width border",
+    "Mobile active destination has colored 2px top border",
+    "Section menu opens and closes",
+    "No horizontal overflow at 390, 768, 1199, 1200, 1440px",
+    "No page errors"
+  ],
+  "errors": []
+}

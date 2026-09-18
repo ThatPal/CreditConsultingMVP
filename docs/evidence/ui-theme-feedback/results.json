@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "checks": [
+    "Delayed session loading uses teal body and skeleton card",
+    "Delayed Credit Center loading desktop/mobile",
+    "No mobile overflow",
+    "More sheet and account menu",
+    "Existing light Analysis surface",
+    "No page errors"
+  ],
+  "errors": []
+}

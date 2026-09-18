@@ -57,11 +57,14 @@ export function CreditCenterHeader({
           justifyContent: 'space-between',
           alignItems: { xs: 'flex-start', lg: 'center' },
           gap: { xs: 1.5, lg: 3 },
-          px: { xs: 0, lg: 2 },
-          py: { xs: 0, lg: 1.75 },
+          px: { xs: 0, lg: 2.5 },
+          py: { xs: 0, lg: 2 },
           border: { xs: 'none', lg: `1px solid ${portalSurfaces.border}` },
-          borderRadius: '10px',
-          background: { xs: 'none', lg: portalSurfaces.panel },
+          borderRadius: '12px',
+          background: {
+            xs: 'none',
+            lg: `radial-gradient(ellipse at 0% 0%, rgba(102,216,189,.07), transparent 65%), ${portalSurfaces.panel}`,
+          },
         }}
       >
         <Box sx={{ minWidth: 0 }}>
@@ -76,12 +79,13 @@ export function CreditCenterHeader({
           aria-label={'Viewing ' + label}
           sx={{
             flexShrink: 0,
-            px: { xs: 0, lg: 1.75 },
-            py: { xs: 0.25, lg: 1 },
+            width: { xs: '100%', lg: 'auto' },
+            px: 1.75,
+            py: 1,
             minWidth: { lg: 180 },
-            border: { xs: 'none', lg: `1px solid ${portalSurfaces.border}` },
+            border: `1px solid ${portalSurfaces.border}`,
             borderRadius: '8px',
-            background: { xs: 'none', lg: portalSurfaces.panel },
+            background: portalSurfaces.panel,
           }}
         >
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
@@ -89,7 +93,12 @@ export function CreditCenterHeader({
           </Typography>
           {current && !unavailable && (
             <Typography variant="body2" sx={{ mt: 0.25 }}>
-              {formatReportDate(current.publishedAt)}
+              {new Date(current.publishedAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: 'UTC',
+              })}
             </Typography>
           )}
         </Box>

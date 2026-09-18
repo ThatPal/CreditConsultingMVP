@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "liveData": "Synthetic local client account; live published Review and Plan reads",
+  "controlledFixtures": [
+    "NO_REVIEW",
+    "REVIEW_IN_PROGRESS_UNPUBLISHED"
+  ],
+  "checks": [
+    "1440px desktop / 390px mobile",
+    "More closed/open and seven destinations/actions",
+    "More keyboard focus trap and Escape restoration",
+    "Section six destinations and Escape restoration",
+    "All six desktop routes and active global parent",
+    "Mobile section switching and browser Back",
+    "No overflow at 390,768,1199,1200,1440",
+    "Single H1",
+    "Published baseline and no-current-action live state",
+    "Read-only no-review/in-progress fixtures",
+    "No page errors"
+  ],
+  "errors": []
+}

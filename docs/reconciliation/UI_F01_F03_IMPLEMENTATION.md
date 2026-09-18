@@ -67,3 +67,9 @@ Final `pnpm --filter @credit/web build` **passed** (TypeScript project build and
 Follow-up shell correction: see [updated reference comparison, changed files, tests and screenshots](../evidence/ui-shell-correction/README.md). This supersedes the initial shell screenshots/branding treatment while leaving Overview content and the backend deferral unchanged.
 
 UI-F01/UI-F02/UI-F03 only. Visual review remains required. No UI-F04 or later Credit Center implementation began. Atomic publication remains explicitly deferred; no production readiness claim follows from these UI checks.
+
+Follow-up requirements review: [UI-F03 review and profile correction](UI_F03_REVIEW.md). Overview still needs the recorded visual adjustments and contract qualifications resolved before acceptance; previous engineering checks do not imply full requirements compliance.
+
+Overview visual corrections are now implemented; see [latest evidence and checks](../evidence/ui-overview-polish/README.md). Visual approval and the documented backend dependencies remain outstanding.
+
+Final styling pass: [latest review captures](../evidence/ui-final-visual-polish/README.md). Larger desktop scores, increased spacing and hierarchy, cool neutral assessment plane as explicitly requested, compact header refinement. READY FOR FINAL VISUAL REVIEW; no automatic freeze or UI-F04 progression.

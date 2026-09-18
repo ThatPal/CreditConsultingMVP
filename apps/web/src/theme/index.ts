@@ -118,6 +118,9 @@ export const theme = createTheme({
     },
     MuiFormHelperText: { styleOverrides: { root: { marginInline: 0 } } },
     MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
+    MuiSkeleton: {
+      styleOverrides: { root: { backgroundColor: designTokens.color.skeleton } },
+    },
     MuiDialog: {
       styleOverrides: {
         paper: {

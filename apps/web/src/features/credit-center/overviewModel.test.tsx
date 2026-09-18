@@ -207,3 +207,37 @@ test('comparison view renders only supplied deltas and respects the semantic sec
     'Explore your Credit Center',
   ]);
 });
+
+test('finding symbols follow published severity rather than interpreting client copy', () => {
+  const input = read();
+  input.current = {
+    ...current,
+    projection: {
+      ...current.projection,
+      findings: [
+        {
+          code: 'a',
+          title: 'Neutral wording',
+          summary: 'Published explanation',
+          severity: 'CAUTION',
+        },
+        {
+          code: 'b',
+          title: 'Caution appears in this title',
+          summary: 'Published explanation',
+          severity: 'POSITIVE',
+        },
+        {
+          code: 'c',
+          title: 'Another finding',
+          summary: 'Published explanation',
+          severity: 'CRITICAL',
+        },
+      ],
+    },
+  };
+  show(buildOverviewModel(input));
+  expect(screen.getByRole('img', { name: 'Caution finding' })).toBeVisible();
+  expect(screen.getByRole('img', { name: 'Positive finding' })).toBeVisible();
+  expect(screen.getByRole('img', { name: 'Critical finding' })).toBeVisible();
+});

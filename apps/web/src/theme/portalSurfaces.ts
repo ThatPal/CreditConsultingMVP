@@ -1,9 +1,11 @@
+import { designTokens } from './designTokens';
+
 /** Shared Portal structural surfaces. Light working planes retain existing focus tokens. */
 export const portalSurfaces = {
-  chrome: '#071b25',
-  canvas: 'radial-gradient(ellipse at 80% 0%, rgba(0,133,124,.12), transparent 55%), #081e2a',
+  chrome: designTokens.color.sidebar,
+  canvas: `${designTokens.gradient.ambient}, ${designTokens.color.canvas}`,
   panel: 'linear-gradient(135deg, rgba(12,53,65,.88), rgba(8,31,44,.96))',
   overlay: 'linear-gradient(135deg, #0c3541, #081f2c)',
-  border: 'rgba(74,179,181,.22)',
-  selected: 'linear-gradient(90deg, rgba(37,207,174,.18), rgba(22,142,151,.07))',
+  border: designTokens.color.border,
+  selected: designTokens.gradient.active,
 } as const;
