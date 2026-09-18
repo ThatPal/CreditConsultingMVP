@@ -2,6 +2,8 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import { expect, test } from 'vitest';
 import { CreditProfile } from './CreditProfile';
+import { referenceProfile } from '../../../reference/credit-profile.fixture';
+import { observedBureauDifferences } from './ProfileEvidence';
 import { adaptPublishedProfile, type CreditValue, type ReportAccount } from './data';
 import { eligibleUtilization, profileCapacity, ProfileUtilization } from './ProfileUtilization';
 const known = (value: number): CreditValue => ({
@@ -113,4 +115,58 @@ test('source factors appear only when supplied, preserve attribution, and intern
   expect(screen.getByText('Source factor wording')).toBeVisible();
   expect(screen.getByText(/Experian · Model not supplied/)).toBeVisible();
   expect(screen.queryByText('SECRET')).not.toBeInTheDocument();
+});
+
+test('typed full-data reference exercises final sections, five ranked accounts, source range and capacity', () => {
+  render(
+    <MemoryRouter>
+      <CreditProfile data={referenceProfile} reportDate="2026-09-08" publishedAt="2026-09-09" />
+    </MemoryRouter>,
+  );
+  expect(screen.getByText('$32,000')).toBeInTheDocument();
+  expect(screen.getAllByRole('img', { name: /percent utilization/ })).toHaveLength(5);
+  expect(screen.getByRole('img', { name: /supplied range 300 to 850/ })).toBeInTheDocument();
+  expect(screen.getByText(/5 eligible revolving accounts · 1 excluded/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Bureau differences/ })).toHaveTextContent('1 account');
+  expect(screen.getByRole('button', { name: /Hard inquiries/ })).toHaveTextContent(
+    'September 9, 2025–September 8, 2026',
+  );
+  for (const title of [
+    'Accounts & credit mix',
+    'Account age & timing',
+    'Payment history',
+    'Hard inquiries',
+    'Negative information',
+    'Bureau differences',
+    'Factors included with your score',
+  ])
+    expect(screen.getByRole('button', { name: new RegExp(title) })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  fireEvent.click(screen.getByRole('button', { name: /Accounts & credit mix/ }));
+  expect(
+    screen.getByRole('img', { name: 'Revolving: 6; Installment: 1; Mortgage: 1' }),
+  ).toBeVisible();
+});
+
+test('unsupported optional categories stay concise and missing bureau inputs are not differences', () => {
+  renderProfile();
+  expect(
+    screen.queryByRole('button', { name: /Negative information|Bureau differences/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByText(/Bureau-specific account comparisons are not available/),
+  ).toBeInTheDocument();
+  const account = structuredClone(referenceProfile.accounts![0]!);
+  account.bureaus = [
+    { name: 'Experian', balance: known(100), limit: known(500), status: 'Open' },
+    {
+      name: 'Equifax',
+      balance: { ...known(900), quality: 'UNKNOWN' },
+      limit: { ...known(900), quality: 'UNKNOWN' },
+      status: null,
+    },
+  ];
+  expect(observedBureauDifferences([account])).toHaveLength(0);
 });

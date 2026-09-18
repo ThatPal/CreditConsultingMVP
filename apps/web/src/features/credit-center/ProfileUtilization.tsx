@@ -49,7 +49,15 @@ export function ProfileUtilization({ data }: { data: CreditExperience }) {
     <Box
       component="section"
       id="utilization"
-      sx={{ p: { xs: 2.5, md: 4 }, borderBlock: 1, borderColor: 'divider', scrollMarginTop: 100 }}
+      sx={{
+        p: { xs: 2.5, md: 4 },
+        mt: 3,
+        border: 1,
+        borderRadius: 2,
+        bgcolor: 'background.paper',
+        borderColor: 'divider',
+        scrollMarginTop: 100,
+      }}
     >
       <Typography
         id="profile-heading-utilization"
@@ -77,7 +85,7 @@ export function ProfileUtilization({ data }: { data: CreditExperience }) {
               height: 148,
               borderRadius: '50%',
               p: '10px',
-              background: `conic-gradient(from -90deg, #006c60, #23a58f ${Math.min(fact.value!, 100)}%, #dbeae4 ${Math.min(fact.value!, 100)}%)`,
+              background: `conic-gradient(from -90deg, #218978, #62d5bc ${Math.min(fact.value!, 100)}%, #24494d ${Math.min(fact.value!, 100)}%)`,
             }}
           >
             <Stack
@@ -124,7 +132,7 @@ export function ProfileUtilization({ data }: { data: CreditExperience }) {
           ))}
         </Box>
       </Stack>
-      <Box sx={{ bgcolor: '#edf5f1', p: 2, borderRadius: 1, mb: 3 }}>
+      <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 1, mb: 3 }}>
         <Typography variant="body2" color="text.secondary">
           {fact.quality === 'PARTIAL'
             ? 'Published summary · Included accounts and calculation coverage were not supplied. Available capacity requires balances and limits from the same confirmed account set.'

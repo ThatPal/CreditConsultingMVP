@@ -22,6 +22,34 @@ function renderPage(view: 'overview' | 'profile' | 'report' | 'analysis' | 'hist
 
 afterEach(() => vi.restoreAllMocks());
 
+test('Profile never renders workflow waiting or restrictions alongside factual content', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        current: {
+          id: 'published',
+          reviewId: 'review',
+          publishedAt: '2026-09-09',
+          projection: { profile: { experianScore: 720 } },
+          report: null,
+        },
+        history: [],
+        workspace: {
+          blockers: [
+            { title: 'Plan dependency', message: 'Workflow restriction', owner: 'CLIENT' },
+          ],
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    ),
+  );
+  renderPage('profile');
+  expect(await screen.findByRole('article', { name: 'Credit Profile' })).toBeInTheDocument();
+  expect(
+    screen.queryByText(/Waiting and restrictions|Workflow restriction|Plan dependency/),
+  ).not.toBeInTheDocument();
+});
+
 describe('Sprint 8.4 published Credit Center', () => {
   test('shows an honest empty state and no invented score', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(

@@ -173,7 +173,9 @@ function CreditCenterContent({
         </>
       )}
       {current && <ProfileCurrentnessNotice profile={data.workspace?.profile} />}
-      {!consultant && <WorkspaceBlockers blockers={data.workspace?.blockers} />}
+      {!consultant && view !== 'profile' && (
+        <WorkspaceBlockers blockers={data.workspace?.blockers} />
+      )}
       {!current && (
         <Stack
           spacing={2}

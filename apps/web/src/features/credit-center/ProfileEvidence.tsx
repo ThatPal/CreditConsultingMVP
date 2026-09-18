@@ -1,5 +1,19 @@
 import { Box, Stack, Typography } from '@mui/material';
-import type { CreditExperience } from './data';
+import type { CreditExperience, ReportAccount } from './data';
+
+/** Compare observed facts only. Missing bureau inputs are not evidence of a difference. */
+export function observedBureauDifferences(accounts: ReportAccount[] | null) {
+  return (accounts ?? []).filter((a) => {
+    const balances = a.bureaus
+      .filter((b) => b.balance.value !== null && ['KNOWN', 'PARTIAL'].includes(b.balance.quality))
+      .map((b) => b.balance.value);
+    const limits = a.bureaus
+      .filter((b) => b.limit.value !== null && ['KNOWN', 'PARTIAL'].includes(b.limit.quality))
+      .map((b) => b.limit.value);
+    const statuses = a.bureaus.filter((b) => b.status !== null).map((b) => b.status);
+    return new Set(balances).size > 1 || new Set(limits).size > 1 || new Set(statuses).size > 1;
+  });
+}
 
 export function ProfileEvidence({ data, section }: { data: CreditExperience; section: string }) {
   const accounts = data.accounts;
@@ -76,6 +90,21 @@ export function ProfileEvidence({ data, section }: { data: CreditExperience; sec
     );
     return (
       <Stack spacing={2}>
+        <Box
+          role="img"
+          aria-label={groups.map(([type, count]) => `${type}: ${count}`).join('; ')}
+          sx={{ display: 'flex', height: 12, borderRadius: 2, overflow: 'hidden', gap: '2px' }}
+        >
+          {groups.map(([type, count], i) => (
+            <Box
+              key={type}
+              sx={{
+                width: `${(count / accounts.length) * 100}%`,
+                bgcolor: ['#68d5bd', '#329e91', '#6598ad', '#75848e'][i],
+              }}
+            />
+          ))}
+        </Box>
         {groups.map(([type, count]) => (
           <Box key={type}>
             <Typography>
@@ -102,7 +131,17 @@ export function ProfileEvidence({ data, section }: { data: CreditExperience; sec
   }
   if (section === 'age')
     return (
-      <Stack component="ol" spacing={2} sx={{ pl: 2 }}>
+      <Stack
+        component="ol"
+        spacing={2}
+        sx={{
+          pl: 2,
+          ml: 1,
+          borderLeft: 2,
+          borderColor: 'divider',
+          '& li::marker': { color: 'primary.main' },
+        }}
+      >
         {accounts
           .filter((a) => a.openedAt)
           .sort((a, b) => a.openedAt!.localeCompare(b.openedAt!))
@@ -144,14 +183,7 @@ export function ProfileEvidence({ data, section }: { data: CreditExperience; sec
   if (section === 'bureaus')
     return (
       <Stack spacing={2}>
-        {accounts
-          .filter(
-            (a) =>
-              a.bureaus.length > 1 &&
-              new Set(
-                a.bureaus.map((b) => JSON.stringify([b.balance.value, b.limit.value, b.status])),
-              ).size > 1,
-          )
+        {observedBureauDifferences(accounts)
           .slice(0, 5)
           .map((a) => (
             <Box key={a.id}>

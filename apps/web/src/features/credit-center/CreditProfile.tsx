@@ -21,12 +21,12 @@ import BarChartRounded from '@mui/icons-material/BarChartRounded';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import { Link, useLocation } from 'react-router-dom';
 import { BureauScoreGallery, CreditDataValue } from './CreditData';
-import { ProfileEvidence } from './ProfileEvidence';
+import { ProfileEvidence, observedBureauDifferences } from './ProfileEvidence';
 import { ProfileUtilization } from './ProfileUtilization';
 import { type CreditExperience, formatReportDate, unknownValue } from './data';
 import { theme } from '../../theme';
 
-// Scoped to Profile's factual reading surface; the parent shell retains its theme.
+// Only the score focus area is light; Profile retains the dark structural environment.
 const readingTheme = createTheme(theme, {
   palette: {
     mode: 'light',
@@ -65,7 +65,7 @@ const sections = [
     id: 'payment',
     title: 'Payment history',
     icon: ScheduleOutlined,
-    description: 'Reported payment information, without an inferred on-time rate.',
+    description: 'Payment information reported by your creditors.',
     keys: [['latePayments', 'Reported late payments']],
     href: 'inquiries',
   },
@@ -81,7 +81,7 @@ const sections = [
     id: 'negatives',
     title: 'Negative information',
     icon: ReportProblemOutlined,
-    description: 'Missing evidence does not mean there are no negative items.',
+    description: 'Reported negative items and their source status.',
     keys: [
       ['derogatoryItems', 'Reported negative items'],
       ['collections', 'Collections'],
@@ -121,6 +121,20 @@ export function CreditProfile({
     return () => cancelAnimationFrame(frame);
   }, [hash]);
   const hasFactors = data.scores.some((s) => s.factors.length > 0);
+  const differences = observedBureauDifferences(data.accounts);
+  const hasNegatives =
+    data.negatives !== null ||
+    ['derogatoryItems', 'collections'].some((key) => {
+      const fact = data.metrics[key];
+      return (
+        fact?.value !== null &&
+        fact?.value !== undefined &&
+        ['KNOWN', 'PARTIAL'].includes(fact.quality)
+      );
+    });
+  const visibleSections = sections.filter(
+    (s) => (s.id !== 'negatives' || hasNegatives) && (s.id !== 'bureaus' || differences.length > 0),
+  );
   const disclosureStyle = {
     bgcolor: 'transparent',
     '&:before': { display: 'none' },
@@ -129,20 +143,16 @@ export function CreditProfile({
     borderRadius: '0 !important',
   };
   return (
-    <ThemeProvider theme={readingTheme}>
+    <>
       <Box
         component="article"
         aria-label="Credit Profile"
         sx={{
-          bgcolor: 'background.paper',
           color: 'text.primary',
-          borderRadius: 2,
-          overflow: 'clip',
-          border: '1px solid #d5e4de',
-          '& :focus-visible': { outlineColor: '#006c60 !important' },
+          minWidth: 0,
         }}
       >
-        <Stack spacing={1} sx={{ px: { xs: 2.5, md: 4 }, pt: { xs: 3, md: 4 }, pb: 3 }}>
+        <Stack spacing={1} sx={{ pt: 1, pb: 3 }}>
           <Typography variant="h2" component="h2">
             Credit Profile
           </Typography>
@@ -155,12 +165,14 @@ export function CreditProfile({
         </Stack>
         <Box id="scores" tabIndex={-1} sx={{ scrollMarginTop: 100 }}>
           <Box id="profile-heading-scores" tabIndex={-1} sx={{ scrollMarginTop: 100 }}>
-            <BureauScoreGallery scores={data.scores} profile />
+            <ThemeProvider theme={readingTheme}>
+              <BureauScoreGallery scores={data.scores} profile />
+            </ThemeProvider>
           </Box>
         </Box>
         <ProfileUtilization data={data} />
-        <Box sx={{ px: { xs: 1, md: 2 } }}>
-          {sections.map(({ id, title, icon: Icon, description, keys, href }) => (
+        <Box sx={{ mt: 3 }}>
+          {visibleSections.map(({ id, title, icon: Icon, description, keys, href }) => (
             <Accordion
               key={id}
               id={id}
@@ -186,14 +198,35 @@ export function CreditProfile({
                 }}
               >
                 <Icon sx={{ color: 'primary.main', mt: 0.4, fontSize: 23, flexShrink: 0 }} />
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography component="h3" sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 700 }}>
-                    {title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {description}
-                  </Typography>
-                  <Stack direction="row" sx={{ flexWrap: 'wrap', gap: { xs: 2, md: 4 }, mt: 1.5 }}>
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: { md: 'grid' },
+                    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+                    gap: 2,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Box>
+                    <Typography
+                      component="h3"
+                      sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 700 }}
+                    >
+                      {title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      {id === 'inquiries'
+                        ? (data.inquiryWindow ?? description)
+                        : id === 'payment'
+                          ? (data.paymentSummary ?? description)
+                          : description}
+                    </Typography>
+                  </Box>
+                  <Stack
+                    direction="row"
+                    sx={{ flexWrap: 'wrap', gap: { xs: 2, md: 4 }, mt: { xs: 1.5, md: 0 } }}
+                  >
                     {keys.map(([key, label]) => {
                       const fact = data.metrics[key] ?? unknownValue(label);
                       const available =
@@ -216,9 +249,8 @@ export function CreditProfile({
                     })}
                     {id === 'bureaus' && (
                       <Typography variant="caption" color="text.secondary">
-                        {data.accounts === null
-                          ? 'Bureau-specific account evidence not supplied'
-                          : 'Compare available reported account evidence'}
+                        {differences.length} {differences.length === 1 ? 'account' : 'accounts'}{' '}
+                        with observed bureau differences
                       </Typography>
                     )}
                   </Stack>
@@ -297,9 +329,40 @@ export function CreditProfile({
             </Accordion>
           )}
         </Box>
+        {!hasNegatives && (
+          <Typography
+            id="profile-heading-negatives"
+            tabIndex={-1}
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', mt: 2, scrollMarginTop: 100 }}
+          >
+            Negative-item details are not available in this publication.
+          </Typography>
+        )}
+        {!differences.length && (
+          <Typography
+            id="profile-heading-bureaus"
+            tabIndex={-1}
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', mt: 2, scrollMarginTop: 100 }}
+          >
+            {data.accounts === null
+              ? 'Bureau-specific account comparisons are not available in this publication.'
+              : 'No differences were identified in the available comparable bureau facts. Missing bureau inputs are not compared.'}
+          </Typography>
+        )}
         <Stack
           direction={{ xs: 'column', md: 'row' }}
-          sx={{ p: { xs: 2.5, md: 4 }, gap: 2, alignItems: { md: 'center' }, bgcolor: '#eaf4f0' }}
+          sx={{
+            py: 3,
+            mt: 3,
+            gap: 2,
+            alignItems: { md: 'center' },
+            borderTop: 1,
+            borderColor: 'divider',
+          }}
         >
           <Box sx={{ flex: 1 }}>
             <Typography component="h3" sx={{ fontWeight: 700 }}>
@@ -322,6 +385,6 @@ export function CreditProfile({
           </Button>
         </Stack>
       </Box>
-    </ThemeProvider>
+    </>
   );
 }

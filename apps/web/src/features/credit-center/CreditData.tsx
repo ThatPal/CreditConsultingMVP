@@ -104,7 +104,10 @@ export function BureauScoreGallery({
       }}
       sx={{
         p: { xs: 2.5, md: 4 },
-        borderRadius: profile ? 0 : 3,
+        borderRadius: profile ? 2 : 3,
+        ...(profile
+          ? { color: 'text.primary', '& :focus-visible': { outlineColor: '#006c60 !important' } }
+          : {}),
         background: profile
           ? 'linear-gradient(120deg, #f8fcfb, #e6f3ef)'
           : designTokens.gradient.data,

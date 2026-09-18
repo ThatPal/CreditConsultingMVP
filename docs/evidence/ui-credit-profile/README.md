@@ -1,6 +1,6 @@
 # UI-F04 — Credit Profile implementation evidence
 
-Visual Review Status: READY FOR FINAL VISUAL REVIEW
+Visual Review Status: SUPERSEDED — NOT APPROVED. See ../ui-credit-profile-rereview/README.md for the corrected composition and current evidence.
 
 Branch: `ui/credit-profile`, created from approved `ui/portal-shell-credit-center-overview` at `33610fa43c94b76f0018fa76972dd6b3847a3ab5`.
 Implementation commit: `36a1b1fba53d2659cfd03edcec38a565f2b34db0`. Subsequent evidence-only commit replaces desktop full captures with expanded-viewport captures; application code is identical.

@@ -39,6 +39,9 @@ export type ReportAccount = {
   cardHref?: string;
 };
 export type CreditExperience = {
+  /** Optional published screen metadata; absent in the current summary-only read. */
+  inquiryWindow?: string;
+  paymentSummary?: string;
   scores: ScoreFact[];
   metrics: Record<string, CreditValue>;
   accounts: ReportAccount[] | null;
