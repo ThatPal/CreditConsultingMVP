@@ -35,7 +35,7 @@ export function PageHeader({
                 height: 6,
                 borderRadius: '50%',
                 bgcolor: 'primary.main',
-                boxShadow: '0 0 14px #66d8bd88',
+                boxShadow: '0 0 14px #53a5ff88',
               },
             }}
           >

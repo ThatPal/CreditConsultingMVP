@@ -13,7 +13,7 @@ export function PortalBrand({ compact = false }: { compact?: boolean }) {
           height: compact ? 32 : 42,
           flexShrink: 0,
           color: 'primary.main',
-          filter: 'drop-shadow(0 0 8px rgba(37,207,174,.16))',
+          filter: 'drop-shadow(0 0 8px rgba(83,165,255,.30))',
         }}
       >
         <path d="M24 3 46 43H2L24 3Zm0 12L11 38h26L24 15Z" fill="currentColor" fillRule="evenodd" />

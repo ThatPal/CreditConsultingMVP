@@ -606,7 +606,7 @@ export function AppShell({
                           px: { xs: 1, lg: 1.25 },
                           py: { xs: 1, lg: 0.75 },
                           gap: { lg: 1.25 },
-                          '&:hover': { bgcolor: 'rgba(102,216,189,.06)' },
+                          '&:hover': { bgcolor: 'rgba(83,165,255,.08)' },
                         }
                       : undefined
                   }
@@ -620,7 +620,7 @@ export function AppShell({
                       width: 34,
                       height: 34,
                       bgcolor:
-                        role === 'client' ? 'rgba(102,216,189,.16)' : 'rgba(155, 120, 255, 0.2)',
+                        role === 'client' ? 'rgba(83,165,255,.16)' : 'rgba(155, 120, 255, 0.2)',
                       color: role === 'client' ? 'primary.light' : 'secondary.light',
                     }}
                   >
@@ -678,7 +678,7 @@ export function AppShell({
               borderBottom: '1px solid',
               borderColor: 'divider',
               background:
-                'linear-gradient(90deg, rgba(29,211,176,.14), rgba(66,211,242,.06) 52%, transparent)',
+                'linear-gradient(90deg, rgba(83,165,255,.22), rgba(182,153,255,.10) 52%, transparent)',
               px: { xs: 2, sm: 3 },
               py: 1.25,
             }}

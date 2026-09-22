@@ -24,16 +24,24 @@ import { BureauScoreGallery, CreditDataValue } from './CreditData';
 import { ProfileEvidence, observedBureauDifferences } from './ProfileEvidence';
 import { ProfileUtilization } from './ProfileUtilization';
 import { type CreditExperience, formatReportDate, unknownValue } from './data';
-import { theme } from '../../theme';
+import { theme, designTokens } from '../../theme';
 
 // Only the score focus area is light; Profile retains the dark structural environment.
 const readingTheme = createTheme(theme, {
   palette: {
     mode: 'light',
-    primary: { main: '#006c60' },
-    background: { paper: '#fbfdfc', default: '#f4f9f7' },
-    text: { primary: '#183b37', secondary: '#506d67', disabled: '#728980' },
-    divider: '#d5e4de',
+    primary: { main: designTokens.color.focusAccent, contrastText: '#ffffff' },
+    secondary: { main: '#7962b8' },
+    background: {
+      paper: designTokens.color.focusSurface,
+      default: designTokens.color.focusSurface,
+    },
+    text: {
+      primary: designTokens.color.focusText,
+      secondary: designTokens.color.focusTextMuted,
+      disabled: '#728980',
+    },
+    divider: designTokens.color.focusBorder,
     action: { hover: 'rgba(0,108,96,.06)', disabled: '#849c94' },
   },
 });

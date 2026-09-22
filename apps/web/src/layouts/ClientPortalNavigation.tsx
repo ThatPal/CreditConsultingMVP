@@ -119,7 +119,7 @@ export function ClientPortalNavigation({
             ...rowStyle,
             borderColor: active === id ? portalSurfaces.border : 'transparent',
             boxShadow:
-              active === id ? 'inset 2px 0 #66d8bd, 0 0 16px rgba(37,207,174,.07)' : 'none',
+              active === id ? 'inset 2px 0 #83c4ff, 0 0 20px rgba(52,97,255,.13)' : 'none',
             color: active === id ? 'text.primary' : 'text.secondary',
             background: active === id ? portalSurfaces.selected : 'transparent',
             '&:hover': { bgcolor: 'action.hover' },
@@ -239,7 +239,7 @@ export function ClientPortalNavigation({
                 background: active === id ? portalSurfaces.selected : 'transparent',
                 color: active === id ? 'primary.main' : 'text.secondary',
                 '& svg': {
-                  filter: active === id ? 'drop-shadow(0 0 6px rgba(37,207,174,.35))' : 'none',
+                  filter: active === id ? 'drop-shadow(0 0 6px rgba(83,165,255,.45))' : 'none',
                 },
               }}
             >

@@ -63,7 +63,7 @@ export function CreditCenterHeader({
           borderRadius: '12px',
           background: {
             xs: 'none',
-            lg: `radial-gradient(ellipse at 0% 0%, rgba(102,216,189,.07), transparent 65%), ${portalSurfaces.panel}`,
+            lg: `radial-gradient(ellipse at 0% 0%, rgba(83,165,255,.09), transparent 65%), ${portalSurfaces.panel}`,
           },
         }}
       >

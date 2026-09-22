@@ -39,6 +39,23 @@ export const focusSurfaceContentStyles = {
     },
   '& .MuiFormControlLabel-label': { color: designTokens.color.focusText },
   '& .MuiLink-root': { color: designTokens.color.focusLink },
+  '& .MuiButton-textPrimary, & .MuiButton-outlinedPrimary': {
+    color: designTokens.color.focusLink,
+    borderColor: designTokens.color.focusControlBorder,
+  },
+  '& .MuiButton-containedPrimary': {
+    color: '#ffffff',
+    backgroundImage: designTokens.gradient.focusAction,
+    boxShadow: '0 5px 20px rgba(7,157,130,.16)',
+    '&:hover': { boxShadow: '0 5px 24px rgba(7,157,130,.24)' },
+    '&.Mui-disabled': {
+      color: designTokens.color.focusTextMuted,
+      WebkitTextFillColor: designTokens.color.focusTextMuted,
+      backgroundImage: 'none',
+      bgcolor: designTokens.color.focusLoaderContainer,
+      boxShadow: 'none',
+    },
+  },
   '& .MuiDivider-root': { borderColor: designTokens.color.focusBorder },
   '& .MuiTableCell-root': {
     color: designTokens.color.focusText,
@@ -105,6 +122,7 @@ export function FocusSurface({
               ? designTokens.color.focusSurfacePositive
               : designTokens.color.focusSurface,
           color: designTokens.color.focusText,
+          backgroundImage: designTokens.gradient.advisory,
           border: `1px solid ${designTokens.color.focusBorder}`,
           borderRadius: `${designTokens.radius.lg}px`,
           p: { xs: 2.5, sm: 4 },

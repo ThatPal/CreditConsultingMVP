@@ -8,6 +8,7 @@ export const theme = createTheme({
       main: designTokens.accent.main,
       light: designTokens.accent.hover,
       dark: designTokens.accent.dark,
+      contrastText: designTokens.color.canvas,
     },
     secondary: { main: designTokens.color.violet },
     success: { main: designTokens.color.teal },
@@ -78,9 +79,16 @@ export const theme = createTheme({
       variants: [
         {
           props: { variant: 'contained', color: 'primary' },
-          style: {
+          style: ({ theme }) => ({
             color: designTokens.accent.text,
-            backgroundImage: designTokens.gradient.brand,
+            backgroundImage:
+              theme.palette.mode === 'light'
+                ? designTokens.gradient.focusAction
+                : designTokens.gradient.brand,
+            boxShadow:
+              theme.palette.mode === 'light'
+                ? '0 5px 20px rgba(7,157,130,.16)'
+                : designTokens.shadow.glow,
             '&:hover': { boxShadow: designTokens.shadow.glow },
             '&.Mui-disabled': {
               color: designTokens.accent.text,
@@ -90,7 +98,7 @@ export const theme = createTheme({
               opacity: 1,
               '& .MuiButton-startIcon': { color: designTokens.accent.text, opacity: 1 },
             },
-          },
+          }),
         },
       ],
     },
