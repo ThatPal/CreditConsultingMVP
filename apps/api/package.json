@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --maxWorkers=1",
+    "test": "vitest run --maxWorkers=1 --exclude src/commerce/commerceIntegrity.integration.test.ts",
+    "test:commerce-integrity": "vitest run --maxWorkers=1 src/commerce/commerceIntegrity.integration.test.ts",
     "test:unit": "vitest run",
     "test:integration": "vitest run src/app.test.ts"
   },

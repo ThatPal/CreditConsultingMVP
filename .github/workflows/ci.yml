@@ -35,5 +35,16 @@ jobs:
       - run: pnpm db:seed:system
       - run: pnpm lint
       - run: pnpm typecheck
+      # This destructive fixture must never run on the ordinary database.
+      - name: Provision isolated REC-02 database
+        run: docker exec "${{ job.services.postgres.id }}" createdb -U credit credit_strategy_rec02_com01a
+      - name: Migrate isolated REC-02 database
+        run: pnpm db:migrate:deploy
+        env:
+          DATABASE_URL: postgresql://credit:credit_dev@localhost:5432/credit_strategy_rec02_com01a?schema=public
+      - name: REC-02 commerce integrity (six cases, fake transports)
+        run: pnpm --filter @credit/api test:commerce-integrity
+        env:
+          DATABASE_URL: postgresql://credit:credit_dev@localhost:5432/credit_strategy_rec02_com01a?schema=public
       - run: pnpm test
       - run: pnpm build

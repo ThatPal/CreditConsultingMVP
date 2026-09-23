@@ -15,5 +15,18 @@ export default tseslint.config(
     files: ['**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
+  {
+    // Browser-only theme reference.
+    files: ['apps/web/reference/theme-preview/preview.js'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
+    // Node Playwright harnesses include callbacks evaluated inside the browser.
+    files: [
+      'apps/web/reference/capture-credit-profile.mjs',
+      'docs/evidence/rec-02-commerce-integrity/browser-check.mjs',
+    ],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
   prettier,
 );
