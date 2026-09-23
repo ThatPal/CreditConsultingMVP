@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:entry-f1": "vitest run --maxWorkers=1 src/entry/entryF1.test.tsx src/pages/AuthPages.test.tsx src/pages/GoalsContinuity.test.tsx src/LiveUpdates.test.ts src/LiveUpdates.session.test.tsx"
   },
   "dependencies": {
     "@emotion/react": "latest",
@@ -22,7 +23,8 @@
     "react-dom": "19.2.8",
     "react-hook-form": "latest",
     "react-router-dom": "latest",
-    "zod": "latest"
+    "zod": "latest",
+    "@credit/shared": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "latest",

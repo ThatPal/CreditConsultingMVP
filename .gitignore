@@ -14,3 +14,6 @@ apps/api/src/generated/
 
 # Private planning references stay local; never publish conversation/Drive dumps.
 docs/astra/sources/
+
+# ENTRY-F1 private source cache; review evidence is tracked separately.
+docs/evidence/entry-f1/sources.json

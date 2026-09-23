@@ -52,20 +52,6 @@ export function createPrismaAuthStore(prisma: PrismaClient): AuthStore {
               ...(input.phone ? { phone: input.phone } : {}),
               timezone: input.timezone,
               termsAcceptedAt: input.termsAcceptedAt,
-              ...(input.goals?.length
-                ? {
-                    goals: {
-                      create: input.goals.map((goal) => ({
-                        goalType: goal.goalType,
-                        scope: goal.scope,
-                        priority: goal.priority,
-                        ...(goal.targetAmount !== undefined
-                          ? { targetAmount: goal.targetAmount }
-                          : {}),
-                      })),
-                    },
-                  }
-                : {}),
             },
           },
         },

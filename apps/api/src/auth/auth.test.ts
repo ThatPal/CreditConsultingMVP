@@ -183,14 +183,7 @@ describe('authentication and authorization', () => {
       .expect(409)
       .expect(({ body: response }) => expect(response.error.code).toBe('EMAIL_ALREADY_EXISTS'));
     expect(store.users.size).toBe(1);
-    expect(store.receivedGoals).toEqual([
-      {
-        goalType: 'TOTAL_AVAILABLE_CREDIT',
-        scope: 'PERSONAL',
-        targetAmount: 50_000,
-        priority: 'PRIMARY',
-      },
-    ]);
+    expect(store.receivedGoals).toEqual([]); // ENTRY-F1: registration never applies Goals.
   });
 
   test('AT-AUTH-03 protects me, authenticates cookie, patches own profile, and logs out', async () => {

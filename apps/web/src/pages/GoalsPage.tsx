@@ -1,3 +1,4 @@
+import { EntryHandoff } from '../entry/EntryHandoff';
 import { subscribeToSessionLoss } from '../auth/sessionLoss';
 import { useAuth } from '../auth/AuthProvider';
 import {
@@ -78,7 +79,12 @@ export function GoalsPage() {
   const [params] = useSearchParams();
   if (!user?.clientId) return null;
   const key = goalRecoveryKey(user.userId, user.clientId, params.get('cycle'));
-  return <GoalsEditor key={key} recoveryKey={key} />;
+  return (
+    <Stack spacing={3}>
+      <EntryHandoff />
+      <GoalsEditor key={key} recoveryKey={key} />
+    </Stack>
+  );
 }
 function GoalsEditor({ recoveryKey }: { recoveryKey: string }) {
   const activeSession = useRef(true);

@@ -12,6 +12,7 @@ export type ReadinessResponse = {
 };
 
 export const liveEventDomains = [
+  'goals',
   'application-cycles',
   'credit-profile',
   'documents',
@@ -63,3 +64,4 @@ export type ReviewCreditBalance = {
   consumed: number;
   expired: number;
 };
+export * from './contracts/entry.js';

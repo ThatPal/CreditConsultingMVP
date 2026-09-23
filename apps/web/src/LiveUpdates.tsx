@@ -6,6 +6,7 @@ import { type PropsWithChildren, useEffect } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { webEnv } from './config/env';
 type LiveEventDomain =
+  | 'goals'
   | 'application-cycles'
   | 'credit-profile'
   | 'documents'
@@ -31,6 +32,7 @@ export const liveConnectionCopy = (state: LiveConnectionState) =>
     : 'Reconnecting to live updates. You are viewing the last confirmed state; recent changes may not appear yet.';
 
 const queryRootsByDomain: Record<LiveEventDomain, string[]> = {
+  goals: ['goals', creditWorkspaceRoots.home, creditWorkspaceRoots.journey],
   'application-cycles': [
     'application-cycles',
     'rounds',

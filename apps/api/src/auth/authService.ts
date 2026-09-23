@@ -78,7 +78,7 @@ export function createAuthService(
           ...(input.phone ? { phone: input.phone.trim() } : {}),
           timezone: input.timezone,
           termsAcceptedAt: new Date(),
-          ...(input.goals ? { goals: input.goals } : {}),
+          // Signup creates identity only; Goals require an authenticated explicit command.
         });
       } catch (error) {
         if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002')

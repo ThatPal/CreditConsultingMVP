@@ -7,7 +7,10 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { apiRequest } from '../auth/api';
 import { NavigationProtection } from '../NavigationProtection';
 import { GoalsPage } from './GoalsPage';
-vi.mock('../auth/api', () => ({ apiRequest: vi.fn() }));
+vi.mock('../auth/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../auth/api')>()),
+  apiRequest: vi.fn(),
+}));
 const goal = (version = 1) => ({
   id: 'goal',
   version,

@@ -19,9 +19,11 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
-import { apiRequest } from '../auth/api';
+import { useEffect, useState, useRef } from 'react';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { savedIntakeToken, rememberIntake, forgetIntake } from '../entry/continuation';
+import { GoalSummary } from '../entry/EntryComponents';
+import { ApiRequestError, apiRequest } from '../auth/api';
 import { designTokens } from '../theme';
 
 type OfferPreference = 'ZERO_APR' | 'BALANCE_TRANSFER' | 'REWARDS_POINTS';
@@ -45,7 +47,7 @@ type GoalDraft = {
   phone: string;
 };
 type Intake = GoalDraft & { version: number; expiresAt: string };
-const storageKey = 'credit.goal-intake-token';
+
 const initial: GoalDraft = {
   goalType: 'TOTAL_AVAILABLE_CREDIT',
   scope: 'PERSONAL',
@@ -63,26 +65,64 @@ const initial: GoalDraft = {
 
 export function GoalIntakePage() {
   const [goal, setGoal] = useState(initial);
+  const dirty = useRef(false);
+  const [params] = useSearchParams();
+  const [loadedVersion, setLoadedVersion] = useState<number | null>(null);
+  const [expiresAt, setExpiresAt] = useState('');
+  const setSnapshot = (intake: Intake) => {
+    setGoal(
+      Object.fromEntries(
+        Object.keys(initial).map((key) => [
+          key,
+          intake[key as keyof GoalDraft] ?? initial[key as keyof GoalDraft],
+        ]),
+      ) as GoalDraft,
+    );
+    setLoadedVersion(intake.version);
+    setExpiresAt(intake.expiresAt);
+  };
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [stale, setStale] = useState(false);
+  async function reloadSaved() {
+    if (!token || busy) return;
+    setBusy(true);
+    try {
+      const { intake } = await apiRequest<{ intake: Intake }>(`/api/v1/goal-intakes/${token}`);
+      setSnapshot(intake);
+      setStale(false);
+      setError('');
+      setStep(1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to reload the saved goal');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(storageKey);
+    let active = true;
+    const saved = params.get('intake') || savedIntakeToken();
     if (!saved) return;
     apiRequest<{ intake: Intake }>(`/api/v1/goal-intakes/${saved}`)
       .then(({ intake }) => {
+        if (!active || dirty.current) return;
         setToken(saved);
-        setGoal({
-          ...intake,
-          preferenceNote: intake.preferenceNote ?? '',
-          phone: intake.phone ?? '',
-        });
+        setSnapshot(intake);
         setStep(3);
       })
-      .catch(() => sessionStorage.removeItem(storageKey));
-  }, []);
+      .catch(() => {
+        if (active && !dirty.current) {
+          forgetIntake();
+          setError('The saved goal could not be restored. You can start a new goal below.');
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [params]);
 
   const toggleOffer = (value: OfferPreference) =>
     setGoal((current) => ({
@@ -96,22 +136,27 @@ export function GoalIntakePage() {
     setError('');
     try {
       if (token) {
-        const current = await apiRequest<{ intake: Intake }>(`/api/v1/goal-intakes/${token}`);
-        await apiRequest(`/api/v1/goal-intakes/${token}`, {
+        const updated = await apiRequest<{ intake: Intake }>(`/api/v1/goal-intakes/${token}`, {
           method: 'PATCH',
-          body: JSON.stringify({ ...goal, version: current.intake.version }),
+          body: JSON.stringify({ ...goal, version: loadedVersion }),
         });
+        setSnapshot(updated.intake);
       } else {
-        const created = await apiRequest<{ token: string }>('/api/v1/goal-intakes', {
-          method: 'POST',
-          body: JSON.stringify(goal),
-        });
+        const created = await apiRequest<{ token: string; intake: Intake }>(
+          '/api/v1/goal-intakes',
+          {
+            method: 'POST',
+            body: JSON.stringify(goal),
+          },
+        );
         setToken(created.token);
-        sessionStorage.setItem(storageKey, created.token);
+        rememberIntake(created.token);
+        setSnapshot(created.intake);
       }
       setStep(3);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to save your goal');
+      setStale(cause instanceof ApiRequestError && cause.status === 409);
     } finally {
       setBusy(false);
     }
@@ -121,6 +166,12 @@ export function GoalIntakePage() {
   const accountQuery = token ? `?intake=${encodeURIComponent(token)}` : '';
   return (
     <Box
+      onChangeCapture={() => {
+        dirty.current = true;
+      }}
+      onPointerDownCapture={() => {
+        dirty.current = true;
+      }}
       sx={{ minHeight: '100vh', py: { xs: 3, md: 7 }, background: designTokens.gradient.subtle }}
     >
       <Container maxWidth="md">
@@ -137,7 +188,24 @@ export function GoalIntakePage() {
               credit-report credentials.
             </Typography>
           </Box>
-          {error && <Alert severity="error">{error}</Alert>}
+          {error && (
+            <Alert severity="error">
+              <Stack spacing={1}>
+                <Typography>{error}</Typography>
+                {stale && (
+                  <>
+                    <Typography>
+                      Your edits are still shown. Reloading replaces them with the saved version so
+                      you can review it before saving again.
+                    </Typography>
+                    <Button disabled={busy} onClick={() => void reloadSaved()}>
+                      Discard my edits and review saved version
+                    </Button>
+                  </>
+                )}
+              </Stack>
+            </Alert>
+          )}
           <Paper sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 4 }}>
             {step === 1 && (
               <Stack spacing={3}>
@@ -253,7 +321,11 @@ export function GoalIntakePage() {
                   variant="contained"
                   endIcon={<ArrowForwardRounded />}
                   onClick={() => setStep(2)}
-                  disabled={goal.targetAmount < 5000 || goal.targetAmount > 250000}
+                  disabled={
+                    !Number.isInteger(goal.targetAmount) ||
+                    goal.targetAmount < 5000 ||
+                    goal.targetAmount > 250000
+                  }
                 >
                   Continue
                 </Button>
@@ -301,7 +373,7 @@ export function GoalIntakePage() {
                   <Button
                     variant="contained"
                     onClick={() => void save()}
-                    disabled={busy || !contactValid}
+                    disabled={busy || stale || !contactValid}
                   >
                     {busy ? 'Saving…' : 'Save and continue securely'}
                   </Button>
@@ -311,17 +383,25 @@ export function GoalIntakePage() {
             {step === 3 && (
               <Stack spacing={1.5}>
                 <Alert severity="success">
-                  Your complete goal is saved temporarily for 72 hours.
+                  Your goal is saved until {new Date(expiresAt).toLocaleString()}. No account Goal
+                  has been changed.
                 </Alert>
+                <GoalSummary values={goal} />
                 <Button
                   component={RouterLink}
+                  target="_top"
                   to={`/register${accountQuery}`}
                   variant="contained"
                   size="large"
                 >
-                  Create an account and keep this goal
+                  Create an account
                 </Button>
-                <Button component={RouterLink} to={`/login${accountQuery}`} variant="outlined">
+                <Button
+                  component={RouterLink}
+                  target="_top"
+                  to={`/login${accountQuery}`}
+                  variant="outlined"
+                >
                   Already a client? Sign in without creating another account
                 </Button>
                 <Button onClick={() => setStep(1)}>Review or edit goal</Button>

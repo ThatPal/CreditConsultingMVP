@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import express from 'express';
 import pino from 'pino';
 import request from 'supertest';
-import { afterAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 import { errorHandler } from '../http/errors.js';
 import { createPrisma } from '../lib/prisma.js';
 import {
@@ -14,12 +14,21 @@ import {
 } from './goalIntake.js';
 import { createPrismaGoalStore } from './prismaGoalStore.js';
 
-const databaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://credit:credit_dev@localhost:5433/credit_strategy_sprint42_test?schema=public';
+const databaseUrl = process.env.DATABASE_URL;
+if (
+  !databaseUrl ||
+  process.env.NODE_ENV === 'production' ||
+  new URL(databaseUrl).pathname !== '/credit_strategy_entry_f1_test' ||
+  !['127.0.0.1', 'localhost'].includes(new URL(databaseUrl).hostname)
+)
+  throw new Error('ENTRY-F1 requires its explicitly named local disposable database');
 const prisma = createPrisma(databaseUrl);
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
-const token = (letter: string) => letter.repeat(43);
+const runId = randomUUID();
+const token = (letter: string) =>
+  createHash('sha256')
+    .update(runId + letter)
+    .digest('base64url');
 
 async function client(label: string) {
   const user = await prisma.user.create({
@@ -58,17 +67,6 @@ async function intake(rawToken: string, expiresAt = new Date(Date.now() + 3_600_
 }
 
 describe('goal-first intake binding', () => {
-  beforeEach(async () => {
-    await prisma.outboxEvent.deleteMany({ where: { eventType: 'client.goal.changed' } });
-    await prisma.auditEvent.deleteMany({ where: { entityType: 'ClientGoal' } });
-    await prisma.clientGoalRevision.deleteMany();
-    await prisma.goalIntakeRegistrationClaim.deleteMany();
-    await prisma.anonymousGoalIntake.deleteMany();
-    await prisma.clientGoal.deleteMany();
-    await prisma.client.deleteMany({ where: { user: { email: { startsWith: 'goal-' } } } });
-    await prisma.user.deleteMany({ where: { email: { startsWith: 'goal-' } } });
-  });
-
   afterAll(async () => prisma.$disconnect());
 
   test('opaque public tokens isolate drafts and support optimistic updates', async () => {
@@ -124,83 +122,19 @@ describe('goal-first intake binding', () => {
       .expect(409);
   });
 
-  test('binds once and duplicate retries create exactly one goal, revision, audit, and outbox effect', async () => {
-    const identity = await client('new');
-    const record = await intake(token('A'));
-
-    const first = await bindAnonymousGoalIntake(
-      prisma,
-      token('A'),
-      identity.client.id,
-      identity.user.id,
-    );
-    const replay = await bindAnonymousGoalIntake(
-      prisma,
-      token('A'),
-      identity.client.id,
-      identity.user.id,
-    );
-
-    expect(first.replayed).toBe(false);
-    expect(replay).toMatchObject({ replayed: true });
-    expect(await prisma.clientGoal.count({ where: { clientId: identity.client.id } })).toBe(1);
-    expect(await prisma.clientGoalRevision.count({ where: { clientId: identity.client.id } })).toBe(
-      1,
-    );
-    expect(
-      await prisma.auditEvent.count({
-        where: { clientId: identity.client.id, entityType: 'ClientGoal' },
-      }),
-    ).toBe(1);
-    expect(
-      await prisma.outboxEvent.count({ where: { eventKey: `goal-intake-bound:${record.id}` } }),
-    ).toBe(1);
-  });
-
-  test('reconciles an existing primary goal without duplicating the user or client', async () => {
-    const identity = await client('existing');
-    await prisma.clientGoal.create({
-      data: {
-        clientId: identity.client.id,
-        goalType: 'ZERO_APR_CREDIT',
-        scope: 'BUSINESS',
-        targetAmount: 20_000,
-        priority: 'PRIMARY',
-      },
-    });
-    await intake(token('B'));
-
-    await bindAnonymousGoalIntake(prisma, token('B'), identity.client.id, identity.user.id);
-
-    expect(await prisma.user.count({ where: { id: identity.user.id } })).toBe(1);
-    expect(await prisma.client.count({ where: { id: identity.client.id } })).toBe(1);
-    const goals = await prisma.clientGoal.findMany({ where: { clientId: identity.client.id } });
-    expect(goals).toHaveLength(1);
-    expect(goals[0]).toMatchObject({ scope: 'PERSONAL', version: 2 });
-  });
-
-  test('fails closed for expired, unknown, or already-consumed tokens', async () => {
-    const first = await client('first');
-    const second = await client('second');
-    await intake(token('C'), new Date(Date.now() - 1_000));
-    await intake(token('D'));
-    await bindAnonymousGoalIntake(prisma, token('D'), first.client.id, first.user.id);
-
+  test('legacy automatic bind is rejected without creating a Goal', async () => {
+    const identity = await client('legacy');
+    await intake(token('A'));
     await expect(
-      bindAnonymousGoalIntake(prisma, token('C'), first.client.id, first.user.id),
-    ).rejects.toMatchObject({ status: 410 });
-    await expect(
-      bindAnonymousGoalIntake(prisma, token('D'), second.client.id, second.user.id),
-    ).rejects.toMatchObject({ status: 410 });
-    await expect(
-      bindAnonymousGoalIntake(prisma, token('E'), first.client.id, first.user.id),
-    ).rejects.toMatchObject({ status: 404 });
+      bindAnonymousGoalIntake(prisma, token('A'), identity.client.id, identity.user.id),
+    ).rejects.toMatchObject({ code: 'INTAKE_DECISION_REQUIRED', status: 400 });
+    expect(await prisma.clientGoal.count({ where: { clientId: identity.client.id } })).toBe(0);
   });
 
   test('cleanup removes only expired unconsumed intake state', async () => {
     const expired = await intake(token('F'), new Date(Date.now() - 1_000));
     const active = await intake(token('G'));
-    expect((await cleanupExpiredGoalIntakes(prisma)).count).toBe(1);
+    await cleanupExpiredGoalIntakes(prisma);
     expect(await prisma.anonymousGoalIntake.findUnique({ where: { id: expired.id } })).toBeNull();
     expect(
       await prisma.anonymousGoalIntake.findUnique({ where: { id: active.id } }),
@@ -211,17 +145,33 @@ describe('goal-first intake binding', () => {
     const record = await intake(token('H'));
     const intended = await client('claim-intended');
     const unrelated = await client('claim-unrelated');
-    await prepareGoalIntakeRegistrationClaim(prisma, token('H'), record.email);
+    await prepareGoalIntakeRegistrationClaim(
+      prisma,
+      token('H'),
+      record.email,
+      1,
+      'same-attempt-key-0001',
+    );
     await prepareGoalIntakeRegistrationClaim(prisma, undefined, record.email);
 
     await expect(
       bindClaimedGoalIntake(prisma, record.email, unrelated.client.id, unrelated.user.id),
     ).resolves.toBeNull();
     expect(await prisma.clientGoal.count({ where: { clientId: unrelated.client.id } })).toBe(0);
-    await prepareGoalIntakeRegistrationClaim(prisma, token('H'), record.email);
+    await prepareGoalIntakeRegistrationClaim(
+      prisma,
+      token('H'),
+      record.email,
+      1,
+      'same-attempt-key-0001',
+    );
     await bindClaimedGoalIntake(prisma, record.email, intended.client.id, intended.user.id);
-    expect(await prisma.clientGoal.count({ where: { clientId: intended.client.id } })).toBe(1);
-    expect(await prisma.goalIntakeRegistrationClaim.count()).toBe(0);
+    expect(await prisma.clientGoal.count({ where: { clientId: intended.client.id } })).toBe(0);
+    expect(
+      await prisma.goalIntakeRegistrationClaim.count({
+        where: { intakeTokenHash: record.tokenHash },
+      }),
+    ).toBe(1);
   });
 
   test('governed goal commands are idempotent and reject stale concurrent changes', async () => {

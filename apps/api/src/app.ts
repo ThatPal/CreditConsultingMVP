@@ -57,6 +57,7 @@ export type ReadinessChecks = {
 export const httpLogRedact = [
   'req.headers.authorization',
   'req.headers.cookie',
+  'req.headers.referer',
   'res.headers["set-cookie"]',
 ] as const;
 
@@ -65,6 +66,20 @@ export function createHttpLogger(level: string, stream?: DestinationStream) {
     {
       level,
       redact: [...httpLogRedact],
+      serializers: {
+        req: (request) => ({
+          ...request,
+          url:
+            typeof request.url === 'string'
+              ? request.url
+                  .replace(
+                    /(goal-intakes\/)(?!pending(?:[/?]|$)|preview(?:[/?]|$)|resolve(?:[/?]|$))[^/?]+/g,
+                    '$1[redacted]',
+                  )
+                  .replace(/([?&]intake=)[^&]+/g, '$1[redacted]')
+              : request.url,
+        }),
+      },
       genReqId: (req, res) => {
         const id = req.headers['x-request-id']?.toString() ?? randomUUID();
         res.setHeader('x-request-id', id);
@@ -214,11 +229,26 @@ export function createApp(
       );
       app.use(
         '/api/v1',
-        createOperationsRouter(prisma, auth, {
-          resolveStreamPrincipal: (request) => betterAuth
-            ? resolveBetterAuthPrincipal(betterAuth, prisma, request.headers, env.MFA_STEP_UP_TTL_MINUTES)
-            : auth.authenticate(request.cookies?.[env.SESSION_COOKIE_NAME] as string | undefined),
-        }, authorization, denialRecorder, aiRuntime),
+        createOperationsRouter(
+          prisma,
+          auth,
+          {
+            resolveStreamPrincipal: (request) =>
+              betterAuth
+                ? resolveBetterAuthPrincipal(
+                    betterAuth,
+                    prisma,
+                    request.headers,
+                    env.MFA_STEP_UP_TTL_MINUTES,
+                  )
+                : auth.authenticate(
+                    request.cookies?.[env.SESSION_COOKIE_NAME] as string | undefined,
+                  ),
+          },
+          authorization,
+          denialRecorder,
+          aiRuntime,
+        ),
       );
       app.use(
         '/api/v1/major-readiness-v2',

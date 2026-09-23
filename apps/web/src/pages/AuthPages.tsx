@@ -1,3 +1,4 @@
+import { SavedEntryContext } from '../entry/SavedEntryContext';
 import LockRounded from '@mui/icons-material/LockRounded';
 import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded';
 import LogoutRounded from '@mui/icons-material/LogoutRounded';
@@ -13,7 +14,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, useRef, type FormEvent, type ReactNode } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Link as RouterLink,
@@ -27,6 +28,9 @@ import { useAuth } from '../auth/AuthProvider';
 import { announceSessionChange } from '../auth/sessionTabs';
 import { safeReturnPath } from '../auth/safeReturnPath';
 import { designTokens } from '../theme';
+import { entryLink, entryDestination, entryCallback } from '../entry/continuation';
+import { EntryIntentStrip } from '../entry/EntryComponents';
+import type { EntryGoalValues } from '@credit/shared';
 
 function AuthFrame({
   title,
@@ -85,11 +89,14 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [resendState, setResendState] = useState<'idle' | 'busy' | 'success' | 'error'>('idle');
-  const intakeToken = params.get('intake');
   if (user && !busy)
     return (
       <Navigate
-        to={safeReturnPath((location.state as { from?: unknown } | null)?.from, homeFor(user))}
+        to={entryDestination(
+          params,
+          user.role,
+          safeReturnPath((location.state as { from?: unknown } | null)?.from, homeFor(user)),
+        )}
         replace
       />
     );
@@ -99,6 +106,7 @@ export function LoginPage() {
     setError('');
     const data = new FormData(event.currentTarget);
     const email = String(data.get('email') ?? '');
+    let authenticated = false;
     try {
       const signIn = await apiRequest<{ twoFactorRedirect?: boolean }>('/api/auth/sign-in/email', {
         method: 'POST',
@@ -110,35 +118,33 @@ export function LoginPage() {
         navigate(`/mfa?mode=challenge&returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
         return;
       }
+      authenticated = true;
       await refresh(true);
       const result = await apiRequest<{ user: CurrentUser }>('/api/me');
-      if (result.user.role === 'CLIENT' && intakeToken) {
-        await apiRequest(`/api/v1/client/goal-intakes/${encodeURIComponent(intakeToken)}/bind`, {
-          method: 'POST',
-        });
-        sessionStorage.removeItem('credit.goal-intake-token');
-      }
-      if (result.user.role !== 'CLIENT' && !result.user.staffMfaVerified) {
-        navigate(`/mfa?mode=enroll&returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
-        return;
-      }
+      // refresh(true) already notifies other tabs through the provider's channel.
+      // A second transient channel would also invalidate this newly signed-in tab.
       navigate(
-        safeReturnPath(
-          (location.state as { from?: unknown } | null)?.from,
-          result.user.role === 'CLIENT' && intakeToken ? '/app/goals' : homeFor(result.user),
+        entryDestination(
+          params,
+          result.user.role,
+          safeReturnPath((location.state as { from?: unknown } | null)?.from, homeFor(result.user)),
         ),
-        { replace: true },
       );
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Unable to sign in';
-      setError(message);
-      if (/verif/i.test(message)) setVerificationEmail(email);
+      setError(
+        authenticated
+          ? `Your sign-in succeeded, but your account context could not be loaded. Please retry. ${message}`
+          : message,
+      );
+      if (!authenticated && /verif/i.test(message)) setVerificationEmail(email);
     } finally {
       setBusy(false);
     }
   }
   return (
     <AuthFrame title="Welcome back" subtitle="Sign in to your private credit strategy workspace.">
+      <SavedEntryContext key={params.get('intake')} />
       <Stack component="form" spacing={2} onSubmit={submit}>
         {(location.state as { sessionExpired?: unknown } | null)?.sessionExpired === true && (
           <Alert severity="info">
@@ -148,7 +154,9 @@ export function LoginPage() {
           </Alert>
         )}
         {params.get('verified') === '1' && (
-          <Alert severity="success">Email verified. You can sign in now.</Alert>
+          <Alert severity="info">
+            Continue to sign in. Verification is checked securely by the server.
+          </Alert>
         )}
         {error && <Alert severity="error">{error}</Alert>}
         {resendState === 'success' && (
@@ -170,7 +178,7 @@ export function LoginPage() {
                   method: 'POST',
                   body: JSON.stringify({
                     email: verificationEmail,
-                    callbackURL: '/verify-email?status=success',
+                    callbackURL: entryCallback('/verify-email?status=success', params),
                   }),
                 });
                 setResendState('success');
@@ -194,10 +202,10 @@ export function LoginPage() {
           {busy ? 'Signing in…' : 'Sign in'}
         </Button>
         <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-          <Link component={RouterLink} to="/forgot-password">
+          <Link component={RouterLink} to={entryLink('/forgot-password', params)}>
             Forgot password?
           </Link>
-          <Link component={RouterLink} to="/register">
+          <Link component={RouterLink} to={entryLink('/register', params)}>
             Create account
           </Link>
         </Stack>
@@ -439,6 +447,11 @@ export function RegisterPage() {
   const intakeToken = params.get('intake');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const contactDirty = useRef(false);
+  const attemptKey = useRef(crypto.randomUUID());
+  const [intakeSnapshot, setIntakeSnapshot] = useState<
+    (EntryGoalValues & { version: number; expiresAt: string }) | null
+  >(null);
   const [intakeContact, setIntakeContact] = useState({
     firstName: '',
     lastName: '',
@@ -447,15 +460,38 @@ export function RegisterPage() {
   });
   useEffect(() => {
     if (!intakeToken) return;
+    let active = true;
     apiRequest<{
-      intake: { firstName: string; lastName: string; email: string; phone: string | null };
+      intake: EntryGoalValues & {
+        version: number;
+        expiresAt: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone: string | null;
+      };
     }>(`/api/v1/goal-intakes/${intakeToken}`)
-      .then(({ intake }) => setIntakeContact({ ...intake, phone: intake.phone ?? '' }))
-      .catch(() =>
-        setError('This saved goal is unavailable. Start a new goal intake before registering.'),
+      .then(({ intake }) => {
+        if (!active) return;
+        setIntakeSnapshot(intake);
+        if (!contactDirty.current)
+          setIntakeContact({
+            firstName: intake.firstName,
+            lastName: intake.lastName,
+            email: intake.email,
+            phone: intake.phone ?? '',
+          });
+      })
+      .catch(
+        () =>
+          active &&
+          setError('This saved goal is unavailable. Continue without it to create your account.'),
       );
+    return () => {
+      active = false;
+    };
   }, [intakeToken]);
-  if (user) return <Navigate to={homeFor(user)} replace />;
+  if (user) return <Navigate to={entryDestination(params, user.role, homeFor(user))} replace />;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -474,11 +510,15 @@ export function RegisterPage() {
           authTimezone: data.timezone,
           authTermsAccepted: data.termsAccepted === 'on',
           authGoalIntakeToken: intakeToken || undefined,
-          callbackURL: '/verify-email?status=success',
+          authGoalIntakeVersion: intakeSnapshot?.version,
+          authEntryAttemptKey: intakeToken ? attemptKey.current : undefined,
+          callbackURL: entryCallback('/verify-email?status=success', params),
         }),
       });
-      if (intakeToken) sessionStorage.removeItem('credit.goal-intake-token');
-      navigate('/verify-email', { replace: true, state: { email: String(data.email ?? '') } });
+      navigate(entryLink('/verify-email', params), {
+        replace: true,
+        state: { email: String(data.email ?? '') },
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to create account');
     } finally {
@@ -490,7 +530,35 @@ export function RegisterPage() {
       title="Create your account"
       subtitle="Register directly for secure access to the client portal."
     >
-      <Stack component="form" spacing={2} onSubmit={submit}>
+      <Stack
+        component="form"
+        spacing={2}
+        onSubmit={submit}
+        onChangeCapture={() => {
+          contactDirty.current = true;
+        }}
+      >
+        {intakeToken && (
+          <>
+            <EntryIntentStrip
+              state={intakeSnapshot ? 'SAVED' : 'UNAVAILABLE'}
+              {...(intakeSnapshot
+                ? { summary: intakeSnapshot, expiresAt: intakeSnapshot.expiresAt }
+                : {})}
+            />
+            <Button
+              component={RouterLink}
+              to={entryLink(
+                '/register',
+                new URLSearchParams(
+                  params.get('returnTo') ? { returnTo: params.get('returnTo')! } : {},
+                ),
+              )}
+            >
+              Continue without this saved goal
+            </Button>
+          </>
+        )}
         {error && <Alert severity="error">{error}</Alert>}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
@@ -539,10 +607,15 @@ export function RegisterPage() {
           control={<Checkbox name="termsAccepted" required />}
           label="I accept the terms and privacy policy"
         />
-        <Button type="submit" variant="contained" size="large" disabled={busy}>
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={busy || (!!intakeToken && !intakeSnapshot)}
+        >
           {busy ? 'Creating…' : 'Create account'}
         </Button>
-        <Link component={RouterLink} to="/login">
+        <Link component={RouterLink} to={entryLink('/login', params)}>
           Already have an account? Sign in
         </Link>
       </Stack>
@@ -564,7 +637,10 @@ export function VerifyEmailPage() {
     try {
       await apiRequest('/api/auth/send-verification-email', {
         method: 'POST',
-        body: JSON.stringify({ email, callbackURL: '/verify-email?status=success' }),
+        body: JSON.stringify({
+          email,
+          callbackURL: entryCallback('/verify-email?status=success', params),
+        }),
       });
       setStatus('success');
     } catch {
@@ -573,16 +649,18 @@ export function VerifyEmailPage() {
   }
   return (
     <AuthFrame
-      title={result === 'success' ? 'Email verified' : 'Verify your email'}
+      title={result === 'success' ? 'Continue to sign in' : 'Verify your email'}
       subtitle={
         result === 'success'
-          ? 'Your secure account is ready for sign in.'
+          ? 'Sign in to continue. Verification is checked securely by the server.'
           : 'Open the private verification link sent to your inbox.'
       }
     >
       <Stack spacing={2.5}>
         {result === 'success' ? (
-          <Alert severity="success">Verification complete. Continue to sign in.</Alert>
+          <Alert severity="info">
+            Continue to sign in. This page does not confirm verification by itself.
+          </Alert>
         ) : verificationFailed ? (
           <Alert severity="warning">
             This verification link is no longer valid. Request a new link below.
@@ -616,7 +694,7 @@ export function VerifyEmailPage() {
         )}
         <Button
           component={RouterLink}
-          to="/login"
+          to={entryLink('/login', params)}
           variant={result === 'success' ? 'contained' : 'text'}
         >
           Return to sign in
@@ -627,6 +705,7 @@ export function VerifyEmailPage() {
 }
 
 export function ForgotPasswordPage() {
+  const [params] = useSearchParams();
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -635,7 +714,7 @@ export function ForgotPasswordPage() {
     try {
       await apiRequest('/api/auth/request-password-reset', {
         method: 'POST',
-        body: JSON.stringify({ email, redirectTo: '/reset-password' }),
+        body: JSON.stringify({ email, redirectTo: entryCallback('/reset-password', params) }),
       });
       setSent(true);
     } catch (cause) {
@@ -658,7 +737,7 @@ export function ForgotPasswordPage() {
           </Button>
         </Stack>
       )}
-      <Link component={RouterLink} to="/login">
+      <Link component={RouterLink} to={entryLink('/login', params)}>
         Back to sign in
       </Link>
     </AuthFrame>
@@ -678,7 +757,7 @@ export function ResetPasswordPage() {
         method: 'POST',
         body: JSON.stringify({ token, newPassword: password }),
       });
-      navigate('/login?reset=1', { replace: true });
+      navigate(entryLink('/login?reset=1', params), { replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to reset password');
     }
@@ -691,7 +770,7 @@ export function ResetPasswordPage() {
       {!token || params.has('error') ? (
         <Alert severity="error">
           This reset link is invalid or expired.{' '}
-          <Link component={RouterLink} to="/forgot-password">
+          <Link component={RouterLink} to={entryLink('/forgot-password', params)}>
             Request a new link
           </Link>
           .
@@ -701,7 +780,7 @@ export function ResetPasswordPage() {
           {error && (
             <Alert severity="error">
               {error}{' '}
-              <Link component={RouterLink} to="/forgot-password">
+              <Link component={RouterLink} to={entryLink('/forgot-password', params)}>
                 Request a new link
               </Link>
               .

@@ -15,7 +15,12 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
       astra-isolated:
         image: postgres:17-alpine
-        env: { POSTGRES_DB: credit_strategy_astra_u0, POSTGRES_USER: credit, POSTGRES_PASSWORD: credit_dev }
+        env:
+          {
+            POSTGRES_DB: credit_strategy_astra_u0,
+            POSTGRES_USER: credit,
+            POSTGRES_PASSWORD: credit_dev,
+          }
         ports: ['127.0.0.1:5446:5432']
         options: >-
           --health-cmd "pg_isready -U credit -d credit_strategy_astra_u0"
@@ -53,6 +58,18 @@ jobs:
         run: pnpm --filter @credit/api test:commerce-integrity
         env:
           DATABASE_URL: postgresql://credit:credit_dev@localhost:5432/credit_strategy_rec02_com01a?schema=public
+      - name: ENTRY-F1 database guard rejection checks
+        run: node --test scripts/entry-f1-guard.test.mjs
+      - name: Provision isolated ENTRY-F1 database
+        run: docker exec "${{ job.services.postgres.id }}" createdb -U credit credit_strategy_entry_f1_test
+      - name: Migrate isolated ENTRY-F1 database
+        run: node scripts/entry-f1-guard.mjs && pnpm db:migrate:deploy
+        env:
+          DATABASE_URL: postgresql://credit:credit_dev@localhost:5432/credit_strategy_entry_f1_test?schema=public
+      - name: ENTRY-F1 commands and public intake (controlled email)
+        run: pnpm --filter @credit/api test:entry-f1
+        env:
+          DATABASE_URL: postgresql://credit:credit_dev@localhost:5432/credit_strategy_entry_f1_test?schema=public
       # Existing Astra guards require this exact loopback target. Fixtures seed themselves.
       - name: Migrate isolated Astra database
         run: pnpm db:migrate:deploy

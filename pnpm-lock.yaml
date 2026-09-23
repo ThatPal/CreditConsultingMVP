@@ -138,6 +138,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@credit/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@emotion/react':
         specifier: latest
         version: 11.14.0(@types/react@19.2.18)(react@19.2.8)
@@ -266,6 +269,10 @@ importers:
         version: 4.1.11(@types/node@26.4.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
 
   packages/shared:
+    dependencies:
+      zod:
+        specifier: 4.5.4
+        version: 4.5.4
     devDependencies:
       typescript:
         specifier: 5.9.3

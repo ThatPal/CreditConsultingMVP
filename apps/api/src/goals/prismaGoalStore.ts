@@ -9,13 +9,13 @@ const toRecord = (goal: ClientGoal): GoalRecord => ({
   currentAmount: goal.currentAmount?.toNumber() ?? null,
 });
 
-async function appendRevision(
+export async function appendRevision(
   tx: Prisma.TransactionClient,
   goal: ClientGoal,
   actorId: string | null,
   source = 'CLIENT_COMMAND',
 ) {
-  await tx.clientGoalRevision.create({
+  return tx.clientGoalRevision.create({
     data: {
       goalId: goal.id,
       clientId: goal.clientId,
@@ -34,6 +34,36 @@ async function appendRevision(
       changeSource: source,
     },
   });
+}
+
+export async function lockGoalCollection(tx: Prisma.TransactionClient, clientId: string) {
+  await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ${clientId}::uuid FOR UPDATE`;
+}
+export async function advanceGoalCollection(tx: Prisma.TransactionClient, clientId: string) {
+  await tx.client.update({ where: { id: clientId }, data: { goalSetVersion: { increment: 1 } } });
+}
+async function demotePrimaries(
+  tx: Prisma.TransactionClient,
+  clientId: string,
+  actorId: string | null,
+  except?: string,
+) {
+  const others = await tx.clientGoal.findMany({
+    where: {
+      clientId,
+      status: 'ACTIVE',
+      priority: 'PRIMARY',
+      ...(except ? { id: { not: except } } : {}),
+    },
+    orderBy: { id: 'asc' },
+  });
+  for (const other of others) {
+    const demoted = await tx.clientGoal.update({
+      where: { id: other.id },
+      data: { priority: 'SECONDARY', version: { increment: 1 } },
+    });
+    await appendRevision(tx, demoted, actorId);
+  }
 }
 
 const payload = (clientId: string) =>
@@ -57,15 +87,13 @@ export function createPrismaGoalStore(prisma: PrismaClient): GoalStore {
     async create(clientId, input, context) {
       if (!context) {
         const goal = await prisma.$transaction(async (tx) => {
-          if (input.priority === 'PRIMARY')
-            await tx.clientGoal.updateMany({
-              where: { clientId, status: 'ACTIVE', priority: 'PRIMARY' },
-              data: { priority: 'SECONDARY' },
-            });
+          await lockGoalCollection(tx, clientId);
+          if (input.priority === 'PRIMARY') await demotePrimaries(tx, clientId, null);
           const created = await tx.clientGoal.create({
             data: defined({ clientId, ...input }) as Prisma.ClientGoalUncheckedCreateInput,
           });
           await appendRevision(tx, created, null);
+          await advanceGoalCollection(tx, clientId);
           return created;
         });
         return toRecord(goal);
@@ -79,15 +107,14 @@ export function createPrismaGoalStore(prisma: PrismaClient): GoalStore {
           requestHash: context.requestHash,
         },
         mutate: async (tx) => {
+          await lockGoalCollection(tx, clientId);
           if (input.priority === 'PRIMARY')
-            await tx.clientGoal.updateMany({
-              where: { clientId, status: 'ACTIVE', priority: 'PRIMARY' },
-              data: { priority: 'SECONDARY' },
-            });
+            await demotePrimaries(tx, clientId, context?.actorId ?? null);
           const goal = await tx.clientGoal.create({
             data: defined({ clientId, ...input }) as Prisma.ClientGoalUncheckedCreateInput,
           });
           await appendRevision(tx, goal, context.actorId);
+          await advanceGoalCollection(tx, clientId);
           return { goalId: goal.id, version: goal.version };
         },
         audit: (result) => ({
@@ -115,11 +142,15 @@ export function createPrismaGoalStore(prisma: PrismaClient): GoalStore {
         const existing = await prisma.clientGoal.findFirst({ where: { id: goalId, clientId } });
         if (!existing) return null;
         const goal = await prisma.$transaction(async (tx) => {
+          await lockGoalCollection(tx, clientId);
+          if (changes.priority === 'PRIMARY')
+            await demotePrimaries(tx, clientId, context?.actorId ?? null, goalId);
           const updated = await tx.clientGoal.update({
             where: { id: goalId },
             data: { ...defined(changes), version: { increment: 1 } },
           });
           await appendRevision(tx, updated, context?.actorId ?? null);
+          await advanceGoalCollection(tx, clientId);
           return updated;
         });
         return toRecord(goal);
@@ -133,12 +164,9 @@ export function createPrismaGoalStore(prisma: PrismaClient): GoalStore {
           requestHash: context.requestHash,
         },
         mutate: async (tx) => {
-          if (changes.priority === 'PRIMARY') {
-            await tx.clientGoal.updateMany({
-              where: { clientId, id: { not: goalId }, status: 'ACTIVE', priority: 'PRIMARY' },
-              data: { priority: 'SECONDARY', version: { increment: 1 } },
-            });
-          }
+          await lockGoalCollection(tx, clientId);
+          if (changes.priority === 'PRIMARY')
+            await demotePrimaries(tx, clientId, context.actorId, goalId);
           const changed = await tx.clientGoal.updateMany({
             where: { id: goalId, clientId, version },
             data: { ...defined(changes), version: { increment: 1 } },
@@ -151,6 +179,7 @@ export function createPrismaGoalStore(prisma: PrismaClient): GoalStore {
             );
           const goal = await tx.clientGoal.findUniqueOrThrow({ where: { id: goalId } });
           await appendRevision(tx, goal, context.actorId);
+          await advanceGoalCollection(tx, clientId);
           return { goalId: goal.id, version: goal.version };
         },
         audit: (result) => ({
@@ -176,11 +205,13 @@ export function createPrismaGoalStore(prisma: PrismaClient): GoalStore {
       const existing = await prisma.clientGoal.findFirst({ where: { id: goalId, clientId } });
       if (!existing) return null;
       const apply = async (tx: Prisma.TransactionClient) => {
+        await lockGoalCollection(tx, clientId);
         const goal = await tx.clientGoal.update({
           where: { id: goalId },
           data: { status: 'PAUSED', version: { increment: 1 } },
         });
         await appendRevision(tx, goal, context?.actorId ?? null);
+        await advanceGoalCollection(tx, clientId);
         return goal;
       };
       if (!context) return toRecord(await prisma.$transaction(apply));

@@ -4,30 +4,28 @@ import { z } from 'zod';
 import { requireAuth, requireRole } from '../auth/middleware.js';
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
+import { IdempotencyConflictError } from '../transactions/consequentialCommand.js';
+function entryError(error: unknown) {
+  if (error instanceof AppError || error instanceof z.ZodError) return error;
+  if (error instanceof IdempotencyConflictError)
+    return new AppError(
+      error.code,
+      409,
+      'The decision key is already in use. Retry the original decision.',
+    );
+  return new AppError(
+    'ENTRY_COMMAND_FAILED',
+    500,
+    'The saved goal operation could not be completed. Retry safely.',
+  );
+}
 
-export const goalInputSchema = z
-  .object({
-    goalType: z.literal('TOTAL_AVAILABLE_CREDIT').default('TOTAL_AVAILABLE_CREDIT'),
-    scope: z.enum(['PERSONAL', 'BUSINESS', 'BOTH']),
-    targetAmount: z.number().int().min(5_000).max(250_000),
-    allowAnnualFee: z.boolean().default(false),
-    cardTypePreference: z.enum([
-      'UNSECURED_PREFERRED',
-      'OPEN_TO_SECURED',
-      'SECURED_DESIRED',
-      'NO_PREFERENCE',
-    ]),
-    offerPreferences: z
-      .array(z.enum(['ZERO_APR', 'BALANCE_TRANSFER', 'REWARDS_POINTS']))
-      .max(3)
-      .transform((values) => [...new Set(values)]),
-    feePreference: z.enum([
-      'NO_ANNUAL_FEE_ONLY',
-      'PROMOTIONAL_NO_FEE_ACCEPTABLE',
-      'PREFER_NO_FEE_OPEN',
-      'FEE_ACCEPTABLE',
-    ]),
-    preferenceNote: z.string().trim().max(500).nullable().optional(),
+import { entryGoalValuesSchema, intakeLocatorSchema, intakeResolveSchema } from '@credit/shared';
+import { lockGoalCollection } from './prismaGoalStore.js';
+import { pendingIntakes, previewIntake, resolveIntake } from './entryIntake.js';
+
+export const goalInputSchema = entryGoalValuesSchema
+  .extend({
     firstName: z.string().trim().min(1).max(100),
     lastName: z.string().trim().min(1).max(100),
     email: z
@@ -35,7 +33,7 @@ export const goalInputSchema = z
       .trim()
       .email()
       .max(320)
-      .transform((value) => value.toLowerCase()),
+      .transform((v) => v.toLowerCase()),
     phone: z.string().trim().max(32).nullable().optional(),
   })
   .strict();
@@ -64,7 +62,7 @@ function serialize<T extends { targetAmount: { toNumber(): number } }>(intake: T
   return { ...intake, targetAmount: intake.targetAmount.toNumber() };
 }
 
-async function activeIntake(prisma: PrismaClient, token: string) {
+async function activeIntake(prisma: PrismaClient | Prisma.TransactionClient, token: string) {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token))
     throw new AppError('INTAKE_UNAVAILABLE', 404, 'Goal intake is unavailable');
   const intake = await prisma.anonymousGoalIntake.findUnique({
@@ -77,171 +75,121 @@ async function activeIntake(prisma: PrismaClient, token: string) {
   return intake;
 }
 
-export async function bindAnonymousGoalIntake(
-  prisma: PrismaClient,
-  token: string,
-  clientId: string,
-  actorId: string,
-) {
-  if (!/^[A-Za-z0-9_-]{43}$/.test(token))
-    throw new AppError('INTAKE_UNAVAILABLE', 404, 'Goal intake is unavailable');
-  return bindAnonymousGoalIntakeByHash(prisma, hashGoalIntakeToken(token), clientId, actorId);
+// Legacy callers must supply an explicit decision through the binding route.
+export async function bindAnonymousGoalIntake(..._args: unknown[]): Promise<never> {
+  void _args;
+  throw new AppError(
+    'INTAKE_DECISION_REQUIRED',
+    400,
+    'Review and explicitly confirm the saved goal first',
+  );
 }
-
-async function bindAnonymousGoalIntakeByHash(
-  prisma: PrismaClient,
-  tokenHash: string,
-  clientId: string,
-  actorId: string,
-) {
-  return prisma.$transaction(async (tx) => {
-    const intake = await tx.anonymousGoalIntake.findUnique({
-      where: { tokenHash },
-    });
-    if (!intake) throw new AppError('INTAKE_UNAVAILABLE', 404, 'Goal intake is unavailable');
-    if (intake.consumedByClientId === clientId) {
-      const goal = await tx.clientGoal.findFirst({
-        where: { clientId, priority: 'PRIMARY', status: 'ACTIVE' },
-      });
-      if (!goal) throw new AppError('INTAKE_BINDING_INCOMPLETE', 409, 'Goal binding is incomplete');
-      return { goal, replayed: true };
-    }
-    if (intake.consumedAt || intake.expiresAt <= new Date())
-      throw new AppError('INTAKE_UNAVAILABLE', 410, 'Goal intake is expired or already used');
-    const claimed = await tx.anonymousGoalIntake.updateMany({
-      where: { id: intake.id, consumedAt: null, expiresAt: { gt: new Date() } },
-      data: { consumedAt: new Date(), consumedByClientId: clientId },
-    });
-    if (claimed.count !== 1)
-      throw new AppError('INTAKE_UNAVAILABLE', 410, 'Goal intake is expired or already used');
-
-    const current = await tx.clientGoal.findFirst({
-      where: { clientId, priority: 'PRIMARY', status: 'ACTIVE' },
-      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-    });
-    const goal = current
-      ? await tx.clientGoal.update({
-          where: { id: current.id },
-          data: {
-            scope: intake.scope,
-            targetAmount: intake.targetAmount,
-            allowAnnualFee: intake.allowAnnualFee,
-            cardTypePreference: intake.cardTypePreference,
-            offerPreferences: intake.offerPreferences,
-            feePreference: intake.feePreference,
-            preferenceNote: intake.preferenceNote,
-            version: { increment: 1 },
-          },
-        })
-      : await tx.clientGoal.create({
-          data: {
-            clientId,
-            goalType: intake.goalType,
-            scope: intake.scope,
-            targetAmount: intake.targetAmount,
-            allowAnnualFee: intake.allowAnnualFee,
-            cardTypePreference: intake.cardTypePreference,
-            offerPreferences: intake.offerPreferences,
-            feePreference: intake.feePreference,
-            preferenceNote: intake.preferenceNote,
-            priority: 'PRIMARY',
-          },
-        });
-    await tx.clientGoalRevision.create({
-      data: {
-        goalId: goal.id,
-        clientId,
-        version: goal.version,
-        goalType: goal.goalType,
-        scope: goal.scope,
-        targetAmount: goal.targetAmount,
-        allowAnnualFee: goal.allowAnnualFee,
-        cardTypePreference: goal.cardTypePreference,
-        offerPreferences: goal.offerPreferences,
-        feePreference: goal.feePreference,
-        preferenceNote: goal.preferenceNote,
-        priority: goal.priority,
-        status: goal.status,
-        changedById: actorId,
-        changeSource: 'GOAL_FIRST_INTAKE',
-      },
-    });
-    await tx.auditEvent.create({
-      data: {
-        actorId,
-        clientId,
-        action: current ? 'CLIENT_GOAL_RECONCILED_FROM_INTAKE' : 'CLIENT_GOAL_CREATED_FROM_INTAKE',
-        entityType: 'ClientGoal',
-        entityId: goal.id,
-        metadata: { intakeId: intake.id, version: goal.version },
-      },
-    });
-    await tx.outboxEvent.create({
-      data: {
-        eventType: 'client.goal.changed',
-        eventKey: `goal-intake-bound:${intake.id}`,
-        aggregateType: 'ClientGoal',
-        aggregateId: goal.id,
-        payload: { clientId, domains: ['goals'], refetch: true, reassessmentRequired: true },
-      },
-    });
-    return { goal, replayed: false };
-  });
+export async function bindClaimedGoalIntake(..._args: unknown[]) {
+  void _args;
+  return null;
 }
-
-const registrationEmailHash = (email: string) =>
-  createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
 
 export async function prepareGoalIntakeRegistrationClaim(
   prisma: PrismaClient,
   token: string | undefined,
   email: string,
+  intakeVersion?: number,
+  attemptKey?: string,
 ) {
-  const emailHash = registrationEmailHash(email);
-  await prisma.goalIntakeRegistrationClaim.deleteMany({
-    where: { registrationEmailHash: emailHash },
+  if (!token) return null;
+  if (!intakeVersion || !attemptKey || !/^[A-Za-z0-9_-]{16,128}$/.test(attemptKey))
+    throw new AppError(
+      'INTAKE_DECISION_REQUIRED',
+      400,
+      'A saved intake version and registration attempt are required',
+    );
+  const normalizedEmail = email.trim().toLowerCase();
+  const registrationEmailHash = hashGoalIntakeToken(normalizedEmail);
+  const registrationAttemptKeyHash = hashGoalIntakeToken(
+    JSON.stringify([normalizedEmail, attemptKey]),
+  );
+  const intakeTokenHash = hashGoalIntakeToken(token);
+  const requestHash = hashGoalIntakeToken(
+    JSON.stringify({ registrationEmailHash, intakeTokenHash, intakeVersion }),
+  );
+  const previous = await prisma.goalIntakeRegistrationClaim.findUnique({
+    where: { registrationAttemptKeyHash },
   });
-  if (!token) return;
+  if (previous && previous.requestHash !== requestHash)
+    throw new AppError(
+      'IDEMPOTENCY_KEY_REUSED',
+      409,
+      'Registration attempt changed; start a new explicit attempt',
+    );
   const intake = await activeIntake(prisma, token);
-  if (intake.email !== email.trim().toLowerCase())
+  if (intake.email !== normalizedEmail)
     throw new AppError('INTAKE_UNAVAILABLE', 404, 'Goal intake is unavailable');
-  await prisma.goalIntakeRegistrationClaim.create({
-    data: {
-      registrationEmailHash: emailHash,
-      intakeTokenHash: hashGoalIntakeToken(token),
+  if (intake.version !== intakeVersion)
+    throw new AppError('STALE_INTAKE', 409, 'Review the updated saved goal before registering');
+  if (previous) return previous.id;
+  const claim = await prisma.goalIntakeRegistrationClaim.upsert({
+    where: { registrationAttemptKeyHash },
+    update: {},
+    create: {
+      registrationEmailHash,
+      registrationAttemptKeyHash,
+      requestHash,
+      intakeTokenHash,
+      intakeVersion,
       expiresAt: intake.expiresAt,
     },
   });
+  if (claim.requestHash !== requestHash)
+    throw new AppError('IDEMPOTENCY_KEY_REUSED', 409, 'Registration attempt changed');
+  return claim.id;
 }
-
-export async function bindClaimedGoalIntake(
+export async function attachGoalIntakeClaim(
   prisma: PrismaClient,
-  email: string,
+  claimId: string,
   clientId: string,
   actorId: string,
 ) {
-  const emailHash = registrationEmailHash(email);
-  const claim = await prisma.goalIntakeRegistrationClaim.findUnique({
-    where: { registrationEmailHash: emailHash },
+  return prisma.$transaction(async (tx) => {
+    await lockGoalCollection(tx, clientId);
+    const client = await tx.client.findFirst({ where: { id: clientId, userId: actorId } });
+    if (!client)
+      throw new AppError('INTAKE_UNAVAILABLE', 404, 'Account association is unavailable');
+    const claim = await tx.goalIntakeRegistrationClaim.findUniqueOrThrow({
+      where: { id: claimId },
+    });
+    await tx.$queryRaw`SELECT id FROM "AnonymousGoalIntake" WHERE "tokenHash" = ${claim.intakeTokenHash} FOR UPDATE`;
+    const retained = await tx.anonymousGoalIntake.findUnique({
+      where: { tokenHash: claim.intakeTokenHash },
+    });
+    if (!retained || retained.consumedAt || retained.expiresAt <= new Date())
+      throw new AppError('INTAKE_UNAVAILABLE', 404, 'Saved goal association requires recovery');
+    const foreign = await tx.goalIntakeRegistrationClaim.findFirst({
+      where: { intakeTokenHash: claim.intakeTokenHash, attachedClientId: { not: clientId } },
+    });
+    if (foreign)
+      throw new AppError('INTAKE_UNAVAILABLE', 404, 'Account association is unavailable');
+    const updated = await tx.goalIntakeRegistrationClaim.updateMany({
+      where: {
+        id: claimId,
+        attachedUserId: null,
+        attachedClientId: null,
+        registrationAttemptKeyHash: { not: null },
+        intakeVersion: { not: null },
+      },
+      data: { attachedUserId: actorId, attachedClientId: clientId, attachedAt: new Date() },
+    });
+    if (!updated.count && (claim.attachedUserId !== actorId || claim.attachedClientId !== clientId))
+      throw new AppError('INTAKE_UNAVAILABLE', 404, 'Account association is unavailable');
   });
-  if (!claim) return null;
-  if (claim.expiresAt <= new Date()) {
-    await prisma.goalIntakeRegistrationClaim.deleteMany({
-      where: { registrationEmailHash: emailHash },
-    });
-    return null;
-  }
-  try {
-    return await bindAnonymousGoalIntakeByHash(prisma, claim.intakeTokenHash, clientId, actorId);
-  } finally {
-    await prisma.goalIntakeRegistrationClaim.deleteMany({
-      where: { registrationEmailHash: emailHash },
-    });
-  }
 }
 
 export function createGoalIntakePublicRouter(prisma: PrismaClient) {
   const router = Router();
+  router.use((_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    res.set('Referrer-Policy', 'no-referrer');
+    next();
+  });
   router.post('/', async (req, res, next) => {
     try {
       const input = goalInputSchema.parse(req.body);
@@ -261,7 +209,7 @@ export function createGoalIntakePublicRouter(prisma: PrismaClient) {
       next(
         error instanceof z.ZodError
           ? new AppError('VALIDATION_ERROR', 400, 'Goal details are invalid')
-          : error,
+          : entryError(error),
       );
     }
   });
@@ -270,7 +218,7 @@ export function createGoalIntakePublicRouter(prisma: PrismaClient) {
       const intake = await activeIntake(prisma, req.params.token as string);
       res.json({ intake: serialize(intake) });
     } catch (error) {
-      next(error);
+      next(entryError(error));
     }
   });
   router.patch('/:token', async (req, res, next) => {
@@ -278,32 +226,35 @@ export function createGoalIntakePublicRouter(prisma: PrismaClient) {
       const input = goalInputSchema
         .extend({ version: z.number().int().positive() })
         .parse(req.body);
-      const intake = await activeIntake(prisma, req.params.token as string);
-      const changed = await prisma.anonymousGoalIntake.updateMany({
-        where: {
-          id: intake.id,
-          version: input.version,
-          consumedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-        data: {
-          ...input,
-          preferenceNote: input.preferenceNote ?? null,
-          phone: input.phone ?? null,
-          version: { increment: 1 },
-        },
-      });
-      if (!changed.count) throw new AppError('STALE_INTAKE', 409, 'Goal intake changed or expired');
-      const updated = await prisma.anonymousGoalIntake.findUniqueOrThrow({
-        where: { id: intake.id },
-        select: publicSelect,
+      const updated = await prisma.$transaction(async (tx) => {
+        const intake = await activeIntake(tx, req.params.token as string);
+        const changed = await tx.anonymousGoalIntake.updateMany({
+          where: {
+            id: intake.id,
+            version: input.version,
+            consumedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          data: {
+            ...input,
+            preferenceNote: input.preferenceNote ?? null,
+            phone: input.phone ?? null,
+            version: { increment: 1 },
+          },
+        });
+        if (!changed.count)
+          throw new AppError('STALE_INTAKE', 409, 'Goal intake changed or expired');
+        return tx.anonymousGoalIntake.findUniqueOrThrow({
+          where: { id: intake.id },
+          select: publicSelect,
+        });
       });
       res.json({ intake: serialize(updated) });
     } catch (error) {
       next(
         error instanceof z.ZodError
           ? new AppError('VALIDATION_ERROR', 400, 'Goal details are invalid')
-          : error,
+          : entryError(error),
       );
     }
   });
@@ -313,24 +264,88 @@ export function createGoalIntakePublicRouter(prisma: PrismaClient) {
 export function createGoalIntakeBindingRouter(prisma: PrismaClient) {
   const router = Router();
   router.use(requireAuth, requireRole('CLIENT'));
-  router.post('/:token/bind', async (req, res, next) => {
+  router.use((_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    res.set('Referrer-Policy', 'no-referrer');
+    next();
+  });
+  router.get('/pending', async (req, res, next) => {
     try {
-      const result = await bindAnonymousGoalIntake(
-        prisma,
-        req.params.token as string,
-        req.auth!.clientId!,
-        req.auth!.userId,
+      res.json(
+        await pendingIntakes(prisma, { clientId: req.auth!.clientId!, actorId: req.auth!.userId }),
       );
-      res.status(result.replayed ? 200 : 201).json(result);
     } catch (error) {
-      next(error);
+      next(entryError(error));
+    }
+  });
+  router.post('/preview', async (req, res, next) => {
+    try {
+      const { locator } = z.object({ locator: intakeLocatorSchema }).strict().parse(req.body);
+      res.json(
+        await previewIntake(prisma, locator, {
+          clientId: req.auth!.clientId!,
+          actorId: req.auth!.userId,
+        }),
+      );
+    } catch (error) {
+      next(
+        error instanceof z.ZodError
+          ? new AppError('VALIDATION_ERROR', 400, 'Saved goal selection is invalid')
+          : entryError(error),
+      );
+    }
+  });
+  router.post(['/resolve', '/:token/bind'], async (req, res, next) => {
+    try {
+      if (!req.body?.decision)
+        throw new AppError(
+          'INTAKE_DECISION_REQUIRED',
+          400,
+          'Review and explicitly confirm the saved goal first',
+        );
+      const input = intakeResolveSchema.parse(
+        req.params.token
+          ? { ...req.body, locator: { kind: 'TOKEN', value: req.params.token } }
+          : req.body,
+      );
+      const result = await resolveIntake(
+        prisma,
+        input,
+        { clientId: req.auth!.clientId!, actorId: req.auth!.userId },
+        req.get('Idempotency-Key') ?? '',
+      );
+      res.json(result);
+    } catch (error) {
+      next(
+        error instanceof z.ZodError
+          ? new AppError('VALIDATION_ERROR', 400, 'Saved goal decision is invalid')
+          : entryError(error),
+      );
     }
   });
   return router;
 }
-
 export async function cleanupExpiredGoalIntakes(prisma: PrismaClient, now = new Date()) {
-  return prisma.anonymousGoalIntake.deleteMany({
+  const candidates = await prisma.anonymousGoalIntake.findMany({
     where: { consumedAt: null, expiresAt: { lt: now } },
+    select: { id: true },
+    orderBy: { id: 'asc' },
   });
+  let count = 0;
+  for (const candidate of candidates)
+    count += await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "AnonymousGoalIntake" WHERE id = ${candidate.id}::uuid FOR UPDATE`;
+      const intake = await tx.anonymousGoalIntake.findUnique({
+        where: { id: candidate.id },
+        include: { resolution: true },
+      });
+      if (!intake || intake.consumedAt || intake.resolution || intake.expiresAt >= now) return 0;
+      const attached = await tx.goalIntakeRegistrationClaim.count({
+        where: { intakeTokenHash: intake.tokenHash, attachedClientId: { not: null } },
+      });
+      if (attached) return 0;
+      await tx.anonymousGoalIntake.delete({ where: { id: intake.id } });
+      return 1;
+    });
+  return { count };
 }

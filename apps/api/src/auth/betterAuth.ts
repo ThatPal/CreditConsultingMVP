@@ -10,7 +10,7 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import type { EmailProvider } from '../notifications/emailProvider.js';
 import { createAuthEmailNotifier } from '../notifications/emailProvider.js';
 import { recordAuthAudit } from './authAudit.js';
-import { bindClaimedGoalIntake, prepareGoalIntakeRegistrationClaim } from '../goals/goalIntake.js';
+import { attachGoalIntakeClaim, prepareGoalIntakeRegistrationClaim } from '../goals/goalIntake.js';
 
 export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: EmailProvider) {
   const email = createAuthEmailNotifier(provider);
@@ -70,6 +70,8 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
         authTimezone: { type: 'string', required: false, input: true, returned: false },
         authTermsAccepted: { type: 'boolean', required: false, input: true, returned: false },
         authGoalIntakeToken: { type: 'string', required: false, input: true, returned: false },
+        authGoalIntakeVersion: { type: 'number', required: false, input: true, returned: false },
+        authEntryAttemptKey: { type: 'string', required: false, input: true, returned: false },
       },
     },
     session: {
@@ -103,12 +105,17 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
         if (context.path === '/sign-up/email' && body?.authTermsAccepted !== true)
           throw APIError.fromStatus('BAD_REQUEST', { message: 'Terms acceptance is required' });
         if (context.path === '/sign-up/email' && typeof body?.email === 'string') {
-          await prepareGoalIntakeRegistrationClaim(
+          const claimId = await prepareGoalIntakeRegistrationClaim(
             prisma,
             typeof body.authGoalIntakeToken === 'string' ? body.authGoalIntakeToken : undefined,
             body.email,
+            typeof body.authGoalIntakeVersion === 'number' ? body.authGoalIntakeVersion : undefined,
+            typeof body.authEntryAttemptKey === 'string' ? body.authEntryAttemptKey : undefined,
           );
           delete body.authGoalIntakeToken;
+          delete body.authGoalIntakeVersion;
+          delete body.authEntryAttemptKey;
+          return { context: { context: { entryClaimId: claimId } } };
         }
       }),
       after: createAuthMiddleware(async (context) => {
@@ -197,7 +204,7 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
           before: async (user) => {
             return { data: { ...user, name: user.name.trim() } };
           },
-          after: async (user) => {
+          after: async (user, context) => {
             const values = user as typeof user & {
               authFirstName?: string;
               authLastName?: string;
@@ -231,7 +238,19 @@ export function createBetterAuth(prisma: PrismaClient, env: AppEnv, provider: Em
                 metadata: { provider: 'credential' },
               },
             });
-            await bindClaimedGoalIntake(prisma, user.email, client.id, user.id);
+            const claimId = (context?.context as { entryClaimId?: string } | undefined)
+              ?.entryClaimId;
+            if (claimId) {
+              try {
+                await attachGoalIntakeClaim(prisma, claimId, client.id, user.id);
+              } catch {
+                // Account creation succeeded. Preserve the capability-based recovery path.
+                await recordAuthAudit(prisma, 'AUTH_INTAKE_ATTACHMENT_RECOVERY_REQUIRED', {
+                  actorId: user.id,
+                  metadata: { category: 'PENDING_INTAKE_ATTACHMENT' },
+                }).catch(() => undefined);
+              }
+            }
           },
         },
         update: {

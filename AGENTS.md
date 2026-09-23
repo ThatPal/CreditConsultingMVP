@@ -1,3 +1,9 @@
+# ENTRY-F1 task override — 2026-09-23
+
+The current user assignment supersedes the historical Astra execution directions below for this worktree only. Work in C:/Users/morde/Desktop/Projects/Credit/.worktrees/entry-f1 on codex/entry-f1, based on cb5f5267c65ff29b914f5e0b01fd158542d6756c. Implement ENTRY-F1 v1.0 only; see docs/evidence/entry-f1/REVIEW.md for authority, scope, test targets and review evidence. Never use the historical Astra/shared database or launchers for these tests. Preserve every other branch and worktree. No merge, deployment, real providers, subsequent slices or principal-ref advancement.
+
+---
+
 # Astra workspace boundary
 
 This checkout is the independent Astra continuation requested on 2026-09-10.

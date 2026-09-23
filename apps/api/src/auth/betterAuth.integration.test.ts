@@ -131,6 +131,9 @@ async function register(address: string, authGoalIntakeToken?: string) {
       authTimezone: 'America/New_York',
       authTermsAccepted: true,
       authGoalIntakeToken,
+      ...(authGoalIntakeToken
+        ? { authGoalIntakeVersion: 1, authEntryAttemptKey: randomUUID() }
+        : {}),
       callbackURL: '/login?verified=1',
     },
   });
@@ -160,6 +163,9 @@ afterAll(async () => {
     where: { user: { email: goalRegistrationEmail } },
   });
   if (goalRegistrationClient) {
+    await prisma.goalIntakeRegistrationClaim.deleteMany({
+      where: { attachedClientId: goalRegistrationClient.id },
+    });
     const goals = await prisma.clientGoal.findMany({
       where: { clientId: goalRegistrationClient.id },
       select: { id: true },
@@ -200,7 +206,7 @@ describe.sequential('Better Auth client authentication', () => {
     });
   });
 
-  test('binds a goal-first intake to a newly registered client exactly once', async () => {
+  test('preserves a goal-first intake without applying it during registration', async () => {
     const address = goalRegistrationEmail;
     const rawToken = createHash('sha256').update(randomUUID()).digest('base64url');
     const intake = await prisma.anonymousGoalIntake.create({
@@ -228,18 +234,23 @@ describe.sequential('Better Auth client authentication', () => {
       where: { email: address },
       include: { client: { include: { goals: true, goalRevisions: true } } },
     });
-    expect(created.client?.goals).toHaveLength(1);
-    expect(created.client?.goalRevisions).toHaveLength(1);
-    expect(created.client?.goals[0]).toMatchObject({
-      scope: 'BOTH',
-      cardTypePreference: 'UNSECURED_PREFERRED',
-      offerPreferences: ['ZERO_APR', 'REWARDS_POINTS'],
-      feePreference: 'FEE_ACCEPTABLE',
+    expect(created.client?.goals).toHaveLength(0);
+    expect(created.client?.goalRevisions).toHaveLength(0);
+    expect(
+      await prisma.goalIntakeRegistrationClaim.findFirst({
+        where: { intakeTokenHash: intake.tokenHash },
+      }),
+    ).toMatchObject({
+      attachedClientId: created.client!.id,
+      attachedUserId: created.id,
+      intakeVersion: 1,
     });
-    expect(await prisma.goalIntakeRegistrationClaim.count()).toBe(0);
+    expect(
+      (await prisma.anonymousGoalIntake.findUniqueOrThrow({ where: { id: intake.id } })).consumedAt,
+    ).toBeNull();
     expect(
       await prisma.outboxEvent.count({ where: { eventKey: `goal-intake-bound:${intake.id}` } }),
-    ).toBe(1);
+    ).toBe(0);
   });
 
   test.each([false, true])(
