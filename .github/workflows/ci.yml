@@ -13,6 +13,13 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U credit -d credit_strategy"
           --health-interval 5s --health-timeout 5s --health-retries 10
+      astra-isolated:
+        image: postgres:17-alpine
+        env: { POSTGRES_DB: credit_strategy_astra_u0, POSTGRES_USER: credit, POSTGRES_PASSWORD: credit_dev }
+        ports: ['127.0.0.1:5446:5432']
+        options: >-
+          --health-cmd "pg_isready -U credit -d credit_strategy_astra_u0"
+          --health-interval 5s --health-timeout 5s --health-retries 10
       redis:
         image: redis:8-alpine
         ports: ['6379:6379']
@@ -46,5 +53,14 @@ jobs:
         run: pnpm --filter @credit/api test:commerce-integrity
         env:
           DATABASE_URL: postgresql://credit:credit_dev@localhost:5432/credit_strategy_rec02_com01a?schema=public
+      # Existing Astra guards require this exact loopback target. Fixtures seed themselves.
+      - name: Migrate isolated Astra database
+        run: pnpm db:migrate:deploy
+        env:
+          DATABASE_URL: postgresql://credit:credit_dev@127.0.0.1:5446/credit_strategy_astra_u0?schema=public
+      - name: Astra Plan reconciliation and workspace lifecycle (sequential)
+        run: pnpm --filter @credit/api test:astra-isolated
+        env:
+          DATABASE_URL: postgresql://credit:credit_dev@127.0.0.1:5446/credit_strategy_astra_u0?schema=public
       - run: pnpm test
       - run: pnpm build
