@@ -1,0 +1,130 @@
+[
+  {
+    "file": "applied-desktop.png",
+    "sha256": "12367186e7f2413277916234a67cc3754e08581e0d9b415f66ea17cf707b13b7"
+  },
+  {
+    "file": "applied-mobile.png",
+    "sha256": "6962ec64aae9f60f1fe9134f348ba20c08d24c08fde18a198729ceca6ae21695"
+  },
+  {
+    "file": "decision-different-desktop.png",
+    "sha256": "a162310f41f300890d5ea3edfe18d0105391d0f1bcbf713a63c7f1f451d6ea6f"
+  },
+  {
+    "file": "decision-different-mobile.png",
+    "sha256": "f153a786a1be35093f8f85bd021f28081a356e3d3d10ed522b1e1a9f3389a05a"
+  },
+  {
+    "file": "decision-matching-desktop.png",
+    "sha256": "a5a94be316795be62e87858a0cea8547e50896953b6d2c8326d24dce5958dfb2"
+  },
+  {
+    "file": "decision-matching-mobile.png",
+    "sha256": "1a476368416f4789ec1ad3e6ba19f3090ab8239f96cea96ab4b8825a86864c88"
+  },
+  {
+    "file": "decision-no-primary-desktop.png",
+    "sha256": "c28c70f12f4ab22fbdfe5a0de390323745a313394a68833d853972f1a1f51a48"
+  },
+  {
+    "file": "decision-no-primary-mobile.png",
+    "sha256": "57ab9ceb584ad2c32a407a2f3cdba94f5a19b0c21e912410c53035da0cf38a4c"
+  },
+  {
+    "file": "decision-stale-desktop.png",
+    "sha256": "45224d90a6da0b64d02b2af9fa601538992219a55262b67c882b7d040969fdc8"
+  },
+  {
+    "file": "decision-stale-mobile.png",
+    "sha256": "74a977a181e4dd1472a1388adc2013d554f351f52697ac526527ed26bd88695a"
+  },
+  {
+    "file": "expired-recovery-desktop.png",
+    "sha256": "339da5b7e0196c4937176fd8f111051bb062acfff5a297b6f29b7ed8202129ca"
+  },
+  {
+    "file": "expired-recovery-mobile.png",
+    "sha256": "372ad489864b74588c6f8df56534d8087f83d8a05d01b836b645f2dd2a73cef0"
+  },
+  {
+    "file": "kept-desktop.png",
+    "sha256": "2a89e66cadcb18207d40f80771250caee0a6e32ae281990c4544c1b2b708d258"
+  },
+  {
+    "file": "kept-mobile.png",
+    "sha256": "d084bcda63972aefd1cada9b0847b05caaa254904f28af0f90072c1c875f4643"
+  },
+  {
+    "file": "ordinary-login-desktop.png",
+    "sha256": "ef3a370345532880d1be72cd0a20f7b1f0fd0ea8a6e3ce1aaab287e0768d7281"
+  },
+  {
+    "file": "ordinary-login-mobile.png",
+    "sha256": "5848ef2d2367e53e6aa665d804af1c2fac88c701a217fc54c0ac4b7d1db2d179"
+  },
+  {
+    "file": "ordinary-registration-desktop.png",
+    "sha256": "9f8f1af03cbf33ab18990436a0c2c0a82f25b9250b6374e6446337ea11de7a61"
+  },
+  {
+    "file": "ordinary-registration-mobile.png",
+    "sha256": "c8afd12b354fb73122a68baffc0eced8c8b6169929919e95db184de929597457"
+  },
+  {
+    "file": "pending-intake-desktop.png",
+    "sha256": "28ec42ba7dd2dd17911d0505b95200c237e955146a5579c0879f6a3622f10a9c"
+  },
+  {
+    "file": "pending-intake-mobile.png",
+    "sha256": "c8f8066b045382501b3da3ca6af1e107b8ff0b0f150b4bf52d1448a4e59f4434"
+  },
+  {
+    "file": "public-saved-desktop.png",
+    "sha256": "023e2f183160c1435f50ec2073dcd0d6db0b386187aff455e79a977e45fd5b48"
+  },
+  {
+    "file": "public-saved-mobile.png",
+    "sha256": "ee2f4181ae1bf9b3db96bf976f2f2e40b45e442218c303d32fc7e2c25651b7ea"
+  },
+  {
+    "file": "public-stale-desktop.png",
+    "sha256": "1de3b04c1b6e57316bd1e36c4c93cfbc9dc3750426fa32398c79ac6c3a35566f"
+  },
+  {
+    "file": "public-stale-mobile.png",
+    "sha256": "9a2044b4df568a11aaf47ca4fe3fd5014e049180836d092c377a910fb307d9ad"
+  },
+  {
+    "file": "register-with-goal-desktop.png",
+    "sha256": "ff47931ce3fb180a0d1b87a001b5dfc781329c026d1b685bc4be73b8be867508"
+  },
+  {
+    "file": "register-with-goal-mobile.png",
+    "sha256": "90226ac964c8fb1cebd13c2e83c4256d42fd51179913f8e386e014c460b92caa"
+  },
+  {
+    "file": "retried-desktop.png",
+    "sha256": "f640ced4fd7f5470a3c60b0fd866ded99db594824ba620c43cbe464a67721719"
+  },
+  {
+    "file": "retried-mobile.png",
+    "sha256": "e821a610bebf9bf230a52d8c578838d0a1163b13463894947fd07788db37e6ad"
+  },
+  {
+    "file": "storage-blocked-handoff-desktop.png",
+    "sha256": "7475f7fdb30ccf6764ee2e4d96fab31157ec687539a94a8005543a113491b105"
+  },
+  {
+    "file": "storage-blocked-handoff-mobile.png",
+    "sha256": "e480e96685ecec90642d571cb5a588ead999ef532ccc94e1ec47a226283aef4f"
+  },
+  {
+    "file": "uncertain-retry-desktop.png",
+    "sha256": "b49428ca7da4eafdbb46d1bc10c385a7aba94255e711a36530c989c41c3c451a"
+  },
+  {
+    "file": "uncertain-retry-mobile.png",
+    "sha256": "171139bbb96a07c1f36c9a2009daf3421fb2c434846a691489b322080a2b77d7"
+  }
+]

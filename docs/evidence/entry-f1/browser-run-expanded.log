@@ -1,0 +1,7 @@
+$ node --import tsx scripts/entry-f1-e2e.ts
+HTTP 401 /api/me
+HTTP 401 /api/me
+HTTP 401 /api/me
+HTTP 409 /api/v1/client/goal-intakes/[redacted]
+PASS: ordinary and Goal-first real browser flows; desktop/mobile captures saved.
+Disposable browser, web server, API and Prisma closed.

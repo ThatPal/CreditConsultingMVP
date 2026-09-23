@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "database": "credit_strategy_entry_f1_test",
+  "port": 5549,
+  "baseMigrations": 69,
+  "additiveMigration": "20260922000000_entry_f1",
+  "assertions": [
+    "Goal unchanged including currentAmount/version",
+    "revision unchanged",
+    "historical cycle snapshot unchanged",
+    "consumed intake unchanged",
+    "legacy claim remains unattached with null new fields",
+    "new collection epoch is zero",
+    "no fabricated resolutions",
+    "negative epoch rejected",
+    "partial new claim rejected"
+  ]
+}

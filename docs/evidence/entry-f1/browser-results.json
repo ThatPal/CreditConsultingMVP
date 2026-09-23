@@ -1,0 +1,596 @@
+{
+  "status": "PASS",
+  "transport": "Real Express API, Better Auth and guarded disposable PostgreSQL; in-memory email delivery; no response interception",
+  "evidence": [
+    {
+      "file": "ordinary-login-desktop.png",
+      "state": "Ordinary entry; no Goal required",
+      "actor": "anonymous",
+      "route": "/login",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "ordinary-login-mobile.png",
+      "state": "Ordinary entry; no Goal required",
+      "actor": "anonymous",
+      "route": "/login",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "workingTree": false
+    },
+    {
+      "file": "ordinary-registration-desktop.png",
+      "state": "Ordinary account creation without a Goal",
+      "actor": "anonymous",
+      "route": "/register",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "ordinary-registration-mobile.png",
+      "state": "Ordinary account creation without a Goal",
+      "actor": "anonymous",
+      "route": "/register",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "workingTree": false
+    },
+    {
+      "scenario": "ET01",
+      "result": "PASS",
+      "details": "Ordinary UI registration, captured real verifier, UI login; no Goal created."
+    },
+    {
+      "file": "public-saved-desktop.png",
+      "state": "Saved draft with actual expiry and full summary",
+      "actor": "anonymous",
+      "route": "/goal-intake",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "public-saved-mobile.png",
+      "state": "Saved draft with actual expiry and full summary",
+      "actor": "anonymous",
+      "route": "/goal-intake",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 1313
+      },
+      "workingTree": false
+    },
+    {
+      "file": "register-with-goal-desktop.png",
+      "state": "Optional saved draft; no application during signup",
+      "actor": "anonymous",
+      "route": "/register?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1379
+      },
+      "workingTree": false
+    },
+    {
+      "file": "register-with-goal-mobile.png",
+      "state": "Optional saved draft; no application during signup",
+      "actor": "anonymous",
+      "route": "/register?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 1543
+      },
+      "workingTree": false
+    },
+    {
+      "file": "pending-intake-desktop.png",
+      "state": "Own attached draft remains discoverable after Not now",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "pending-intake-mobile.png",
+      "state": "Own attached draft remains discoverable after Not now",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 2247
+      },
+      "workingTree": false
+    },
+    {
+      "file": "decision-no-primary-desktop.png",
+      "state": "Authenticated explicit decision, no current primary",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intakeClaim=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "decision-no-primary-mobile.png",
+      "state": "Authenticated explicit decision, no current primary",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intakeClaim=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 2608
+      },
+      "workingTree": false
+    },
+    {
+      "file": "applied-desktop.png",
+      "state": "Server-confirmed Goal resolution",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intakeClaim=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "applied-mobile.png",
+      "state": "Server-confirmed Goal resolution",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intakeClaim=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 1912
+      },
+      "workingTree": false
+    },
+    {
+      "scenario": "ET02",
+      "result": "PASS",
+      "details": "Public UI save → signup → real captured verification → UI sign-in → explicit apply; DB remained empty until apply."
+    },
+    {
+      "file": "decision-different-desktop.png",
+      "state": "Current and saved Goal comparison",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "decision-different-mobile.png",
+      "state": "Current and saved Goal comparison",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 3571
+      },
+      "workingTree": false
+    },
+    {
+      "file": "kept-desktop.png",
+      "state": "Server-confirmed Keep with unchanged Goal version",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "kept-mobile.png",
+      "state": "Server-confirmed Keep with unchanged Goal version",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 1868
+      },
+      "workingTree": false
+    },
+    {
+      "scenario": "ET03/ET04",
+      "result": "PASS",
+      "details": "Already signed-in login arrival retained intake; explicit Keep preserved the current Goal and revision."
+    },
+    {
+      "file": "public-stale-desktop.png",
+      "state": "Second tab rejected at loaded revision; edits retained",
+      "actor": "public capability",
+      "route": "/goal-intake?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "public-stale-mobile.png",
+      "state": "Second tab rejected at loaded revision; edits retained",
+      "actor": "public capability",
+      "route": "/goal-intake?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 1020
+      },
+      "workingTree": false
+    },
+    {
+      "scenario": "ET08",
+      "result": "PASS",
+      "details": "Two real public editors loaded revision 1; first saves revision 2, second PATCH receives 409 and explicitly reloads for review."
+    },
+    {
+      "file": "decision-stale-desktop.png",
+      "state": "Concurrent canonical edit requires a fresh explicit comparison",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "decision-stale-mobile.png",
+      "state": "Concurrent canonical edit requires a fresh explicit comparison",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 3571
+      },
+      "workingTree": false
+    },
+    {
+      "scenario": "ET07",
+      "result": "PASS",
+      "details": "Real Goal editor in second tab changes primary after preview; original apply is rejected and requires refreshed comparison."
+    },
+    {
+      "file": "uncertain-retry-desktop.png",
+      "state": "Actual commit with response loss; only exact retry offered",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "uncertain-retry-mobile.png",
+      "state": "Actual commit with response loss; only exact retry offered",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 1821
+      },
+      "workingTree": false
+    },
+    {
+      "file": "retried-desktop.png",
+      "state": "Exact retry returns original committed outcome",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "retried-mobile.png",
+      "state": "Exact retry returns original committed outcome",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 2027
+      },
+      "workingTree": false
+    },
+    {
+      "scenario": "ET10",
+      "result": "PASS",
+      "details": "Actual response loss after commit; same-key browser retry returns original resolution without a second revision."
+    },
+    {
+      "scenario": "ET14",
+      "result": "PASS",
+      "details": "Committed PostgreSQL outbox → real isolated BullMQ/Redis → production realtime runtime → authenticated SSE → Home/Journey/Goals authoritative reads, without document reload."
+    },
+    {
+      "file": "decision-matching-desktop.png",
+      "state": "Matching values; confirmation creates no Goal revision",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "decision-matching-mobile.png",
+      "state": "Matching values; confirmation creates no Goal revision",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 3547
+      },
+      "workingTree": false
+    },
+    {
+      "scenario": "ET03/ET04",
+      "result": "PASS",
+      "details": "Not now leaves intake unconsumed; authenticated registration reopens comparison; matching confirmation preserves Goal version."
+    },
+    {
+      "file": "expired-recovery-desktop.png",
+      "state": "Authenticated recovery; no Goal mutation",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1000
+      },
+      "workingTree": false
+    },
+    {
+      "file": "expired-recovery-mobile.png",
+      "state": "Authenticated recovery; no Goal mutation",
+      "actor": "8fb3b2fd-1f30-4564-8ef7-5375acafd6fc",
+      "route": "/app/goals?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 1864
+      },
+      "workingTree": false
+    },
+    {
+      "file": "storage-blocked-handoff-desktop.png",
+      "state": "Real public save in same-origin iframe; storage denied; top-level auth preserves capability",
+      "actor": "anonymous",
+      "route": "/register?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 1440,
+        "height": 1149
+      },
+      "workingTree": false
+    },
+    {
+      "file": "storage-blocked-handoff-mobile.png",
+      "state": "Real public save in same-origin iframe; storage denied; top-level auth preserves capability",
+      "actor": "anonymous",
+      "route": "/register?intake=%5Bredacted%5D",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "branch": "codex/entry-f1",
+      "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+      "dimensions": {
+        "width": 390,
+        "height": 1252
+      },
+      "workingTree": false
+    },
+    {
+      "scenario": "ET09/ET15",
+      "result": "PASS",
+      "details": "Throwing sessionStorage getter with real public API save; origin-controlled iframe hands off to top-level registration using the saved capability. No security policy weakened."
+    }
+  ],
+  "errors": []
+}

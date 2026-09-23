@@ -1,0 +1,98 @@
+$ pnpm -r build
+Scope: 5 of 6 workspace projects
+packages/shared build$ tsc -p tsconfig.json
+packages/runtime build$ tsc -p tsconfig.json
+packages/shared build: Done
+packages/runtime build: Done
+apps/worker build$ tsc -p tsconfig.json
+apps/api build$ tsc -p tsconfig.json
+apps/web build$ tsc -b && vite build
+apps/worker build: Done
+apps/api build: Done
+apps/web build: vite v8.2.2 building client environment for production...
+apps/web build: transforming...
+apps/web build: ✓ 1283 modules transformed.
+apps/web build: rendering chunks...
+apps/web build: computing gzip size...
+apps/web build: dist/index.html                                       2.30 kB │ gzip:   0.79 kB
+apps/web build: dist/assets/useQuery-BqFViODd.js                      0.09 kB │ gzip:   0.10 kB
+apps/web build: dist/assets/AddRounded-CnPx4HOH.js                    0.25 kB │ gzip:   0.20 kB
+apps/web build: dist/assets/RtlProvider-DrfSuBir.js                   0.27 kB │ gzip:   0.22 kB
+apps/web build: dist/assets/dividerClasses-7vs-0kg3.js                0.27 kB │ gzip:   0.22 kB
+apps/web build: dist/assets/useControlled-DBw4gos-.js                 0.30 kB │ gzip:   0.25 kB
+apps/web build: dist/assets/BusinessRounded-Ctqa6yow.js               0.40 kB │ gzip:   0.27 kB
+apps/web build: dist/assets/CheckCircleOutlineRounded-CXoOb7G6.js     0.41 kB │ gzip:   0.28 kB
+apps/web build: dist/assets/StatusChip-KsG5y2Ey.js                    0.47 kB │ gzip:   0.25 kB
+apps/web build: dist/assets/SendRounded-CpZ-O4CU.js                   0.53 kB │ gzip:   0.34 kB
+apps/web build: dist/assets/rolldown-runtime-CbXtAM7H.js              0.58 kB │ gzip:   0.36 kB
+apps/web build: dist/assets/AccountBalanceRounded-DOGOrROZ.js         0.63 kB │ gzip:   0.33 kB
+apps/web build: dist/assets/SupportAgentRounded-kLAm3O8n.js           0.64 kB │ gzip:   0.41 kB
+apps/web build: dist/assets/DialogContentText-5JL9R8H1.js             0.69 kB │ gzip:   0.43 kB
+apps/web build: dist/assets/DialogActions-BOnrqwkz.js                 0.91 kB │ gzip:   0.53 kB
+apps/web build: dist/assets/statusVocabulary-ysSrkrjR.js              0.93 kB │ gzip:   0.47 kB
+apps/web build: dist/assets/SectionCard-BAqmkWab.js                   1.01 kB │ gzip:   0.47 kB
+apps/web build: dist/assets/useInfiniteQuery-DBRxIfO_.js              1.11 kB │ gzip:   0.47 kB
+apps/web build: dist/assets/SafeRecordView-hg6mGvZJ.js                1.22 kB │ gzip:   0.74 kB
+apps/web build: dist/assets/mergeSlotProps-DDXXw_Q2.js                1.25 kB │ gzip:   0.59 kB
+apps/web build: dist/assets/ShellEvidencePage-IPJ80Oz7.js             1.39 kB │ gzip:   0.79 kB
+apps/web build: dist/assets/AdminWorkflowPage-ChffY31T.js             2.97 kB │ gzip:   1.45 kB
+apps/web build: dist/assets/AdminScheduledJobsPage-BMWS4jfZ.js        2.98 kB │ gzip:   1.47 kB
+apps/web build: dist/assets/CheckoutPage-Km0RAkzD.js                  3.02 kB │ gzip:   1.37 kB
+apps/web build: dist/assets/AdminRetentionPage-WSdukbml.js            3.10 kB │ gzip:   1.50 kB
+apps/web build: dist/assets/AdminReportsPage-CDs35t09.js              3.29 kB │ gzip:   1.51 kB
+apps/web build: dist/assets/DocumentPicker-CN2Z9kqK.js                3.31 kB │ gzip:   1.54 kB
+apps/web build: dist/assets/Skeleton-i4R9KKd7.js                      3.34 kB │ gzip:   1.44 kB
+apps/web build: dist/assets/AdminSettingsPage-CxcO65KI.js             3.45 kB │ gzip:   1.73 kB
+apps/web build: dist/assets/Transition-DmLnZi5b.js                    3.49 kB │ gzip:   1.37 kB
+apps/web build: dist/assets/AdminIntegrationsPage-pm7dSz9t.js         3.52 kB │ gzip:   1.72 kB
+apps/web build: dist/assets/AdminSourcesPage-ByGWCOOx.js              4.13 kB │ gzip:   1.87 kB
+apps/web build: dist/assets/DocumentUploadDropzone-UozZGV3_.js        4.21 kB │ gzip:   2.09 kB
+apps/web build: dist/assets/PlanRoadmap-b0mAjiyw.js                   4.21 kB │ gzip:   1.94 kB
+apps/web build: dist/assets/AdminNotificationsPage-DCsTl6ZH.js        4.32 kB │ gzip:   1.83 kB
+apps/web build: dist/assets/Switch-D1CMK_Yn.js                        4.68 kB │ gzip:   1.81 kB
+apps/web build: dist/assets/useRovingTabIndex-B0z09sNJ.js             4.71 kB │ gzip:   2.04 kB
+apps/web build: dist/assets/AdminAuditPages-DVy6E8zg.js               4.79 kB │ gzip:   2.02 kB
+apps/web build: dist/assets/RadioGroup-CcaEG7O1.js                    5.45 kB │ gzip:   2.23 kB
+apps/web build: dist/assets/SecurityPage-6tQPJaCW.js                  5.82 kB │ gzip:   2.47 kB
+apps/web build: dist/assets/NotificationsPage-ChnjBs1I.js             5.98 kB │ gzip:   2.65 kB
+apps/web build: dist/assets/DialogTitle-BmQR3StV.js                   6.07 kB │ gzip:   2.18 kB
+apps/web build: dist/assets/LinearProgress-CwpdtNHA.js                6.13 kB │ gzip:   1.89 kB
+apps/web build: dist/assets/TableRow-BO23DwNM.js                      6.14 kB │ gzip:   2.08 kB
+apps/web build: dist/assets/theme-Dn_pAnPM.js                         6.17 kB │ gzip:   2.55 kB
+apps/web build: dist/assets/DocumentsPage-DaV0wd8B.js                 6.33 kB │ gzip:   2.64 kB
+apps/web build: dist/assets/CardsPage-D562u-wa.js                     7.43 kB │ gzip:   2.87 kB
+apps/web build: dist/assets/MajorReadinessPages-BrdiuwjZ.js           8.18 kB │ gzip:   2.81 kB
+apps/web build: dist/assets/AdminAIJobsPages-BnLj1ons.js              8.36 kB │ gzip:   3.22 kB
+apps/web build: dist/assets/PostRoundPages-Dx4emfM6.js                9.97 kB │ gzip:   3.11 kB
+apps/web build: dist/assets/AdminServicesPages-qwGQEEOR.js           10.42 kB │ gzip:   3.53 kB
+apps/web build: dist/assets/Phase11Pages-uhAGOorK.js                 10.68 kB │ gzip:   3.81 kB
+apps/web build: dist/assets/ServicesPage-LQwrtSc0.js                 10.83 kB │ gzip:   3.66 kB
+apps/web build: dist/assets/ClientContextPages-CYn1yvB4.js           11.61 kB │ gzip:   3.45 kB
+apps/web build: dist/assets/ConsultantSupportPage-CKiwLaSu.js        11.93 kB │ gzip:   4.44 kB
+apps/web build: dist/assets/AdminPaymentsPages-DQ4_rqlG.js           12.16 kB │ gzip:   4.07 kB
+apps/web build: dist/assets/AccountPage-B6jfYgVx.js                  12.31 kB │ gzip:   3.86 kB
+apps/web build: dist/assets/CardCatalogPages-CBJKoIm8.js             12.78 kB │ gzip:   4.28 kB
+apps/web build: dist/assets/SupportPage-BxrPmGeY.js                  13.02 kB │ gzip:   4.88 kB
+apps/web build: dist/assets/PlanResponse-DyrwIxAi.js                 13.39 kB │ gzip:   5.21 kB
+apps/web build: dist/assets/AdminIdentityPages-Bcvij5Tj.js           15.03 kB │ gzip:   4.80 kB
+apps/web build: dist/assets/Tabs-agdz3sJT.js                         15.17 kB │ gzip:   5.34 kB
+apps/web build: dist/assets/StrategyPages-Fasy8RQX.js                15.81 kB │ gzip:   4.92 kB
+apps/web build: dist/assets/Modal-BKqjCyjh.js                        17.16 kB │ gzip:   6.42 kB
+apps/web build: dist/assets/DesignSystemPage-4-X1T0H3.js             18.22 kB │ gzip:   5.53 kB
+apps/web build: dist/assets/LivePages-D8oExRVR.js                    18.43 kB │ gzip:   5.54 kB
+apps/web build: dist/assets/GoalsPage-COYoWBgg.js                    21.55 kB │ gzip:   8.20 kB
+apps/web build: dist/assets/PlanPages-C-yvdkPH.js                    24.69 kB │ gzip:   8.09 kB
+apps/web build: dist/assets/ReviewPages-DVvrzW-4.js                  53.61 kB │ gzip:  14.39 kB
+apps/web build: dist/assets/TextField-C2Ntc0KH.js                    59.16 kB │ gzip:  17.77 kB
+apps/web build: dist/assets/ConsultantPlanBuilderPage-DuyMwLCR.js    68.25 kB │ gzip:  19.95 kB
+apps/web build: dist/assets/PublishedCreditCenterPages-FMgZeVK8.js   83.01 kB │ gzip:  22.85 kB
+apps/web build: dist/assets/PageHeader-DAOad2qN.js                  140.50 kB │ gzip:  45.65 kB
+apps/web build: dist/assets/api-D54B2kRr.js                         203.76 kB │ gzip:  62.30 kB
+apps/web build: dist/assets/index-D3cqSwws.js                       554.28 kB │ gzip: 168.31 kB
+apps/web build: ✓ built in 2.53s
+apps/web build: [plugin builtin:vite-reporter] 
+apps/web build: (!) Some chunks are larger than 550 kB after minification. Consider:
+apps/web build: - Using dynamic import() to code-split the application
+apps/web build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+apps/web build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+apps/web build: Done

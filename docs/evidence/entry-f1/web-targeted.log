@@ -1,0 +1,10 @@
+$ vitest run --maxWorkers=1 src/entry/entryF1.test.tsx src/pages/AuthPages.test.tsx src/pages/GoalsContinuity.test.tsx src/LiveUpdates.test.ts src/LiveUpdates.session.test.tsx "--testTimeout=15000"
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/entry-f1/apps/web
+
+
+ Test Files  5 passed (5)
+      Tests  45 passed (45)
+   Start at  01:11:21
+   Duration  66.30s (transform 1.45s, setup 4.08s, import 22.67s, tests 20.18s, environment 15.95s)
+

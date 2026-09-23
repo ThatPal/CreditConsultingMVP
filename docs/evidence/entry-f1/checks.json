@@ -1,0 +1,82 @@
+{
+  "implementationCommit": "83a2e82b01610d2d9e1967b314f05bfd93331474",
+  "branch": "codex/entry-f1",
+  "checks": [
+    {
+      "command": "pnpm --dir apps/api test:entry-f1",
+      "result": "PASS",
+      "files": 2,
+      "tests": 31,
+      "log": "api-targeted.log"
+    },
+    {
+      "command": "pnpm --dir apps/web test:entry-f1 --testTimeout=15000",
+      "result": "PASS",
+      "files": 5,
+      "tests": 45,
+      "log": "web-targeted.log"
+    },
+    {
+      "command": "vitest run --maxWorkers=1 --testTimeout=15000 src/auth/betterAuth.integration.test.ts src/auth/auth.test.ts",
+      "cwd": "apps/api",
+      "result": "PASS",
+      "files": 2,
+      "tests": 17,
+      "log": "auth-regression.log"
+    },
+    {
+      "command": "node --test scripts/entry-f1-guard.test.mjs",
+      "result": "PASS",
+      "tests": 7,
+      "log": "database-guard.log"
+    },
+    {
+      "command": "pnpm lint",
+      "result": "PASS",
+      "log": "lint.log"
+    },
+    {
+      "command": "pnpm typecheck",
+      "result": "PASS",
+      "log": "typecheck.log"
+    },
+    {
+      "command": "pnpm build",
+      "result": "PASS",
+      "log": "build.log",
+      "warning": "Existing Vite chunk-size warning: entry chunk is about 554 kB; no unrelated splitting changes."
+    },
+    {
+      "command": "prisma migrate deploy on fresh guarded database",
+      "result": "PASS",
+      "migrations": 70,
+      "log": "empty-migration.log"
+    },
+    {
+      "command": "entry-f1-migration-evidence.ts seed/verify around additive migration",
+      "result": "PASS",
+      "log": "migration.json"
+    },
+    {
+      "command": "pnpm --dir apps/api test",
+      "result": "INCOMPLETE / NOT GREEN",
+      "log": "api-ordinary.log",
+      "note": "Stopped after setup failures with missing REDIS_URL/canonical role seed and unrelated timeouts. No unrelated fixes; auth/MFA rerun separately."
+    },
+    {
+      "command": "pnpm test:entry-f1:e2e",
+      "result": "PASS",
+      "screenshots": 32,
+      "log": "browser-run-final.log",
+      "details": "Real UI, PostgreSQL, Better Auth, controlled email, isolated Redis/BullMQ, authorized SSE; two-tab conflicts, exact retry after real commit, storage-blocked iframe, keyboard confirmation, pending recovery."
+    }
+  ],
+  "notRun": [
+    "GitHub Actions for this branch",
+    "Full ordinary API/web regression to completion",
+    "REC-02/Astra scoped suites",
+    "Configured external website-origin deployment integration",
+    "Safari/Firefox/device and assistive technology certification",
+    "New Round lifecycle fixtures"
+  ]
+}

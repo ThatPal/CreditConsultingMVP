@@ -1,0 +1,12 @@
+$ pnpm -r typecheck
+Scope: 5 of 6 workspace projects
+packages/shared typecheck$ tsc -p tsconfig.json --noEmit
+packages/runtime typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared typecheck: Done
+packages/runtime typecheck: Done
+apps/api typecheck$ tsc -p tsconfig.json --noEmit
+apps/worker typecheck$ tsc -p tsconfig.json --noEmit
+apps/web typecheck$ tsc -b --pretty false
+apps/worker typecheck: Done
+apps/api typecheck: Done
+apps/web typecheck: Done

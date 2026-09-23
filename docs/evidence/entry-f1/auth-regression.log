@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/entry-f1/apps/api
+
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  01:02:07
+   Duration  21.90s (transform 2.27s, setup 0ms, import 11.91s, tests 8.64s, environment 0ms)
+

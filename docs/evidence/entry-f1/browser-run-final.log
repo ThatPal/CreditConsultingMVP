@@ -1,0 +1,26 @@
+$ node --import tsx scripts/entry-f1-e2e.ts
+HTTP 401 /api/me
+HTTP 401 /api/me
+HTTP 401 /api/me
+HTTP 409 /api/v1/client/goal-intakes/[redacted]
+/app SSE status 200
+/app/journey SSE status 200
+/app/goals SSE status 200
+Isolated outbox events selected: 6
+Event delivered to API: goals
+/app browser received live invalidation
+/app/journey browser received live invalidation
+/app/goals browser received live invalidation
+Event delivered to API: 
+Event delivered to API: 
+Event delivered to API: goals
+/app browser received live invalidation
+/app/goals browser received live invalidation
+/app/journey browser received live invalidation
+Event delivered to API: goals
+Event delivered to API: 
+/app/journey browser received live invalidation
+/app browser received live invalidation
+/app/goals browser received live invalidation
+PASS: ordinary and Goal-first real browser flows; desktop/mobile captures saved.
+Disposable browser, web server, API and Prisma closed.

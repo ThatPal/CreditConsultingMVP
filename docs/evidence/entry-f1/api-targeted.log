@@ -1,0 +1,10 @@
+$ node ../../scripts/entry-f1-guard.mjs && vitest run --maxWorkers=1 src/goals/entryF1.integration.test.ts src/goals/goalIntake.integration.test.ts
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/entry-f1/apps/api
+
+
+ Test Files  2 passed (2)
+      Tests  31 passed (31)
+   Start at  01:14:10
+   Duration  57.59s (transform 12.00s, setup 0ms, import 22.44s, tests 32.10s, environment 0ms)
+

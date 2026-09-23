@@ -1,0 +1,37 @@
+$ vitest run --maxWorkers=1 --exclude src/commerce/commerceIntegrity.integration.test.ts --exclude src/plans/reconciliation.integration.test.ts --exclude src/workspace/live.integration.test.ts --exclude src/goals/entryF1.integration.test.ts --exclude src/goals/goalIntake.integration.test.ts
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/entry-f1/apps/api
+
+(node:29676) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/characterization/highRiskRoutes.test.ts (16 tests | 10 failed) 34739ms
+     × reserves purchased credit and live ReviewPlan fallback, while rejecting no-credit and second-active starts 5014ms
+     × scopes report listing/content to owner and assigned consultant 2902ms
+     × uses canonical temporary grants for consultant inbox discovery and detail access 589ms
+     × governs visible reply lifecycle centrally and keeps retries duplicate-safe 2036ms
+     × creates an auditable support request exactly once and preserves client isolation 2715ms
+     × enforces typed-context and attachment ownership without leaking storage metadata 211ms
+     × keeps support cases client-scoped, hides internal messages, and enforces staff assignment 2340ms
+     × orders active client tickets first and keeps tied support pagination stable without gaps 1995ms
+     × deduplicates domain attention, enforces authorization, and permits only one competing claim 1863ms
+     × delivers only client-owned and assigned-consultant domain events 5090ms
+(node:43844) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/plans/execution.integration.test.ts (15 tests | 1 failed) 27737ms
+     × earlier draft recovery keeps original instructions and remains isolated from current answers 5024ms
+(node:2580) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/auth/betterAuth.integration.test.ts (13 tests) 6170ms
+(node:34916) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:40636) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/ai/durableRuntime.integration.test.ts (9 tests | 1 failed) 8472ms
+     × real BullMQ delivery executes the PostgreSQL job by durable ID 9ms
+(node:44060) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:40160) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/realtime/businessCommandPipeline.integration.test.ts (0 test)
+(node:35312) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

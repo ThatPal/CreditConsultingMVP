@@ -1,0 +1,6 @@
+$ node --import tsx scripts/entry-f1-e2e.ts
+HTTP 401 /api/me
+HTTP 401 /api/me
+HTTP 401 /api/me
+PASS: ordinary and Goal-first real browser flows; desktop/mobile captures saved.
+[ELIFECYCLE] Command failed with exit code 4294967295.
