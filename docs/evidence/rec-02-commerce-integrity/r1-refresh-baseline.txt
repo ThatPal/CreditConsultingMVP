@@ -1,0 +1,42 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-commerce-integrity/apps/api
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts (6 tests | 1 failed | 5 skipped) 952ms
+   × R1 ordinary refresh retains saved fields while updating observed health 174ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 skipped (6)
+   Start at  20:12:09
+   Duration  5.20s (transform 674ms, setup 0ms, import 3.56s, tests 952ms, environment 0ms)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts > R1 ordinary refresh retains saved fields while updating observed health
+AssertionError: expected { capabilities: { …(5) } } to match object { displayName: 'Refresh proof', …(1) }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "accountReference": "Synthetic reference",
+-   "displayName": "Refresh proof",
++   "capabilities": {
++     "checkout": "REDIRECT",
++     "reconciliation": "UNSUPPORTED",
++     "refund": "UNSUPPORTED",
++     "statusRetrieval": false,
++     "webhooks": false,
++   },
+  }
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:72:39
+     70|   await request(f.app(f.admin)).get('/api/v1/admin/payment-gateways').…
+     71|   const after=await prisma.paymentGatewayConfig.findUniqueOrThrow({whe…
+     72|   expect(after.configurationMetadata).toMatchObject({displayName:'Refr…
+       |                                       ^
+     73|   expect(after.status).toBe('DEGRADED');expect(after.connected).toBe(f…
+     74|   expect(after.version).toBe(before.version);expect(after.enabledForNe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯

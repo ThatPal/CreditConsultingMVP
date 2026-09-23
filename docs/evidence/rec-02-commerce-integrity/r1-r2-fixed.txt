@@ -1,0 +1,31 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-commerce-integrity/apps/api
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts (5 tests | 1 failed) 1976ms
+   × R2 replay uses frozen product version, rejects different product and isolates another client 153ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts > R2 replay uses frozen product version, rejects different product and isolates another client
+Error: expected 409 "Conflict", got 500 "Internal Server Error"
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:180:6
+    178|     .set('Idempotency-Key', key)
+    179|     .send({ productId: '00000000-0000-4000-8000-000000000001' })
+    180|     .expect(409);
+       |      ^
+    181|   await prisma.serviceProduct.update({ where: { id: f.product.id }, da…
+    182|   const other = await request(f.app(f.other))
+ ❯ Test._assertStatus ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:309:14
+ ❯ ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:365:13
+ ❯ Test._assertFunction ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:342:13
+ ❯ Test.assert ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:195:23
+ ❯ localAssert ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:138:14
+ ❯ Server.<anonymous> ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:152:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  20:08:45
+   Duration  5.37s (transform 625ms, setup 0ms, import 2.79s, tests 1.98s, environment 0ms)

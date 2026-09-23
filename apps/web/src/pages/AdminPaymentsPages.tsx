@@ -38,6 +38,7 @@ export function AdminPaymentsPage() {
   const provider = searchParams.get('provider') ?? '';
   const state = searchParams.get('state') ?? '';
   const search = searchParams.get('search') ?? '';
+  const normalizedSearch = search.trim();
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
@@ -46,10 +47,13 @@ export function AdminPaymentsPage() {
     setSearchParams(next);
   };
   const query = useQuery({
-    queryKey: ['admin-payments', page, provider, state],
+    queryKey: ['admin-payments', page, provider, state, normalizedSearch],
+    // Keep the search field mounted during a replacement without showing old-search rows/counts.
+    placeholderData: (previous) =>
+      previous ? { payments: [], total: 0, pageSize: previous.pageSize } : undefined,
     queryFn: () =>
       apiRequest<{ payments: Payment[]; total: number; pageSize: number }>(
-        `/api/v1/admin/payments?page=${page}&pageSize=20${provider ? `&provider=${provider}` : ''}${state ? `&state=${state}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`,
+        `/api/v1/admin/payments?page=${page}&pageSize=20${provider ? `&provider=${provider}` : ''}${state ? `&state=${state}` : ''}${normalizedSearch ? `&search=${encodeURIComponent(normalizedSearch)}` : ''}`,
       ),
   });
   const refunds = useQuery({
@@ -102,7 +106,9 @@ export function AdminPaymentsPage() {
           ...(state ? [`State: ${humanizeCode(state)}`] : []),
         ]}
         onClearFilters={() => setSearchParams({ page: '1' })}
-        resultLabel={`${query.data!.total} payments`}
+        resultLabel={
+          query.isPlaceholderData ? 'Loading payments…' : `${query.data!.total} payments`
+        }
         loading={query.isFetching}
       >
         <TextField
@@ -145,29 +151,32 @@ export function AdminPaymentsPage() {
           ))}
         </TextField>
       </DataNavigationToolbar>
-      {query.data!.payments.length === 0 && (
+      {!query.isPlaceholderData && query.data!.payments.length === 0 && (
         <Alert severity="info">No payments match the current search and filters.</Alert>
       )}
       <CollectionSurface
         title="Payment ledger"
         mode="bounded"
         busy={query.isFetching}
-        empty={query.data!.payments.length === 0}
+        empty={!query.isPlaceholderData && query.data!.payments.length === 0}
         footer={
-          <DataPagination
-            page={page}
-            pageSize={query.data!.pageSize}
-            total={query.data!.total}
-            hasMore={page * query.data!.pageSize < query.data!.total}
-            onPageChange={(nextPage) => {
-              const next = new URLSearchParams(searchParams);
-              next.set('page', String(nextPage));
-              setSearchParams(next);
-            }}
-            loading={query.isFetching}
-          />
+          !query.isPlaceholderData && (
+            <DataPagination
+              page={page}
+              pageSize={query.data!.pageSize}
+              total={query.data!.total}
+              hasMore={page * query.data!.pageSize < query.data!.total}
+              onPageChange={(nextPage) => {
+                const next = new URLSearchParams(searchParams);
+                next.set('page', String(nextPage));
+                setSearchParams(next);
+              }}
+              loading={query.isFetching}
+            />
+          )
         }
       >
+        {query.isPlaceholderData && <LinearProgress aria-label="Loading payments" />}
         <Stack spacing={1.5}>
           {query.data!.payments.map((payment) => (
             <Box key={payment.id} data-collection-item tabIndex={0}>

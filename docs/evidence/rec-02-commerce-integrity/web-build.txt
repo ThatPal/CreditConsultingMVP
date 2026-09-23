@@ -1,0 +1,83 @@
+$ tsc -b && vite build
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 1276 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                       2.25 kB │ gzip:   0.78 kB
+dist/assets/useQuery-rzLLFQuS.js                      0.09 kB │ gzip:   0.10 kB
+dist/assets/AddRounded-CnPx4HOH.js                    0.25 kB │ gzip:   0.20 kB
+dist/assets/RtlProvider-DrfSuBir.js                   0.27 kB │ gzip:   0.22 kB
+dist/assets/dividerClasses-7vs-0kg3.js                0.27 kB │ gzip:   0.22 kB
+dist/assets/useControlled-DBw4gos-.js                 0.30 kB │ gzip:   0.25 kB
+dist/assets/BusinessRounded-Ctqa6yow.js               0.40 kB │ gzip:   0.27 kB
+dist/assets/CheckCircleOutlineRounded-CXoOb7G6.js     0.41 kB │ gzip:   0.28 kB
+dist/assets/StatusChip-KsG5y2Ey.js                    0.47 kB │ gzip:   0.25 kB
+dist/assets/SendRounded-CpZ-O4CU.js                   0.53 kB │ gzip:   0.34 kB
+dist/assets/rolldown-runtime-CbXtAM7H.js              0.58 kB │ gzip:   0.36 kB
+dist/assets/AccountBalanceRounded-DOGOrROZ.js         0.63 kB │ gzip:   0.33 kB
+dist/assets/SupportAgentRounded-kLAm3O8n.js           0.64 kB │ gzip:   0.41 kB
+dist/assets/DialogContentText-5JL9R8H1.js             0.69 kB │ gzip:   0.43 kB
+dist/assets/DialogActions-BOnrqwkz.js                 0.91 kB │ gzip:   0.53 kB
+dist/assets/statusVocabulary-ysSrkrjR.js              0.93 kB │ gzip:   0.47 kB
+dist/assets/SectionCard-BAqmkWab.js                   1.01 kB │ gzip:   0.47 kB
+dist/assets/useInfiniteQuery-CytRhK_Q.js              1.11 kB │ gzip:   0.47 kB
+dist/assets/SafeRecordView-hg6mGvZJ.js                1.22 kB │ gzip:   0.74 kB
+dist/assets/mergeSlotProps-DDXXw_Q2.js                1.25 kB │ gzip:   0.59 kB
+dist/assets/ShellEvidencePage-CAzpH5bx.js             1.39 kB │ gzip:   0.79 kB
+dist/assets/AdminWorkflowPage-D2WxmSPO.js             2.97 kB │ gzip:   1.44 kB
+dist/assets/AdminScheduledJobsPage-K8dGCzx7.js        2.98 kB │ gzip:   1.47 kB
+dist/assets/CheckoutPage-HyDg5rxb.js                  3.01 kB │ gzip:   1.37 kB
+dist/assets/AdminRetentionPage-B592y-vH.js            3.10 kB │ gzip:   1.50 kB
+dist/assets/AdminReportsPage-H2zw2Gj7.js              3.29 kB │ gzip:   1.51 kB
+dist/assets/DocumentPicker-DebCtFbL.js                3.31 kB │ gzip:   1.54 kB
+dist/assets/Skeleton-i4R9KKd7.js                      3.34 kB │ gzip:   1.44 kB
+dist/assets/AdminSettingsPage-Cd4WFUrc.js             3.45 kB │ gzip:   1.73 kB
+dist/assets/Transition-DmLnZi5b.js                    3.49 kB │ gzip:   1.37 kB
+dist/assets/AdminIntegrationsPage-BW2W9bu9.js         3.52 kB │ gzip:   1.72 kB
+dist/assets/AdminSourcesPage-zjjMTan0.js              4.13 kB │ gzip:   1.87 kB
+dist/assets/DocumentUploadDropzone-Clcnmwod.js        4.21 kB │ gzip:   2.09 kB
+dist/assets/PlanRoadmap-eBTCiFlT.js                   4.21 kB │ gzip:   1.94 kB
+dist/assets/AdminNotificationsPage-DR1XYdui.js        4.32 kB │ gzip:   1.83 kB
+dist/assets/Switch-BUxdojT_.js                        4.68 kB │ gzip:   1.82 kB
+dist/assets/useRovingTabIndex-B0z09sNJ.js             4.71 kB │ gzip:   2.04 kB
+dist/assets/AdminAuditPages-FtJ300r_.js               4.79 kB │ gzip:   2.02 kB
+dist/assets/RadioGroup-DoP_Cb0K.js                    5.45 kB │ gzip:   2.23 kB
+dist/assets/SecurityPage-Dv2WdIjT.js                  5.82 kB │ gzip:   2.47 kB
+dist/assets/NotificationsPage-DB0lo4AQ.js             5.98 kB │ gzip:   2.65 kB
+dist/assets/DialogTitle-BmQR3StV.js                   6.07 kB │ gzip:   2.18 kB
+dist/assets/LinearProgress-CwpdtNHA.js                6.13 kB │ gzip:   1.89 kB
+dist/assets/TableRow-BO23DwNM.js                      6.14 kB │ gzip:   2.08 kB
+dist/assets/theme-Dn_pAnPM.js                         6.17 kB │ gzip:   2.55 kB
+dist/assets/DocumentsPage-BUQBaxY4.js                 6.33 kB │ gzip:   2.64 kB
+dist/assets/CardsPage-D56BqQId.js                     7.43 kB │ gzip:   2.87 kB
+dist/assets/MajorReadinessPages-CPuDBkgJ.js           8.18 kB │ gzip:   2.81 kB
+dist/assets/AdminAIJobsPages-mb_6tKcX.js              8.36 kB │ gzip:   3.22 kB
+dist/assets/PostRoundPages-EObHr1NL.js                9.97 kB │ gzip:   3.12 kB
+dist/assets/AdminServicesPages-CxehOM70.js           10.42 kB │ gzip:   3.52 kB
+dist/assets/Phase11Pages-BjWdAZhG.js                 10.67 kB │ gzip:   3.81 kB
+dist/assets/ServicesPage-X3Ce_xT0.js                 10.83 kB │ gzip:   3.67 kB
+dist/assets/ClientContextPages-DASpxqmr.js           11.61 kB │ gzip:   3.45 kB
+dist/assets/ConsultantSupportPage-xphSYpuN.js        11.93 kB │ gzip:   4.44 kB
+dist/assets/AdminPaymentsPages-C34OcVpg.js           12.16 kB │ gzip:   4.07 kB
+dist/assets/AccountPage-DkVsrhpz.js                  12.31 kB │ gzip:   3.87 kB
+dist/assets/CardCatalogPages-D9VgYODi.js             12.78 kB │ gzip:   4.29 kB
+dist/assets/SupportPage-JN2OLVVw.js                  13.02 kB │ gzip:   4.88 kB
+dist/assets/PlanResponse-1r3UXxAv.js                 13.39 kB │ gzip:   5.20 kB
+dist/assets/AdminIdentityPages-CjdB9_D0.js           15.03 kB │ gzip:   4.80 kB
+dist/assets/Tabs-agdz3sJT.js                         15.17 kB │ gzip:   5.34 kB
+dist/assets/GoalsPage-32tZUAhF.js                    15.71 kB │ gzip:   6.23 kB
+dist/assets/StrategyPages-CoVQDGWG.js                15.81 kB │ gzip:   4.92 kB
+dist/assets/Modal-BKqjCyjh.js                        17.16 kB │ gzip:   6.42 kB
+dist/assets/DesignSystemPage-BG3ZvxFr.js             18.22 kB │ gzip:   5.53 kB
+dist/assets/LivePages-eYxIZMqo.js                    18.43 kB │ gzip:   5.54 kB
+dist/assets/PlanPages-DD-nH2HP.js                    24.69 kB │ gzip:   8.09 kB
+dist/assets/ReviewPages-uDwHLGA1.js                  53.61 kB │ gzip:  14.38 kB
+dist/assets/TextField-C2Ntc0KH.js                    59.16 kB │ gzip:  17.77 kB
+dist/assets/ConsultantPlanBuilderPage-ClDSxR1y.js    68.25 kB │ gzip:  19.95 kB
+dist/assets/PublishedCreditCenterPages-DcNL6DJT.js   83.01 kB │ gzip:  22.85 kB
+dist/assets/PageHeader-DAOad2qN.js                  140.50 kB │ gzip:  45.65 kB
+dist/assets/api-NyKWlxUz.js                         183.86 kB │ gzip:  57.41 kB
+dist/assets/index-Ec8FNBh9.js                       545.57 kB │ gzip: 165.73 kB
+
+✓ built in 1.64s

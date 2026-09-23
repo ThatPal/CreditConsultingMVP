@@ -1,0 +1,49 @@
+{
+  "passed": true,
+  "route": "/admin/payments",
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ],
+  "data": "Actual payment router and disposable PostgreSQL records, not response stubs",
+  "authentication": "Synthetic staff principal and capability store via local test harness, not full login/MFA evidence",
+  "queries": [
+    {
+      "url": "http://127.0.0.1:5197/admin/payments?page=1&search=Alpha",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3017/api/v1/admin/payments?page=1&pageSize=20&search=Alpha",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3017/api/v1/admin/payments?page=1&pageSize=20&search=Beta",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3017/api/v1/admin/payments?page=1&pageSize=20&search=REC02-no-match-record",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3017/api/v1/admin/payments?page=1&pageSize=20",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3017/api/v1/admin/payments?page=1&pageSize=20&search=Alpha",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3017/api/v1/admin/payments?page=1&pageSize=20&search=Beta",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3017/api/v1/admin/payments?page=1&pageSize=20&search=REC02-no-match-record",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3017/api/v1/admin/payments?page=1&pageSize=20",
+      "status": 200
+    }
+  ],
+  "errors": []
+}

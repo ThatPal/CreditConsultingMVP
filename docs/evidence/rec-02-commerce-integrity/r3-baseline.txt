@@ -1,0 +1,398 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-commerce-integrity/apps/web
+
+ ❯ src/pages/AdminPaymentsPages.test.tsx (2 tests | 2 failed) 4667ms
+   × R3 page-one search change, normalized URL, clear and Back select the correct data 3100ms
+   × R3 delayed old search cannot replace a newer completed result; no-match and clear recover 1564ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/AdminPaymentsPages.test.tsx > R3 page-one search change, normalized URL, clear and Back select the correct data
+TestingLibraryElementError: Unable to find an element with the text: Beta Reference. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="MuiStack-root css-v2woy3-MuiStack-root"
+    >
+      <div
+        class="MuiStack-root css-1ue9p3r-MuiStack-root"
+      >
+        <div
+          class="MuiBox-root css-0"
+        >
+          <span
+            class="MuiTypography-root MuiTypography-overline css-1k4kxq7-MuiTypography-root"
+          >
+            Commerce
+          </span>
+          <h1
+            class="MuiTypography-root MuiTypography-h1 css-1ondtkb-MuiTypography-root"
+          >
+            Payments
+          </h1>
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-1u30wct-MuiTypography-root"
+          >
+            Provider-neutral payment, refund, dispute, and reconciliation operations.
+          </p>
+        </div>
+      </div>
+      <div
+        aria-label="Data navigation controls"
+        class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded css-1li2n37-MuiPaper-root"
+      >
+        <div
+          class="MuiStack-root css-10kbc59-MuiStack-root"
+        >
+          <div
+            class="MuiStack-root css-atfi58-MuiStack-root"
+          >
+            <div
+              class="MuiFormControl-root MuiTextField-root css-1a22g7d-MuiFormControl-root-MuiTextField-root"
+            >
+              <label
+                class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-outlined css-hvjq6j-MuiFormLabel-root-MuiInputLabel-root"
+                data-shrink="true"
+                for="_r_0_"
+                id="_r_0_-label"
+              >
+                Search payments
+              </label>
+              <div
+                class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiInputBase-adornedStart MuiInputBase-adornedEnd css-ommszq-MuiInputBase-root-MuiOutlinedInput-root"
+              >
+                <div
+                  class="MuiInputAdornment-root MuiInputAdornment-positionStart MuiInputAdornment-outlined MuiInputAdornment-sizeSmall css-1nowbqt-MuiInputAdornment-root"
+                >
+                  <span
+                    aria-hidden="true"
+                    class="notranslate"
+                  >
+                    ​
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-120dh41-MuiSvgIcon-root"
+                    data-testid="SearchRoundedIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M15.5 14h-.79l-.28-.27c1.2-1.4 1.82-3.31 1.48-5.34-.47-2.78-2.79-5-5.59-5.34-4.23-.52-7.79 3.04-7.27 7.27.34 2.8 2.56 5.12 5.34 5.59 2.03.34 3.94-.28 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0s.41-1.08 0-1.49zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"
+                    />
+                  </svg>
+                </div>
+                <input
+                  aria-invalid="false"
+                  class="MuiInputBase-input MuiOutlinedInput-input css-12tjcea-MuiInputBase-input-MuiOutlinedInput-input"
+                  id="_r_0_"
+                  placeholder="Client, product, or provider reference"
+                  type="text"
+                  value="  Beta  "
+                />
+                <div
+                  class="MuiInputAdornment-root MuiInputAdornment-positionEnd MuiInputAdornment-outlined MuiInputAdornment-sizeSmall css-elo8k2-MuiInputAdornment-root"
+                >
+                  <button
+                    aria-label="Clear search payments"
+                    class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall css-155wbr6-MuiButtonBase-root-MuiIconButton-root"
+                    tabindex="0"
+                    type="button"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-120dh41-MuiSvgIcon-root"
+                      data-testid="ClearRoundedIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M18.3 5.71a.996.996 0 0 0-1.41 0L12 10.59 7.11 5.7a.996.996 0 0 0-1.41 0c-.39.39-.39 1.02 0 1.41L10.59 12 5.7 16.89c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0L12 13.41l4.89 4.89c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <fieldset
+                  aria-hidden="true"
+                  class="MuiOutlinedInput-notchedOutline css-18p5xg2-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+                >
+                  <legend
+                    class="css-ex8a5f-MuiNotchedOutlined-root"
+                  >
+                    <span>
+                      Search payments
+                    </span>
+                  </legend>
+                </fieldset>
+              </div>
+            </div>
+            <div
+              class=[32...
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="MuiStack-root css-v2woy3-MuiStack-root"
+    >
+      <div
+        class="MuiStack-root css-1ue9p3r-MuiStack-root"
+      >
+        <div
+          class="MuiBox-root css-0"
+        >
+          <span
+            class="MuiTypography-root MuiTypography-overline css-1k4kxq7-MuiTypography-root"
+          >
+            Commerce
+          </span>
+          <h1
+            class="MuiTypography-root MuiTypography-h1 css-1ondtkb-MuiTypography-root"
+          >
+            Payments
+          </h1>
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-1u30wct-MuiTypography-root"
+          >
+            Provider-neutral payment, refund, dispute, and reconciliation operations.
+          </p>
+        </div>
+      </div>
+      <div
+        aria-label="Data navigation controls"
+        class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded css-1li2n37-MuiPaper-root"
+      >
+        <div
+          class="MuiStack-root css-10kbc59-MuiStack-root"
+        >
+          <div
+            class="MuiStack-root css-atfi58-MuiStack-root"
+          >
+            <div
+              class="MuiFormControl-root MuiTextField-root css-1a22g7d-MuiFormControl-root-MuiTextField-root"
+            >
+              <label
+                class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-outlined css-hvjq6j-MuiFormLabel-root-MuiInputLabel-root"
+                data-shrink="true"
+                for="_r_0_"
+                id="_r_0_-label"
+              >
+                Search payments
+              </label>
+              <div
+                class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiInputBase-adornedStart MuiInputBase-adornedEnd css-ommszq-MuiInputBase-root-MuiOutlinedInput-root"
+              >
+                <div
+                  class="MuiInputAdornment-root MuiInputAdornment-positionStart MuiInputAdornment-outlined MuiInputAdornment-sizeSmall css-1nowbqt-MuiInputAdornment-root"
+                >
+                  <span
+                    aria-hidden="true"
+                    class="notranslate"
+                  >
+                    ​
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-120dh41-MuiSvgIcon-root"
+                    data-testid="SearchRoundedIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M15.5 14h-.79l-.28-.27c1.2-1.4 1.82-3.31 1.48-5.34-.47-2.78-2.79-5-5.59-5.34-4.23-.52-7.79 3.04-7.27 7.27.34 2.8 2.56 5.12 5.34 5.59 2.03.34 3.94-.28 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0s.41-1.08 0-1.49zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"
+                    />
+                  </svg>
+                </div>
+                <input
+                  aria-invalid="false"
+                  class="MuiInputBase-input MuiOutlinedInput-input css-12tjcea-MuiInputBase-input-MuiOutlinedInput-input"
+                  id="_r_0_"
+                  placeholder="Client, product, or provider reference"
+                  type="text"
+                  value="  Beta  "
+                />
+                <div
+                  class="MuiInputAdornment-root MuiInputAdornment-positionEnd MuiInputAdornment-outlined MuiInputAdornment-sizeSmall css-elo8k2-MuiInputAdornment-root"
+                >
+                  <button
+                    aria-label="Clear search payments"
+                    class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall css-155wbr6-MuiButtonBase-root-MuiIconButton-root"
+                    tabindex="0"
+                    type="button"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-120dh41-MuiSvgIcon-root"
+                      data-testid="ClearRoundedIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M18.3 5.71a.996.996 0 0 0-1.41 0L12 10.59 7.11 5.7a.996.996 0 0 0-1.41 0c-.39.39-.39 1.02 0 1.41L10.59 12 5.7 16.89c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0L12 13.41l4.89 4.89c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <fieldset
+                  aria-hidden="true"
+                  class="MuiOutlinedInput-notchedOutline css-18p5xg2-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+                >
+                  <legend
+                    class="css-ex8a5f-MuiNotchedOutlined-root"
+                  >
+                    <span>
+                      Search payments
+                    </span>
+                  </legend>
+                </fieldset>
+              </div>
+            </div>
+            <div
+              class=[32...
+ ❯ waitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/AdminPaymentsPages.test.tsx:16:15
+     14|  const router=mount();await screen.findByText('Alpha Reference');
+     15|  fireEvent.change(screen.getByLabelText('Search payments'),{target:{va…
+     16|  await screen.findByText('Beta Reference');expect(mock).toHaveBeenCall…
+       |               ^
+     17|  expect(screen.getByText('1 payments')).toBeInTheDocument();
+     18|  fireEvent.click(screen.getByLabelText('Clear search payments'));await…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/pages/AdminPaymentsPages.test.tsx > R3 delayed old search cannot replace a newer completed result; no-match and clear recover
+AssertionError: expected undefined to be defined
+
+Ignored nodes: comments, script, style
+<html>
+  <head>
+    <meta
+      content=""
+      name="emotion-insertion-point"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="MuiStack-root css-v2woy3-MuiStack-root"
+      >
+        <div
+          class="MuiStack-root css-1ue9p3r-MuiStack-root"
+        >
+          <div
+            class="MuiBox-root css-0"
+          >
+            <span
+              class="MuiTypography-root MuiTypography-overline css-1k4kxq7-MuiTypography-root"
+            >
+              Commerce
+            </span>
+            <h1
+              class="MuiTypography-root MuiTypography-h1 css-1ondtkb-MuiTypography-root"
+            >
+              Payments
+            </h1>
+            <p
+              class="MuiTypography-root MuiTypography-body1 css-1u30wct-MuiTypography-root"
+            >
+              Provider-neutral payment, refund, dispute, and reconciliation operations.
+            </p>
+          </div>
+        </div>
+        <div
+          aria-label="Data navigation controls"
+          class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded css-1li2n37-MuiPaper-root"
+        >
+          <div
+            class="MuiStack-root css-10kbc59-MuiStack-root"
+          >
+            <div
+              class="MuiStack-root css-atfi58-MuiStack-root"
+            >
+              <div
+                class="MuiFormControl-root MuiTextField-root css-1a22g7d-MuiFormControl-root-MuiTextField-root"
+              >
+                <label
+                  class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-outlined css-hvjq6j-MuiFormLabel-root-MuiInputLabel-root"
+                  data-shrink="true"
+                  for="_r_c_"
+                  id="_r_c_-label"
+                >
+                  Search payments
+                </label>
+                <div
+                  class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiInputBase-adornedStart MuiInputBase-adornedEnd css-ommszq-MuiInputBase-root-MuiOutlinedInput-root"
+                >
+                  <div
+                    class="MuiInputAdornment-root MuiInputAdornment-positionStart MuiInputAdornment-outlined MuiInputAdornment-sizeSmall css-1nowbqt-MuiInputAdornment-root"
+                  >
+                    <span
+                      aria-hidden="true"
+                      class="notranslate"
+                    >
+                      ​
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-120dh41-MuiSvgIcon-root"
+                      data-testid="SearchRoundedIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M15.5 14h-.79l-.28-.27c1.2-1.4 1.82-3.31 1.48-5.34-.47-2.78-2.79-5-5.59-5.34-4.23-.52-7.79 3.04-7.27 7.27.34 2.8 2.56 5.12 5.34 5.59 2.03.34 3.94-.28 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0s.41-1.08 0-1.49zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    aria-invalid="false"
+                    class="MuiInputBase-input MuiOutlinedInput-input css-12tjcea-MuiInputBase-input-MuiOutlinedInput-input"
+                    id="_r_c_"
+                    placeholder="Client, product, or provider reference"
+                    type="text"
+                    value="Slow"
+                  />
+                  <div
+                    class="MuiInputAdornment-root MuiInputAdornment-positionEnd MuiInputAdornment-outlined MuiInputAdornment-sizeSmall css-elo8k2-MuiInputAdornment-root"
+                  >
+                    <button
+                      aria-label="Clear search payments"
+                      class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall css-155wbr6-MuiButtonBase-root-MuiIconButton-root"
+                      tabindex="0"
+                      type="button"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-120dh41-MuiSvgIcon-root"
+                        data-testid="ClearRoundedIcon"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M18.3 5.71a.996.996 0 0 0-1.41 0L12 10.59 7.11 5.7a.996.996 0 0 0-1.41 0c-.39.39-.39 1.02 0 1.41L10.59 12 5.7 16.89c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0L12 13.41l4.89 4.89c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                  <fieldset
+                    aria-hidden="true"
+                    class="MuiOutlinedInput-notchedOutline css-18p5xg2-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+                  >
+                    <legend
+                      class...
+ ❯ src/pages/AdminPaymentsPages.test.tsx:26:119
+
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  20:05:11
+   Duration  21.03s (transform 596ms, setup 1.58s, import 8.10s, tests 4.67s, environment 5.73s)

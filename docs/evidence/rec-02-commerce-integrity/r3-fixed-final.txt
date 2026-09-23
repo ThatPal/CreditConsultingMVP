@@ -1,0 +1,8 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-commerce-integrity/apps/web
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  20:21:09
+   Duration  10.49s (transform 337ms, setup 588ms, import 3.97s, tests 3.17s, environment 2.21s)

@@ -1,0 +1,95 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-commerce-integrity/apps/api
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts (5 tests | 4 failed) 1597ms
+   × R1 operator metadata survives runtime, list and connection refresh; capability ownership survives edits 168ms
+   × R2 failed A checkout replays A after persisted default switches to B; new requests use B 222ms
+   × R2 unavailable, disabled and changed-environment A cannot fall back to B 217ms
+   × R2 replay uses frozen product version, rejects different product and isolates another client 212ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts > R1 operator metadata survives runtime, list and connection refresh; capability ownership survives edits
+AssertionError: expected { …(2) } to match object { …(3) }
+
+- Expected
++ Received
+
+  {
+    "accountReference": "reference-only",
+-   "capabilities": {
+-     "checkout": "REDIRECT",
+-     "reconciliation": "UNSUPPORTED",
+-     "refund": "UNSUPPORTED",
+-     "statusRetrieval": false,
+-     "webhooks": false,
+-   },
+    "displayName": "Synthetic operator label",
+  }
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:15:50
+     13|  const metadata={displayName:'Synthetic operator label',accountReferen…
+     14|  const save=await request(f.app(f.admin)).patch('/api/v1/admin/payment…
+     15|  expect(save.body.gateway.configurationMetadata).toMatchObject({...met…
+       |                                                  ^
+     16|  f.a.capabilities={...f.a.capabilities,statusRetrieval:true};
+     17|  await canonicalDefaultGateway(prisma,f.registry);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts > R2 failed A checkout replays A after persisted default switches to B; new requests use B
+AssertionError: expected [ { …(7) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:39:20
+     37|  await setDefaultGateway(prisma,'STRIPE',f.admin.userId);f.a.fail=fals…
+     38|  const replay=await request(f.app()).post('/api/v1/client/checkouts').…
+     39|  expect(f.b.calls).toHaveLength(0);expect(f.a.calls).toHaveLength(2);
+       |                    ^
+     40|  expect(replay.body.purchaseId).toBe(original.purchaseId);expect(repla…
+     41|  const persisted=await prisma.payment.findUniqueOrThrow({where:{id:ori…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts > R2 unavailable, disabled and changed-environment A cannot fall back to B
+AssertionError: expected 200 to be 503 // Object.is equality
+
+- Expected
++ Received
+
+- 503
++ 200
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:53:181
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts > R2 replay uses frozen product version, rejects different product and isolates another client
+Error: expected 200 "OK", got 409 "Conflict"
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:61:109
+     59|  const first=await request(f.app()).post('/api/v1/client/checkouts').s…
+     60|  await prisma.serviceProduct.update({where:{id:f.product.id},data:{act…
+     61|  const replay=await request(f.app()).post('/api/v1/client/checkouts').…
+       |                                                                                                             ^
+     62|  await request(f.app()).post('/api/v1/client/checkouts').set('Idempote…
+     63|  await prisma.serviceProduct.update({where:{id:f.product.id},data:{act…
+ ❯ Test._assertStatus ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:309:14
+ ❯ ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:365:13
+ ❯ Test._assertFunction ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:342:13
+ ❯ Test.assert ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:195:23
+ ❯ localAssert ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:138:14
+ ❯ Server.<anonymous> ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:152:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed (5)
+   Start at  20:06:59
+   Duration  5.56s (transform 632ms, setup 0ms, import 3.19s, tests 1.60s, environment 0ms)

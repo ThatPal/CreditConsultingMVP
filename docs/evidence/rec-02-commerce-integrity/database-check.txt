@@ -1,0 +1,9 @@
+       current_database       |                                         version
+------------------------------+------------------------------------------------------------------------------------------
+ credit_strategy_rec02_com01a | PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+(1 row)
+
+ applied_migrations
+--------------------
+                 69
+(1 row)

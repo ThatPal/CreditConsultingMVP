@@ -1,0 +1,247 @@
+[
+  {
+    "name": "ai-enabled",
+    "manifestSha": "e27b741637c84d9bc1a873b083664404bfd32dae",
+    "cachedRemoteSha": "e27b741637c84d9bc1a873b083664404bfd32dae",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "baseline/current-non-ai",
+    "manifestSha": "642112202adee802b7d206bfe364dd779b33448c",
+    "cachedRemoteSha": "642112202adee802b7d206bfe364dd779b33448c",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "codex/astra-production",
+    "manifestSha": "bef53dcbae9b6ae090f90cdeef56cdc0d73740e5",
+    "cachedRemoteSha": "bef53dcbae9b6ae090f90cdeef56cdc0d73740e5",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "correction/foundation-quality-ui-conformance",
+    "manifestSha": "6e68415953dab709115274968850afa0ccf76f9c",
+    "cachedRemoteSha": "6e68415953dab709115274968850afa0ccf76f9c",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "correction/phase1-3-product-maturity-wave1",
+    "manifestSha": "077650f24172a4bf2b3698ad0af1e1f6294a550b",
+    "cachedRemoteSha": "077650f24172a4bf2b3698ad0af1e1f6294a550b",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "correction/phase1-3-product-maturity-wave2",
+    "manifestSha": "64ab1deaa924fc1cccd32a13022531e32a269299",
+    "cachedRemoteSha": "64ab1deaa924fc1cccd32a13022531e32a269299",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "main",
+    "manifestSha": "642112202adee802b7d206bfe364dd779b33448c",
+    "cachedRemoteSha": "642112202adee802b7d206bfe364dd779b33448c",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "rapid/phase4-5-client-commerce",
+    "manifestSha": "e27b741637c84d9bc1a873b083664404bfd32dae",
+    "cachedRemoteSha": "e27b741637c84d9bc1a873b083664404bfd32dae",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "rapid/phase6-8-review-golden-path",
+    "manifestSha": "91a89d0f4d88ffd0786321e940529b768f60ac26",
+    "cachedRemoteSha": "91a89d0f4d88ffd0786321e940529b768f60ac26",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "rapid/phase9-12-plan-cards-strategy",
+    "manifestSha": "b3995317ebd907deee61e5aa5c1f6e04e52a6041",
+    "cachedRemoteSha": "b3995317ebd907deee61e5aa5c1f6e04e52a6041",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "rapid/phase13-16-live-major-support",
+    "manifestSha": "becce2d268263c6c196cc524cb62526f0c65aec1",
+    "cachedRemoteSha": "becce2d268263c6c196cc524cb62526f0c65aec1",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "rapid/phase17-18-operations-public",
+    "manifestSha": "830b3ef96375e338ffbc7a299dc2484f057b523b",
+    "cachedRemoteSha": "830b3ef96375e338ffbc7a299dc2484f057b523b",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "rebuild/authenticated-product-poar",
+    "manifestSha": "ee3b8648b4a61ab76d4b56bd1cfd307b83bd8eb0",
+    "cachedRemoteSha": "ee3b8648b4a61ab76d4b56bd1cfd307b83bd8eb0",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/0.2-c1-characterization-tests",
+    "manifestSha": "ffe7f116c8333a43cdc0d546f27e1f6577743896",
+    "cachedRemoteSha": "ffe7f116c8333a43cdc0d546f27e1f6577743896",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/1.1-local-runtime-foundation",
+    "manifestSha": "66e6c141035ee1e277d74d2dfef734477d5d0f18",
+    "cachedRemoteSha": "66e6c141035ee1e277d74d2dfef734477d5d0f18",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/1.2-db-transaction-foundation",
+    "manifestSha": "a4a776ef398e932237e6c6ebf8816b304810e115",
+    "cachedRemoteSha": "a4a776ef398e932237e6c6ebf8816b304810e115",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/1.3-design-system-showcase",
+    "manifestSha": "f8c2b3d1bb5e18498364ce0846a4d812c4ef8c1b",
+    "cachedRemoteSha": "f8c2b3d1bb5e18498364ce0846a4d812c4ef8c1b",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/2.1-better-auth-client-authentication",
+    "manifestSha": "36ee6c7d9567b2c7958e4843deb8b241d8486858",
+    "cachedRemoteSha": "36ee6c7d9567b2c7958e4843deb8b241d8486858",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/2.1-c1-auth-audit-regression",
+    "manifestSha": "f8524df9aa6d05915ff924e6944a972066215897",
+    "cachedRemoteSha": "f8524df9aa6d05915ff924e6944a972066215897",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/2.2-c1-canonical-authorization-wiring",
+    "manifestSha": "c141aeae9077204ed17a52b487cca69a1dc55f7f",
+    "cachedRemoteSha": "c141aeae9077204ed17a52b487cca69a1dc55f7f",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/2.2-staff-mfa-authorization",
+    "manifestSha": "d7074a972ff6acef1fce35997c330b1214a7b797",
+    "cachedRemoteSha": "d7074a972ff6acef1fce35997c330b1214a7b797",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/2.3-application-shells",
+    "manifestSha": "69ae454aeccc5ffd75e829cf552bf5b84d16632c",
+    "cachedRemoteSha": "69ae454aeccc5ffd75e829cf552bf5b84d16632c",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/2.3-c1-design-system-accessibility",
+    "manifestSha": "ba9a1a5c189cd631f1df29ac1aeea887ee57d8ee",
+    "cachedRemoteSha": "ba9a1a5c189cd631f1df29ac1aeea887ee57d8ee",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/3.1-c1-realtime-runtime-verification",
+    "manifestSha": "822fb8f0e308644fd6a863b189ba9a22ffd984b0",
+    "cachedRemoteSha": "822fb8f0e308644fd6a863b189ba9a22ffd984b0",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/3.1-realtime-outbox-worker",
+    "manifestSha": "43d8dfccfbc407f779fc5fc57052f97dac7d39ae",
+    "cachedRemoteSha": "43d8dfccfbc407f779fc5fc57052f97dac7d39ae",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/3.2-c1-storage-provider-routing",
+    "manifestSha": "d15c6db578f0fc68d4f7e1cc54098656c985794b",
+    "cachedRemoteSha": "d15c6db578f0fc68d4f7e1cc54098656c985794b",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/3.2-documents-storage-providers",
+    "manifestSha": "625892d9d0896aa56623561466529e14f03903b4",
+    "cachedRemoteSha": "625892d9d0896aa56623561466529e14f03903b4",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/3.3-notifications-email-integrations",
+    "manifestSha": "4b3221efda2857f45a9c42d9cdf32d512406a383",
+    "cachedRemoteSha": "4b3221efda2857f45a9c42d9cdf32d512406a383",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/3.4-c1-support-authorization-lifecycle",
+    "manifestSha": "82417a609d9aff9f58f3c078bb2018f702e52e9b",
+    "cachedRemoteSha": "82417a609d9aff9f58f3c078bb2018f702e52e9b",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/3.4-early-support-foundation",
+    "manifestSha": "1bb866855d91867ee5a1ef5cec7a8807b6b3a8ae",
+    "cachedRemoteSha": "1bb866855d91867ee5a1ef5cec7a8807b6b3a8ae",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/3.5-attention-work-queue-foundation",
+    "manifestSha": "d0638b14deabd6b7d699b51218cdd64baffdce12",
+    "cachedRemoteSha": "d0638b14deabd6b7d699b51218cdd64baffdce12",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/4.1-client-relationship-context",
+    "manifestSha": "91001b18e42752bed86b6a2767d402d5c8d43d0c",
+    "cachedRemoteSha": "91001b18e42752bed86b6a2767d402d5c8d43d0c",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "sprint/4.2-goal-first-intake",
+    "manifestSha": "285a0e3d961ab7dacb4b761c65e35797b257550f",
+    "cachedRemoteSha": "285a0e3d961ab7dacb4b761c65e35797b257550f",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "ui/credit-profile",
+    "manifestSha": "1daf6eb58f5e33bc7b0673f0a5bf0f2ee26e629d",
+    "cachedRemoteSha": "1daf6eb58f5e33bc7b0673f0a5bf0f2ee26e629d",
+    "objectExists": true,
+    "ancestor": true
+  },
+  {
+    "name": "ui/portal-shell-credit-center-overview",
+    "manifestSha": "488471a936dd7d053e960f86b81e3a1afb56e135",
+    "cachedRemoteSha": "488471a936dd7d053e960f86b81e3a1afb56e135",
+    "objectExists": true,
+    "ancestor": true
+  }
+]

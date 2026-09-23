@@ -9,7 +9,10 @@ import {
 import type { AuthorizationService } from '../authorization/authorizationService.js';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
-import { executeConsequentialCommand } from '../transactions/consequentialCommand.js';
+import {
+  executeConsequentialCommand,
+  IdempotencyConflictError,
+} from '../transactions/consequentialCommand.js';
 import { requireGovernedSwitch } from '../platform/settings.js';
 import { frozenTerms } from './domain.js';
 import { PaymentGatewayRegistry, type PaymentGateway } from './paymentGateway.js';
@@ -122,34 +125,75 @@ export function createPaymentRouter(
           'Only a canonical service product may be selected',
         );
       const { productId } = parsed.data;
-      const { gateway } = await canonicalDefaultGateway(prisma, registry);
       const idempotencyKey = keyFrom(req);
-      const product = await prisma.serviceProduct.findFirst({
-        where: { id: productId, active: true },
-        include: {
-          versions: { where: { status: 'ACTIVE' }, orderBy: { version: 'desc' }, take: 1 },
-        },
-      });
-      const version = product?.versions[0];
-      if (!product || !version || product.currentVersion !== version.version)
-        throw new AppError(
-          'PRODUCT_NOT_AVAILABLE',
-          409,
-          'This service is no longer available for checkout',
-        );
-      const health = await gateway.health();
-      if (!health.healthy)
-        throw new AppError(
-          'PAYMENT_PROVIDER_UNAVAILABLE',
-          503,
-          'Checkout is temporarily unavailable',
-        );
-      const requestHash = createHash('sha256')
-        .update(JSON.stringify({ productId, version: version.version }))
-        .digest('hex');
-      const command = await executeConsequentialCommand<{ purchaseId: string; paymentId: string }>(
-        prisma,
-        {
+      const command = await (async () => {
+        // Resolve the caller's recorded attempt before consulting today's product/default.
+        const prior = await prisma.idempotencyRecord.findUnique({
+          where: {
+            scope_subjectId_operation_key: {
+              scope: 'client-checkout',
+              subjectId: req.auth!.clientId!,
+              operation: 'create',
+              key: idempotencyKey,
+            },
+          },
+        });
+        if (prior?.status === 'PROCESSING')
+          throw new IdempotencyConflictError('IDEMPOTENCY_IN_PROGRESS');
+        if (prior?.status === 'COMPLETED') {
+          const result = z
+            .object({ purchaseId: z.string(), paymentId: z.string() })
+            .parse(prior.result);
+          const recorded = await prisma.payment.findFirst({
+            where: {
+              id: result.paymentId,
+              purchaseId: result.purchaseId,
+              clientId: req.auth!.clientId!,
+            },
+            include: { purchase: { include: { productVersion: true } } },
+          });
+          if (
+            !recorded ||
+            recorded.purchase.clientId !== req.auth!.clientId ||
+            !recorded.purchase.productVersion
+          )
+            throw new AppError('CHECKOUT_UNAVAILABLE', 409, 'The recorded checkout is unavailable');
+          const version = recorded.purchase.productVersion;
+          const requestHash = createHash('sha256')
+            .update(JSON.stringify({ productId, version: version.version }))
+            .digest('hex');
+          if (
+            version.serviceProductId !== productId ||
+            (prior.requestHash && prior.requestHash !== requestHash)
+          )
+            throw new IdempotencyConflictError('IDEMPOTENCY_KEY_REUSED');
+          return { result, replayed: true };
+        }
+        const { gateway } = await canonicalDefaultGateway(prisma, registry);
+        const product = await prisma.serviceProduct.findFirst({
+          where: { id: productId, active: true },
+          include: {
+            versions: { where: { status: 'ACTIVE' }, orderBy: { version: 'desc' }, take: 1 },
+          },
+        });
+        const version = product?.versions[0];
+        if (!product || !version || product.currentVersion !== version.version)
+          throw new AppError(
+            'PRODUCT_NOT_AVAILABLE',
+            409,
+            'This service is no longer available for checkout',
+          );
+        const health = await gateway.health();
+        if (!health.healthy)
+          throw new AppError(
+            'PAYMENT_PROVIDER_UNAVAILABLE',
+            503,
+            'Checkout is temporarily unavailable',
+          );
+        const requestHash = createHash('sha256')
+          .update(JSON.stringify({ productId, version: version.version }))
+          .digest('hex');
+        return executeConsequentialCommand<{ purchaseId: string; paymentId: string }>(prisma, {
           idempotency: {
             scope: 'client-checkout',
             subjectId: req.auth!.clientId!,
@@ -203,19 +247,38 @@ export function createPaymentRouter(
             });
             return { purchaseId: purchase.id, paymentId: payment.id };
           },
-        },
-      );
+        });
+      })();
       let payment = await prisma.payment.findUniqueOrThrow({
         where: { id: command.result.paymentId },
       });
       if (!payment.providerOrderId) {
         try {
+          // Never use the current default for a persisted attempt, including a concurrent replay.
+          const gateway = registry.get(payment.provider);
+          const config = await prisma.paymentGatewayConfig.findUnique({
+            where: { provider: payment.provider },
+          });
+          const health = await gateway.health();
+          if (
+            !config?.enabledForNewPayments ||
+            !health.healthy ||
+            !health.configured ||
+            gateway.environment !== payment.providerEnvironment ||
+            health.environment !== payment.providerEnvironment ||
+            !['PENDING', 'AWAITING_CUSTOMER'].includes(payment.state)
+          )
+            throw new Error('RECORDED_PROVIDER_UNAVAILABLE');
+          const purchase = await prisma.servicePurchase.findUniqueOrThrow({
+            where: { id: payment.purchaseId },
+            include: { productVersion: true },
+          });
           const checkout = await gateway.createCheckout({
             paymentId: payment.id,
             purchaseId: command.result.purchaseId,
             amount: payment.amount.toFixed(2),
             currency: payment.currency,
-            description: version.name,
+            description: purchase.productVersion?.name ?? 'Credit Consulting service',
             returnUrl: `${webOrigin}/app/checkout/${command.result.purchaseId}?returned=1`,
             cancelUrl: `${webOrigin}/app/checkout/${command.result.purchaseId}?cancelled=1`,
           });
@@ -246,6 +309,10 @@ export function createPaymentRouter(
         replayed: command.replayed,
       });
     } catch (error) {
+      if (error instanceof IdempotencyConflictError)
+        return next(
+          new AppError(error.code, 409, 'The checkout key conflicts with an existing request'),
+        );
       next(error);
     }
   });

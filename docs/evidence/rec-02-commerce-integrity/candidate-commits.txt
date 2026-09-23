@@ -1,0 +1,9 @@
+1daf6eb Apply approved blue-violet theme and preserve design preview workflow
+e1a01af Wait for Profile viewport paint before full evidence captures
+d248248 Reconcile UI-F04 dark composition and full-data reference evidence
+2f02cc6 Record complete UI-F04 visual review evidence
+36a1b1f Implement UI-F04 published Credit Profile reading experience
+33610fa Polish UI-F01 through UI-F03 for final visual review
+488471a Align Portal and Credit Center shells with approved references
+0b51406 Implement Portal shell and Credit Center Overview UI slice
+b586986 Document UI slice publication contract blocker

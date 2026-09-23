@@ -1,0 +1,31 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-commerce-integrity/apps/api
+
+ ❯ src/commerce/paymentRoutes.integration.test.ts (4 tests | 1 failed) 3675ms
+     × unconfigured BofA fails before records; configured hosted checkout is resumable and idempotent 227ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 22 passed (23)
+   Start at  20:09:47
+   Duration  45.61s (transform 929ms, setup 0ms, import 14.71s, tests 26.70s, environment 1ms)
+
+ FAIL  src/commerce/paymentRoutes.integration.test.ts > payment route boundaries > unconfigured BofA fails before records; configured hosted checkout is resumable and idempotent
+Error: expected 201 "Created", got 503 "Service Unavailable"
+ ❯ src/commerce/paymentRoutes.integration.test.ts:218:8
+    216|       .set('Idempotency-Key', key)
+    217|       .send({ productId })
+    218|       .expect(201);
+       |        ^
+    219|     const replay = await request(app(client, registry))
+    220|       .post('/api/v1/client/checkouts')
+ ❯ Test._assertStatus ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:309:14
+ ❯ ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:365:13
+ ❯ Test._assertFunction ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:342:13
+ ❯ Test.assert ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:195:23
+ ❯ localAssert ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:138:14
+ ❯ Server.<anonymous> ../../node_modules/.pnpm/supertest@7.2.2/node_modules/supertest/lib/test.js:152:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯

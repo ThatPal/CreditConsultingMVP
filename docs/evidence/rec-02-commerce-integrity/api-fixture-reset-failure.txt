@@ -1,0 +1,42 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-commerce-integrity/apps/api
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts (6 tests | 2 failed) 1400ms
+   × R2 failed A checkout replays A after persisted default switches to B; new requests use B 53ms
+   × R2 unavailable, disabled and changed-environment A cannot fall back to B 106ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts > R2 failed A checkout replays A after persisted default switches to B; new requests use B
+Error: Gateway must be configured, connected, and enabled
+ ❯ prisma.$transaction.isolationLevel src/commerce/paymentOperations.ts:99:15
+     97|       const target = await tx.paymentGatewayConfig.findUnique({ where:…
+     98|       if (!target?.configured || !target.connected || !target.enabledF…
+     99|         throw new AppError(
+       |               ^
+    100|           'GATEWAY_NOT_READY',
+    101|           409,
+ ❯ Proxy._transactionWithCallback ../../node_modules/.pnpm/@prisma+client@7.9.1_prisma_2c5066300de533671cfc5ad96a48ffa0/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:861:17
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:78:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts > R2 unavailable, disabled and changed-environment A cannot fall back to B
+Error: Gateway must be configured, connected, and enabled
+ ❯ prisma.$transaction.isolationLevel src/commerce/paymentOperations.ts:99:15
+     97|       const target = await tx.paymentGatewayConfig.findUnique({ where:…
+     98|       if (!target?.configured || !target.connected || !target.enabledF…
+     99|         throw new AppError(
+       |               ^
+    100|           'GATEWAY_NOT_READY',
+    101|           409,
+ ❯ Proxy._transactionWithCallback ../../node_modules/.pnpm/@prisma+client@7.9.1_prisma_2c5066300de533671cfc5ad96a48ffa0/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:861:17
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:147:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  2 failed | 22 passed (24)
+   Start at  20:12:15
+   Duration  21.42s (transform 901ms, setup 0ms, import 10.70s, tests 8.62s, environment 1ms)

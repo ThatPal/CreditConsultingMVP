@@ -1,0 +1,19 @@
+[
+  {
+    "path": "C:/Users/morde/Desktop/Projects/Credit",
+    "head": "642112202adee802b7d206bfe364dd779b33448c",
+    "changes": [
+      "?? .worktrees/"
+    ]
+  },
+  {
+    "path": "C:/Users/morde/Desktop/Projects/Credit/.worktrees/ai-enabled",
+    "head": "becce2d268263c6c196cc524cb62526f0c65aec1",
+    "changes": []
+  },
+  {
+    "path": "C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-production",
+    "head": "1daf6eb58f5e33bc7b0673f0a5bf0f2ee26e629d",
+    "changes": []
+  }
+]

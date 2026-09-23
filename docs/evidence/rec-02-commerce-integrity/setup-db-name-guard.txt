@@ -1,0 +1,26 @@
+
+ RUN  v4.1.11 C:/Users/morde/Desktop/Projects/Credit/.worktrees/astra-commerce-integrity/apps/api
+
+ ❯ src/commerce/commerceIntegrity.integration.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/commerce/commerceIntegrity.integration.test.ts [ src/commerce/commerceIntegrity.integration.test.ts ]
+Error: DATABASE_URL must target a Credit Platform database named credit_strategy or credit_strategy_*
+ ❯ assertCreditDatabaseUrl ../../packages/runtime/src/index.ts:38:11
+     36|   const database = new URL(databaseUrl).pathname.replace(/^\//, '').to…
+     37|   if (database !== 'credit_strategy' && !database.startsWith('credit_s…
+     38|     throw new Error(
+       |           ^
+     39|       'DATABASE_URL must target a Credit Platform database named credi…
+     40|     );
+ ❯ createPrisma src/lib/prisma.ts:6:29
+ ❯ src/commerce/commerceIntegrity.integration.test.ts:8:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  20:06:20
+   Duration  6.63s (transform 845ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)

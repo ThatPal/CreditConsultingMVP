@@ -1,9 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  Prisma,
-  type PaymentProvider,
-  type PrismaClient,
-} from '../generated/prisma/client.js';
+import { Prisma, type PaymentProvider, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../http/errors.js';
 import type { PaymentGatewayRegistry } from './paymentGateway.js';
 import { applyVerifiedPaymentEvent, permitsPaymentTransition } from './paymentService.js';
@@ -12,26 +8,33 @@ export async function ensureGatewayConfigs(prisma: PrismaClient, registry: Payme
   for (const gateway of registry.list()) {
     const provider = gateway.provider;
     const health = await gateway.health();
-    await prisma.paymentGatewayConfig.upsert({
-      where: { provider },
-      create: {
-        provider,
-        environment: health.environment,
-        configured: health.configured,
-        connected: health.connectionVerified ?? health.healthy,
-        enabledForNewPayments: provider === registry.defaultProvider && health.healthy,
-        defaultForCheckout: false,
-        status: health.healthy ? 'HEALTHY' : health.configured ? 'DEGRADED' : 'UNTESTED',
-        secretReferences: [],
-        configurationMetadata: { capabilities: health.capabilities ?? null },
-      },
-      update: {
-        environment: health.environment,
-        configured: health.configured,
-        connected: health.connectionVerified ?? health.healthy,
-        status: health.healthy ? 'HEALTHY' : health.configured ? 'DEGRADED' : 'UNTESTED',
-        configurationMetadata: { capabilities: health.capabilities ?? null },
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`payment-gateway-metadata:${provider}`}))`;
+      const existing = await tx.paymentGatewayConfig.findUnique({ where: { provider } });
+      const metadata = existing?.configurationMetadata;
+      const preserved =
+        metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : {};
+      await tx.paymentGatewayConfig.upsert({
+        where: { provider },
+        create: {
+          provider,
+          environment: health.environment,
+          configured: health.configured,
+          connected: health.connectionVerified ?? health.healthy,
+          enabledForNewPayments: provider === registry.defaultProvider && health.healthy,
+          defaultForCheckout: false,
+          status: health.healthy ? 'HEALTHY' : health.configured ? 'DEGRADED' : 'UNTESTED',
+          secretReferences: [],
+          configurationMetadata: { capabilities: health.capabilities ?? null },
+        },
+        update: {
+          environment: health.environment,
+          configured: health.configured,
+          connected: health.connectionVerified ?? health.healthy,
+          status: health.healthy ? 'HEALTHY' : health.configured ? 'DEGRADED' : 'UNTESTED',
+          configurationMetadata: { ...preserved, capabilities: health.capabilities ?? null },
+        },
+      });
     });
   }
   // Deterministic registries are isolated test fixtures; mirror their declared default.
@@ -216,9 +219,14 @@ export async function updateGatewayMetadata(
   actorId: string,
 ) {
   return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`payment-gateway-metadata:${provider}`}))`;
+    const existing = await tx.paymentGatewayConfig.findUniqueOrThrow({ where: { provider } });
+    const current = existing.configurationMetadata;
+    const preserved =
+      current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     const updated = await tx.paymentGatewayConfig.update({
       where: { provider },
-      data: { configurationMetadata: metadata, version: { increment: 1 } },
+      data: { configurationMetadata: { ...preserved, ...metadata }, version: { increment: 1 } },
     });
     await tx.auditEvent.create({
       data: {
@@ -321,15 +329,13 @@ export async function requestRefund(
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
   try {
-    const result = await registry
-      .get(payment.provider)
-      .refund({
-        paymentId: payment.id,
-        providerPaymentId: payment.providerPaymentId,
-        refundId: refund.id,
-        amount: amount.toFixed(2),
-        currency: payment.currency,
-      });
+    const result = await registry.get(payment.provider).refund({
+      paymentId: payment.id,
+      providerPaymentId: payment.providerPaymentId,
+      refundId: refund.id,
+      amount: amount.toFixed(2),
+      currency: payment.currency,
+    });
     return prisma.$transaction(async (tx) => {
       const completed = await tx.paymentRefund.update({
         where: { id: refund.id },
