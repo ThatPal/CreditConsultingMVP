@@ -63,7 +63,7 @@ function setup() {
         ),
       },
     ],
-    { initialEntries: ['/app/plan?view=actions'] },
+    { initialEntries: ['/app/credit-center/plan?view=actions'] },
   );
   render(
     <ThemeProvider theme={theme}>
@@ -151,12 +151,14 @@ test('changing Plan views preserves unsaved responses until explicit departure',
   const input = await screen.findByRole('textbox', { name: 'Optional note for your consultant' });
   fireEvent.change(input, { target: { value: 'Keep my work while browsing' } });
   await screen.findByText('Save unavailable', {}, { timeout: 3000 });
-  fireEvent.click(await screen.findByRole('link', { name: 'Return to roadmap' }));
+  const roadmap = await screen.findByRole('link', { name: 'Return to roadmap' });
+  expect(roadmap).toHaveAttribute('href', '/app/credit-center/plan');
+  fireEvent.click(roadmap);
   await screen.findByRole('dialog');
   expect(input).toHaveValue('Keep my work while browsing');
   fireEvent.click(screen.getByRole('button', { name: 'Stay on this page' }));
   expect(input).toHaveValue('Keep my work while browsing');
-  fireEvent.click(await screen.findByRole('link', { name: 'Overview' }));
+  fireEvent.click(await screen.findByRole('link', { name: 'Return to roadmap' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Leave without latest changes' }));
   await screen.findByRole('heading', { name: 'Your roadmap' });
   expect(

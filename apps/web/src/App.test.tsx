@@ -1,7 +1,7 @@
 import { ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { App, isDesignSystemShowcaseEnabled } from './App';
 import { designTokens, reducedMotionStyles } from './theme/designTokens';
@@ -64,6 +64,8 @@ function renderAt(
   );
 }
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('application shells', () => {
   test('client shell provides the approved navigation and excludes Reviews', () => {
     renderAt('/app');
@@ -75,7 +77,15 @@ describe('application shells', () => {
     expect(
       within(navigation).queryByRole('link', { name: 'Application Rounds' }),
     ).not.toBeInTheDocument();
-    fireEvent.click(within(navigation).getByRole('button', { name: 'More' }));
+    const more = within(navigation).getByRole('button', { name: 'More' });
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    expect(within(navigation).getByRole('link', { name: 'Documents' })).toHaveAttribute(
+      'href',
+      '/app/documents',
+    );
+    fireEvent.click(more);
+    expect(within(navigation).queryByRole('link', { name: 'Documents' })).not.toBeInTheDocument();
+    fireEvent.click(more);
     expect(within(navigation).getByRole('link', { name: 'Documents' })).toBeInTheDocument();
     expect(within(navigation).getByText('More')).toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Security' })).not.toBeInTheDocument();
@@ -200,9 +210,8 @@ describe('application shells', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading your Home overview');
   });
 
-  test('mobile navigation opens and closes through accessible controls', () => {
-    const original = window.matchMedia;
-    window.matchMedia = (query) => ({
+  test('mobile navigation opens and closes through accessible controls', async () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
       matches: false,
       media: query,
       onchange: null,
@@ -211,12 +220,32 @@ describe('application shells', () => {
       addListener: () => undefined,
       removeListener: () => undefined,
       dispatchEvent: () => true,
-    });
+    }));
     renderAt('/app');
-    fireEvent.click(screen.getByRole('button', { name: /open navigation/i }));
-    expect(screen.getByRole('navigation', { name: /client navigation/i })).toBeVisible();
-    fireEvent.keyDown(document, { key: 'Escape' });
-    window.matchMedia = original;
+    const navigation = screen.getByRole('navigation', { name: /client navigation/i });
+    expect(
+      within(navigation)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Home', 'Journey', 'Credit Center', 'Cards']);
+    expect(screen.queryByRole('button', { name: /open navigation/i })).not.toBeInTheDocument();
+    const more = within(navigation).getByRole('button', { name: 'More' });
+    fireEvent.click(more);
+    const dialog = screen.getByRole('dialog', { name: 'More' });
+    expect(within(dialog).getByRole('link', { name: 'Documents' })).toHaveAttribute(
+      'href',
+      '/app/documents',
+    );
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'More' })).not.toBeInTheDocument(),
+    );
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(more);
+    fireEvent.click(screen.getByRole('button', { name: 'Close More' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'More' })).not.toBeInTheDocument(),
+    );
   });
 
   test('account menu is keyboard-operable and exposes account, security, and sign out', async () => {
@@ -351,7 +380,7 @@ describe('application shells', () => {
   });
 
   test('reference gradient endpoints retain readable text and controls', () => {
-    for (const surface of ['#c9e7ce', '#f5f3e9', '#e4efe2']) {
+    for (const surface of designTokens.gradient.advisory.match(/#[0-9a-f]{6}/gi)!) {
       for (const foreground of [
         designTokens.color.focusText,
         designTokens.color.focusTextMuted,
@@ -361,19 +390,16 @@ describe('application shells', () => {
       }
       expect(contrastRatio(designTokens.color.focusLink, surface)).toBeGreaterThanOrEqual(3);
     }
-    for (const surface of ['#b6f0cb', '#66d8bd', '#70cde8']) {
-      expect(contrastRatio(designTokens.accent.text, surface)).toBeGreaterThanOrEqual(4.5);
+    for (const gradient of [designTokens.gradient.brand, designTokens.gradient.focusAction]) {
+      for (const surface of gradient.match(/#[0-9a-f]{6}/gi)!)
+        expect(contrastRatio(designTokens.accent.text, surface)).toBeGreaterThanOrEqual(4.5);
     }
     for (const surface of [
       designTokens.color.canvas,
       designTokens.color.surface,
       designTokens.color.surfaceOverlay,
-      '#1c3d43',
-      '#173144',
-      '#27344d',
-      '#183a45',
-      '#142b3e',
-      '#292c4b',
+      ...designTokens.gradient.focus.match(/#[0-9a-f]{6}/gi)!,
+      ...designTokens.gradient.data.match(/#[0-9a-f]{6}/gi)!,
     ]) {
       for (const foreground of [designTokens.color.textPrimary, designTokens.color.textSecondary]) {
         expect(contrastRatio(foreground, surface)).toBeGreaterThanOrEqual(4.5);
